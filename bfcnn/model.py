@@ -51,7 +51,7 @@ class BFCNN:
     @staticmethod
     def build_model(
             input_dims,
-            no_layers: int = 10,
+            no_layers: int = 5,
             kernel_size: int = 3,
             filters: int = 32,
             min_value: float = 0.0,
@@ -77,7 +77,7 @@ class BFCNN:
         # TODO
         # --- variables
         negative_slope = 0.1
-        
+
         # --- build bfcnn
         model_input = keras.Input(shape=input_dims)
 
@@ -98,10 +98,20 @@ class BFCNN:
                 kernel_regularizer=kernel_regularizer,
                 kernel_initializer=kernel_initializer)(x)
             x = keras.layers.ReLU(negative_slope=negative_slope)(x)
+            x = keras.layers.Conv2D(
+                filters=filters,
+                kernel_size=kernel_size,
+                use_bias=False,
+                strides=(1, 1),
+                padding="same",
+                activation="linear",
+                kernel_regularizer=kernel_regularizer,
+                kernel_initializer=kernel_initializer)(x)
             x = keras.layers.BatchNormalization(center=False)(x)
             # add skip on all but the first
             if i > 0:
                 x = previous_layer - x
+                x = keras.layers.ReLU(negative_slope=negative_slope)(x)
 
         # --- output to original channels
         x = keras.layers.Conv2D(
@@ -199,12 +209,15 @@ class BFCNN:
         data_generator.fit(dataset, augment=False, seed=0)
 
         # --- define callbacks
+        subset_size = 25
+        dataset_subset = dataset[0:subset_size, :, :, :] + \
+                         np.random.normal(0.0, 10, (subset_size,) + input_dims)
         callback_intermediate_results = \
             SaveIntermediateResultsCallback(
                 model=model,
                 run_folder=run_folder,
                 initial_epoch=initial_epoch,
-                images=dataset[0:16, :, :, :])
+                images=dataset_subset)
         lr_schedule = \
             step_decay_schedule(
                 initial_lr=lr_initial,
@@ -237,7 +250,7 @@ class BFCNN:
 
         # --- manually flow to augment the noise
         logger.info("begin training | batches per epoch {0}".format(batches_per_epoch))
-        batch_reporter = 0
+        report_batch = 0
 
         for e in range(epochs):
             logger.info("epoch {0}".format(e))
@@ -252,20 +265,19 @@ class BFCNN:
 
                 # add noise to create the noisy input and clip to constraint
                 y_batch = x_batch + np.random.normal(0.0, std, (batch_size,) + input_dims)
-                y_batch = np.clip(y_batch, a_min=0.0, a_max=255.0)
 
                 model.fit(y_batch, x_batch, verbose=False)
                 epoch_batch += 1
-                batch_reporter += 1
+                report_batch += 1
 
                 # show progress on denoising
-                if batch_reporter % print_every_n_batches == 0:
+                if report_batch % print_every_n_batches == 0:
                     # print loss
                     evaluation_results = model.evaluate(y_batch, x_batch)
                     logger.info("[batch:{0}] loss: {1:.2f}".format(
-                        batch_reporter, evaluation_results[0]))
+                        report_batch, evaluation_results[0]))
                     # show collage of images
-                    callback_intermediate_results.on_batch_end(batch=batch_reporter)
+                    callback_intermediate_results.on_batch_end(batch=report_batch)
 
                 # we need to break the loop by hand
                 # because the generator loops indefinitely
