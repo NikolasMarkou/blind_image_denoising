@@ -210,14 +210,15 @@ class BFCNN:
 
         # --- define callbacks
         subset_size = 25
-        dataset_subset = dataset[0:subset_size, :, :, :] + \
-                         np.random.normal(0.0, 10, (subset_size,) + input_dims)
+        subset_std = 20
+        subset = dataset[0:subset_size, :, :, :] + \
+                 np.random.normal(0.0, subset_std, (subset_size,) + input_dims)
         callback_intermediate_results = \
             SaveIntermediateResultsCallback(
                 model=model,
                 run_folder=run_folder,
                 initial_epoch=initial_epoch,
-                images=dataset_subset)
+                images=subset)
         lr_schedule = \
             step_decay_schedule(
                 initial_lr=lr_initial,
@@ -267,8 +268,6 @@ class BFCNN:
                 y_batch = x_batch + np.random.normal(0.0, std, (batch_size,) + input_dims)
 
                 model.fit(y_batch, x_batch, verbose=False)
-                epoch_batch += 1
-                report_batch += 1
 
                 # show progress on denoising
                 if report_batch % print_every_n_batches == 0:
@@ -283,6 +282,9 @@ class BFCNN:
                 # because the generator loops indefinitely
                 if epoch_batch >= batches_per_epoch:
                     break
+
+                epoch_batch += 1
+                report_batch += 1
         return model
 
     # --------------------------------------------------
