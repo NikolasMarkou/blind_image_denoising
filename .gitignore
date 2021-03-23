@@ -1,5 +1,9 @@
-# IDE files
+# ide files
 .idea/
+
+# notebooks temp and results files
+notebooks/training/
+notebooks/.ipynb_checkpoints
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
