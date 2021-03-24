@@ -188,15 +188,19 @@ def noisy_image_data_generator(
         # adjust brightness
         if random_brightness:
             if np.random.choice([False, True]):
-                brightness_offset = np.random.uniform(
-                    low=0.1 * max_min_diff,
-                    high=0.5 * max_min_diff, size=1)
+                brightness_offset = \
+                    np.random.uniform(
+                        low=0.1 * max_min_diff,
+                        high=0.5 * max_min_diff,
+                        size=1)
                 x_batch = x_batch + brightness_offset
                 x_batch_noisy = x_batch_noisy + brightness_offset
             elif np.random.choice([False, True]):
-                brightness_multiplier = np.random.uniform(
-                    low=0.25,
-                    high=0.75 , size=1)
+                brightness_multiplier = \
+                    np.random.uniform(
+                        low=0.25,
+                        high=0.75,
+                        size=1)
                 x_batch = x_batch * brightness_multiplier
                 x_batch_noisy = x_batch_noisy * brightness_multiplier
 
