@@ -3,8 +3,7 @@ import math
 import keras
 import pathlib
 import numpy as np
-from keras import backend as K
-from keras.preprocessing.image import ImageDataGenerator
+from typing import List, Tuple
 
 # ==============================================================================
 
@@ -87,46 +86,60 @@ class BFCNN:
 
         # --- add layers
         for i in range(no_layers):
-            previous_layer = x
-            x = keras.layers.Conv2D(
-                filters=filters,
-                kernel_size=kernel_size,
-                use_bias=False,
-                strides=(1, 1),
-                padding="same",
-                activation="linear",
-                kernel_regularizer=kernel_regularizer,
-                kernel_initializer=kernel_initializer)(x)
-            x = keras.layers.ReLU(negative_slope=negative_slope)(x)
-            x = keras.layers.Conv2D(
-                filters=filters,
-                kernel_size=kernel_size,
-                use_bias=False,
-                strides=(1, 1),
-                padding="same",
-                activation="linear",
-                kernel_regularizer=kernel_regularizer,
-                kernel_initializer=kernel_initializer)(x)
-            x = keras.layers.BatchNormalization(center=False)(x)
-            # add skip on all but the first
-            if i > 0:
-                x = previous_layer - x
+            if i == 0:
+                x = keras.layers.Conv2D(
+                    filters=filters,
+                    kernel_size=kernel_size,
+                    use_bias=False,
+                    strides=(1, 1),
+                    padding="same",
+                    activation="linear",
+                    kernel_regularizer=kernel_regularizer,
+                    kernel_initializer=kernel_initializer)(x)
+            else:
+                previous_layer = x
+                x = keras.layers.BatchNormalization(center=False)(x)
                 x = keras.layers.ReLU(negative_slope=negative_slope)(x)
+                x = keras.layers.Conv2D(
+                    filters=filters,
+                    kernel_size=kernel_size,
+                    use_bias=False,
+                    strides=(1, 1),
+                    padding="same",
+                    activation="linear",
+                    kernel_regularizer=kernel_regularizer,
+                    kernel_initializer=kernel_initializer)(x)
+                x = keras.layers.BatchNormalization(center=False)(x)
+                x = keras.layers.ReLU(negative_slope=negative_slope)(x)
+                x = keras.layers.Conv2D(
+                    filters=filters,
+                    kernel_size=(1, 1),
+                    use_bias=False,
+                    strides=(1, 1),
+                    padding="same",
+                    activation="linear",
+                    kernel_regularizer=kernel_regularizer,
+                    kernel_initializer=kernel_initializer)(x)
+                x = previous_layer + x
 
         # --- output to original channels
+        x = keras.layers.BatchNormalization(center=False)(x)
+        x = keras.layers.ReLU(negative_slope=negative_slope)(x)
         x = keras.layers.Conv2D(
             filters=input_dims[channel_index],
-            kernel_size=kernel_size,
+            kernel_size=(1, 1),
             strides=(1, 1),
             padding="same",
             activation="linear",
             use_bias=False,
             kernel_regularizer=kernel_regularizer,
             kernel_initializer=kernel_initializer)(x)
+
         # --- denormalize output from [-1.0, +1.0] [min_value, max_value]
         model_output = \
             keras.layers.Lambda(layer_denormalize, name="denormalize")([
                 x, float(min_value), float(max_value)])
+
         # --- wrap model
         return keras.Model(
             inputs=model_input,
@@ -138,11 +151,13 @@ class BFCNN:
     def train(model,
               input_dims,
               dataset,
+              min_value: float = 0.0,
+              max_value: float = 255.0,
+              loss: List[Loss] = [Loss.MeanAbsoluteError],
               batch_size: int = 32,
               epochs: int = 1,
               lr_initial: float = 0.01,
-              lr_decay: float = 1.0,
-              step_size: int = 1000,
+              lr_decay: float = 0.9,
               clip_norm: float = 1.0,
               min_noise_std: float = 0.1,
               max_noise_std: float = 10,
@@ -155,13 +170,15 @@ class BFCNN:
         :param model:
         :param input_dims:
         :param dataset: dataset to train on
+        :param min_value:
+        :param max_value:
+        :param loss:
         :param batch_size:
         :param epochs:
         :param run_folder:
         :param print_every_n_batches:
         :param lr_initial: initial learning rate
         :param lr_decay: decay of learning rate per step size
-        :param step_size:
         :param clip_norm:
         :param max_noise_std:
         :param min_noise_std:
@@ -169,61 +186,72 @@ class BFCNN:
         :return:
         """
         # --- argument checking
-
+        if epochs <= 0:
+            raise ValueError("epochs must be > 0")
+        if batch_size <= 0:
+            raise ValueError("batch size must be > 0")
+        if lr_initial <= 0.0:
+            raise ValueError("initial learning rate must be > 0.0")
+        if lr_decay <= 0.0 or lr_decay > 1.0:
+            raise ValueError("learning rate decay must be > 0.0 and < 1.0")
+        if clip_norm <= 0.0:
+            raise ValueError("clip normal must be > 0.0")
+        if len(loss) <= 0:
+            raise ValueError("losses cannot be empty")
         # --- set variables
         initial_epoch = 0
         batches_per_epoch = int(math.ceil(len(dataset) / batch_size))
 
-        # --- define mae reconstruction loss
-        def mae_loss(y_true, y_pred):
-            tmp_pixels = K.abs(y_true[0] - y_pred[0])
-            return K.mean(tmp_pixels)
+        # --- define optimizer
+        optimizer = \
+            keras.optimizers.Adagrad(
+                lr=lr_initial,
+                learning_rate=lr_initial,
+                clipnorm=clip_norm)
 
-        optimizer = keras.optimizers.Adagrad(
-            lr=lr_initial,
-            clipnorm=clip_norm)
+        # --- define loss functions
+        total_loss_fn, loss_fn = build_loss_fn(loss)
 
         model.compile(
             optimizer=optimizer,
-            loss=mae_loss,
-            metrics=[mae_loss])
+            loss=total_loss_fn,
+            metrics=loss_fn)
 
-        # --- fix dataset dimensions if they dont match
+        # --- fix dataset dimensions and type if they dont match
         if isinstance(dataset, np.ndarray):
             if len(input_dims) == 3:
                 if len(dataset.shape[1:]) != len(input_dims):
                     dataset = np.expand_dims(dataset, axis=3)
-            dataset = dataset.astype("float32")
-
-        # --- create data generator
-        data_generator = \
-            ImageDataGenerator(
-                featurewise_center=False,
-                featurewise_std_normalization=False,
-                zoom_range=0.1,
-                rotation_range=20,
-                width_shift_range=0.2,
-                height_shift_range=0.2,
-                horizontal_flip=True)
-
-        data_generator.fit(dataset, augment=False, seed=0)
+            dataset = dataset.astype(np.float32)
 
         # --- define callbacks
-        subset_size = 25
-        subset_std = 20
-        subset = dataset[0:subset_size, :, :, :] + \
-                 np.random.normal(0.0, subset_std, (subset_size,) + input_dims)
+        subset_size = min(len(dataset), 25)
+        noise_level = abs(max_value - min_value) / 3.0
+        subset = dataset[0:subset_size, :, :, :]
+        noisy_subset = \
+            subset + \
+            np.random.uniform(
+                low=-noise_level,
+                high=+noise_level,
+                size=subset.shape)
+        noisy_subset = \
+            np.clip(
+                noisy_subset,
+                a_min=min_value,
+                a_max=max_value)
         callback_intermediate_results = \
             SaveIntermediateResultsCallback(
                 model=model,
                 run_folder=run_folder,
                 initial_epoch=initial_epoch,
-                images=subset)
+                original_images=subset,
+                noisy_images=noisy_subset,
+                every_n_batches=print_every_n_batches)
         lr_schedule = \
             step_decay_schedule(
                 initial_lr=lr_initial,
                 decay_factor=lr_decay,
-                step_size=step_size)
+                step_size=batches_per_epoch)
         weights_path = os.path.join(run_folder, "weights")
         pathlib.Path(weights_path).mkdir(parents=True, exist_ok=True)
 
@@ -249,43 +277,27 @@ class BFCNN:
         if save_checkpoint_weights:
             callbacks_fns += [checkpoint1, checkpoint2]
 
-        # --- manually flow to augment the noise
-        logger.info("begin training | batches per epoch {0}".format(batches_per_epoch))
-        report_batch = 0
+        # ---
+        logger.info("begin training")
 
-        for e in range(epochs):
-            logger.info("epoch {0}".format(e))
-            epoch_batch = 0
+        history = \
+            model.fit(
+                noisy_image_data_generator(
+                    dataset=dataset,
+                    batch_size=batch_size,
+                    min_value=min_value,
+                    max_value=max_value,
+                    min_noise_std=min_noise_std,
+                    max_noise_std=max_noise_std),
+                steps_per_epoch=batches_per_epoch,
+                initial_epoch=initial_epoch,
+                shuffle=True,
+                epochs=epochs,
+                callbacks=callbacks_fns)
 
-            # iterate over random batches
-            for x_batch in data_generator.flow(x=dataset,
-                                               shuffle=True,
-                                               batch_size=batch_size):
-                # adjust the std of the noise
-                std = np.random.uniform(low=min_noise_std, high=max_noise_std)
+        logger.info("finished  training")
 
-                # add noise to create the noisy input and clip to constraint
-                y_batch = x_batch + np.random.normal(0.0, std, (batch_size,) + input_dims)
-
-                model.fit(y_batch, x_batch, verbose=False)
-
-                # show progress on denoising
-                if report_batch % print_every_n_batches == 0:
-                    # print loss
-                    evaluation_results = model.evaluate(y_batch, x_batch)
-                    logger.info("[batch:{0}] loss: {1:.2f}".format(
-                        report_batch, evaluation_results[0]))
-                    # show collage of images
-                    callback_intermediate_results.on_batch_end(batch=report_batch)
-
-                # we need to break the loop by hand
-                # because the generator loops indefinitely
-                if epoch_batch >= batches_per_epoch:
-                    break
-
-                epoch_batch += 1
-                report_batch += 1
-        return model
+        return model, history
 
     # --------------------------------------------------
 
