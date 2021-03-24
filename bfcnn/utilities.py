@@ -114,6 +114,7 @@ def noisy_image_data_generator(
         min_noise_std: float = 0.01,
         max_noise_std: float = 10.0,
         random_invert: bool = True,
+        random_noise: bool = True,
         random_brightness: bool = True,
         zoom_range: float = 0.25,
         rotation_range: int = 90,
@@ -129,6 +130,7 @@ def noisy_image_data_generator(
     :param max_value:
     :param batch_size:
     :param random_invert:
+    :param random_noise:
     :param random_brightness:
     :param min_noise_std:
     :param max_noise_std:
@@ -155,6 +157,8 @@ def noisy_image_data_generator(
             featurewise_center=False,
             featurewise_std_normalization=False)
 
+    max_min_diff = (max_value - min_value)
+
     # iterate over random batches
     for x_batch in \
             data_generator.flow(
@@ -167,22 +171,34 @@ def noisy_image_data_generator(
                 x_batch = (max_value - x_batch) + min_value
 
         # adjust the std of the noise
-        std = \
-            np.random.uniform(
-                low=min_noise_std,
-                high=max_noise_std)
+        if random_noise:
+            if np.random.choice([False, True]):
+                std = \
+                    np.random.uniform(
+                        low=min_noise_std,
+                        high=max_noise_std)
 
-        # add noise to create the noisy input
-        x_batch_noisy = \
-            x_batch + \
-            np.random.normal(0.0, std, x_batch.shape)
+                # add noise to create the noisy input
+                x_batch_noisy = \
+                    x_batch + \
+                    np.random.normal(0.0, std, x_batch.shape)
+            else:
+                x_batch_noisy = np.copy(x_batch)
 
         # adjust brightness
         if random_brightness:
             if np.random.choice([False, True]):
-                brightness = np.random.uniform(low=0.25, high=0.75, size=1)
-                x_batch = x_batch * brightness
-                x_batch_noisy = x_batch_noisy * brightness
+                brightness_offset = np.random.uniform(
+                    low=0.1 * max_min_diff,
+                    high=0.5 * max_min_diff, size=1)
+                x_batch = x_batch + brightness_offset
+                x_batch_noisy = x_batch_noisy + brightness_offset
+            elif np.random.choice([False, True]):
+                brightness_multiplier = np.random.uniform(
+                    low=0.25,
+                    high=0.75 , size=1)
+                x_batch = x_batch * brightness_multiplier
+                x_batch_noisy = x_batch_noisy * brightness_multiplier
 
         yield x_batch_noisy, x_batch
 
