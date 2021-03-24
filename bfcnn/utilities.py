@@ -200,6 +200,10 @@ def noisy_image_data_generator(
                 x_batch = x_batch * brightness_multiplier
                 x_batch_noisy = x_batch_noisy * brightness_multiplier
 
+        # clip all to be between min and max value
+        x_batch = np.clip(x_batch, a_min=min_value, a_max=max_value)
+        x_batch_noisy = np.clip(x_batch_noisy, a_min=min_value, a_max=max_value)
+
         yield x_batch_noisy, x_batch
 
 # ==============================================================================
