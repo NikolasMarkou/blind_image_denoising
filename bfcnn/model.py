@@ -1,9 +1,10 @@
 import os
 import math
+import copy
 import keras
 import pathlib
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 # ==============================================================================
 
@@ -11,6 +12,7 @@ from .utilities import *
 from .custom_logger import logger
 from .custom_schedule import step_decay_schedule
 from .custom_callbacks import SaveIntermediateResultsCallback
+
 
 # ==============================================================================
 
@@ -22,28 +24,73 @@ class BFCNN:
 
     def __init__(
             self,
-            input_dims,
-            min_value=0.0,
-            max_value=255.0,
-            channels_index=2):
+            model: keras.Model = None,
+            input_dims: Union[Tuple, List[int]] = (),
+            min_value: float = 0.0,
+            max_value: float = 255.0,
+            no_layers: int = 5,
+            kernel_size: int = 3,
+            filters: int = 32,
+            channels_index: int = 2):
         """
+        Initialize model, left untrained
 
-        :param input_dims:
-        :param min_value:
-        :param max_value:
-        :param channels_index:
+        :param model: ready made model
+        :param input_dims: Input dimensions
+        :param min_value: Minimum value allowed
+        :param max_value: Maximum value allowed
+        :param no_layers: Number of layers to use
+        :param kernel_size: Kernel size
+        :param filters: Number of filters per layer
+        :param channels_index: Index of the channels
         """
-        self._input_dims = input_dims
-        self._min_value = min_value
-        self._max_value = max_value
-        self._channels_index = channels_index
-        self._trainable_model = self.build_model(input_dims)
+        # --- argument checking
+        # TODO
+        # ---
+        if model is not None:
+            self._model = model
+        else:
+            self._model = \
+                self.build_model(
+                    input_dims=input_dims,
+                    no_layers=no_layers,
+                    kernel_size=kernel_size,
+                    filters=filters,
+                    min_value=min_value,
+                    max_value=max_value,
+                    channel_index=channels_index)
 
     # --------------------------------------------------
 
     @property
-    def trainable_model(self):
-        return self._trainable_model
+    def model(self):
+        return self._model
+
+    # --------------------------------------------------
+
+    @model.setter
+    def model(self, value):
+        if not isinstance(value, keras.Model):
+            raise ValueError("model should be a keras.Model")
+        self._model = value
+
+    # --------------------------------------------------
+
+    @property
+    def input_dims(self):
+        return self._input_dims
+
+    # --------------------------------------------------
+
+    def save(self, filepath):
+        self._model.save(filepath=filepath)
+
+    # --------------------------------------------------
+
+    @staticmethod
+    def load(filepath):
+        model = keras.models.load_model(filepath)
+        return BFCNN(model=model)
 
     # --------------------------------------------------
 
@@ -57,7 +104,7 @@ class BFCNN:
             max_value: float = 255.0,
             channel_index: int = 2,
             kernel_regularizer=None,
-            kernel_initializer=None) -> keras.Model:
+            kernel_initializer=keras.initializers.GlorotNormal(seed=0)) -> keras.Model:
         """
         Build Bias Free CNN model
 
@@ -70,12 +117,38 @@ class BFCNN:
         :param channel_index:
         :param kernel_initializer:
         :param kernel_regularizer:
-        :return: keras model
+
+        :return: Untrained keras model
         """
         # --- argument checking
-        # TODO
+        if input_dims is None:
+            raise ValueError("input_dims should not be empty")
+        if no_layers <= 0:
+            raise ValueError("no_layers should be > 0")
+        if channel_index < 0:
+            raise ValueError("channel_index should be >= 0")
         # --- variables
-        negative_slope = 0.1
+        bn_params = dict(
+            center=False,
+            scale=True,
+            momentum=0.999,
+            epsilon=1e-4
+        )
+        conv_params = dict(
+            filters=filters,
+            kernel_size=kernel_size,
+            use_bias=False,
+            strides=(1, 1),
+            padding="same",
+            activation="linear",
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer
+        )
+        intermediate_conv_params = copy.deepcopy(conv_params)
+        intermediate_conv_params["kernel_size"] = 1
+        final_conv_params = copy.deepcopy(conv_params)
+        final_conv_params["filters"] = input_dims[channel_index]
+        final_conv_params["kernel_size"] = 1
 
         # --- build bfcnn
         model_input = keras.Input(shape=input_dims)
@@ -84,56 +157,24 @@ class BFCNN:
         x = keras.layers.Lambda(layer_normalize, name="normalize")([
             model_input, float(min_value), float(max_value)])
 
-        # --- add layers
+        # --- add resnet layers
         for i in range(no_layers):
             if i == 0:
-                x = keras.layers.Conv2D(
-                    filters=filters,
-                    kernel_size=kernel_size,
-                    use_bias=False,
-                    strides=(1, 1),
-                    padding="same",
-                    activation="linear",
-                    kernel_regularizer=kernel_regularizer,
-                    kernel_initializer=kernel_initializer)(x)
+                x = keras.layers.Conv2D(**conv_params)(x)
             else:
                 previous_layer = x
-                x = keras.layers.BatchNormalization(center=False)(x)
-                x = keras.layers.ReLU(negative_slope=negative_slope)(x)
-                x = keras.layers.Conv2D(
-                    filters=filters,
-                    kernel_size=kernel_size,
-                    use_bias=False,
-                    strides=(1, 1),
-                    padding="same",
-                    activation="linear",
-                    kernel_regularizer=kernel_regularizer,
-                    kernel_initializer=kernel_initializer)(x)
-                x = keras.layers.BatchNormalization(center=False)(x)
-                x = keras.layers.ReLU(negative_slope=negative_slope)(x)
-                x = keras.layers.Conv2D(
-                    filters=filters,
-                    kernel_size=(1, 1),
-                    use_bias=False,
-                    strides=(1, 1),
-                    padding="same",
-                    activation="linear",
-                    kernel_regularizer=kernel_regularizer,
-                    kernel_initializer=kernel_initializer)(x)
+                x = keras.layers.BatchNormalization(**bn_params)(x)
+                x = keras.layers.ReLU()(x)
+                x = keras.layers.Conv2D(**conv_params)(x)
+                x = keras.layers.BatchNormalization(**bn_params)(x)
+                x = keras.layers.ReLU()(x)
+                x = keras.layers.Conv2D(**intermediate_conv_params)(x)
                 x = previous_layer + x
 
         # --- output to original channels
-        x = keras.layers.BatchNormalization(center=False)(x)
-        x = keras.layers.ReLU(negative_slope=negative_slope)(x)
-        x = keras.layers.Conv2D(
-            filters=input_dims[channel_index],
-            kernel_size=(1, 1),
-            strides=(1, 1),
-            padding="same",
-            activation="linear",
-            use_bias=False,
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer)(x)
+        x = keras.layers.BatchNormalization(**bn_params)(x)
+        x = keras.layers.ReLU()(x)
+        x = keras.layers.Conv2D(**final_conv_params)(x)
 
         # --- denormalize output from [-1.0, +1.0] [min_value, max_value]
         model_output = \
@@ -148,22 +189,23 @@ class BFCNN:
     # --------------------------------------------------
 
     @staticmethod
-    def train(model,
-              input_dims,
-              dataset,
-              min_value: float = 0.0,
-              max_value: float = 255.0,
-              loss: List[Loss] = [Loss.MeanAbsoluteError],
-              batch_size: int = 32,
-              epochs: int = 1,
-              lr_initial: float = 0.01,
-              lr_decay: float = 0.9,
-              clip_norm: float = 1.0,
-              min_noise_std: float = 0.1,
-              max_noise_std: float = 10,
-              print_every_n_batches: int = 100,
-              run_folder: str = "./training/",
-              save_checkpoint_weights: bool = False):
+    def train(
+            model,
+            input_dims,
+            dataset,
+            min_value: float = 0.0,
+            max_value: float = 255.0,
+            loss: List[Loss] = [Loss.MeanAbsoluteError],
+            batch_size: int = 32,
+            epochs: int = 1,
+            lr_initial: float = 0.01,
+            lr_decay: float = 0.9,
+            clip_norm: float = 1.0,
+            min_noise_std: float = 0.1,
+            max_noise_std: float = 10,
+            print_every_n_batches: int = 100,
+            run_folder: str = "./training/",
+            save_checkpoint_weights: bool = False):
         """
         Train the model using the dataset and return a trained model
 
@@ -198,6 +240,14 @@ class BFCNN:
             raise ValueError("clip normal must be > 0.0")
         if len(loss) <= 0:
             raise ValueError("losses cannot be empty")
+        # decide on the type of model
+        if isinstance(model, keras.Model):
+            trainable_model = model
+        elif isinstance(model, BFCNN):
+            trainable_model = model.model
+        else:
+            raise ValueError("Not supported model")
+
         # --- set variables
         initial_epoch = 0
         batches_per_epoch = int(math.ceil(len(dataset) / batch_size))
@@ -212,7 +262,7 @@ class BFCNN:
         # --- define loss functions
         total_loss_fn, loss_fn = build_loss_fn(loss)
 
-        model.compile(
+        trainable_model.compile(
             optimizer=optimizer,
             loss=total_loss_fn,
             metrics=loss_fn)
@@ -226,13 +276,12 @@ class BFCNN:
 
         # --- define callbacks
         subset_size = min(len(dataset), 25)
-        noise_level = abs(max_value - min_value) / 3.0
         subset = dataset[0:subset_size, :, :, :]
         noisy_subset = \
             subset + \
-            np.random.uniform(
-                low=-noise_level,
-                high=+noise_level,
+            np.random.normal(
+                loc=0.0,
+                scale=max_noise_std,
                 size=subset.shape)
         noisy_subset = \
             np.clip(
@@ -241,7 +290,7 @@ class BFCNN:
                 a_max=max_value)
         callback_intermediate_results = \
             SaveIntermediateResultsCallback(
-                model=model,
+                model=trainable_model,
                 run_folder=run_folder,
                 initial_epoch=initial_epoch,
                 original_images=subset,
@@ -277,11 +326,11 @@ class BFCNN:
         if save_checkpoint_weights:
             callbacks_fns += [checkpoint1, checkpoint2]
 
-        # ---
+        # --- train
         logger.info("begin training")
 
         history = \
-            model.fit(
+            trainable_model.fit(
                 noisy_image_data_generator(
                     dataset=dataset,
                     batch_size=batch_size,

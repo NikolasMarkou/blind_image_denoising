@@ -13,29 +13,6 @@ from .custom_logger import logger
 # ==============================================================================
 
 
-def collage(images_batch):
-    shape = images_batch.shape
-    no_images = shape[0]
-    images = []
-    result = None
-    width = np.ceil(np.sqrt(no_images))
-    height = no_images / width
-
-    for i in range(no_images):
-        images.append(images_batch[i, :, :, :])
-
-        if len(images) % width == 0:
-            if result is None:
-                result = np.hstack(images)
-            else:
-                tmp = np.hstack(images)
-                result = np.vstack([result, tmp])
-            images.clear()
-    return result
-
-# ==============================================================================
-
-
 class SaveIntermediateResultsCallback(Callback):
 
     def __init__(self,

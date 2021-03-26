@@ -4,6 +4,34 @@ from typing import List
 from keras import backend as K
 from keras.preprocessing.image import ImageDataGenerator
 
+# ==============================================================================
+
+
+def collage(images_batch):
+    """
+    Create a collage of image from a batch
+
+    :param images_batch:
+    :return:
+    """
+    shape = images_batch.shape
+    no_images = shape[0]
+    images = []
+    result = None
+    width = np.ceil(np.sqrt(no_images))
+    height = no_images / width
+
+    for i in range(no_images):
+        images.append(images_batch[i, :, :, :])
+
+        if len(images) % width == 0:
+            if result is None:
+                result = np.hstack(images)
+            else:
+                tmp = np.hstack(images)
+                result = np.vstack([result, tmp])
+            images.clear()
+    return result
 
 # ==============================================================================
 
@@ -113,9 +141,9 @@ def noisy_image_data_generator(
         max_value: float = 255.0,
         min_noise_std: float = 0.01,
         max_noise_std: float = 10.0,
-        random_invert: bool = True,
+        random_invert: bool = False,
         random_noise: bool = True,
-        random_brightness: bool = True,
+        random_brightness: bool = False,
         zoom_range: float = 0.25,
         rotation_range: int = 90,
         width_shift_range: float = 0.25,
@@ -126,40 +154,50 @@ def noisy_image_data_generator(
     Create a dataset generator flow that adds noise to a dateset
 
     :param dataset:
-    :param min_value:
-    :param max_value:
-    :param batch_size:
-    :param random_invert:
-    :param random_noise:
-    :param random_brightness:
-    :param min_noise_std:
-    :param max_noise_std:
-    :param horizontal_flip:
-    :param vertical_flip:
-    :param height_shift_range:
-    :param width_shift_range:
-    :param rotation_range:
-    :param zoom_range:
+    :param min_value: Minimum allowed value
+    :param max_value: Maximum allowed value
+    :param batch_size: Batch size
+    :param random_invert: Randomly (50%) invert the image
+    :param random_noise: Randomly (50%) add noise
+    :param random_brightness: Randomly add offset or multiplier
+    :param zoom_range: Randomly zoom in (percentage)
+    :param rotation_range: Add random rotation range (in degrees)
+    :param min_noise_std: Min standard deviation of noise
+    :param max_noise_std: Max standard deviation of noise
+    :param horizontal_flip: Randomly horizontally flip image
+    :param vertical_flip: Randomly vertically flip image
+    :param height_shift_range: Add random vertical shift (percentage of image)
+    :param width_shift_range: Add random horizontal shift (percentage of image)
+
     :return:
     """
     # --- argument checking
-    # TODO
-    # --- create data generator
-    data_generator = \
-        ImageDataGenerator(
-            zoom_range=zoom_range,
-            rotation_range=rotation_range,
-            width_shift_range=width_shift_range,
-            height_shift_range=height_shift_range,
-            vertical_flip=vertical_flip,
-            horizontal_flip=horizontal_flip,
-            zca_whitening=False,
-            featurewise_center=False,
-            featurewise_std_normalization=False)
+    if dataset is None:
+        raise ValueError("dataset cannot be empty")
+    if random_noise:
+        if min_noise_std > max_noise_std:
+            raise ValueError("min_noise_std must be < max_noise_std")
 
+    # --- variables setup
     max_min_diff = (max_value - min_value)
 
-    # iterate over random batches
+    # --- create data generator
+    if isinstance(dataset, np.ndarray):
+        data_generator = \
+            ImageDataGenerator(
+                zoom_range=zoom_range,
+                rotation_range=rotation_range,
+                width_shift_range=width_shift_range,
+                height_shift_range=height_shift_range,
+                vertical_flip=vertical_flip,
+                horizontal_flip=horizontal_flip,
+                zca_whitening=False,
+                featurewise_center=False,
+                featurewise_std_normalization=False)
+    else:
+        raise NotImplementedError()
+
+    # --- iterate over random batches
     for x_batch in \
             data_generator.flow(
                 x=dataset,
@@ -173,6 +211,7 @@ def noisy_image_data_generator(
         # adjust the std of the noise
         if random_noise:
             if np.random.choice([False, True]):
+                # pick std between min and max std
                 std = \
                     np.random.uniform(
                         low=min_noise_std,
@@ -184,6 +223,8 @@ def noisy_image_data_generator(
                     np.random.normal(0.0, std, x_batch.shape)
             else:
                 x_batch_noisy = np.copy(x_batch)
+        else:
+            x_batch_noisy = np.copy(x_batch)
 
         # adjust brightness
         if random_brightness:
