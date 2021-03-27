@@ -31,7 +31,9 @@ class BFCNN:
             no_layers: int = 5,
             kernel_size: int = 3,
             filters: int = 32,
-            channels_index: int = 2):
+            channels_index: int = 2,
+            kernel_regularizer=keras.regularizers.l1(0.01),
+            kernel_initializer=keras.initializers.GlorotNormal(seed=0)):
         """
         Initialize model, left untrained
 
@@ -43,6 +45,8 @@ class BFCNN:
         :param kernel_size: Kernel size
         :param filters: Number of filters per layer
         :param channels_index: Index of the channels
+        :param kernel_regularizer: Kernel regularizer
+        :param kernel_initializer: Kernel initializer
         """
         # --- argument checking
         # TODO
@@ -58,7 +62,9 @@ class BFCNN:
                     filters=filters,
                     min_value=min_value,
                     max_value=max_value,
-                    channel_index=channels_index)
+                    channel_index=channels_index,
+                    kernel_initializer=kernel_initializer,
+                    kernel_regularizer=kernel_regularizer)
 
     # --------------------------------------------------
 
@@ -97,14 +103,14 @@ class BFCNN:
     @staticmethod
     def build_model(
             input_dims,
-            no_layers: int = 5,
-            kernel_size: int = 3,
-            filters: int = 32,
+            no_layers: int,
+            kernel_size: int,
+            filters: int,
             min_value: float = 0.0,
             max_value: float = 255.0,
             channel_index: int = 2,
             kernel_regularizer=None,
-            kernel_initializer="glorot_uniform") -> keras.Model:
+            kernel_initializer=None) -> keras.Model:
         """
         Build Bias Free CNN model
 
