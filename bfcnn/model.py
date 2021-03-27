@@ -104,7 +104,7 @@ class BFCNN:
             max_value: float = 255.0,
             channel_index: int = 2,
             kernel_regularizer=None,
-            kernel_initializer=None) -> keras.Model:
+            kernel_initializer="glorot_uniform") -> keras.Model:
         """
         Build Bias Free CNN model
 
@@ -169,11 +169,9 @@ class BFCNN:
             x = keras.layers.BatchNormalization(**bn_params)(x)
             x = keras.layers.ReLU()(x)
             x = keras.layers.Conv2D(**intermediate_conv_params)(x)
-            x = previous_layer + x
+            x = keras.layers.Add()([previous_layer, x])
 
         # --- output to original channels
-        x = keras.layers.BatchNormalization(**bn_params)(x)
-        x = keras.layers.ReLU()(x)
         x = keras.layers.Conv2D(**final_conv_params)(x)
 
         # --- denormalize output from [-1.0, +1.0] [min_value, max_value]
@@ -337,7 +335,10 @@ class BFCNN:
                     min_value=min_value,
                     max_value=max_value,
                     min_noise_std=min_noise_std,
-                    max_noise_std=max_noise_std),
+                    max_noise_std=max_noise_std,
+                    random_invert=False,
+                    vertical_flip=True,
+                    horizontal_flip=True),
                 steps_per_epoch=batches_per_epoch,
                 initial_epoch=initial_epoch,
                 shuffle=True,

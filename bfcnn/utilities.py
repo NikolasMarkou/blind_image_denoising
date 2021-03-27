@@ -176,15 +176,18 @@ def noisy_image_data_generator(
 
         # adjust the std of the noise
         # pick std between min and max std
-        std = \
-            np.random.uniform(
-                low=min_noise_std,
-                high=max_noise_std)
+        if np.random.choice([False, True]):
+            std = \
+                np.random.uniform(
+                    low=min_noise_std,
+                    high=max_noise_std)
 
-        # add noise to create the noisy input
-        x_batch_noisy = \
-            x_batch + \
-            np.random.normal(0.0, std, x_batch.shape)
+            # add noise to create the noisy input
+            x_batch_noisy = \
+                x_batch + \
+                np.random.normal(0.0, std, x_batch.shape)
+        else:
+            x_batch_noisy = np.copy(x_batch)
 
         # adjust brightness
         if random_brightness:
