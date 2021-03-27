@@ -137,8 +137,8 @@ class BFCNN:
         bn_params = dict(
             center=False,
             scale=True,
-            momentum=0.99,
-            epsilon=1e-3
+            momentum=0.999,
+            epsilon=1e-4
         )
         conv_params = dict(
             filters=filters,
