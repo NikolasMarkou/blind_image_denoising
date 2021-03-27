@@ -74,39 +74,6 @@ def build_loss_fn(loss: List[Loss]):
 
     return total_loss, loss_fn
 
-
-# ==============================================================================
-
-
-def normalize(v, min_value=0.0, max_value=255.0):
-    """
-    Normalize input from [min_value, max_value] to [0, 1]
-
-    :param v:
-    :param min_value:
-    :param max_value:
-    :return:
-    """
-    v = np.clip(v, a_min=min_value, a_max=max_value)
-    return (v - min_value) / (max_value - min_value)
-
-
-# ==============================================================================
-
-
-def denormalize(v, min_value=0.0, max_value=255.0):
-    """
-    Denormalize input from [0, 1] to [min_value, max_value]
-
-    :param v:
-    :param min_value:
-    :param max_value:
-    :return:
-    """
-    v = np.clip(v, a_min=0.0, a_max=1.0)
-    return v * (max_value - min_value) + min_value
-
-
 # ==============================================================================
 
 
@@ -127,8 +94,8 @@ def layer_denormalize(args):
     Convert input [-1, +1] to [v0, v1] range
     """
     y, v0, v1 = args
-    y0 = (y + 1.0) * (v1 - v0) / 2.0 + v0
-    return K.clip(y0, min_value=v0, max_value=v1)
+    y_clip = K.clip(y, min_value=-1.0, max_value=+1.0)
+    return 0.5 * (y_clip + 1.0) * (v1 - v0) + v0
 
 
 # ==============================================================================
@@ -142,7 +109,6 @@ def noisy_image_data_generator(
         min_noise_std: float = 0.01,
         max_noise_std: float = 10.0,
         random_invert: bool = False,
-        random_noise: bool = True,
         random_brightness: bool = False,
         zoom_range: float = 0.25,
         rotation_range: int = 90,
@@ -158,7 +124,6 @@ def noisy_image_data_generator(
     :param max_value: Maximum allowed value
     :param batch_size: Batch size
     :param random_invert: Randomly (50%) invert the image
-    :param random_noise: Randomly (50%) add noise
     :param random_brightness: Randomly add offset or multiplier
     :param zoom_range: Randomly zoom in (percentage)
     :param rotation_range: Add random rotation range (in degrees)
@@ -174,9 +139,10 @@ def noisy_image_data_generator(
     # --- argument checking
     if dataset is None:
         raise ValueError("dataset cannot be empty")
-    if random_noise:
-        if min_noise_std > max_noise_std:
-            raise ValueError("min_noise_std must be < max_noise_std")
+    if min_noise_std > max_noise_std:
+        raise ValueError("min_noise_std must be < max_noise_std")
+    if min_value > max_value:
+        raise ValueError("min_value must be < max_value")
 
     # --- variables setup
     max_min_diff = (max_value - min_value)
@@ -209,22 +175,16 @@ def noisy_image_data_generator(
                 x_batch = (max_value - x_batch) + min_value
 
         # adjust the std of the noise
-        if random_noise:
-            if np.random.choice([False, True]):
-                # pick std between min and max std
-                std = \
-                    np.random.uniform(
-                        low=min_noise_std,
-                        high=max_noise_std)
+        # pick std between min and max std
+        std = \
+            np.random.uniform(
+                low=min_noise_std,
+                high=max_noise_std)
 
-                # add noise to create the noisy input
-                x_batch_noisy = \
-                    x_batch + \
-                    np.random.normal(0.0, std, x_batch.shape)
-            else:
-                x_batch_noisy = np.copy(x_batch)
-        else:
-            x_batch_noisy = np.copy(x_batch)
+        # add noise to create the noisy input
+        x_batch_noisy = \
+            x_batch + \
+            np.random.normal(0.0, std, x_batch.shape)
 
         # adjust brightness
         if random_brightness:
@@ -246,9 +206,8 @@ def noisy_image_data_generator(
                 x_batch_noisy = x_batch_noisy * brightness_multiplier
 
         # clip all to be between min and max value
-        x_batch = np.clip(x_batch, a_min=min_value, a_max=max_value)
-        x_batch_noisy = np.clip(x_batch_noisy, a_min=min_value, a_max=max_value)
-
-        yield x_batch_noisy, x_batch
+        # input, target
+        yield np.clip(x_batch_noisy, a_min=min_value, a_max=max_value), \
+              np.clip(x_batch, a_min=min_value, a_max=max_value)
 
 # ==============================================================================

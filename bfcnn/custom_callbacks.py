@@ -1,4 +1,5 @@
 import os
+import glob
 import pathlib
 import numpy as np
 import matplotlib.pyplot as plt
@@ -40,8 +41,17 @@ class SaveIntermediateResultsCallback(Callback):
         self._noisy_images = noisy_images
         self._original_images = original_images
         self._every_n_batches = every_n_batches
+        # create training image path
         images_path = os.path.join(self._run_folder, "images")
         pathlib.Path(images_path).mkdir(parents=True, exist_ok=True)
+        # delete images already in path
+        logger.info("deleting existing training image in {0}".format(images_path))
+        #
+        for filename in glob.glob(images_path + "/*.png", recursive=True):
+            try:
+                os.remove(filename)
+            except Exception as e:
+                logger.error("Error while deleting file [{0}] : {1}".format(filename, e))
 
     # --------------------------------------------------
 
@@ -49,13 +59,8 @@ class SaveIntermediateResultsCallback(Callback):
         if batch % self._every_n_batches != 0:
             return
         predictions = self._model.predict(self._noisy_images)
-        predictions = predictions / 255.0
-        # --- create histograms
-        x_hist = np.histogram(predictions, bins=255, range=(0.0, 1.0), density=True)
-        y_hist = np.histogram(self._noisy_images / 255.0, bins=255, range=(0.0, 1.0), density=True)
-        z_hist = np.histogram(self._original_images / 255.0, bins=255, range=(0.0, 1.0), density=True)
         # --- create collage of the predictions
-        x = collage(predictions)
+        x = collage(predictions / 255.0)
         y = collage(self._noisy_images / 255.0)
         z = collage(self._original_images / 255.0)
         # --- resize to output size

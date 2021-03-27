@@ -104,7 +104,7 @@ class BFCNN:
             max_value: float = 255.0,
             channel_index: int = 2,
             kernel_regularizer=None,
-            kernel_initializer=keras.initializers.GlorotNormal(seed=0)) -> keras.Model:
+            kernel_initializer=None) -> keras.Model:
         """
         Build Bias Free CNN model
 
@@ -131,8 +131,8 @@ class BFCNN:
         bn_params = dict(
             center=False,
             scale=True,
-            momentum=0.999,
-            epsilon=1e-4
+            momentum=0.99,
+            epsilon=1e-3
         )
         conv_params = dict(
             filters=filters,
@@ -157,19 +157,19 @@ class BFCNN:
         x = keras.layers.Lambda(layer_normalize, name="normalize")([
             model_input, float(min_value), float(max_value)])
 
+        # --- add base layer
+        x = keras.layers.Conv2D(**conv_params)(x)
+
         # --- add resnet layers
         for i in range(no_layers):
-            if i == 0:
-                x = keras.layers.Conv2D(**conv_params)(x)
-            else:
-                previous_layer = x
-                x = keras.layers.BatchNormalization(**bn_params)(x)
-                x = keras.layers.ReLU()(x)
-                x = keras.layers.Conv2D(**conv_params)(x)
-                x = keras.layers.BatchNormalization(**bn_params)(x)
-                x = keras.layers.ReLU()(x)
-                x = keras.layers.Conv2D(**intermediate_conv_params)(x)
-                x = previous_layer + x
+            previous_layer = x
+            x = keras.layers.BatchNormalization(**bn_params)(x)
+            x = keras.layers.ReLU()(x)
+            x = keras.layers.Conv2D(**conv_params)(x)
+            x = keras.layers.BatchNormalization(**bn_params)(x)
+            x = keras.layers.ReLU()(x)
+            x = keras.layers.Conv2D(**intermediate_conv_params)(x)
+            x = previous_layer + x
 
         # --- output to original channels
         x = keras.layers.BatchNormalization(**bn_params)(x)
