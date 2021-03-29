@@ -115,7 +115,8 @@ def build_normalize_model(
     return keras.Model(
         name=name,
         inputs=model_input,
-        outputs=model_output)
+        outputs=model_output,
+        trainable=False)
 
 # ==============================================================================
 
@@ -154,7 +155,8 @@ def build_denormalize_model(
     return keras.Model(
         name=name,
         inputs=model_input,
-        outputs=model_output)
+        outputs=model_output,
+        trainable=False)
 
 
 # ==============================================================================
