@@ -16,6 +16,8 @@ from .custom_logger import logger
 
 class SaveIntermediateResultsCallback(Callback):
 
+    RESULTS_EXTENSIONS = ".png"
+
     def __init__(self,
                  model,
                  original_images,
@@ -27,12 +29,13 @@ class SaveIntermediateResultsCallback(Callback):
         """
         Callback for saving the intermediate result image
 
-        :param images:
-        :param model:
-        :param every_n_batches:
-        :param run_folder:
-        :param initial_epoch:
-        :param resize_shape:
+        :param model: Model to run denoising with
+        :param original_images: Clean test images
+        :param noisy_images Noisy test images
+        :param every_n_batches: Save intermediate results every so many batches
+        :param run_folder: Save results in this folder
+        :param initial_epoch: Start counting from this time
+        :param resize_shape: Resize final collage to this resolution
         """
         self._model = model
         self._epoch = initial_epoch
@@ -47,7 +50,7 @@ class SaveIntermediateResultsCallback(Callback):
         # delete images already in path
         logger.info("deleting existing training image in {0}".format(images_path))
         #
-        for filename in glob.glob(images_path + "/*.png", recursive=True):
+        for filename in glob.glob(images_path + "/*" + self.RESULTS_EXTENSIONS, recursive=True):
             try:
                 os.remove(filename)
             except Exception as e:
@@ -73,7 +76,7 @@ class SaveIntermediateResultsCallback(Callback):
             self._run_folder,
             "images",
             "img_" + str(self._epoch).zfill(3) +
-            "_" + str(batch) + ".png")
+            "_" + str(batch) + self.RESULTS_EXTENSIONS)
         # ---
         if len(result.shape) == 2 or result.shape[-1] == 1:
             if len(result.shape) == 3 and result.shape[-1] == 1:
