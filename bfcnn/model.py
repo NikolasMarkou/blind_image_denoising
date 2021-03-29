@@ -133,57 +133,35 @@ class BFCNN:
             raise ValueError("no_layers should be > 0")
         if channel_index < 0:
             raise ValueError("channel_index should be >= 0")
-        # --- variables
-        bn_params = dict(
-            center=False,
-            scale=True,
-            momentum=0.999,
-            epsilon=1e-4
-        )
-        conv_params = dict(
-            filters=filters,
-            kernel_size=kernel_size,
-            use_bias=False,
-            strides=(1, 1),
-            padding="same",
-            activation="linear",
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer
-        )
-        intermediate_conv_params = copy.deepcopy(conv_params)
-        intermediate_conv_params["kernel_size"] = 1
-        final_conv_params = copy.deepcopy(conv_params)
-        final_conv_params["filters"] = input_dims[channel_index]
-        final_conv_params["kernel_size"] = 1
 
-        # --- build bfcnn
+        # --- create the parts of the model
+        model_normalize = \
+            build_normalize_model(
+                input_dims=input_dims,
+                min_value=min_value,
+                max_value=max_value)
+
+        model_resnet = \
+            build_resnet_model(
+                input_dims=input_dims,
+                no_layers=no_layers,
+                kernel_size=kernel_size,
+                filters=filters,
+                channel_index=channel_index,
+                kernel_regularizer=kernel_regularizer,
+                kernel_initializer=kernel_initializer)
+
+        model_denormalize = \
+            build_denormalize_model(
+                input_dims=input_dims,
+                min_value=min_value,
+                max_value=max_value)
+
+        # --- connect the parts of the model
         model_input = keras.Input(shape=input_dims)
-
-        # --- normalize input from [min_value, max_value] to [-1.0, +1.0]
-        x = keras.layers.Lambda(layer_normalize, name="normalize")([
-            model_input, float(min_value), float(max_value)])
-
-        # --- add base layer
-        x = keras.layers.Conv2D(**conv_params)(x)
-
-        # --- add resnet layers
-        for i in range(no_layers):
-            previous_layer = x
-            x = keras.layers.BatchNormalization(**bn_params)(x)
-            x = keras.layers.ReLU()(x)
-            x = keras.layers.Conv2D(**conv_params)(x)
-            x = keras.layers.BatchNormalization(**bn_params)(x)
-            x = keras.layers.ReLU()(x)
-            x = keras.layers.Conv2D(**intermediate_conv_params)(x)
-            x = keras.layers.Add()([previous_layer, x])
-
-        # --- output to original channels
-        x = keras.layers.Conv2D(**final_conv_params)(x)
-
-        # --- denormalize output from [-1.0, +1.0] [min_value, max_value]
-        model_output = \
-            keras.layers.Lambda(layer_denormalize, name="denormalize")([
-                x, float(min_value), float(max_value)])
+        x = model_normalize(model_input)
+        x = model_resnet(x)
+        model_output = model_denormalize(x)
 
         # --- wrap model
         return keras.Model(

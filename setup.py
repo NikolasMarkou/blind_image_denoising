@@ -26,7 +26,6 @@ setup(
             "notebooks"
         ]),
     install_requires=[
-        "h5py",
         "numpy",
         "setuptools",
         "Keras>=2.4.3",

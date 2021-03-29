@@ -1,8 +1,11 @@
+import copy
+import keras
 import numpy as np
 from enum import Enum
 from typing import List
 from keras import backend as K
 from keras.preprocessing.image import ImageDataGenerator
+
 
 # ==============================================================================
 
@@ -32,6 +35,7 @@ def collage(images_batch):
                 result = np.vstack([result, tmp])
             images.clear()
     return result
+
 
 # ==============================================================================
 
@@ -74,6 +78,7 @@ def build_loss_fn(loss: List[Loss]):
 
     return total_loss, loss_fn
 
+
 # ==============================================================================
 
 
@@ -88,6 +93,32 @@ def layer_normalize(args):
 
 # ==============================================================================
 
+def build_normalize_model(
+        input_dims,
+        min_value: float = 0.0,
+        max_value: float = 255.0,
+        name: str = "normalize"):
+    """
+
+    :param input_dims:
+    :param min_value:
+    :param max_value:
+    :param name:
+    :return:
+    """
+    model_input = keras.Input(shape=input_dims)
+    # --- normalize input from [min_value, max_value] to [-1.0, +1.0]
+    model_output = keras.layers.Lambda(layer_normalize, trainable=False)([
+        model_input, float(min_value), float(max_value)])
+    # --- wrap model
+    return keras.Model(
+        name=name,
+        inputs=model_input,
+        outputs=model_output)
+
+
+# ==============================================================================
+
 
 def layer_denormalize(args):
     """
@@ -96,6 +127,93 @@ def layer_denormalize(args):
     y, v0, v1 = args
     y_clip = K.clip(y, min_value=-1.0, max_value=+1.0)
     return 0.5 * (y_clip + 1.0) * (v1 - v0) + v0
+
+
+# ==============================================================================
+
+def build_denormalize_model(
+        input_dims,
+        min_value: float = 0.0,
+        max_value: float = 255.0,
+        name: str = "denormalize"):
+    """
+
+    :param input_dims:
+    :param min_value:
+    :param max_value:
+    :param name:
+    :return:
+    """
+    model_input = keras.Input(shape=input_dims)
+    # --- normalize input from [min_value, max_value] to [-1.0, +1.0]
+    model_output = \
+        keras.layers.Lambda(layer_denormalize, trainable=False)([
+            model_input, float(min_value), float(max_value)])
+    # --- wrap model
+    return keras.Model(
+        name=name,
+        inputs=model_input,
+        outputs=model_output)
+
+
+# ==============================================================================
+
+
+def build_resnet_model(
+        input_dims,
+        no_layers: int,
+        kernel_size: int,
+        filters: int,
+        channel_index: int = 2,
+        kernel_regularizer=None,
+        kernel_initializer=None,
+        name="resnet"):
+    # --- variables
+    bn_params = dict(
+        center=False,
+        scale=True,
+        momentum=0.999,
+        epsilon=1e-4
+    )
+    conv_params = dict(
+        filters=filters,
+        kernel_size=kernel_size,
+        use_bias=False,
+        strides=(1, 1),
+        padding="same",
+        activation="linear",
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+    intermediate_conv_params = copy.deepcopy(conv_params)
+    intermediate_conv_params["kernel_size"] = 1
+    final_conv_params = copy.deepcopy(conv_params)
+    final_conv_params["filters"] = input_dims[channel_index]
+    final_conv_params["kernel_size"] = 1
+
+    # ---
+    model_input = keras.Input(shape=input_dims)
+    # --- add base layer
+    x = keras.layers.Conv2D(**conv_params)(model_input)
+
+    # --- add resnet layers
+    for i in range(no_layers):
+        previous_layer = x
+        x = keras.layers.BatchNormalization(**bn_params)(x)
+        x = keras.layers.ReLU()(x)
+        x = keras.layers.Conv2D(**conv_params)(x)
+        x = keras.layers.BatchNormalization(**bn_params)(x)
+        x = keras.layers.ReLU()(x)
+        x = keras.layers.Conv2D(**intermediate_conv_params)(x)
+        x = keras.layers.Add()([previous_layer, x])
+
+    # --- output to original channels
+    output_layer = keras.layers.Conv2D(**final_conv_params)(x)
+
+    return keras.Model(
+        name=name,
+        inputs=model_input,
+        outputs=output_layer)
 
 
 # ==============================================================================
