@@ -90,20 +90,21 @@ def layer_normalize(args):
     y_clip = K.clip(y, min_value=v0, max_value=v1)
     return 2.0 * (y_clip - v0) / (v1 - v0) - 1.0
 
-
 # ==============================================================================
+
 
 def build_normalize_model(
         input_dims,
         min_value: float = 0.0,
         max_value: float = 255.0,
-        name: str = "normalize"):
+        name: str = "normalize") -> keras.Model:
     """
+    Wrap a normalize layer in a model
 
-    :param input_dims:
-    :param min_value:
-    :param max_value:
-    :param name:
+    :param input_dims: Models input dimensions
+    :param min_value: Minimum value
+    :param max_value: Maximum value
+    :param name: name of the model
     :return:
     """
     model_input = keras.Input(shape=input_dims)
@@ -116,7 +117,6 @@ def build_normalize_model(
         inputs=model_input,
         outputs=model_output)
 
-
 # ==============================================================================
 
 
@@ -128,20 +128,21 @@ def layer_denormalize(args):
     y_clip = K.clip(y, min_value=-1.0, max_value=+1.0)
     return 0.5 * (y_clip + 1.0) * (v1 - v0) + v0
 
-
 # ==============================================================================
+
 
 def build_denormalize_model(
         input_dims,
         min_value: float = 0.0,
         max_value: float = 255.0,
-        name: str = "denormalize"):
+        name: str = "denormalize") -> keras.Model:
     """
+    Wrap a denormalize layer in a model
 
-    :param input_dims:
-    :param min_value:
-    :param max_value:
-    :param name:
+    :param input_dims: Models input dimensions
+    :param min_value: Minimum value
+    :param max_value: Maximum value
+    :param name: name of the model
     :return:
     """
     model_input = keras.Input(shape=input_dims)
@@ -167,7 +168,19 @@ def build_resnet_model(
         channel_index: int = 2,
         kernel_regularizer=None,
         kernel_initializer=None,
-        name="resnet"):
+        name="resnet") -> keras.Model:
+    """
+    Build a resnet model
+    :param input_dims: Models input dimensions
+    :param no_layers: Number of resnet layers
+    :param kernel_size: kernel size of the conv layers
+    :param filters: number of filters per convolutional layer
+    :param channel_index: Index of the channel in dimensions
+    :param kernel_regularizer: Kernel weight regularizer
+    :param kernel_initializer: Kernel weight initializer
+    :param name: Name of the model
+    :return:
+    """
     # --- variables
     bn_params = dict(
         center=False,
