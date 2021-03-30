@@ -2,6 +2,7 @@ import os
 import glob
 import pathlib
 import numpy as np
+from typing import Tuple, List
 import matplotlib.pyplot as plt
 from skimage.transform import resize
 from keras.callbacks import Callback
@@ -25,7 +26,9 @@ class SaveIntermediateResultsCallback(Callback):
                  every_n_batches: int = 100,
                  run_folder: str = "./",
                  initial_epoch: int = 0,
-                 resize_shape=(256, 256)):
+                 histogram_bins: int = 500,
+                 histogram_range: Tuple = (-0.5, +0.5),
+                 resize_shape: Tuple = (256, 256)):
         """
         Callback for saving the intermediate result image
 
@@ -37,9 +40,12 @@ class SaveIntermediateResultsCallback(Callback):
         :param initial_epoch: Start counting from this time
         :param resize_shape: Resize final collage to this resolution
         """
+
         self._model = model
         self._epoch = initial_epoch
         self._run_folder = run_folder
+        self._bins = histogram_bins
+        self._range = histogram_range
         self._resize_shape = resize_shape
         self._noisy_images = noisy_images
         self._original_images = original_images
@@ -84,6 +90,22 @@ class SaveIntermediateResultsCallback(Callback):
             plt.imsave(filepath_result, result, cmap="gray_r")
         else:
             plt.imsave(filepath_result, result)
+        # ---
+        weights = get_conv2d_weights(self._model)
+        plt.figure(figsize=(14, 5))
+        plt.grid(True)
+        plt.hist(x=weights,
+                 bins=self._bins,
+                 range=self._range,
+                 histtype="bar",
+                 log=True)
+        filepath_result = os.path.join(
+            self._run_folder,
+            "images",
+            "weights_" + str(self._epoch).zfill(3) +
+            "_" + str(batch) + self.RESULTS_EXTENSIONS)
+        plt.savefig(filepath_result)
+        plt.close()
 
     # --------------------------------------------------
 

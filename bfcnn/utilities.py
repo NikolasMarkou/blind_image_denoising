@@ -22,7 +22,6 @@ def collage(images_batch):
     images = []
     result = None
     width = np.ceil(np.sqrt(no_images))
-    height = no_images / width
 
     for i in range(no_images):
         images.append(images_batch[i, :, :, :])
@@ -90,6 +89,7 @@ def layer_normalize(args):
     y_clip = K.clip(y, min_value=v0, max_value=v1)
     return 2.0 * (y_clip - v0) / (v1 - v0) - 1.0
 
+
 # ==============================================================================
 
 
@@ -118,6 +118,7 @@ def build_normalize_model(
         outputs=model_output,
         trainable=False)
 
+
 # ==============================================================================
 
 
@@ -128,6 +129,7 @@ def layer_denormalize(args):
     y, v0, v1 = args
     y_clip = K.clip(y, min_value=-1.0, max_value=+1.0)
     return 0.5 * (y_clip + 1.0) * (v1 - v0) + v0
+
 
 # ==============================================================================
 
@@ -341,5 +343,23 @@ def noisy_image_data_generator(
         # input, target
         yield np.clip(x_batch_noisy, a_min=min_value, a_max=max_value), \
               np.clip(x_batch, a_min=min_value, a_max=max_value)
+
+
+# ==============================================================================
+
+def get_conv2d_weights(
+        model: keras.Model):
+    weights = []
+    for layer in model.layers:
+        layer_config = layer.get_config()
+        layer_weights = layer.get_weights()
+        if not "layers" in layer_config:
+            continue
+        for i,l in enumerate(layer_config["layers"]):
+            if l["class_name"] == "Conv2D":
+                for w in layer_weights[i]:
+                    w_flat = w.flatten()
+                    weights.append(w_flat)
+    return np.concatenate(weights)
 
 # ==============================================================================

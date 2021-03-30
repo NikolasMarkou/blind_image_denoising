@@ -32,8 +32,8 @@ class BFCNN:
             kernel_size: int = 3,
             filters: int = 32,
             channels_index: int = 2,
-            kernel_regularizer=keras.regularizers.l1(0.01),
-            kernel_initializer=keras.initializers.GlorotNormal(seed=0)):
+            kernel_regularizer=None,
+            kernel_initializer=None):
         """
         Initialize model, left untrained
 
