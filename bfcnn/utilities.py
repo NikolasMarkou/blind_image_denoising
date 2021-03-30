@@ -168,16 +168,19 @@ def build_resnet_model(
         kernel_size: int,
         filters: int,
         channel_index: int = 2,
+        use_bn: bool = True,
         kernel_regularizer=None,
         kernel_initializer=None,
         name="resnet") -> keras.Model:
     """
     Build a resnet model
+
     :param input_dims: Models input dimensions
     :param no_layers: Number of resnet layers
     :param kernel_size: kernel size of the conv layers
     :param filters: number of filters per convolutional layer
     :param channel_index: Index of the channel in dimensions
+    :param use_bn: Use Batch Normalization
     :param kernel_regularizer: Kernel weight regularizer
     :param kernel_initializer: Kernel weight initializer
     :param name: Name of the model
@@ -186,9 +189,7 @@ def build_resnet_model(
     # --- variables
     bn_params = dict(
         center=False,
-        scale=True,
-        momentum=0.999,
-        epsilon=1e-4
+        scale=True
     )
     conv_params = dict(
         filters=filters,
@@ -206,20 +207,26 @@ def build_resnet_model(
     final_conv_params["filters"] = input_dims[channel_index]
     final_conv_params["kernel_size"] = 1
 
-    # ---
+    # --- set input
     model_input = keras.Input(shape=input_dims)
+
     # --- add base layer
     x = keras.layers.Conv2D(**conv_params)(model_input)
+    x = keras.layers.ReLU()(x)
+    if use_bn:
+        x = keras.layers.BatchNormalization(**bn_params)(x)
 
     # --- add resnet layers
     for i in range(no_layers):
         previous_layer = x
-        x = keras.layers.BatchNormalization(**bn_params)(x)
-        x = keras.layers.ReLU()(x)
         x = keras.layers.Conv2D(**conv_params)(x)
-        x = keras.layers.BatchNormalization(**bn_params)(x)
         x = keras.layers.ReLU()(x)
+        if use_bn:
+            x = keras.layers.BatchNormalization(**bn_params)(x)
         x = keras.layers.Conv2D(**intermediate_conv_params)(x)
+        x = keras.layers.ReLU()(x)
+        if use_bn:
+            x = keras.layers.BatchNormalization(**bn_params)(x)
         x = keras.layers.Add()([previous_layer, x])
 
     # --- output to original channels
