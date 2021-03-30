@@ -340,22 +340,26 @@ def noisy_image_data_generator(
             x_batch_noisy = np.copy(x_batch)
 
         # clip all to be between min and max value
-        # input, target
+        # return input, target
         yield np.clip(x_batch_noisy, a_min=min_value, a_max=max_value), \
               np.clip(x_batch, a_min=min_value, a_max=max_value)
 
 
 # ==============================================================================
 
+
 def get_conv2d_weights(
         model: keras.Model):
+    """
+    Get the conv2d weights from the model
+    """
     weights = []
     for layer in model.layers:
         layer_config = layer.get_config()
         layer_weights = layer.get_weights()
-        if not "layers" in layer_config:
+        if "layers" not in layer_config:
             continue
-        for i,l in enumerate(layer_config["layers"]):
+        for i, l in enumerate(layer_config["layers"]):
             if l["class_name"] == "Conv2D":
                 for w in layer_weights[i]:
                     w_flat = w.flatten()

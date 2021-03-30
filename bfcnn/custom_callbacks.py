@@ -76,21 +76,20 @@ class SaveIntermediateResultsCallback(Callback):
         x = resize(x, self._resize_shape, order=0)
         y = resize(y, self._resize_shape, order=0)
         z = resize(z, self._resize_shape, order=0)
-        # --- concat
+        # --- concat image and save result
         result = np.concatenate((z, y, x), axis=1)
         filepath_result = os.path.join(
             self._run_folder,
             "images",
             "img_" + str(self._epoch).zfill(3) +
             "_" + str(batch) + self.RESULTS_EXTENSIONS)
-        # ---
         if len(result.shape) == 2 or result.shape[-1] == 1:
             if len(result.shape) == 3 and result.shape[-1] == 1:
                 result = np.squeeze(result, axis=2)
             plt.imsave(filepath_result, result, cmap="gray_r")
         else:
             plt.imsave(filepath_result, result)
-        # ---
+        # --- save weights snapshot
         weights = get_conv2d_weights(self._model)
         plt.figure(figsize=(14, 5))
         plt.grid(True)
