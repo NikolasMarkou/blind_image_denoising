@@ -1,6 +1,7 @@
 import os
 import glob
 import pathlib
+import matplotlib
 import numpy as np
 from typing import Tuple, List
 import matplotlib.pyplot as plt
@@ -11,6 +12,10 @@ from keras.callbacks import Callback
 
 from .utilities import *
 from .custom_logger import logger
+
+# ==============================================================================
+
+matplotlib.use("Agg")
 
 # ==============================================================================
 
@@ -28,7 +33,7 @@ class SaveIntermediateResultsCallback(Callback):
                  initial_epoch: int = 0,
                  histogram_bins: int = 500,
                  histogram_range: Tuple = (-0.5, +0.5),
-                 resize_shape: Tuple = (256, 256)):
+                 resize_shape: Tuple = (128, 128)):
         """
         Callback for saving the intermediate result image
 
@@ -56,7 +61,8 @@ class SaveIntermediateResultsCallback(Callback):
         # delete images already in path
         logger.info("deleting existing training image in {0}".format(images_path))
         #
-        for filename in glob.glob(images_path + "/*" + self.RESULTS_EXTENSIONS, recursive=True):
+        for filename in glob.glob(
+                images_path + "/*" + self.RESULTS_EXTENSIONS, recursive=True):
             try:
                 os.remove(filename)
             except Exception as e:
@@ -91,18 +97,18 @@ class SaveIntermediateResultsCallback(Callback):
             plt.imsave(filepath_result, result)
         # --- save weights snapshot
         weights = get_conv2d_weights(self._model)
-        plt.figure(figsize=(14, 5))
+        filepath_result = os.path.join(
+            self._run_folder,
+            "images",
+            "weights_" + str(self._epoch).zfill(3) +
+            "_" + str(batch) + self.RESULTS_EXTENSIONS)
+        plt.figure(figsize=(10, 3))
         plt.grid(True)
         plt.hist(x=weights,
                  bins=self._bins,
                  range=self._range,
                  histtype="bar",
                  log=True)
-        filepath_result = os.path.join(
-            self._run_folder,
-            "images",
-            "weights_" + str(self._epoch).zfill(3) +
-            "_" + str(batch) + self.RESULTS_EXTENSIONS)
         plt.savefig(filepath_result)
         plt.close()
 
