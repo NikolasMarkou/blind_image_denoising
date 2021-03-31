@@ -232,7 +232,7 @@ class BFCNN:
 
         # --- set variables
         initial_epoch = 0
-        batches_per_epoch = int(math.ceil(len(dataset) / batch_size))
+        batches_per_epoch = 4 * int(math.ceil(len(dataset) / batch_size))
 
         # --- define optimizer
         optimizer = \
