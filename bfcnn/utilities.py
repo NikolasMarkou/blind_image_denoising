@@ -191,7 +191,9 @@ def build_resnet_model(
     # --- variables
     bn_params = dict(
         center=False,
-        scale=True
+        scale=True,
+        momentum=0.999,
+        epsilon=1e-4
     )
     conv_params = dict(
         filters=filters,
