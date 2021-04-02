@@ -11,7 +11,7 @@ from typing import List, Tuple, Union
 from .utilities import *
 from .custom_logger import logger
 from .custom_schedule import step_decay_schedule
-from .custom_callbacks import SaveIntermediateResultsCallback
+from .custom_callbacks import *
 
 
 # ==============================================================================
@@ -109,6 +109,7 @@ class BFCNN:
             min_value: float = 0.0,
             max_value: float = 255.0,
             channel_index: int = 2,
+            use_bn: bool = True,
             kernel_regularizer=None,
             kernel_initializer=None) -> keras.Model:
         """
@@ -121,6 +122,7 @@ class BFCNN:
         :param max_value:
         :param min_value:
         :param channel_index:
+        :param use_bn: Use batch normalization in model
         :param kernel_initializer:
         :param kernel_regularizer:
 
@@ -143,10 +145,11 @@ class BFCNN:
 
         model_resnet = \
             build_resnet_model(
-                input_dims=input_dims,
-                no_layers=no_layers,
-                kernel_size=kernel_size,
+                use_bn=use_bn,
                 filters=filters,
+                no_layers=no_layers,
+                input_dims=input_dims,
+                kernel_size=kernel_size,
                 channel_index=channel_index,
                 kernel_regularizer=kernel_regularizer,
                 kernel_initializer=kernel_initializer)
@@ -278,6 +281,7 @@ class BFCNN:
                 original_images=subset,
                 noisy_images=noisy_subset,
                 every_n_batches=print_every_n_batches)
+        # --
         lr_schedule = \
             step_decay_schedule(
                 initial_lr=lr_initial,
@@ -299,9 +303,19 @@ class BFCNN:
                 "weights/weights.h5"),
             save_weights_only=True,
             verbose=1)
+        callback_bn_flip = \
+            BatchNormalizationFlipCallback(
+                model=trainable_model,
+                initial_epoch=0,
+                every_n_batches=print_every_n_batches)
 
+        callback_weights_pruner = \
+            WeightsPrunerCallback(model=trainable_model)
+        # --
         callbacks_fns = [
             lr_schedule,
+            callback_bn_flip,
+            callback_weights_pruner,
             callback_intermediate_results
         ]
 

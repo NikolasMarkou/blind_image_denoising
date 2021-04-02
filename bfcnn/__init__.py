@@ -1,6 +1,7 @@
 from .model import BFCNN
-from .utilities import collage
 from .train import train_mnist, train_cifar10
+from .utilities import collage, get_conv2d_weights
+
 # ==============================================================================
 
 
@@ -8,7 +9,8 @@ __all__ = [
     BFCNN,
     collage,
     train_mnist,
-    train_cifar10
+    train_cifar10,
+    get_conv2d_weights
 ]
 
 # ==============================================================================

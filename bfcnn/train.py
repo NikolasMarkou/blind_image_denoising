@@ -98,7 +98,7 @@ def train_cifar10():
             input_dims=INPUT_SHAPE,
             no_layers=NO_LAYERS,
             filters=FILTERS,
-            kernel_regularizer=keras.regularizers.l2(0.001))
+            kernel_regularizer=keras.regularizers.l2(0.01))
 
     # --- loading dataset
     logger.info("loading cifar10 dataset")

@@ -20,8 +20,33 @@ matplotlib.use("Agg")
 # ==============================================================================
 
 
-class SaveIntermediateResultsCallback(Callback):
+class BatchNormalizationFlipCallback(Callback):
+    def __init__(self,
+                 model,
+                 initial_epoch: int = 0,
+                 every_n_batches: int = 1):
+        self._model = model
+        self._epoch = initial_epoch
+        self._every_n_batches = every_n_batches
+        self._state = True
 
+    # --------------------------------------------------
+
+    def on_batch_end(self, batch, logs={}):
+        if batch % self._every_n_batches != 0:
+            return
+        self._state = not self._state
+        set_batchnorm_trainable(self._model, self._state)
+
+    # --------------------------------------------------
+
+    def on_epoch_begin(self, epoch, logs={}):
+        self._epoch += 1
+
+# ==============================================================================
+
+
+class SaveIntermediateResultsCallback(Callback):
     RESULTS_EXTENSIONS = ".png"
 
     def __init__(self,
@@ -59,14 +84,16 @@ class SaveIntermediateResultsCallback(Callback):
         images_path = os.path.join(self._run_folder, "images")
         pathlib.Path(images_path).mkdir(parents=True, exist_ok=True)
         # delete images already in path
-        logger.info("deleting existing training image in {0}".format(images_path))
+        logger.info(
+            "deleting existing training image in {0}".format(images_path))
         #
         for filename in glob.glob(
                 images_path + "/*" + self.RESULTS_EXTENSIONS, recursive=True):
             try:
                 os.remove(filename)
             except Exception as e:
-                logger.error("Error while deleting file [{0}] : {1}".format(filename, e))
+                logger.error(
+                    "Error while deleting file [{0}] : {1}".format(filename, e))
 
     # --------------------------------------------------
 
@@ -116,5 +143,39 @@ class SaveIntermediateResultsCallback(Callback):
 
     def on_epoch_begin(self, epoch, logs={}):
         self._epoch += 1
+
+# ==============================================================================
+
+
+class WeightsPrunerCallback(Callback):
+    def __init__(self,
+                 model,
+                 initial_epoch: int = 0,
+                 every_n_batches: int = 10,
+                 minimum_threshold: float = 0.01):
+        self._model = model
+        self._epoch = initial_epoch
+        self._every_n_batches = every_n_batches
+        self._minimum_threshold = minimum_threshold
+
+    # --------------------------------------------------
+
+    def on_batch_end(self, batch, logs={}):
+        if batch % self._every_n_batches != 0:
+            return
+        prune_conv2d_weights(
+            self._model,
+            strategy=PruneStrategy.MINIMUM_THRESHOLD_SHRINKAGE,
+            parameters={
+                "shrinkage": 0.9,
+                "shrinkage_threshold":  self._minimum_threshold,
+                "to_zero_threshold": self._minimum_threshold * 0.01
+            })
+
+    # --------------------------------------------------
+
+    def on_epoch_begin(self, epoch, logs={}):
+        self._epoch += 1
+
 
 # ==============================================================================
