@@ -12,7 +12,7 @@ from keras.callbacks import Callback
 
 from .utilities import *
 from .custom_logger import logger
-
+from .pruning import prune_conv2d_weights, PruneStrategy
 # ==============================================================================
 
 matplotlib.use("Agg")
@@ -22,7 +22,7 @@ matplotlib.use("Agg")
 
 class BatchNormalizationFlipCallback(Callback):
     def __init__(self,
-                 model,
+                 model: keras.Model,
                  initial_epoch: int = 0,
                  every_n_batches: int = 1):
         self._model = model
@@ -32,11 +32,46 @@ class BatchNormalizationFlipCallback(Callback):
 
     # --------------------------------------------------
 
+    @staticmethod
+    def set_batchnorm_trainable(
+            model: keras.Model,
+            value: bool) -> keras.Model:
+        """
+        Go through the model and disable/enable any batch normalization layers
+        """
+        for layer in model.layers:
+            layer_config = layer.get_config()
+            if "layers" not in layer_config:
+                continue
+            for l in layer.layers:
+                if not isinstance(l, keras.layers.BatchNormalization):
+                    continue
+                l.trainable = value
+        return model
+
+    # --------------------------------------------------
+
+    def disable_batchnorm_training(self) -> keras.Model:
+        """
+        Disable training on batch norms
+        """
+        return self.set_batchnorm_trainable(self._model, False)
+
+    # --------------------------------------------------
+
+    def enable_batchnorm_training(self) -> keras.Model:
+        """
+        Enable training on batch norms
+        """
+        return self.set_batchnorm_trainable(self._model, False)
+
+    # --------------------------------------------------
+
     def on_batch_end(self, batch, logs={}):
         if batch % self._every_n_batches != 0:
             return
         self._state = not self._state
-        set_batchnorm_trainable(self._model, self._state)
+        self.set_batchnorm_trainable(self._model, self._state)
 
     # --------------------------------------------------
 

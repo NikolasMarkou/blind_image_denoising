@@ -1,5 +1,6 @@
 import copy
 import keras
+import itertools
 import numpy as np
 from enum import Enum
 from typing import List
@@ -39,44 +40,26 @@ def collage(images_batch):
 # ==============================================================================
 
 
-class Loss(Enum):
-    MeanAbsoluteError = 1
-    MeanSquareError = 2
+def merge_iterators(*iterators):
+    """
+    Merge different iterators together
+    """
+    empty = {}
+    for values in itertools.zip_longest(*iterators, fillvalue=empty):
+        for value in values:
+            if value is not empty:
+                yield value
+
+# ==============================================================================
 
 
-def mae_loss(y_true, y_pred):
-    tmp_pixels = K.abs(y_true[0] - y_pred[0])
-    return K.mean(tmp_pixels)
-
-
-def mse_loss(y_true, y_pred):
-    tmp_pixels = K.pow(y_true[0] - y_pred[0], 2.0)
-    return K.mean(tmp_pixels)
-
-
-def build_loss_fn(loss: List[Loss]):
-    # --- argument checking
-    if len(loss) <= 0:
-        raise ValueError("loss list cannot be empty")
-
-    # --- define loss functions
-    loss_fn = []
-
-    if Loss.MeanSquareError in loss:
-        loss_fn.append(mse_loss)
-
-    if Loss.MeanAbsoluteError in loss:
-        loss_fn.append(mae_loss)
-
-    # --- total loss
-    def total_loss(y_true, y_pred):
-        result = 0.0
-        for fn in loss_fn:
-            result = result + fn(y_true, y_pred)
-        return result
-
-    return total_loss, loss_fn
-
+def layer_denormalize(args):
+    """
+    Convert input [-1, +1] to [v0, v1] range
+    """
+    y, v0, v1 = args
+    y_clip = K.clip(y, min_value=-1.0, max_value=+1.0)
+    return 0.5 * (y_clip + 1.0) * (v1 - v0) + v0
 
 # ==============================================================================
 
@@ -117,19 +100,6 @@ def build_normalize_model(
         inputs=model_input,
         outputs=model_output,
         trainable=False)
-
-
-# ==============================================================================
-
-
-def layer_denormalize(args):
-    """
-    Convert input [-1, +1] to [v0, v1] range
-    """
-    y, v0, v1 = args
-    y_clip = K.clip(y, min_value=-1.0, max_value=+1.0)
-    return 0.5 * (y_clip + 1.0) * (v1 - v0) + v0
-
 
 # ==============================================================================
 
@@ -367,96 +337,5 @@ def get_conv2d_weights(
                     w_flat = w.flatten()
                     weights.append(w_flat)
     return np.concatenate(weights)
-
-# ==============================================================================
-
-
-def set_batchnorm_trainable(
-        model: keras.Model,
-        value: bool) -> keras.Model:
-    for layer in model.layers:
-        layer_config = layer.get_config()
-        if "layers" not in layer_config:
-            continue
-        for l in layer.layers:
-            if not isinstance(l, keras.layers.BatchNormalization):
-                continue
-            l.trainable = value
-    return model
-
-# ==============================================================================
-
-
-def disable_batchnorm_training(
-        model: keras.Model) -> keras.Model:
-    """
-    Disable training on batch norms
-    """
-    return set_batchnorm_trainable(model, False)
-
-# ==============================================================================
-
-
-def enable_batchnorm_training(
-        model: keras.Model) -> keras.Model:
-    """
-    Enable training on batch norms
-    """
-    return set_batchnorm_trainable(model, True)
-
-# ==============================================================================
-
-
-class PruneStrategy(Enum):
-    MINIMUM_THRESHOLD = 1
-    MINIMUM_THRESHOLD_BIFURCATE = 2
-    MINIMUM_THRESHOLD_SHRINKAGE = 3
-
-
-def prune_conv2d_weights(
-        model: keras.Model,
-        parameters: dict,
-        strategy: PruneStrategy = PruneStrategy.MINIMUM_THRESHOLD):
-    """
-
-    """
-    for layer in model.layers:
-        layer_config = layer.get_config()
-        if "layers" not in layer_config:
-            continue
-        for l in layer.layers:
-            if not isinstance(l, keras.layers.Conv2D):
-                continue
-            # get layer weights
-            pruned_weights = []
-            layer_weights = l.get_weights()
-            if strategy == PruneStrategy.MINIMUM_THRESHOLD:
-                minimum_weight_threshold = parameters["minimum_threshold"]
-                for x in layer_weights:
-                    x[np.abs(x) < minimum_weight_threshold] = 0.0
-                    pruned_weights.append(x)
-            elif strategy == PruneStrategy.MINIMUM_THRESHOLD_BIFURCATE:
-                minimum_weight_threshold = parameters["minimum_threshold"]
-                for x in layer_weights:
-                    mask = np.abs(x) < minimum_weight_threshold
-                    rand = np.random.uniform(-minimum_weight_threshold * 2.0,
-                                             +minimum_weight_threshold * 2.0,
-                                             size=mask.shape)
-                    x[mask] = rand[mask]
-                    x[np.abs(x) < minimum_weight_threshold] = 0.0
-                    pruned_weights.append(x)
-            elif strategy == PruneStrategy.MINIMUM_THRESHOLD_SHRINKAGE:
-                shrinkage = parameters["shrinkage"]
-                shrinkage_threshold = parameters["shrinkage_threshold"]
-                to_zero_threshold = parameters["to_zero_threshold"]
-                for x in layer_weights:
-                    mask = np.abs(x) < shrinkage_threshold
-                    x[mask] = x[mask] * shrinkage
-                    x[np.abs(x) < to_zero_threshold] = 0.0
-                    pruned_weights.append(x)
-            else:
-                raise NotImplementedError("not implemented strategy")
-            l.set_weights(pruned_weights)
-    return model
 
 # ==============================================================================

@@ -15,7 +15,8 @@ with open("LICENSE") as f:
 setup(
     name="bfcnn",
     version="0.1.0",
-    description="Bias Free Convolutional Neural Network for blind image denoising",
+    description="Bias Free Convolutional Neural Network "
+                "for blind image denoising",
     long_description=readme,
     author="Nikolas Markou",
     author_email="nikolasmarkou@gmail.com",
