@@ -11,7 +11,6 @@ __license__ = "None"
 import os
 import time
 import json
-import numpy as np
 import tensorflow as tf
 
 # ---------------------------------------------------------------------
@@ -93,14 +92,7 @@ def train_loop(
     # how many steps to make a visualization
     visualization_every = train_config["visualization_every"]
     # how many visualizations to show
-    visualization_number = train_config["visualization_number"]
-    # noise std
-    noise_std = train_config.get("noise_std", 0.0)
-    random_noise = noise_std > 0.0
-    # dataset augmentation
-    random_rotate = train_config.get("random_rotate", 0.0)
-    random_up_down = train_config.get("random_up_down", False)
-    random_left_right = train_config.get("random_left_right", False)
+    visualization_number = train_config.get("visualization_number", 5)
 
     # --- train the model
     with summary_writer.as_default():
@@ -170,7 +162,8 @@ def train_loop(
                             global_step=global_step,
                             input_batch=input_batch,
                             noisy_batch=noisy_batch,
-                            prediction_batch=prediction_batch)
+                            prediction_batch=prediction_batch,
+                            visualization_number=visualization_number)
 
                 # --- check if it is time to save a checkpoint
                 if global_step % checkpoint_every == 0:
