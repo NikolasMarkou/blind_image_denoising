@@ -8,8 +8,8 @@ import tensorflow as tf
 # local imports
 # ---------------------------------------------------------------------
 
-from .custom_logger import logger
 from .model import model_builder
+from .custom_logger import logger
 
 # ---------------------------------------------------------------------
 
@@ -49,8 +49,7 @@ class DenoisingInferenceModule(tf.Module):
           Tensor dictionary holding detections.
         """
         image = tf.cast(image, tf.float32)
-
-        return image
+        return self._model(image)[0]
 
     @tf.function(
         input_signature=[
