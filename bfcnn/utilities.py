@@ -7,8 +7,14 @@ from typing import List
 from keras import backend as K
 from keras.preprocessing.image import ImageDataGenerator
 
+# ---------------------------------------------------------------------
+# local imports
+# ---------------------------------------------------------------------
 
-# ==============================================================================
+
+from .custom_logger import logger
+
+# ---------------------------------------------------------------------
 
 
 def collage(images_batch):
@@ -37,7 +43,7 @@ def collage(images_batch):
     return result
 
 
-# ==============================================================================
+# ---------------------------------------------------------------------
 
 
 def merge_iterators(*iterators):
@@ -50,7 +56,7 @@ def merge_iterators(*iterators):
             if value is not empty:
                 yield value
 
-# ==============================================================================
+# ---------------------------------------------------------------------
 
 
 def layer_denormalize(args):
@@ -61,7 +67,7 @@ def layer_denormalize(args):
     y_clip = K.clip(y, min_value=-1.0, max_value=+1.0)
     return 0.5 * (y_clip + 1.0) * (v1 - v0) + v0
 
-# ==============================================================================
+# ---------------------------------------------------------------------
 
 
 def layer_normalize(args):
@@ -73,7 +79,7 @@ def layer_normalize(args):
     return 2.0 * (y_clip - v0) / (v1 - v0) - 1.0
 
 
-# ==============================================================================
+# ---------------------------------------------------------------------
 
 
 def build_normalize_model(
@@ -101,7 +107,7 @@ def build_normalize_model(
         outputs=model_output,
         trainable=False)
 
-# ==============================================================================
+# ---------------------------------------------------------------------
 
 
 def build_denormalize_model(
@@ -130,8 +136,7 @@ def build_denormalize_model(
         outputs=model_output,
         trainable=False)
 
-
-# ==============================================================================
+# ---------------------------------------------------------------------
 
 
 def build_resnet_model(
@@ -141,8 +146,8 @@ def build_resnet_model(
         filters: int,
         channel_index: int = 2,
         use_bn: bool = True,
-        kernel_regularizer=None,
-        kernel_initializer=None,
+        kernel_regularizer="l1",
+        kernel_initializer="glorot_normal",
         name="resnet") -> keras.Model:
     """
     Build a resnet model
@@ -211,6 +216,90 @@ def build_resnet_model(
         inputs=model_input,
         outputs=output_layer)
 
+# ==============================================================================
+
+
+def mobilenet_v2_block(
+        input_layer,
+        filters: List[int] = [32, 32],
+        activation: str = "relu",
+        initializer: str = "glorot_normal",
+        regularizer: str = None,
+        use_bias: bool = False,
+        strides: List[int] = [1, 1],
+        kernel_size: List[int] = [3, 3],
+        bn_momentum: float = 0.999,
+        bn_epsilon: float = 0.001):
+    """
+
+    :param input_layer:
+    :param filters:
+    :param activation:
+    :param initializer:
+    :param regularizer:
+    :param use_bias:
+    :param strides:
+    :param kernel_size:
+    :param bn_momentum:
+    :param bn_epsilon:
+    :return:
+    """
+    logger.info("building mobilenet_v2_block")
+
+    # --- argument checking
+    if input_layer is None:
+        raise ValueError("input_layer cannot be empty")
+
+    # ---
+    tmp = \
+        keras.layers.Conv2D(
+            strides=(1, 1),
+            padding="same",
+            use_bias=use_bias,
+            kernel_size=(1, 1),
+            activation="linear",
+            filters=filters[0],
+            kernel_initializer=initializer,
+            kernel_regularizer=regularizer)(input_layer)
+    tmp = \
+        keras.layers.BatchNormalization(
+            momentum=bn_momentum,
+            epsilon=bn_epsilon)(tmp)
+    tmp = \
+        keras.layers.Activation(activation)(tmp)
+    tmp = \
+        keras.layers.DepthwiseConv2D(
+            padding="same",
+            strides=strides,
+            use_bias=use_bias,
+            depth_multiplier=1,
+            activation="linear",
+            kernel_size=kernel_size,
+            depthwise_initializer=initializer,
+            depthwise_regularizer=regularizer,
+            kernel_initializer=initializer,
+            kernel_regularizer=regularizer)(tmp)
+    tmp = \
+        keras.layers.BatchNormalization(
+            momentum=bn_momentum,
+            epsilon=bn_epsilon)(tmp)
+    tmp = \
+        keras.layers.Activation(activation)(tmp)
+    tmp = \
+        keras.layers.Conv2D(
+            strides=(1, 1),
+            padding="same",
+            use_bias=use_bias,
+            kernel_size=(1, 1),
+            activation="linear",
+            filters=filters[1],
+            kernel_initializer=initializer,
+            kernel_regularizer=regularizer)(tmp)
+    tmp = \
+        keras.layers.BatchNormalization(
+            momentum=bn_momentum,
+            epsilon=bn_epsilon)(tmp)
+    return tmp
 
 # ==============================================================================
 

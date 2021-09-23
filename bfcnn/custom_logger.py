@@ -10,7 +10,7 @@ LOGGER_FORMAT = \
 
 logging.basicConfig(level=logging.INFO,
                     format=LOGGER_FORMAT)
-logging.getLogger("bid").setLevel(logging.INFO)
-logger = logging.getLogger("bid")
+logging.getLogger("bfcnn").setLevel(logging.INFO)
+logger = logging.getLogger("bfcnn")
 
 # ==============================================================================

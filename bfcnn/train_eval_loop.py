@@ -11,18 +11,19 @@ __license__ = "None"
 import os
 import time
 import json
-import itertools
 import numpy as np
 import tensorflow as tf
-import tensorflow.keras as keras
-from tensorflow.keras import backend as K
 
 # ---------------------------------------------------------------------
 
 
-from .custom_logger import logger
-from .optimizer import optimizer_builder
+from .model import model_builder
+from .dataset import dataset_builder
+from .loss import loss_function_builder
 
+from .custom_logger import logger
+from .visualize import visualize
+from .optimizer import optimizer_builder
 
 # ---------------------------------------------------------------------
 
@@ -84,11 +85,6 @@ def train_loop(
     # --- get the train configuration
     train_config = config["train"]
     epochs = train_config["epochs"]
-    min_depth = train_config["min_depth"]
-    max_depth = train_config["max_depth"]
-    # how many epochs to run mix datasets
-    mixed_epochs = train_config["mixed_epochs"]
-    warmup_epochs = train_config["warmup_epochs"]
     total_steps = train_config["total_steps"]
     # how many checkpoints to keep
     checkpoints_to_keep = train_config["checkpoints_to_keep"]
@@ -125,101 +121,9 @@ def train_loop(
         for epoch in range(int(global_epoch), int(epochs), 1):
             logger.info("epoch: {0}, step: {1}".format(epoch, int(global_step)))
 
-            # --- change dataset according to epoch
-            if epoch < warmup_epochs:
-                d = dataset["megadepth"]
-                logger.info("using: [megadepth] dataset")
-            elif epoch < warmup_epochs + mixed_epochs:
-                d = merge_iterators(dataset["kitti"], dataset["megadepth"])
-                logger.info("using: [kitti, megadepth] dataset")
-            else:
-                d = dataset["kitti"]
-                logger.info("using: [kitti] dataset")
-
             # --- iterate over the batches of the dataset
-            for (images_batch_train, depth_batch_train, fg_bg_batch_train) in d:
+            for (input_batch, noisy_batch) in dataset:
                 start_time = time.time()
-
-                # --- threshold depth
-                depth_batch_train = \
-                    K.clip(
-                        depth_batch_train,
-                        min_value=min_depth,
-                        max_value=max_depth)
-
-                # --- data augmentation (jitter noise)
-                if random_noise:
-                    if np.random.choice([True, False]):
-                        images_batch_train = \
-                            images_batch_train + \
-                            tf.random.normal(
-                                shape=images_batch_train.shape,
-                                mean=0,
-                                stddev=noise_std)
-                    if np.random.choice([True, False]):
-                        images_batch_train = \
-                            images_batch_train * \
-                            tf.random.normal(
-                                shape=images_batch_train.shape,
-                                mean=1,
-                                stddev=0.05)
-
-                # --- flip left right (dataset augmentation)
-                if random_left_right:
-                    if np.random.choice([True, False]):
-                        images_batch_train = \
-                            tf.image.flip_left_right(images_batch_train)
-                        depth_batch_train = \
-                            tf.image.flip_left_right(depth_batch_train)
-                        fg_bg_batch_train = \
-                            tf.image.flip_left_right(fg_bg_batch_train)
-
-                # --- flip up down (dataset augmentation)
-                if random_up_down:
-                    if np.random.choice([True, False]):
-                        images_batch_train = \
-                            tf.image.flip_up_down(images_batch_train)
-                        depth_batch_train = \
-                            tf.image.flip_up_down(depth_batch_train)
-                        fg_bg_batch_train = \
-                            tf.image.flip_up_down(fg_bg_batch_train)
-
-                # --- randomly rotate input (dataset augmentation)
-                if random_rotate > 0.0:
-                    if np.random.choice([True, False]):
-                        batch_size = \
-                            K.int_shape(images_batch_train)[0]
-                        angles = \
-                            tf.random.uniform(
-                                dtype=tf.float32,
-                                minval=-random_rotate,
-                                maxval=random_rotate,
-                                shape=(batch_size,))
-                        images_batch_train = \
-                            tfa.image.rotate(
-                                images=images_batch_train,
-                                interpolation="bilinear",
-                                angles=angles,
-                                fill_value=0,
-                                fill_mode="constant")
-                        depth_batch_train = \
-                            tfa.image.rotate(
-                                images=depth_batch_train,
-                                interpolation="nearest",
-                                angles=angles,
-                                fill_value=max_depth,
-                                fill_mode="constant")
-                        fg_bg_batch_train = \
-                            tfa.image.rotate(
-                                images=fg_bg_batch_train,
-                                interpolation="nearest",
-                                angles=angles,
-                                fill_value=0,
-                                fill_mode="constant")
-
-                images_batch_train_preprocessed = \
-                    keras.applications.mobilenet_v2.preprocess_input(
-                        images_batch_train)
 
                 # Open a GradientTape to record the operations run
                 # during the forward pass, which enables auto-differentiation.
@@ -228,15 +132,14 @@ def train_loop(
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
-                    depth_predictions = \
-                        model(images_batch_train_preprocessed, training=True)
+                    prediction_batch = \
+                        model(noisy_batch, training=True)
 
                     # compute the loss value for this mini-batch
                     loss_map = loss_fn(
                         model_losses=model.losses,
-                        depth_gt=depth_batch_train,
-                        fg_bg_gt=fg_bg_batch_train,
-                        depth_predictions=depth_predictions)
+                        ground_truth=input_batch,
+                        prediction=prediction_batch)
 
                     # Use the gradient tape to automatically retrieve
                     # the gradients of the trainable variables
@@ -254,24 +157,20 @@ def train_loop(
                     # --- add loss summaries for tensorboard
                     for name, key in [
                         ("loss/total", "mean_total_loss"),
-                        ("loss/delta", "mean_delta_loss"),
-                        ("loss/regularization", "regularization_loss"),
-                        ("loss/relative_depth", "mean_depth_loss_top"),
-                        ("loss/absolute_depth", "mean_absolute_depth_loss")]:
+                        ("loss/mae", "mean_absolute_error_loss"),
+                        ("loss/regularization", "regularization_loss")
+                    ]:
                         tf.summary.scalar(
                             name,
                             loss_map[key], step=global_step)
 
                     # --- add image prediction for tensorboard
                     if global_step % visualization_every == 0:
-                        depth_visualize(global_step,
-                                        images_batch_train,
-                                        depth_batch_train,
-                                        fg_bg_batch_train,
-                                        depth_predictions[0],
-                                        visualization_number,
-                                        min_depth=min_depth,
-                                        max_depth=max_depth)
+                        visualize(
+                            global_step=global_step,
+                            input_batch=input_batch,
+                            noisy_batch=noisy_batch,
+                            prediction_batch=prediction_batch)
 
                 # --- check if it is time to save a checkpoint
                 if global_step % checkpoint_every == 0:

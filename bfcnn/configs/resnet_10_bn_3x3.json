@@ -1,0 +1,39 @@
+{
+  "model": {
+    "filters": 32,
+    "no_layers": 5,
+    "min_value": 0,
+    "kernel_size": 3,
+    "max_value": 255,
+    "type": "resnet",
+    "batchnorm": true,
+    "activation": "relu",
+    "kernel_regularizer": "l1",
+    "input_shape": [256, 768, 3],
+    "normalize_denormalize": false,
+    "kernel_initializer": "glorot_normal"
+  },
+  "train": {
+    "epochs": 100,
+    "checkpoints_to_keep": 3,
+    "visualization_number": 5,
+    "visualization_every": 50,
+    "optimizer": {
+      "learning_rate": 0.001,
+      "decay_steps": 10000,
+      "decay_rate": 0.9,
+      "gradient_clipping_by_norm": 1.0
+    }
+  },
+  "loss": {
+    "regularization": 0.01
+  },
+  "dataset": {
+    "batch_size": 32,
+    "noise_std": 5,
+    "random_jpeg": true,
+    "random_invert": false,
+    "random_contrast": true,
+    "random_grayscale": true
+  }
+}

@@ -10,20 +10,20 @@ __license__ = "None"
 
 import tensorflow as tf
 
-
 # ---------------------------------------------------------------------
 
 
 def visualize(
         global_step,
-        input_image,
-        prediction,
+        input_batch,
+        noisy_batch,
+        prediction_batch,
         visualization_number: int):
     """
     Prepare images and add them to tensorboard
     """
     # --- save train images
-    images_normalized = input_image / 255
+    images_normalized = input_batch / 255
 
     tf.summary.image(
         name="input",
@@ -31,10 +31,22 @@ def visualize(
         data=images_normalized,
         max_outputs=visualization_number)
 
-    prediction_normalized = prediction / 255
+    # --- noisy
+    noisy_normalized = noisy_batch / 255
+
+    tf.summary.image(
+        name="input",
+        step=global_step,
+        data=noisy_normalized,
+        max_outputs=visualization_number)
+
+    # --- prediction
+    prediction_normalized = prediction_batch / 255
 
     tf.summary.image(
         name="prediction",
         step=global_step,
         data=prediction_normalized,
         max_outputs=visualization_number)
+
+# ---------------------------------------------------------------------
