@@ -10,6 +10,7 @@ import tensorflow as tf
 
 from .model import model_builder
 from .custom_logger import logger
+from .utilities import build_denormalize_model, build_normalize_model
 
 # ---------------------------------------------------------------------
 
@@ -30,26 +31,51 @@ class DenoisingInferenceModule(tf.Module):
 
     def __init__(
             self,
-            model):
+            model,
+            min_value: float = 0.0,
+            max_value: float = 255.0,
+            normalize_denormalize: bool = True,
+            cast_to_uint8: bool = True):
         """
         Initializes a module for detection.
 
         Args:
-          model: denoising model to use for inference.
+        :param model: denoising model to use for inference.
+        :param normalize_denormalize: add normalize denormalize
         """
         self._model = model
+        self._normalize_denormalize = normalize_denormalize
+        self._normalize = \
+            build_normalize_model(
+                name="normalize",
+                input_dims=None,
+                min_value=min_value,
+                max_value=max_value)
+        self._denormalize = \
+            build_denormalize_model(
+                name="denormalize",
+                input_dims=None,
+                min_value=min_value,
+                max_value=max_value)
+        self._cast_to_uint8 = cast_to_uint8
 
     def _run_inference_on_images(self, image):
         """
         Cast image to float and run inference.
 
-        Args:
-          image: uint8 Tensor of shape [1, None, None, 3]
-        Returns:
-          Tensor dictionary holding detections.
+        :param image: uint8 Tensor of shape [1, None, None, 3]
+        :return: denoised image
         """
-        image = tf.cast(image, tf.float32)
-        return self._model(image)[0]
+        x = tf.cast(image, dtype=tf.float32)
+        if self._normalize_denormalize:
+            x = self._normalize(x)
+        x = self._model(x)
+        if self._normalize_denormalize:
+            x = self._denormalize(x)
+        if self._cast_to_uint8:
+            x = tf.round(x)
+            x = tf.cast(x, dtype=tf.uint8)
+        return x
 
     @tf.function(
         input_signature=[
