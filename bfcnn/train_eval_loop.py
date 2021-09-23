@@ -12,6 +12,8 @@ import os
 import time
 import json
 import tensorflow as tf
+from pathlib import Path
+from typing import Union, Dict
 
 # ---------------------------------------------------------------------
 
@@ -27,8 +29,30 @@ from .optimizer import optimizer_builder
 # ---------------------------------------------------------------------
 
 
+def load_config(
+        config: Union[str, Dict, Path]) -> Dict:
+    """
+    Load configuration from multiple sources
+    """
+    if config is None:
+        raise ValueError("config should not be empty")
+    if isinstance(config, Dict):
+        return config
+    if isinstance(config, str) or isinstance(config, Path):
+        if not os.path.isfile(str(config)):
+            return ValueError(
+                "configuration path [{0}] is not valid".format(
+                    str(config)
+                ))
+        with open(str(config), "r") as f:
+            return json.load(f)
+    raise ValueError("don't know how to handle config [{0}]".format(config))
+
+# ---------------------------------------------------------------------
+
+
 def train_loop(
-        pipeline_config_path,
+        pipeline_config_path: Union[str, Dict, Path],
         model_dir):
     """
     Trains a blind image denoiser
@@ -47,16 +71,8 @@ def train_loop(
     :param model_dir: directory to save checkpoints into
     :return:
     """
-    # --- argument checking
-    if not os.path.isfile(pipeline_config_path):
-        return ValueError(
-            "pipeline configuration path [{0}] is not valid".format(
-                pipeline_config_path
-            ))
-
     # --- load configuration
-    with open(pipeline_config_path, "r") as f:
-        config = json.load(f)
+    config = load_config(pipeline_config_path)
 
     # --- build the model, optimizer
     model = model_builder(config=config["model"])
@@ -107,7 +123,9 @@ def train_loop(
                 checkpoint=checkpoint,
                 directory=model_dir,
                 max_to_keep=checkpoints_to_keep)
-        status = checkpoint.restore(manager.latest_checkpoint).expect_partial()
+        status =\
+            checkpoint.restore(manager.latest_checkpoint)\
+                .expect_partial()
         trainable_weights = model.trainable_weights
 
         for epoch in range(int(global_epoch), int(epochs), 1):

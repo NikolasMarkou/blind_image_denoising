@@ -10,6 +10,7 @@ import os
 import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
+import tensorflow.keras.backend as K
 from typing import Dict, Callable, Iterator
 
 # ---------------------------------------------------------------------
@@ -44,8 +45,6 @@ def dataset_builder(
 
     # --- define augmentation function
     def augment_df(input_batch):
-        input_batch = tf.cast(input_batch, dtype=tf.float32)
-
         # --- additive noise
         noisy_batch = \
             input_batch + \
