@@ -190,7 +190,7 @@ def build_resnet_model(
         kernel_initializer=kernel_initializer
     )
     depth_conv_params = dict(
-        depth_multiplier=1,
+        depth_multiplier=2,
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
@@ -208,6 +208,7 @@ def build_resnet_model(
     final_conv_params["kernel_size"] = 1
     final_conv_params["activation"] = final_activation
     final_conv_params["filters"] = input_dims[channel_index]
+    del final_conv_params["kernel_regularizer"]
 
     # --- set input
     model_input = keras.Input(shape=input_dims)
@@ -226,11 +227,11 @@ def build_resnet_model(
         x = keras.layers.Conv2D(**intermediate_conv_params)(x)
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
-        x = keras.layers.Add()([previous_layer, x]) / 1.41421
+        x = keras.layers.Add()([previous_layer, x])
 
     # --- output to original channels
     output_layer = \
-        keras.layers.Conv2D(**final_conv_params)(x) * 2.0
+        keras.layers.Conv2D(**final_conv_params)(x) * 1.5
 
     return keras.Model(
         name=name,

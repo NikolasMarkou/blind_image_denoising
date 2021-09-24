@@ -36,10 +36,12 @@ def dataset_builder(
     random_blur = config.get("random_blur", False)
     # in radians
     random_rotate = config.get("random_rotate", 0.0)
+    random_invert = config.get("random_invert", False)
     random_up_down = config.get("random_up_down", False)
     additive_noise = config.get("additive_noise", [0.1])
     random_left_right = config.get("random_left_right", False)
     multiplicative_noise = config.get("multiplicative_noise", [0.01])
+    kernels = [(3, 3), (5, 5), (7, 7)]
 
     # --- define generator function from directory
     if directory is not None:
@@ -77,10 +79,12 @@ def dataset_builder(
         # --- blur
         if random_blur:
             if np.random.choice([True, False]):
+                kernel = np.random.choice([0, 1, 2])
+                kernel = kernels[int(kernel)]
                 noisy_batch = \
                     tfa.image.gaussian_filter2d(
                         image=noisy_batch,
-                        filter_shape=(5, 5))
+                        filter_shape=kernel)
 
         # --- flip left right
         if random_left_right:
@@ -123,6 +127,12 @@ def dataset_builder(
                         fill_value=0,
                         fill_mode="constant",
                         interpolation="bilinear")
+
+        # --- random invert colors
+        if random_invert:
+            if np.random.choice([True, False]):
+                input_batch = max_value - input_batch
+                noisy_batch = max_value - noisy_batch
 
         # --- clip values within boundaries
         if clip_value:
