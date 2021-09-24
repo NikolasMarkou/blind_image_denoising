@@ -147,6 +147,7 @@ def build_resnet_model(
         no_layers: int,
         kernel_size: int,
         filters: int,
+        activation: str = "relu",
         final_activation: str = "linear",
         use_bn: bool = True,
         use_bias: bool = False,
@@ -161,6 +162,7 @@ def build_resnet_model(
     :param no_layers: Number of resnet layers
     :param kernel_size: kernel size of the conv layers
     :param filters: number of filters per convolutional layer
+    :param activation: intermediate activation
     :param final_activation: activation of the final layer
     :param channel_index: Index of the channel in dimensions
     :param use_bn: Use Batch Normalization
@@ -182,17 +184,17 @@ def build_resnet_model(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation="linear",
+        activation=activation,
         kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
     depth_conv_params = dict(
-        depth_multiplier=2,
+        depth_multiplier=1,
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation="linear",
+        activation=activation,
         kernel_size=kernel_size,
         depthwise_regularizer=kernel_regularizer,
         depthwise_initializer=kernel_initializer
@@ -214,23 +216,21 @@ def build_resnet_model(
     x = keras.layers.Conv2D(**conv_params)(model_input)
     if use_bn:
         x = keras.layers.BatchNormalization(**bn_params)(x)
-    x = keras.layers.ReLU()(x)
 
     # --- add resnet layers
     for i in range(no_layers):
         previous_layer = x
         x = keras.layers.DepthwiseConv2D(**depth_conv_params)(x)
-        x = keras.layers.ReLU()(x)
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
         x = keras.layers.Conv2D(**intermediate_conv_params)(x)
-        x = keras.layers.ReLU()(x)
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
         x = keras.layers.Add()([previous_layer, x]) / 1.41421
 
     # --- output to original channels
-    output_layer = keras.layers.Conv2D(**final_conv_params)(x) * 1.5
+    output_layer = \
+        keras.layers.Conv2D(**final_conv_params)(x) * 2.0
 
     return keras.Model(
         name=name,
