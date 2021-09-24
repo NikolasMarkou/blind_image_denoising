@@ -25,24 +25,27 @@ from .custom_logger import logger
 def dataset_builder(
         config: Dict):
     # --- argument parsing
-    directory = config["directory"]
     batch_size = config["batch_size"]
     input_shape = config["input_shape"]
+    directory = config.get("directory", None)
     # dataset augmentation
     random_rotate = config.get("random_rotate", 0.0)
     random_up_down = config.get("random_up_down", False)
     random_left_right = config.get("random_left_right", False)
 
-    # --- define generator function
-    dataset = \
-        tf.keras.preprocessing.image_dataset_from_directory(
-            seed=0,
-            shuffle=True,
-            label_mode=None,
-            directory=directory,
-            batch_size=batch_size,
-            image_size=(input_shape[0], input_shape[1]))
-
+    # --- define generator function from directory
+    if directory is not None:
+        dataset = \
+            tf.keras.preprocessing.image_dataset_from_directory(
+                seed=0,
+                shuffle=True,
+                label_mode=None,
+                directory=directory,
+                batch_size=batch_size,
+                image_size=(input_shape[0], input_shape[1]))
+    else:
+        raise ValueError("don't know how to handle non directory datasets")
+    
     # --- define augmentation function
     def augment_df(input_batch):
         # --- additive noise

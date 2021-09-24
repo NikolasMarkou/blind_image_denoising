@@ -1,7 +1,7 @@
 {
   "model": {
     "filters": 32,
-    "no_layers": 5,
+    "no_layers": 10,
     "min_value": 0,
     "kernel_size": 3,
     "max_value": 255,
@@ -29,11 +29,15 @@
     "regularization": 0.01
   },
   "dataset": {
-    "batch_size": 32,
     "noise_std": 5,
+    "batch_size": 32,
     "random_jpeg": true,
+    "random_rotate": true,
+    "random_up_down": true,
     "random_invert": false,
-    "random_contrast": true,
-    "random_grayscale": true
+    "random_grayscale": true,
+    "random_left_right": true,
+    "input_shape": [256, 768, 3],
+    "directory": "/media/fast/images"
   }
 }
