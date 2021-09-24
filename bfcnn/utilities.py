@@ -100,8 +100,9 @@ def build_normalize_model(
     """
     model_input = keras.Input(shape=input_dims)
     # --- normalize input from [min_value, max_value] to [-1.0, +1.0]
-    model_output = keras.layers.Lambda(layer_normalize, trainable=False)([
-        model_input, float(min_value), float(max_value)])
+    model_output = \
+        keras.layers.Lambda(layer_normalize, trainable=False)([
+            model_input, float(min_value), float(max_value)])
     # --- wrap model
     return keras.Model(
         name=name,
@@ -186,12 +187,25 @@ def build_resnet_model(
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
+    depth_conv_params = dict(
+        depth_multiplier=2,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation="linear",
+        kernel_size=kernel_size,
+        depthwise_regularizer=kernel_regularizer,
+        depthwise_initializer=kernel_initializer
+    )
+    # intermediate convs
     intermediate_conv_params = copy.deepcopy(conv_params)
     intermediate_conv_params["kernel_size"] = 1
+
+    # final conv
     final_conv_params = copy.deepcopy(conv_params)
-    final_conv_params["filters"] = input_dims[channel_index]
     final_conv_params["kernel_size"] = 1
     final_conv_params["activation"] = final_activation
+    final_conv_params["filters"] = input_dims[channel_index]
 
     # --- set input
     model_input = keras.Input(shape=input_dims)
@@ -205,18 +219,18 @@ def build_resnet_model(
     # --- add resnet layers
     for i in range(no_layers):
         previous_layer = x
-        x = keras.layers.Conv2D(**conv_params)(x)
+        x = keras.layers.DepthwiseConv2D(**depth_conv_params)(x)
+        x = keras.layers.ReLU()(x)
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
-        x = keras.layers.ReLU()(x)
         x = keras.layers.Conv2D(**intermediate_conv_params)(x)
+        x = keras.layers.ReLU()(x)
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
-        x = keras.layers.ReLU()(x)
-        x = keras.layers.Add()([previous_layer, x])
+        x = keras.layers.Add()([previous_layer, x]) / 1.41421
 
     # --- output to original channels
-    output_layer = keras.layers.Conv2D(**final_conv_params)(x)
+    output_layer = keras.layers.Conv2D(**final_conv_params)(x) * 1.5
 
     return keras.Model(
         name=name,
@@ -306,111 +320,7 @@ def mobilenet_v2_block(
         keras.layers.BatchNormalization(
             momentum=bn_momentum,
             epsilon=bn_epsilon)(tmp)
-    return tmp
-
-# ==============================================================================
-
-
-def noisy_image_data_generator(
-        dataset,
-        batch_size: int = 32,
-        min_value: float = 0.0,
-        max_value: float = 255.0,
-        min_noise_std: float = 0.01,
-        max_noise_std: float = 10.0,
-        random_invert: bool = False,
-        random_brightness: bool = False,
-        zoom_range: float = 0.25,
-        rotation_range: int = 90,
-        width_shift_range: float = 0.25,
-        height_shift_range: float = 0.25,
-        vertical_flip: bool = True,
-        horizontal_flip: bool = True):
-    """
-    Create a dataset generator flow that adds noise to a dateset
-
-    :param dataset:
-    :param min_value: Minimum allowed value
-    :param max_value: Maximum allowed value
-    :param batch_size: Batch size
-    :param random_invert: Randomly (50%) invert the image
-    :param random_brightness: Randomly add offset or multiplier
-    :param zoom_range: Randomly zoom in (percentage)
-    :param rotation_range: Add random rotation range (in degrees)
-    :param min_noise_std: Min standard deviation of noise
-    :param max_noise_std: Max standard deviation of noise
-    :param horizontal_flip: Randomly horizontally flip image
-    :param vertical_flip: Randomly vertically flip image
-    :param height_shift_range: Add random vertical shift (percentage of image)
-    :param width_shift_range: Add random horizontal shift (percentage of image)
-
-    :return:
-    """
-    # --- argument checking
-    if dataset is None:
-        raise ValueError("dataset cannot be empty")
-    if min_noise_std > max_noise_std:
-        raise ValueError("min_noise_std must be < max_noise_std")
-    if min_value > max_value:
-        raise ValueError("min_value must be < max_value")
-
-    # --- variables setup
-    max_min_diff = (max_value - min_value)
-
-    # --- create data generator
-    if isinstance(dataset, np.ndarray):
-        data_generator = \
-            ImageDataGenerator(
-                zoom_range=zoom_range,
-                rotation_range=rotation_range,
-                width_shift_range=width_shift_range,
-                height_shift_range=height_shift_range,
-                vertical_flip=vertical_flip,
-                horizontal_flip=horizontal_flip,
-                zca_whitening=False,
-                featurewise_center=False,
-                featurewise_std_normalization=False)
-    else:
-        raise NotImplementedError()
-
-    # --- iterate over random batches
-    for x_batch in \
-            data_generator.flow(
-                x=dataset,
-                shuffle=True,
-                batch_size=batch_size):
-        # randomly invert batch
-        if random_invert:
-            if np.random.choice([False, True]):
-                x_batch = (max_value - x_batch) + min_value
-
-        # add random offset
-        if random_brightness:
-            offset = \
-                np.random.uniform(
-                    low=0.0,
-                    high=0.25 * max_min_diff)
-            x_batch = x_batch + offset
-
-        # adjust the std of the noise
-        # pick std between min and max std
-        if np.random.choice([False, True]):
-            std = \
-                np.random.uniform(
-                    low=min_noise_std,
-                    high=max_noise_std)
-
-            # add noise to create the noisy input
-            x_batch_noisy = \
-                x_batch + \
-                np.random.normal(0.0, std, x_batch.shape)
-        else:
-            x_batch_noisy = np.copy(x_batch)
-
-        # clip all to be between min and max value
-        # return input, target
-        yield np.clip(x_batch_noisy, a_min=min_value, a_max=max_value), \
-              np.clip(x_batch, a_min=min_value, a_max=max_value)
+    return tm
 
 
 # ==============================================================================

@@ -35,18 +35,19 @@ def loss_function_builder(
         :param: model_losses: weight/regularization losses
         :return loss
         """
-        # ---
+        # --- mean absolute error
         mean_absolute_error_loss = 0.0
         if input_batch is not None and prediction_batch is not None:
             diff = tf.abs(input_batch - prediction_batch)
-            diff_sum = tf.reduce_sum(diff, axis=[1, 2, 3])
+            diff_sum = tf.reduce_mean(diff, axis=[1, 2, 3])
             mean_absolute_error_loss = tf.reduce_mean(diff_sum, axis=[0])
-        # ---
+
+        # --- regularization error
         regularization_loss = 0.0
         if model_losses is not None:
             regularization_loss = tf.add_n(model_losses)
 
-        # ---
+        # --- add up loss
         mean_total_loss = \
             mean_absolute_error_loss * mae_multiplier + \
             regularization_loss * regularization_multiplier

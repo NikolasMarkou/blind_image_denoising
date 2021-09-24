@@ -28,8 +28,13 @@ def dataset_builder(
     batch_size = config["batch_size"]
     input_shape = config["input_shape"]
     directory = config.get("directory", None)
-    # dataset augmentation
+    # --- clip values
+    min_value = config.get("min_value", 0)
+    max_value = config.get("max_value", 255)
+    clip_value = config.get("clip_value", False)
+    # --- dataset augmentation
     random_blur = config.get("random_blur", False)
+    # in radians
     random_rotate = config.get("random_rotate", 0.0)
     random_up_down = config.get("random_up_down", False)
     additive_noise = config.get("additive_noise", [0.1])
@@ -118,6 +123,20 @@ def dataset_builder(
                         fill_value=0,
                         fill_mode="constant",
                         interpolation="bilinear")
+
+        # --- clip values within boundaries
+        if clip_value:
+            input_batch = \
+                tf.clip_by_value(
+                    input_batch,
+                    clip_value_min=min_value,
+                    clip_value_max=max_value)
+
+            noisy_batch = \
+                tf.clip_by_value(
+                    noisy_batch,
+                    clip_value_min=min_value,
+                    clip_value_max=max_value)
 
         return input_batch, noisy_batch
 
