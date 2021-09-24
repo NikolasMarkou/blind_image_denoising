@@ -75,7 +75,7 @@ def dataset_builder(
                 noisy_batch = \
                     tfa.image.gaussian_filter2d(
                         image=noisy_batch,
-                        filter=(5, 5))
+                        filter_shape=(5, 5))
 
         # --- flip left right
         if random_left_right:
