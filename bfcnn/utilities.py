@@ -148,6 +148,7 @@ def build_resnet_model(
         filters: int,
         channel_index: int = 2,
         use_bn: bool = True,
+        use_bias: bool = False,
         kernel_regularizer="l1",
         kernel_initializer="glorot_normal",
         name="resnet") -> keras.Model:
@@ -160,6 +161,7 @@ def build_resnet_model(
     :param filters: number of filters per convolutional layer
     :param channel_index: Index of the channel in dimensions
     :param use_bn: Use Batch Normalization
+    :param use_bias: use bias
     :param kernel_regularizer: Kernel weight regularizer
     :param kernel_initializer: Kernel weight initializer
     :param name: Name of the model
@@ -167,7 +169,7 @@ def build_resnet_model(
     """
     # --- variables
     bn_params = dict(
-        center=False,
+        center=use_bias,
         scale=True,
         momentum=0.999,
         epsilon=1e-4
@@ -175,7 +177,7 @@ def build_resnet_model(
     conv_params = dict(
         filters=filters,
         kernel_size=kernel_size,
-        use_bias=False,
+        use_bias=use_bias,
         strides=(1, 1),
         padding="same",
         activation="linear",
@@ -193,21 +195,21 @@ def build_resnet_model(
 
     # --- add base layer
     x = keras.layers.Conv2D(**conv_params)(model_input)
-    x = keras.layers.ReLU()(x)
     if use_bn:
         x = keras.layers.BatchNormalization(**bn_params)(x)
+    x = keras.layers.ReLU()(x)
 
     # --- add resnet layers
     for i in range(no_layers):
         previous_layer = x
         x = keras.layers.Conv2D(**conv_params)(x)
-        x = keras.layers.ReLU()(x)
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
+        x = keras.layers.ReLU()(x)
         x = keras.layers.Conv2D(**intermediate_conv_params)(x)
-        x = keras.layers.ReLU()(x)
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
+        x = keras.layers.ReLU()(x)
         x = keras.layers.Add()([previous_layer, x])
 
     # --- output to original channels

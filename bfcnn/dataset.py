@@ -45,7 +45,7 @@ def dataset_builder(
                 image_size=(input_shape[0], input_shape[1]))
     else:
         raise ValueError("don't know how to handle non directory datasets")
-    
+
     # --- define augmentation function
     def augment_df(input_batch):
         # --- additive noise
