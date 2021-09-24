@@ -10,7 +10,7 @@ __license__ = "None"
 
 # ---------------------------------------------------------------------
 
-CUDA_DEVICE = 0
+CUDA_DEVICE = 1
 MODEL_DIRECTORY = "/media/fast/training/bfcnn"
 PIPELINE_CONFIG_FILE = "configs/resnet_10_bn_3x3.json"
 

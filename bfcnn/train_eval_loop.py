@@ -81,7 +81,9 @@ def train_loop(
     model.save(os.path.join(model_dir, "model.h5"))
 
     # --- build dataset
-    dataset = dataset_builder(config=config["dataset"])
+    dataset_res = dataset_builder(config=config["dataset"])
+    dataset = dataset_res["dataset"]
+    augmentation_fn = dataset_res["augmentation"]
 
     # --- build loss function
     loss_fn = loss_function_builder(config=config["loss"])
@@ -100,11 +102,11 @@ def train_loop(
     # --- get the train configuration
     train_config = config["train"]
     epochs = train_config["epochs"]
-    total_steps = train_config["total_steps"]
+    total_steps = train_config.get("total_steps", -1)
     # how many checkpoints to keep
-    checkpoints_to_keep = train_config["checkpoints_to_keep"]
+    checkpoints_to_keep = train_config.get("checkpoints_to_keep", 3)
     # checkpoint every so many steps
-    checkpoint_every = train_config["checkpoint_every"]
+    checkpoint_every = train_config.get("checkpoint_every", -1)
     # how many steps to make a visualization
     visualization_every = train_config["visualization_every"]
     # how many visualizations to show
@@ -132,8 +134,12 @@ def train_loop(
             logger.info("epoch: {0}, step: {1}".format(epoch, int(global_step)))
 
             # --- iterate over the batches of the dataset
-            for (input_batch, noisy_batch) in dataset:
+            for input_batch in dataset:
                 start_time = time.time()
+
+                # augment data
+                input_batch, noisy_batch = \
+                    augmentation_fn(input_batch)
 
                 # Open a GradientTape to record the operations run
                 # during the forward pass, which enables auto-differentiation.
@@ -148,8 +154,8 @@ def train_loop(
                     # compute the loss value for this mini-batch
                     loss_map = loss_fn(
                         model_losses=model.losses,
-                        ground_truth=input_batch,
-                        prediction=prediction_batch)
+                        input_batch=input_batch,
+                        prediction_batch=prediction_batch)
 
                     # Use the gradient tape to automatically retrieve
                     # the gradients of the trainable variables
@@ -184,10 +190,11 @@ def train_loop(
                             visualization_number=visualization_number)
 
                 # --- check if it is time to save a checkpoint
-                if global_step % checkpoint_every == 0:
-                    logger.info("checkpoint at step: {0}".format(
-                        int(global_step)))
-                    manager.save()
+                if checkpoint_every > 0:
+                    if global_step % checkpoint_every == 0:
+                        logger.info("checkpoint at step: {0}".format(
+                            int(global_step)))
+                        manager.save()
 
                 # --- keep time of steps per second
                 stop_time = time.time()
@@ -219,6 +226,7 @@ def train_loop(
                         break
             logger.info("checkpoint at epoch: {0}".format(
                 int(global_epoch)))
+            manager.save()
             global_epoch.assign_add(1)
 
         # --- save checkpoint before exiting

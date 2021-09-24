@@ -16,6 +16,8 @@ from .custom_logger import logger
 
 def model_builder(
         config: Dict) -> keras.Model:
+    logger.info("building model with config [{0}]".format(config))
+
     # --- argument parsing
     model_type = config["type"]
     input_shape = config["input_shape"]
@@ -29,17 +31,25 @@ def model_builder(
     normalize_denormalize = config.get("normalize_denormalize", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
 
+    # --- build normalize denormalize models
+    model_normalize = \
+        build_normalize_model(
+            input_dims=input_shape,
+            min_value=min_value,
+            max_value=max_value)
+
+    model_denormalize = \
+        build_denormalize_model(
+            input_dims=input_shape,
+            min_value=min_value,
+            max_value=max_value)
+
     # --- connect the parts of the model
     # setup input
-    x = keras.Input(shape=input_shape)
-
+    model_input = keras.Input(shape=input_shape)
+    x = model_input
     # add normalize cap
     if normalize_denormalize:
-        model_normalize = \
-            build_normalize_model(
-                input_dims=input_shape,
-                min_value=min_value,
-                max_value=max_value)
         x = model_normalize(x)
 
     # add model
@@ -51,6 +61,7 @@ def model_builder(
                 no_layers=no_layers,
                 input_dims=input_shape,
                 kernel_size=kernel_size,
+                final_activation="tanh",
                 kernel_regularizer=kernel_regularizer,
                 kernel_initializer=kernel_initializer)
     else:
@@ -60,13 +71,12 @@ def model_builder(
 
     # add denormalize cap
     if normalize_denormalize:
-        model_denormalize = \
-            build_denormalize_model(
-                input_dims=input_shape,
-                min_value=min_value,
-                max_value=max_value)
         x = model_denormalize(x)
 
-    return x
+    # --- wrap model
+    return \
+        keras.Model(
+            inputs=model_input,
+            outputs=x)
 
 # ---------------------------------------------------------------------

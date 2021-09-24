@@ -146,11 +146,12 @@ def build_resnet_model(
         no_layers: int,
         kernel_size: int,
         filters: int,
-        channel_index: int = 2,
+        final_activation: str = "linear",
         use_bn: bool = True,
         use_bias: bool = False,
         kernel_regularizer="l1",
         kernel_initializer="glorot_normal",
+        channel_index: int = 2,
         name="resnet") -> keras.Model:
     """
     Build a resnet model
@@ -159,6 +160,7 @@ def build_resnet_model(
     :param no_layers: Number of resnet layers
     :param kernel_size: kernel size of the conv layers
     :param filters: number of filters per convolutional layer
+    :param final_activation: activation of the final layer
     :param channel_index: Index of the channel in dimensions
     :param use_bn: Use Batch Normalization
     :param use_bias: use bias
@@ -176,11 +178,11 @@ def build_resnet_model(
     )
     conv_params = dict(
         filters=filters,
-        kernel_size=kernel_size,
-        use_bias=use_bias,
         strides=(1, 1),
         padding="same",
+        use_bias=use_bias,
         activation="linear",
+        kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -189,6 +191,7 @@ def build_resnet_model(
     final_conv_params = copy.deepcopy(conv_params)
     final_conv_params["filters"] = input_dims[channel_index]
     final_conv_params["kernel_size"] = 1
+    final_conv_params["activation"] = final_activation
 
     # --- set input
     model_input = keras.Input(shape=input_dims)

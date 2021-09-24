@@ -23,30 +23,24 @@ def visualize(
     Prepare images and add them to tensorboard
     """
     # --- save train images
-    images_normalized = input_batch / 255
-
     tf.summary.image(
         name="input",
         step=global_step,
-        data=images_normalized,
+        data=input_batch / 255,
         max_outputs=visualization_number)
 
     # --- noisy
-    noisy_normalized = noisy_batch / 255
-
     tf.summary.image(
-        name="input",
+        name="noisy",
         step=global_step,
-        data=noisy_normalized,
+        data=noisy_batch / 255,
         max_outputs=visualization_number)
 
     # --- prediction
-    prediction_normalized = prediction_batch / 255
-
     tf.summary.image(
         name="prediction",
         step=global_step,
-        data=prediction_normalized,
+        data=prediction_batch / 255,
         max_outputs=visualization_number)
 
 # ---------------------------------------------------------------------

@@ -9,12 +9,14 @@
     "batchnorm": true,
     "activation": "relu",
     "kernel_regularizer": "l1",
-    "input_shape": [256, 768, 3],
-    "normalize_denormalize": false,
+    "input_shape": [256, 256, 3],
+    "normalize_denormalize": true,
     "kernel_initializer": "glorot_normal"
   },
   "train": {
     "epochs": 100,
+    "total_steps": -1,
+    "checkpoint_every": -1,
     "checkpoints_to_keep": 3,
     "visualization_number": 5,
     "visualization_every": 50,
@@ -30,14 +32,14 @@
   },
   "dataset": {
     "noise_std": 5,
-    "batch_size": 32,
-    "random_jpeg": true,
+    "batch_size": 8,
+    "random_blur": true,
     "random_rotate": true,
     "random_up_down": true,
-    "random_invert": false,
-    "random_grayscale": true,
     "random_left_right": true,
-    "input_shape": [256, 768, 3],
-    "directory": "/media/fast/images"
+    "input_shape": [256, 256, 3],
+    "additive_noise": [0.1, 0.5, 1.0],
+    "multiplicative_noise": [0.01, 0.05, 0.1],
+    "directory": "/media/data1_4tb/datasets/KITTI/data/depth/raw_image_values/"
   }
 }

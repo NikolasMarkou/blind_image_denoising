@@ -29,9 +29,12 @@ def dataset_builder(
     input_shape = config["input_shape"]
     directory = config.get("directory", None)
     # dataset augmentation
+    random_blur = config.get("random_blur", False)
     random_rotate = config.get("random_rotate", 0.0)
     random_up_down = config.get("random_up_down", False)
+    additive_noise = config.get("additive_noise", [0.1])
     random_left_right = config.get("random_left_right", False)
+    multiplicative_noise = config.get("multiplicative_noise", [0.01])
 
     # --- define generator function from directory
     if directory is not None:
@@ -47,22 +50,32 @@ def dataset_builder(
         raise ValueError("don't know how to handle non directory datasets")
 
     # --- define augmentation function
-    def augment_df(input_batch):
+    def augmentation(input_batch):
         # --- additive noise
+        noise_std = np.random.choice(additive_noise)
         noisy_batch = \
             input_batch + \
             tf.random.normal(
-                shape=input_batch.shape,
+                shape=tf.shape(input_batch),
                 mean=0,
-                stddev=0.1)
+                stddev=noise_std)
 
         # --- multiplicative noise
+        noise_std = np.random.choice(multiplicative_noise)
         noisy_batch = \
             noisy_batch * \
             tf.random.normal(
-                shape=noisy_batch.shape,
+                shape=tf.shape(noisy_batch),
                 mean=1,
-                stddev=0.05)
+                stddev=noise_std)
+
+        # --- blur
+        if random_blur:
+            if np.random.choice([True, False]):
+                noisy_batch = \
+                    tfa.image.gaussian_filter2d(
+                        image=noisy_batch,
+                        filter=(5, 5))
 
         # --- flip left right
         if random_left_right:
@@ -109,9 +122,9 @@ def dataset_builder(
         return input_batch, noisy_batch
 
     # --- create the dataset
-    return \
-        dataset\
-            .apply(transformation_func=augment_df)\
-            .prefetch(2)
+    return {
+        "dataset": dataset.prefetch(2),
+        "augmentation": augmentation
+    }
 
 # ---------------------------------------------------------------------

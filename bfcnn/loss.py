@@ -30,11 +30,10 @@ def loss_function_builder(
         """
         The loss function of the depth prediction model
 
-        Args:
-            input_batch: ground truth
-            prediction_batch: prediction
-            model_losses: weight/regularization losses
-        Returns:
+        :param: input_batch: ground truth
+        :param: prediction_batch: prediction
+        :param: model_losses: weight/regularization losses
+        :return loss
         """
         # ---
         mean_absolute_error_loss = 0.0
