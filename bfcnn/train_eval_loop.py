@@ -74,9 +74,10 @@ def train_loop(
     # --- load configuration
     config = load_config(pipeline_config_path)
 
-    # --- build the model, optimizer
+    # --- build the model
     model = model_builder(config=config["model"])
-
+    # summary of model
+    model.summary(print_fn=logger.info)
     # save model so we can visualize it easier
     model.save(os.path.join(model_dir, "model.h5"))
 
