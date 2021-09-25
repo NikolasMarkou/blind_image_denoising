@@ -329,9 +329,9 @@ def build_gatenet_model(
         previous_s_layer = s_layer
         previous_g_layer = g_layer
         s_layer = \
-            keras.layers.DepthwiseConv2D(**depth_conv_params)(s_layer)
+            keras.layers.DepthwiseConv2D(**depth_conv_params)(previous_s_layer)
         g_layer = \
-            keras.layers.DepthwiseConv2D(**depth_conv_params)(g_layer)
+            keras.layers.DepthwiseConv2D(**depth_conv_params)(previous_g_layer)
         if use_bn:
             s_layer = \
                 keras.layers.BatchNormalization(**bn_params)(s_layer)
