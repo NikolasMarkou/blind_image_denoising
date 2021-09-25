@@ -4,10 +4,8 @@ import keras
 import itertools
 import numpy as np
 from typing import List
-from pathlib import Path
-from typing import Union, Dict
+import tensorflow as tf
 from keras import backend as K
-from keras.preprocessing.image import ImageDataGenerator
 
 # ---------------------------------------------------------------------
 # local imports
@@ -341,6 +339,7 @@ def build_gatenet_model(
             keras.layers.Conv2D(**intermediate_conv_params)(s_layer)
         g_layer = \
             keras.layers.Conv2D(**intermediate_conv_params)(g_layer)
+
         if use_bn:
             s_layer = \
                 keras.layers.BatchNormalization(**bn_params)(s_layer)
@@ -348,13 +347,13 @@ def build_gatenet_model(
                 keras.layers.BatchNormalization(**bn_params)(g_layer)
 
         # compute activation per channel
+        # (needs to be in convolutions so it can be reshaped)
         g_layer_activation = \
-            keras.layers.Dense(
-                units=filters,
-                use_bias=use_bias,
-                activation="sigmoid",
-                kernel_regularizer=kernel_regularizer,
-                kernel_initializer=kernel_initializer)(g_layer)
+            keras.layers.Conv2D(**conv_params)(g_layer)
+        g_layer_activation = \
+            keras.layers.GlobalAvgPool2D()(g_layer_activation)
+        g_layer_activation = \
+            tf.squeeze(g_layer_activation)
 
         # mask channels
         s_layer = \
