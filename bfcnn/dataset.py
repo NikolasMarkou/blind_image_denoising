@@ -41,7 +41,6 @@ def dataset_builder(
     additive_noise = config.get("additive_noise", [0.1])
     random_left_right = config.get("random_left_right", False)
     multiplicative_noise = config.get("multiplicative_noise", [0.01])
-    kernels = [(3, 3), (5, 5), (7, 7)]
 
     # --- define generator function from directory
     if directory is not None:
@@ -58,33 +57,32 @@ def dataset_builder(
 
     # --- define augmentation function
     def augmentation(input_batch):
-        # --- additive noise
-        noise_std = np.random.choice(additive_noise)
-        noisy_batch = \
-            input_batch + \
-            tf.random.normal(
-                shape=tf.shape(input_batch),
-                mean=0,
-                stddev=noise_std)
-
         # --- multiplicative noise
         noise_std = np.random.choice(multiplicative_noise)
         noisy_batch = \
-            noisy_batch * \
+            input_batch * \
             tf.random.normal(
-                shape=tf.shape(noisy_batch),
                 mean=1,
-                stddev=noise_std)
+                stddev=noise_std,
+                shape=tf.shape(input_batch))
 
-        # --- blur
+        # --- blur to embed noise
         if random_blur:
             if np.random.choice([True, False]):
-                kernel = np.random.choice([0, 1, 2])
-                kernel = kernels[int(kernel)]
+                kernel = np.random.choice([(3, 3), (5, 5), (7, 7)])
                 noisy_batch = \
                     tfa.image.gaussian_filter2d(
                         image=noisy_batch,
                         filter_shape=kernel)
+
+        # --- additive noise (independent)
+        noise_std = np.random.choice(additive_noise)
+        noisy_batch = \
+            noisy_batch + \
+            tf.random.normal(
+                mean=0,
+                stddev=noise_std,
+                shape=tf.shape(noisy_batch))
 
         # --- flip left right
         if random_left_right:

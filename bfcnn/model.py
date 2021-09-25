@@ -80,7 +80,7 @@ def model_builder(
         raise ValueError(
             "don't know how to build model [{0}]".format(model_type))
     x = model(x)
-    
+
     # uplift a bit because of tanh saturation
     x = x * output_multiplier
 
