@@ -64,6 +64,17 @@ def model_builder(
                 final_activation="tanh",
                 kernel_regularizer=kernel_regularizer,
                 kernel_initializer=kernel_initializer)
+    elif model_type == "gatenet":
+        model = \
+            build_gatenet_model(
+                use_bn=batchnorm,
+                filters=filters,
+                no_layers=no_layers,
+                input_dims=input_shape,
+                kernel_size=kernel_size,
+                final_activation="tanh",
+                kernel_regularizer=kernel_regularizer,
+                kernel_initializer=kernel_initializer)
     else:
         raise ValueError(
             "don't know how to build model [{0}]".format(model_type))
