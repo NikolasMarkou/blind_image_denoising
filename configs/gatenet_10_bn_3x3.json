@@ -1,7 +1,7 @@
 {
   "model": {
     "filters": 16,
-    "no_layers": 10,
+    "no_layers": 15,
     "min_value": 0,
     "max_value": 255,
     "kernel_size": 3,
@@ -14,16 +14,16 @@
     "kernel_initializer": "glorot_normal"
   },
   "train": {
-    "epochs": 100,
+    "epochs": 10,
     "total_steps": -1,
     "checkpoints_to_keep": 3,
     "checkpoint_every": 1000,
     "visualization_number": 5,
-    "visualization_every": 50,
+    "visualization_every": 100,
     "optimizer": {
-      "learning_rate": 0.01,
-      "decay_steps": 10000,
       "decay_rate": 0.9,
+      "decay_steps": 12000,
+      "learning_rate": 0.01,
       "gradient_clipping_by_norm": 1.0
     }
   },
