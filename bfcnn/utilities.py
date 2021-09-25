@@ -352,7 +352,7 @@ def build_gatenet_model(
             keras.layers.Dense(
                 units=filters,
                 use_bias=use_bias,
-                activation="hard_sigmoid",
+                activation="sigmoid",
                 kernel_regularizer=kernel_regularizer,
                 kernel_initializer=kernel_initializer)(g_layer)
 
