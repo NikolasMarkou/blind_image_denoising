@@ -129,8 +129,8 @@ def dataset_builder(
         # --- random invert colors
         if random_invert:
             if np.random.choice([True, False]):
-                input_batch = max_value - input_batch
-                noisy_batch = max_value - noisy_batch
+                input_batch = max_value - (input_batch - min_value)
+                noisy_batch = max_value - (noisy_batch - min_value)
 
         # --- clip values within boundaries
         if clip_value:
