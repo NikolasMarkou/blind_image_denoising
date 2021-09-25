@@ -41,6 +41,7 @@ def dataset_builder(
     additive_noise = config.get("additive_noise", [0.1])
     random_left_right = config.get("random_left_right", False)
     multiplicative_noise = config.get("multiplicative_noise", [0.01])
+    kernels = [(3, 3), (5, 5), (7, 7)]
 
     # --- define generator function from directory
     if directory is not None:
@@ -69,7 +70,8 @@ def dataset_builder(
         # --- blur to embed noise
         if random_blur:
             if np.random.choice([True, False]):
-                kernel = np.random.choice([(3, 3), (5, 5), (7, 7)])
+                kernel = np.random.choice([0, 1, 2])
+                kernel = kernels[int(kernel)]
                 noisy_batch = \
                     tfa.image.gaussian_filter2d(
                         image=noisy_batch,
