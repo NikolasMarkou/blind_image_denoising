@@ -16,6 +16,7 @@ from keras.preprocessing.image import ImageDataGenerator
 
 from .custom_logger import logger
 
+
 # ---------------------------------------------------------------------
 
 
@@ -58,6 +59,7 @@ def merge_iterators(*iterators):
             if value is not empty:
                 yield value
 
+
 # ---------------------------------------------------------------------
 
 
@@ -68,6 +70,7 @@ def layer_denormalize(args):
     y, v0, v1 = args
     y_clip = K.clip(y, min_value=-1.0, max_value=+1.0)
     return 0.5 * (y_clip + 1.0) * (v1 - v0) + v0
+
 
 # ---------------------------------------------------------------------
 
@@ -110,6 +113,7 @@ def build_normalize_model(
         outputs=model_output,
         trainable=False)
 
+
 # ---------------------------------------------------------------------
 
 
@@ -138,6 +142,7 @@ def build_denormalize_model(
         inputs=model_input,
         outputs=model_output,
         trainable=False)
+
 
 # ---------------------------------------------------------------------
 
@@ -237,6 +242,139 @@ def build_resnet_model(
         name=name,
         inputs=model_input,
         outputs=output_layer)
+
+
+# ---------------------------------------------------------------------
+
+def build_gatenet_model(
+        input_dims,
+        no_layers: int,
+        kernel_size: int,
+        filters: int,
+        activation: str = "relu",
+        final_activation: str = "linear",
+        use_bn: bool = True,
+        use_bias: bool = False,
+        kernel_regularizer="l1",
+        kernel_initializer="glorot_normal",
+        channel_index: int = 2,
+        name="gatenet") -> keras.Model:
+    """
+    Build a gatenet model
+
+    :param input_dims: Models input dimensions
+    :param no_layers: Number of resnet layers
+    :param kernel_size: kernel size of the conv layers
+    :param filters: number of filters per convolutional layer
+    :param activation: intermediate activation
+    :param final_activation: activation of the final layer
+    :param channel_index: Index of the channel in dimensions
+    :param use_bn: Use Batch Normalization
+    :param use_bias: use bias
+    :param kernel_regularizer: Kernel weight regularizer
+    :param kernel_initializer: Kernel weight initializer
+    :param name: Name of the model
+    :return:
+    """
+    # --- variables
+    bn_params = dict(
+        center=use_bias,
+        scale=True,
+        momentum=0.999,
+        epsilon=1e-4
+    )
+    conv_params = dict(
+        filters=filters,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation=activation,
+        kernel_size=kernel_size,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+    depth_conv_params = dict(
+        depth_multiplier=2,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation=activation,
+        kernel_size=kernel_size,
+        depthwise_regularizer=kernel_regularizer,
+        depthwise_initializer=kernel_initializer
+    )
+    # intermediate convs
+    intermediate_conv_params = copy.deepcopy(conv_params)
+    intermediate_conv_params["kernel_size"] = 1
+
+    # final conv
+    final_conv_params = copy.deepcopy(conv_params)
+    final_conv_params["kernel_size"] = 1
+    final_conv_params["activation"] = final_activation
+    final_conv_params["filters"] = input_dims[channel_index]
+    del final_conv_params["kernel_regularizer"]
+
+    # --- set input
+    model_input = keras.Input(shape=input_dims)
+
+    # --- add base layer
+    x = keras.layers.Conv2D(**conv_params)(model_input)
+    if use_bn:
+        x = keras.layers.BatchNormalization(**bn_params)(x)
+
+    # --- add signal/gate resnet layers
+    s_layer = x
+    g_layer = x
+    for i in range(no_layers):
+        previous_s_layer = s_layer
+        previous_g_layer = g_layer
+        s_layer = \
+            keras.layers.DepthwiseConv2D(**depth_conv_params)(s_layer)
+        g_layer = \
+            keras.layers.DepthwiseConv2D(**depth_conv_params)(g_layer)
+        if use_bn:
+            s_layer = \
+                keras.layers.BatchNormalization(**bn_params)(s_layer)
+            g_layer = \
+                keras.layers.BatchNormalization(**bn_params)(g_layer)
+        s_layer = \
+            keras.layers.Conv2D(**intermediate_conv_params)(s_layer)
+        g_layer = \
+            keras.layers.Conv2D(**intermediate_conv_params)(g_layer)
+        if use_bn:
+            s_layer = \
+                keras.layers.BatchNormalization(**bn_params)(s_layer)
+            g_layer = \
+                keras.layers.BatchNormalization(**bn_params)(g_layer)
+
+        # compute activation per channel
+        g_layer_activation = \
+            keras.layers.Dense(
+                units=filters,
+                use_bias=use_bias,
+                activation="hard_sigmoid",
+                kernel_regularizer=kernel_regularizer,
+                kernel_initializer=kernel_initializer)(g_layer)
+
+        # mask channels
+        s_layer = \
+            keras.layers.Multiply()([s_layer, g_layer_activation])
+
+        # add skip connection
+        s_layer = \
+            keras.layers.Add()([previous_s_layer, s_layer])
+        g_layer = \
+            keras.layers.Add()([previous_g_layer, g_layer])
+
+    # --- output to original channels
+    output_layer = \
+        keras.layers.Conv2D(**final_conv_params)(x) * 1.5
+
+    return keras.Model(
+        name=name,
+        inputs=model_input,
+        outputs=output_layer)
+
 
 # ==============================================================================
 

@@ -44,19 +44,6 @@ class DenoisingInferenceModule(tf.Module):
         :param normalize_denormalize: add normalize denormalize
         """
         self._model = model
-        self._normalize_denormalize = normalize_denormalize
-        self._normalize = \
-            build_normalize_model(
-                name="normalize",
-                input_dims=None,
-                min_value=min_value,
-                max_value=max_value)
-        self._denormalize = \
-            build_denormalize_model(
-                name="denormalize",
-                input_dims=None,
-                min_value=min_value,
-                max_value=max_value)
         self._cast_to_uint8 = cast_to_uint8
 
     def _run_inference_on_images(self, image):
@@ -64,14 +51,10 @@ class DenoisingInferenceModule(tf.Module):
         Cast image to float and run inference.
 
         :param image: uint8 Tensor of shape [1, None, None, 3]
-        :return: denoised image
+        :return: denoised image: uint8 Tensor of shape [1, None, None, 3]
         """
         x = tf.cast(image, dtype=tf.float32)
-        if self._normalize_denormalize:
-            x = self._normalize(x)
         x = self._model(x)
-        if self._normalize_denormalize:
-            x = self._denormalize(x)
         if self._cast_to_uint8:
             x = tf.round(x)
             x = tf.cast(x, dtype=tf.uint8)
