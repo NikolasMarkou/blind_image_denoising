@@ -353,7 +353,7 @@ def build_gatenet_model(
         g_layer_activation = \
             keras.layers.GlobalAvgPool2D()(g_layer_activation)
         g_layer_activation = \
-            tf.squeeze(g_layer_activation)
+            tf.squeeze(g_layer_activation, axis=[1, 2])
 
         # mask channels
         s_layer = \
