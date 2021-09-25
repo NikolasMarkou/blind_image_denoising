@@ -291,6 +291,16 @@ def build_gatenet_model(
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
+    gate_conv_params = dict(
+        filters=filters,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation="linear",
+        kernel_size=kernel_size,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
     depth_conv_params = dict(
         depth_multiplier=2,
         strides=(1, 1),
@@ -349,9 +359,11 @@ def build_gatenet_model(
         # compute activation per channel
         # (needs to be in convolutions so it can be reshaped)
         g_layer_activation = \
-            keras.layers.Conv2D(**conv_params)(g_layer)
+            keras.layers.Conv2D(**gate_conv_params)(g_layer)
         g_layer_activation = \
             keras.layers.GlobalAvgPool2D()(g_layer_activation)
+        g_layer_activation = \
+            keras.layers.Activation("sigmoid")(g_layer_activation)
 
         # mask channels
         s_layer = \
