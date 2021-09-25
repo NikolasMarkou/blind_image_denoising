@@ -292,7 +292,7 @@ def build_gatenet_model(
         kernel_initializer=kernel_initializer
     )
     gate_conv_params = dict(
-        filters=int(filters/2),
+        filters=filters,
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
