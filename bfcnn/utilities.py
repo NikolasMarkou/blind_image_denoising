@@ -234,7 +234,7 @@ def build_resnet_model(
 
     # --- output to original channels
     output_layer = \
-        keras.layers.Conv2D(**final_conv_params)(x) * 1.5
+        keras.layers.Conv2D(**final_conv_params)(x)
 
     return keras.Model(
         name=name,
@@ -377,7 +377,7 @@ def build_gatenet_model(
 
     # --- output to original channels
     output_layer = \
-        keras.layers.Conv2D(**final_conv_params)(s_layer) * 1.5
+        keras.layers.Conv2D(**final_conv_params)(s_layer)
 
     return keras.Model(
         name=name,
