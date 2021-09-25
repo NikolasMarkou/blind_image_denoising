@@ -11,7 +11,8 @@
     "kernel_regularizer": "l1",
     "input_shape": [256, 256, 3],
     "normalize_denormalize": true,
-    "kernel_initializer": "glorot_normal"
+    "kernel_initializer": "glorot_normal",
+    "output_multiplier": 1.5
   },
   "train": {
     "epochs": 10,

@@ -27,6 +27,7 @@ def model_builder(
     max_value = config.get("max_value", 255)
     batchnorm = config.get("batchnorm", True)
     kernel_size = config.get("kernel_size", 3)
+    output_multiplier = config.get("output_multiplier", 1.0)
     kernel_regularizer = config.get("kernel_regularizer", "l1")
     normalize_denormalize = config.get("normalize_denormalize", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
@@ -79,8 +80,9 @@ def model_builder(
         raise ValueError(
             "don't know how to build model [{0}]".format(model_type))
     x = model(x)
+    
     # uplift a bit because of tanh saturation
-    x = x * 1.5
+    x = x * output_multiplier
 
     # add denormalize cap
     if normalize_denormalize:

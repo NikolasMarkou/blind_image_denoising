@@ -11,19 +11,20 @@
     "kernel_regularizer": "l1",
     "input_shape": [256, 256, 3],
     "normalize_denormalize": true,
-    "kernel_initializer": "glorot_normal"
+    "kernel_initializer": "glorot_normal",
+    "output_multiplier": 1.5
   },
   "train": {
-    "epochs": 100,
+    "epochs": 10,
     "total_steps": -1,
     "checkpoints_to_keep": 3,
     "checkpoint_every": 1000,
     "visualization_number": 5,
-    "visualization_every": 50,
+    "visualization_every": 100,
     "optimizer": {
-      "learning_rate": 0.01,
-      "decay_steps": 10000,
       "decay_rate": 0.9,
+      "decay_steps": 12000,
+      "learning_rate": 0.01,
       "gradient_clipping_by_norm": 1.0
     }
   },
