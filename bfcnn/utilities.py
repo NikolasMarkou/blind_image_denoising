@@ -363,8 +363,10 @@ def build_gatenet_model(
         # add skip connection
         s_layer = \
             keras.layers.Add()([previous_s_layer, s_layer])
+        s_layer_no_grad = \
+            keras.backend.stop_gradient(s_layer)
         g_layer = \
-            keras.layers.Add()([previous_g_layer, g_layer])
+            keras.layers.Add()([previous_g_layer, s_layer_no_grad])
 
     # --- output to original channels
     output_layer = \
