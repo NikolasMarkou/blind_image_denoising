@@ -327,11 +327,8 @@ def build_gatenet_model(
         keras.Input(shape=input_dims)
     input_layer_bn = \
         keras.layers.BatchNormalization(**bn_params)(input_layer)
-
     # --- add base layer
     x = keras.layers.Conv2D(**conv_params)(input_layer_bn)
-    if use_bn:
-        x = keras.layers.BatchNormalization(**bn_params)(x)
 
     # --- add signal/gate resnet layers
     s_layer = x
@@ -339,15 +336,18 @@ def build_gatenet_model(
     for i in range(no_layers):
         previous_s_layer = s_layer
         previous_g_layer = g_layer
-        previous_s_layer_plus = \
-            keras.layers.Concatenate()([previous_s_layer, input_layer_bn])
-        previous_g_layer_plus = \
-            keras.layers.Concatenate()([previous_g_layer, input_layer_bn])
+        # --- normalize
+        if use_bn:
+            s_layer = \
+                keras.layers.BatchNormalization(**bn_params)(previous_s_layer)
+            g_layer = \
+                keras.layers.BatchNormalization(**bn_params)(previous_g_layer)
+        # --- expand
         s_layer = \
-            keras.layers.DepthwiseConv2D(**depth_conv_params)(previous_s_layer_plus)
+            keras.layers.DepthwiseConv2D(**depth_conv_params)(s_layer)
         g_layer = \
-            keras.layers.DepthwiseConv2D(**depth_conv_params)(previous_g_layer_plus)
-
+            keras.layers.DepthwiseConv2D(**depth_conv_params)(g_layer)
+        # --- normalize
         if use_bn:
             s_layer = \
                 keras.layers.BatchNormalization(**bn_params)(s_layer)
@@ -355,15 +355,9 @@ def build_gatenet_model(
                 keras.layers.BatchNormalization(**bn_params)(g_layer)
 
         s_layer = \
-            keras.layers.Conv2D(**intermediate_conv_params)(s_layer)
+            keras.layers.Concatenate()([s_layer, g_layer])
         g_layer = \
-            keras.layers.Conv2D(**intermediate_conv_params)(g_layer)
-
-        if use_bn:
-            s_layer = \
-                keras.layers.BatchNormalization(**bn_params)(s_layer)
-            g_layer = \
-                keras.layers.BatchNormalization(**bn_params)(g_layer)
+            keras.layers.Concatenate()([g_layer, input_layer_bn])
 
         # compute activation per channel
         # (needs to be in convolutions so it can be reshaped)
