@@ -28,6 +28,7 @@ def model_builder(
     batchnorm = config.get("batchnorm", True)
     kernel_size = config.get("kernel_size", 3)
     output_multiplier = config.get("output_multiplier", 1.0)
+    final_activation = config.get("final_activation", "tanh")
     kernel_regularizer = config.get("kernel_regularizer", "l1")
     normalize_denormalize = config.get("normalize_denormalize", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
@@ -47,7 +48,10 @@ def model_builder(
 
     # --- connect the parts of the model
     # setup input
-    model_input = keras.Input(shape=input_shape)
+    model_input = \
+        keras.Input(
+            shape=input_shape,
+            name="input_tensor")
     x = model_input
     # add normalize cap
     if normalize_denormalize:
@@ -62,7 +66,7 @@ def model_builder(
                 no_layers=no_layers,
                 input_dims=input_shape,
                 kernel_size=kernel_size,
-                final_activation="tanh",
+                final_activation=final_activation,
                 kernel_regularizer=kernel_regularizer,
                 kernel_initializer=kernel_initializer)
     elif model_type == "gatenet":
@@ -73,7 +77,7 @@ def model_builder(
                 no_layers=no_layers,
                 input_dims=input_shape,
                 kernel_size=kernel_size,
-                final_activation="tanh",
+                final_activation=final_activation,
                 kernel_regularizer=kernel_regularizer,
                 kernel_initializer=kernel_initializer)
     else:
