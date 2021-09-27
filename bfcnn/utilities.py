@@ -339,15 +339,21 @@ def build_gatenet_model(
     for i in range(no_layers):
         previous_s_layer = s_layer
         previous_g_layer = g_layer
+        previous_s_layer_plus = \
+            keras.layers.Concatenate()([previous_s_layer, input_layer_bn])
+        previous_g_layer_plus = \
+            keras.layers.Concatenate()([previous_g_layer, input_layer_bn])
         s_layer = \
-            keras.layers.DepthwiseConv2D(**depth_conv_params)(previous_s_layer)
+            keras.layers.DepthwiseConv2D(**depth_conv_params)(previous_s_layer_plus)
         g_layer = \
-            keras.layers.DepthwiseConv2D(**depth_conv_params)(previous_g_layer)
+            keras.layers.DepthwiseConv2D(**depth_conv_params)(previous_g_layer_plus)
+
         if use_bn:
             s_layer = \
                 keras.layers.BatchNormalization(**bn_params)(s_layer)
             g_layer = \
                 keras.layers.BatchNormalization(**bn_params)(g_layer)
+
         s_layer = \
             keras.layers.Conv2D(**intermediate_conv_params)(s_layer)
         g_layer = \
@@ -380,10 +386,10 @@ def build_gatenet_model(
 
     # --- output to original channels
     output_layer = \
-        keras.layers.Concatenate()([s_layer, input_layer_bn])
+        keras.layers.Conv2D(**final_conv_params)(s_layer)
 
     output_layer = \
-        keras.layers.Conv2D(**final_conv_params)(output_layer)
+        keras.layers.Add()([output_layer, input_layer])
 
     return keras.Model(
         name=name,
