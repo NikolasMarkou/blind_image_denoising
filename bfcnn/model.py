@@ -15,7 +15,13 @@ from .custom_logger import logger
 
 
 def model_builder(
-        config: Dict) -> keras.Model:
+        config: Dict) -> Tuple[keras.Model, keras.Model, keras.Model]:
+    """
+    Reads a configuration and returns 3 models,
+
+    :param config: configuration dictionary
+    :return: denoiser model, normalize model, denormalize model
+    """
     logger.info("building model with config [{0}]".format(config))
 
     # --- argument parsing
@@ -46,20 +52,8 @@ def model_builder(
             min_value=min_value,
             max_value=max_value)
 
-    # --- connect the parts of the model
-    # setup input
-    model_input = \
-        keras.Input(
-            shape=input_shape,
-            name="input_tensor")
-    x = model_input
-    # add normalize cap
-    if normalize_denormalize:
-        x = model_normalize(x)
-
-    # add model
     if model_type == "resnet":
-        model = \
+        model_denoise = \
             build_resnet_model(
                 use_bn=batchnorm,
                 filters=filters,
@@ -70,7 +64,7 @@ def model_builder(
                 kernel_regularizer=kernel_regularizer,
                 kernel_initializer=kernel_initializer)
     elif model_type == "gatenet":
-        model = \
+        model_denoise = \
             build_gatenet_model(
                 use_bn=batchnorm,
                 filters=filters,
@@ -83,7 +77,20 @@ def model_builder(
     else:
         raise ValueError(
             "don't know how to build model [{0}]".format(model_type))
-    x = model(x)
+
+    # --- connect the parts of the model
+    # setup input
+    model_input = \
+        keras.Input(
+            shape=input_shape,
+            name="input_tensor")
+    x = model_input
+    # add normalize cap
+    if normalize_denormalize:
+        x = model_normalize(x)
+
+    # denoise image
+    x = model_denoise(x)
 
     # uplift a bit because of tanh saturation
     if output_multiplier != 1.0:
@@ -94,9 +101,14 @@ def model_builder(
         x = model_denormalize(x)
 
     # --- wrap model
-    return \
+    model_denoise = \
         keras.Model(
             inputs=model_input,
             outputs=x)
+
+    return \
+        model_denoise, \
+        model_normalize, \
+        model_denormalize
 
 # ---------------------------------------------------------------------

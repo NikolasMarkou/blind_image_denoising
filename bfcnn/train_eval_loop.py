@@ -75,11 +75,12 @@ def train_loop(
     config = load_config(pipeline_config_path)
 
     # --- build the model
-    model = model_builder(config=config["model"])
+    model_denoise, model_normalize, model_denormalize = \
+        model_builder(config=config["model"])
     # summary of model
-    model.summary(print_fn=logger.info)
+    model_denoise.summary(print_fn=logger.info)
     # save model so we can visualize it easier
-    model.save(os.path.join(model_dir, "model.h5"))
+    model_denoise.save(os.path.join(model_dir, "model_denoise.h5"))
 
     # --- build dataset
     dataset_res = dataset_builder(config=config["dataset"])
@@ -117,10 +118,12 @@ def train_loop(
     with summary_writer.as_default():
         checkpoint = \
             tf.train.Checkpoint(
-                model=model,
                 step=global_step,
                 epoch=global_epoch,
-                optimizer=optimizer)
+                optimizer=optimizer,
+                model_denoise=model_denoise,
+                model_normalize=model_normalize,
+                model_denormalize=model_denormalize)
         manager = \
             tf.train.CheckpointManager(
                 checkpoint=checkpoint,
@@ -129,7 +132,8 @@ def train_loop(
         status =\
             checkpoint.restore(manager.latest_checkpoint)\
                 .expect_partial()
-        trainable_weights = model.trainable_weights
+        trainable_weights = \
+            model_denoise.trainable_weights
 
         for epoch in range(int(global_epoch), int(epochs), 1):
             logger.info("epoch: {0}, step: {1}".format(epoch, int(global_step)))
@@ -142,8 +146,10 @@ def train_loop(
                 input_batch, noisy_batch = \
                     augmentation_fn(input_batch)
 
-                input_batch = (input_batch / 255.0) - 0.5
-                noisy_batch = (noisy_batch / 255.0) - 0.5
+                input_batch = \
+                    model_normalize(input_batch, training=False)
+                noisy_batch = \
+                    model_normalize(noisy_batch, training=False)
 
                 # Open a GradientTape to record the operations run
                 # during the forward pass, which enables auto-differentiation.
@@ -153,13 +159,20 @@ def train_loop(
                     # to its inputs are going to be recorded
                     # on the GradientTape.
                     prediction_batch = \
-                        model(noisy_batch, training=True)
+                        model_denoise(noisy_batch, training=True)
+
+                    input_batch = \
+                        model_denormalize(input_batch)
+                    noisy_batch = \
+                        model_denormalize(noisy_batch)
+                    prediction_batch = \
+                        model_denormalize(prediction_batch)
 
                     # compute the loss value for this mini-batch
                     loss_map = loss_fn(
-                        model_losses=model.losses,
                         input_batch=input_batch,
-                        prediction_batch=prediction_batch)
+                        prediction_batch=prediction_batch,
+                        model_losses=model_denoise.losses,)
 
                     # Use the gradient tape to automatically retrieve
                     # the gradients of the trainable variables

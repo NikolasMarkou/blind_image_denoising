@@ -63,11 +63,11 @@ def merge_iterators(*iterators):
 
 def layer_denormalize(args):
     """
-    Convert input [-1, +1] to [v0, v1] range
+    Convert input [-0.5, +0.5] to [v0, v1] range
     """
-    y, v0, v1 = args
-    y_clip = K.clip(y, min_value=-1.0, max_value=+1.0)
-    return 0.5 * (y_clip + 1.0) * (v1 - v0) + v0
+    y, v_min, v_max = args
+    y_clip = K.clip(y, min_value=-0.5, max_value=+0.5)
+    return (y_clip + 0.5) * (v_max - v_min) + v_min
 
 
 # ---------------------------------------------------------------------
@@ -75,11 +75,11 @@ def layer_denormalize(args):
 
 def layer_normalize(args):
     """
-    Convert input from [v0, v1] to [-1, +1] range
+    Convert input from [v0, v1] to [-0.5, +0.5] range
     """
-    y, v0, v1 = args
-    y_clip = K.clip(y, min_value=v0, max_value=v1)
-    return 2.0 * (y_clip - v0) / (v1 - v0) - 1.0
+    y, v_min, v_max = args
+    y_clip = K.clip(y, min_value=v_min, max_value=v_max)
+    return (y_clip - v_min) / (v_max - v_min) - 0.5
 
 
 # ---------------------------------------------------------------------
@@ -100,7 +100,7 @@ def build_normalize_model(
     :return:
     """
     model_input = keras.Input(shape=input_dims)
-    # --- normalize input from [min_value, max_value] to [-1.0, +1.0]
+    # --- normalize input from [min_value, max_value] to [-0.5, +0.5]
     model_output = \
         keras.layers.Lambda(layer_normalize, trainable=False)([
             model_input, float(min_value), float(max_value)])
@@ -130,7 +130,7 @@ def build_denormalize_model(
     :return:
     """
     model_input = keras.Input(shape=input_dims)
-    # --- normalize input from [min_value, max_value] to [-1.0, +1.0]
+    # --- normalize input from [min_value, max_value] to [-0.5, +0.5]
     model_output = \
         keras.layers.Lambda(layer_denormalize, trainable=False)([
             model_input, float(min_value), float(max_value)])

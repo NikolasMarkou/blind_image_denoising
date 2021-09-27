@@ -24,8 +24,8 @@
     "visualization_every": 100,
     "optimizer": {
       "decay_rate": 0.9,
-      "decay_steps": 12000,
-      "learning_rate": 0.01,
+      "decay_steps": 24000,
+      "learning_rate": 0.001,
       "gradient_clipping_by_norm": 1.0
     }
   },

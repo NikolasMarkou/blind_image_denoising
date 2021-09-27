@@ -39,8 +39,8 @@ def loss_function_builder(
         mean_absolute_error_loss = 0.0
         if input_batch is not None and prediction_batch is not None:
             diff = tf.abs(input_batch - prediction_batch)
-            diff_sum = tf.reduce_mean(diff, axis=[1, 2, 3])
-            mean_absolute_error_loss = tf.reduce_mean(diff_sum, axis=[0])
+            diff = tf.reduce_mean(diff, axis=[1, 2, 3])
+            mean_absolute_error_loss = tf.reduce_mean(diff, axis=[0])
 
         # --- regularization error
         regularization_loss = 0.0

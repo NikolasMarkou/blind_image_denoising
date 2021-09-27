@@ -26,21 +26,21 @@ def visualize(
     tf.summary.image(
         name="input",
         step=global_step,
-        data=input_batch + 0.5,
+        data=input_batch / 255,
         max_outputs=visualization_number)
 
     # --- noisy
     tf.summary.image(
         name="noisy",
         step=global_step,
-        data=noisy_batch + 0.5,
+        data=noisy_batch / 255,
         max_outputs=visualization_number)
 
     # --- prediction
     tf.summary.image(
         name="prediction",
         step=global_step,
-        data=prediction_batch + 0.5,
+        data=prediction_batch / 255,
         max_outputs=visualization_number)
 
 # ---------------------------------------------------------------------

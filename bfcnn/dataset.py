@@ -42,8 +42,10 @@ def dataset_builder(
     random_downsample = config.get("random_downsample", False)
     random_left_right = config.get("random_left_right", False)
     multiplicative_noise = config.get("multiplicative_noise", [0.01])
-    kernels = [(3, 3), (5, 5), (7, 7)]
-    sigmas = [1, 2, 3]
+    # blurring variables
+    sigmas = [1, 2]
+    kernels = [(3, 3), (5, 5)]
+    choice_index = [i for i in range(len(kernels))]
 
     # --- define generator function from directory
     if directory is not None:
@@ -72,7 +74,7 @@ def dataset_builder(
         # --- blur to embed noise
         if random_blur:
             if np.random.choice([True, False]):
-                choice = np.random.choice([0, 1, 2])
+                choice = np.random.choice(choice_index)
                 kernel = kernels[int(choice)]
                 sigma = sigmas[int(choice)]
                 noisy_batch = \
@@ -80,15 +82,6 @@ def dataset_builder(
                         image=noisy_batch,
                         sigma=sigma,
                         filter_shape=kernel)
-
-        # --- additive noise (independent)
-        noise_std = np.random.choice(additive_noise)
-        noisy_batch = \
-            noisy_batch + \
-            tf.random.normal(
-                mean=0,
-                stddev=noise_std,
-                shape=tf.shape(noisy_batch))
 
         # --- flip left right
         if random_left_right:
@@ -133,13 +126,35 @@ def dataset_builder(
                         interpolation="bilinear")
 
         # --- random downsample
-        # TODO
+        if random_downsample:
+            if np.random.choice([True, False]):
+                input_batch = \
+                    tf.nn.max_pool(
+                        input_batch,
+                        ksize=2,
+                        strides=1,
+                        padding="SAME")
+                noisy_batch = \
+                    tf.nn.max_pool(
+                        noisy_batch,
+                        ksize=2,
+                        strides=1,
+                        padding="SAME")
 
         # --- random invert colors
         if random_invert:
             if np.random.choice([True, False]):
                 input_batch = max_value - (input_batch - min_value)
                 noisy_batch = max_value - (noisy_batch - min_value)
+
+        # --- additive noise (independent)
+        noise_std = np.random.choice(additive_noise)
+        noisy_batch = \
+            noisy_batch + \
+            tf.random.normal(
+                mean=0,
+                stddev=noise_std,
+                shape=tf.shape(noisy_batch))
 
         # --- clip values within boundaries
         if clip_value:
