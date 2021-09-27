@@ -379,6 +379,9 @@ def build_gatenet_model(
     output_layer = \
         keras.layers.Conv2D(**final_conv_params)(s_layer)
 
+    output_layer = \
+        keras.layers.Add()([output_layer, model_input])
+
     return keras.Model(
         name=name,
         inputs=model_input,
