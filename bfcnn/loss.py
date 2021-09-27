@@ -26,6 +26,7 @@ def loss_function_builder(
     def loss_function(
             input_batch,
             prediction_batch,
+            noisy_batch=None,
             model_losses=None) -> Dict:
         """
         The loss function of the depth prediction model
@@ -35,12 +36,22 @@ def loss_function_builder(
         :param: model_losses: weight/regularization losses
         :return loss
         """
-        # --- mean absolute error
+        # --- mean absolute error from prediction
         mean_absolute_error_loss = 0.0
         if input_batch is not None and prediction_batch is not None:
             diff = tf.abs(input_batch - prediction_batch)
             diff = tf.reduce_mean(diff, axis=[1, 2, 3])
             mean_absolute_error_loss = tf.reduce_mean(diff, axis=[0])
+
+        # --- mean absolute error from noisy
+        mean_absolute_error_noise = 0.0
+        if input_batch is not None and noisy_batch is not None:
+            diff = tf.abs(input_batch - noisy_batch)
+            diff = tf.reduce_mean(diff, axis=[1, 2, 3])
+            mean_absolute_error_noise = tf.reduce_mean(diff, axis=[0])
+
+        mean_absolute_error_improvement = \
+            mean_absolute_error_noise - mean_absolute_error_loss
 
         # --- regularization error
         regularization_loss = 0.0
@@ -55,7 +66,9 @@ def loss_function_builder(
         return {
             "mean_total_loss": mean_total_loss,
             "regularization_loss": regularization_loss,
-            "mean_absolute_error_loss": mean_absolute_error_loss,
+            "mae_loss": mean_absolute_error_loss,
+            "mae_noise": mean_absolute_error_noise,
+            "mae_improvement": mean_absolute_error_improvement
         }
 
     return loss_function

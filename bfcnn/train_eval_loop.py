@@ -171,8 +171,9 @@ def train_loop(
                     # compute the loss value for this mini-batch
                     loss_map = loss_fn(
                         input_batch=input_batch,
+                        noisy_batch=noisy_batch,
                         prediction_batch=prediction_batch,
-                        model_losses=model_denoise.losses,)
+                        model_losses=model_denoise.losses)
 
                     # Use the gradient tape to automatically retrieve
                     # the gradients of the trainable variables
@@ -190,8 +191,10 @@ def train_loop(
                     # --- add loss summaries for tensorboard
                     for name, key in [
                         ("loss/total", "mean_total_loss"),
-                        ("loss/mae", "mean_absolute_error_loss"),
-                        ("loss/regularization", "regularization_loss")
+                        ("loss/mae", "mae_loss"),
+                        ("loss/regularization", "regularization_loss"),
+                        ("quality/mae_noise", "mae_noise"),
+                        ("quality/mae_improvement", "mae_improvement")
                     ]:
                         tf.summary.scalar(
                             name,
