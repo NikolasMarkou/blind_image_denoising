@@ -323,10 +323,13 @@ def build_gatenet_model(
     del final_conv_params["kernel_regularizer"]
 
     # --- set input
-    model_input = keras.Input(shape=input_dims)
+    input_layer = \
+        keras.Input(shape=input_dims)
+    input_layer_bn = \
+        keras.layers.BatchNormalization(**bn_params)(input_layer)
 
     # --- add base layer
-    x = keras.layers.Conv2D(**conv_params)(model_input)
+    x = keras.layers.Conv2D(**conv_params)(input_layer_bn)
     if use_bn:
         x = keras.layers.BatchNormalization(**bn_params)(x)
 
@@ -377,14 +380,14 @@ def build_gatenet_model(
 
     # --- output to original channels
     output_layer = \
-        keras.layers.Conv2D(**final_conv_params)(s_layer)
+        keras.layers.Concatenate()([s_layer, input_layer_bn])
 
     output_layer = \
-        keras.layers.Add()([output_layer, model_input])
+        keras.layers.Conv2D(**final_conv_params)(output_layer)
 
     return keras.Model(
         name=name,
-        inputs=model_input,
+        inputs=input_layer,
         outputs=output_layer)
 
 
