@@ -353,11 +353,14 @@ def build_gatenet_model(
                 keras.layers.BatchNormalization(**bn_params)(s_layer)
             g_layer = \
                 keras.layers.BatchNormalization(**bn_params)(g_layer)
-
         s_layer = \
             keras.layers.Concatenate()([s_layer, g_layer])
         g_layer = \
             keras.layers.Concatenate()([g_layer, input_layer_bn])
+        s_layer = \
+            keras.layers.Conv2D(**intermediate_conv_params)(s_layer)
+        g_layer = \
+            keras.layers.Conv2D(**intermediate_conv_params)(g_layer)
 
         # compute activation per channel
         # (needs to be in convolutions so it can be reshaped)
