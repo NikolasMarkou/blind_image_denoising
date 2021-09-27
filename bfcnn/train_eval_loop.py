@@ -142,6 +142,9 @@ def train_loop(
                 input_batch, noisy_batch = \
                     augmentation_fn(input_batch)
 
+                input_batch = (input_batch - 128) / 255
+                noisy_batch = (noisy_batch - 128) / 255
+
                 # Open a GradientTape to record the operations run
                 # during the forward pass, which enables auto-differentiation.
                 with tf.GradientTape() as tape:

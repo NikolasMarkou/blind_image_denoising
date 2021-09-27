@@ -39,9 +39,11 @@ def dataset_builder(
     random_invert = config.get("random_invert", False)
     random_up_down = config.get("random_up_down", False)
     additive_noise = config.get("additive_noise", [0.1])
+    random_downsample = config.get("random_downsample", False)
     random_left_right = config.get("random_left_right", False)
     multiplicative_noise = config.get("multiplicative_noise", [0.01])
     kernels = [(3, 3), (5, 5), (7, 7)]
+    sigmas = [1, 2, 3]
 
     # --- define generator function from directory
     if directory is not None:
@@ -72,9 +74,11 @@ def dataset_builder(
             if np.random.choice([True, False]):
                 kernel = np.random.choice([0, 1, 2])
                 kernel = kernels[int(kernel)]
+                sigma = sigmas[int(kernel)]
                 noisy_batch = \
                     tfa.image.gaussian_filter2d(
                         image=noisy_batch,
+                        sigma=sigma,
                         filter_shape=kernel)
 
         # --- additive noise (independent)
@@ -127,6 +131,9 @@ def dataset_builder(
                         fill_value=0,
                         fill_mode="constant",
                         interpolation="bilinear")
+
+        # --- random downsample
+        # TODO
 
         # --- random invert colors
         if random_invert:
