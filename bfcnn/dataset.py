@@ -72,9 +72,9 @@ def dataset_builder(
         # --- blur to embed noise
         if random_blur:
             if np.random.choice([True, False]):
-                kernel = np.random.choice([0, 1, 2])
-                kernel = kernels[int(kernel)]
-                sigma = sigmas[int(kernel)]
+                choice = np.random.choice([0, 1, 2])
+                kernel = kernels[int(choice)]
+                sigma = sigmas[int(choice)]
                 noisy_batch = \
                     tfa.image.gaussian_filter2d(
                         image=noisy_batch,
