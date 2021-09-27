@@ -28,7 +28,7 @@ def model_builder(
     batchnorm = config.get("batchnorm", True)
     kernel_size = config.get("kernel_size", 3)
     output_multiplier = config.get("output_multiplier", 1.0)
-    final_activation = config.get("final_activation", "tanh")
+    final_activation = config.get("final_activation", "linear")
     kernel_regularizer = config.get("kernel_regularizer", "l1")
     normalize_denormalize = config.get("normalize_denormalize", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
