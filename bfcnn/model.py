@@ -82,7 +82,8 @@ def model_builder(
     x = model(x)
 
     # uplift a bit because of tanh saturation
-    x = x * output_multiplier
+    if output_multiplier != 1.0:
+        x = x * output_multiplier
 
     # add denormalize cap
     if normalize_denormalize:
