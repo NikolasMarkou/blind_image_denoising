@@ -53,7 +53,8 @@ def loss_function_builder(
                 tf.sqrt(
                     tf.reduce_mean(
                         tf.square(diff - diff_mean),
-                        axis=[1, 2])
+                        axis=[1, 2],
+                        keepdims=True)
                 )
             diff_relative = \
                 tf.square(diff - diff_mean) / (diff_sigma + 0.00001)
