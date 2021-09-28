@@ -50,9 +50,9 @@ def loss_function_builder(
             diff = tf.abs(input_batch - prediction_batch)
             diff_min = tf.reduce_min(diff, axis=[1, 2], keepdims=True)
             diff_mean = tf.reduce_mean(diff, axis=[1, 2], keepdims=True)
-            diff_relative = (diff - diff_min) / (diff_mean + 0.00001)
+            diff_relative = 255 * ((diff - diff_min) / (diff_mean + 0.00001))
             diff_relative = \
-                tf.reduce_sum(diff_relative, axis=[1, 2, 3])
+                tf.reduce_mean(diff_relative, axis=[1, 2, 3])
             mean_relative_error_loss = \
                 tf.reduce_mean(diff_relative, axis=[0])
 
