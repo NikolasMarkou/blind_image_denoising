@@ -49,10 +49,12 @@ def loss_function_builder(
         if input_batch is not None and prediction_batch is not None:
             diff = tf.abs(input_batch - prediction_batch)
             diff_max = tf.reduce_max(diff, axis=[1, 2], keepdims=True)
-            diff_div_max = \
-                tf.reduce_mean(255 * (diff / (diff_max + 0.0001)), axis=[1, 2, 3])
+            diff_mean = tf.reduce_mean(diff, axis=[1, 2], keepdims=True)
+            diff_relative = (diff - diff_mean) / (diff_max - diff_mean + 0.00001)
+            diff_relative = \
+                tf.reduce_sum(diff_relative, axis=[1, 2, 3])
             mean_relative_error_loss = \
-                tf.reduce_mean(diff_div_max, axis=[0])
+                tf.reduce_mean(diff_relative, axis=[0])
 
         # --- mean absolute error from noisy
         mean_absolute_error_noise = 0.0
