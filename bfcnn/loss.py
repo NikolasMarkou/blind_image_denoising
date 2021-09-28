@@ -21,6 +21,7 @@ def loss_function_builder(
     """
     # controls how we discount each level
     mae_multiplier = config.get("mae_multiplier", 1.0)
+    mre_multiplier = config.get("mre_multiplier", 1.0)
     regularization_multiplier = config.get("regularization", 1.0)
 
     def loss_function(
@@ -43,6 +44,15 @@ def loss_function_builder(
             diff = tf.reduce_mean(diff, axis=[1, 2, 3])
             mean_absolute_error_loss = tf.reduce_mean(diff, axis=[0])
 
+        # --- mean relative error from prediction
+        mean_relative_error_loss = 0.0
+        if input_batch is not None and prediction_batch is not None:
+            diff = tf.abs(input_batch - prediction_batch)
+            diff_mean = tf.reduce_mean(diff, axis=[1, 2, 3])
+            diff_max = tf.reduce_max(diff, axis=[1, 2, 3])
+            mean_relative_error_loss = \
+                tf.reduce_mean(255.0 * diff_mean / (diff_max + 0.0001), axis=[0])
+
         # --- mean absolute error from noisy
         mean_absolute_error_noise = 0.0
         if input_batch is not None and noisy_batch is not None:
@@ -61,13 +71,15 @@ def loss_function_builder(
         # --- add up loss
         mean_total_loss = \
             mean_absolute_error_loss * mae_multiplier + \
-            regularization_loss * regularization_multiplier
+            regularization_loss * regularization_multiplier + \
+            mean_relative_error_loss * mre_multiplier
 
         return {
             "mean_total_loss": mean_total_loss,
-            "regularization_loss": regularization_loss,
             "mae_loss": mean_absolute_error_loss,
+            "mre_loss": mean_relative_error_loss,
             "mae_noise": mean_absolute_error_noise,
+            "regularization_loss": regularization_loss,
             "mae_improvement": mean_absolute_error_improvement
         }
 
