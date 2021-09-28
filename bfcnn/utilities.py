@@ -325,10 +325,9 @@ def build_gatenet_model(
     # --- set input
     input_layer = \
         keras.Input(shape=input_dims)
-    input_layer_bn = \
-        keras.layers.BatchNormalization(**bn_params)(input_layer)
+
     # --- add base layer
-    x = keras.layers.Conv2D(**conv_params)(input_layer_bn)
+    x = keras.layers.Conv2D(**conv_params)(input_layer)
 
     # --- add signal/gate resnet layers
     s_layer = x
@@ -336,41 +335,47 @@ def build_gatenet_model(
     for i in range(no_layers):
         previous_s_layer = s_layer
         previous_g_layer = g_layer
+
         # --- normalize
         if use_bn:
             s_layer = \
                 keras.layers.BatchNormalization(**bn_params)(previous_s_layer)
             g_layer = \
                 keras.layers.BatchNormalization(**bn_params)(previous_g_layer)
+
         # --- add extra layers
-        s_layer = \
-            keras.layers.Concatenate()([s_layer, input_layer_bn])
         g_layer = \
             keras.layers.Concatenate()([g_layer, s_layer])
+        s_layer = \
+            keras.layers.Concatenate()([s_layer, input_layer])
+
         # --- expand
         s_layer = \
             keras.layers.DepthwiseConv2D(**depth_conv_params)(s_layer)
         g_layer = \
             keras.layers.DepthwiseConv2D(**depth_conv_params)(g_layer)
+
         # --- normalize
         if use_bn:
             s_layer = \
                 keras.layers.BatchNormalization(**bn_params)(s_layer)
             g_layer = \
                 keras.layers.BatchNormalization(**bn_params)(g_layer)
+
+        # --- compress
         s_layer = \
             keras.layers.Conv2D(**intermediate_conv_params)(s_layer)
         g_layer = \
             keras.layers.Conv2D(**intermediate_conv_params)(g_layer)
 
-        # compute activation per channel
+        # --- compute activation per channel
         # (needs to be in convolutions so it can be reshaped)
         g_layer_activation = \
             keras.layers.Conv2D(**gate_conv_params)(g_layer)
         g_layer_activation = \
             keras.layers.GlobalAvgPool2D()(g_layer_activation)
         g_layer_activation = \
-            keras.layers.Activation("sigmoid")(g_layer_activation)
+            keras.layers.Activation("sigmoid")(g_layer_activation * 4)
 
         # mask channels
         s_layer = \
@@ -478,7 +483,7 @@ def mobilenet_v2_block(
         keras.layers.BatchNormalization(
             momentum=bn_momentum,
             epsilon=bn_epsilon)(tmp)
-    return tm
+    return tmp
 
 
 # ==============================================================================
