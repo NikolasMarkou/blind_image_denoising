@@ -342,6 +342,11 @@ def build_gatenet_model(
                 keras.layers.BatchNormalization(**bn_params)(previous_s_layer)
             g_layer = \
                 keras.layers.BatchNormalization(**bn_params)(previous_g_layer)
+        # --- add extra layers
+        s_layer = \
+            keras.layers.Concatenate()([s_layer, input_layer_bn])
+        g_layer = \
+            keras.layers.Concatenate()([g_layer, s_layer])
         # --- expand
         s_layer = \
             keras.layers.DepthwiseConv2D(**depth_conv_params)(s_layer)
@@ -353,10 +358,6 @@ def build_gatenet_model(
                 keras.layers.BatchNormalization(**bn_params)(s_layer)
             g_layer = \
                 keras.layers.BatchNormalization(**bn_params)(g_layer)
-        s_layer = \
-            keras.layers.Concatenate()([s_layer, g_layer])
-        g_layer = \
-            keras.layers.Concatenate()([g_layer, input_layer_bn])
         s_layer = \
             keras.layers.Conv2D(**intermediate_conv_params)(s_layer)
         g_layer = \
