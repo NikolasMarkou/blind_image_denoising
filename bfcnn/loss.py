@@ -49,7 +49,8 @@ def loss_function_builder(
         if input_batch is not None and prediction_batch is not None:
             diff = tf.abs(input_batch - prediction_batch)
             diff_max = tf.reduce_max(diff, axis=[1, 2], keepdims=True)
-            diff_div_max = tf.reduce_mean(diff / (diff_max + 1.0), axis=[1, 2, 3])
+            diff_div_max = \
+                tf.reduce_mean(255 * (diff / (diff_max + 0.0001)), axis=[1, 2, 3])
             mean_relative_error_loss = \
                 tf.reduce_mean(diff_div_max, axis=[0])
 
