@@ -52,7 +52,7 @@ def loss_function_builder(
             diff_sigma = tf.sqrt(tf.reduce_mean(tf.square(diff - diff_mean)))
             diff_relative = (tf.nn.relu(diff - diff_mean) / (diff_sigma + 0.001))
             diff_relative = \
-                tf.reduce_mean(diff_relative, axis=[1, 2, 3])
+                255 * tf.reduce_mean(diff_relative, axis=[1, 2, 3])
             mean_relative_error_loss = \
                 tf.reduce_mean(diff_relative, axis=[0])
 
