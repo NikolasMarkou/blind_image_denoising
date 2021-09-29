@@ -1,10 +1,8 @@
 import copy
-import json
 import keras
 import itertools
 import numpy as np
-from typing import List
-import tensorflow as tf
+from typing import List, Tuple
 from keras import backend as K
 
 # ---------------------------------------------------------------------
@@ -14,6 +12,104 @@ from keras import backend as K
 
 from .custom_logger import logger
 
+# ---------------------------------------------------------------------
+
+
+def normal_empirical_cdf(
+        target_cdf: float = 0.5,
+        mean: float = 0.0,
+        sigma: float = 1.0,
+        samples: int = 1000000,
+        bins: int = 1000):
+    """
+    computes the value x for target_cdf
+    """
+    # --- argument checking
+    if target_cdf <= 0.0001 or target_cdf >= 0.9999:
+        raise ValueError("target_cdf [{0}] must be between 0 and 1".format(target_cdf))
+    if sigma <= 0:
+        raise ValueError("sigma [{0}] must be > 0".format(sigma))
+
+    # --- computer empirical cumulative sum
+    z = \
+        np.random.normal(
+            loc=mean,
+            scale=sigma,
+            size=samples)
+    h, x1 = np.histogram(z, bins=bins, density=True)
+    dx = x1[1] - x1[0]
+    f1 = np.cumsum(h) * dx
+
+    # --- find the proper bin
+    for i in range(bins):
+        if f1[i] >= target_cdf:
+            if i == 0:
+                return x1[i]
+            return x1[i]
+
+    return -1
+
+# ---------------------------------------------------------------------
+
+
+def conv2d_sparse(
+        input_layer,
+        sparsity: float = 0.5,
+        filters: int = 32,
+        padding: str = "same",
+        strides: Tuple[int, int] = (1, 1),
+        kernel_size: Tuple[int, int] = (3, 3),
+        kernel_regularizer: str = "l1",
+        kernel_initializer: str = "glorot_normal"):
+    """
+    Create a conv2d layer that is always sparse by %x percent
+    This works by applying relu with a given threshold calculated
+    by the normal distribution (Cumulative distribution function)
+    that is forced by the batch normalization
+
+    :param input_layer:
+    :param sparsity: sparsity of the results
+    :param filters:
+    :param padding:
+    :param strides:
+    :param kernel_size:
+    :param kernel_regularizer:
+    :param kernel_initializer:
+    :return: sparse convolution results
+    """
+    # --- argument checking
+    if sparsity is None or \
+            not isinstance(sparsity, float) or \
+            (sparsity <= 0.05 or sparsity >= 0.95):
+        raise ValueError(f"sparsity [{sparsity}] must be between 0.05 and 0.95")
+
+    # --- setup parameters
+    # convolution parameters
+    conv2d_params = dict(
+        filters=filters,
+        strides=strides,
+        padding=padding,
+        use_bias=False,
+        activation="linear",
+        kernel_size=kernel_size,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer)
+    # batchnorm parameters
+    bn_params = dict(
+        # must be true so it is always centered (mean 0)
+        center=True,
+        # must be true so variance is always 1 (sigma 1)
+        scale=True,
+        momentum=0.999,
+        epsilon=1e-4)
+    # compute threshold for target sparsity
+    threshold = normal_empirical_cdf(sparsity)
+
+    # --- computation is conv2d - batchnorm - relu with custom threshold
+    x = keras.layers.Conv2D(**conv2d_params)(input_layer)
+    x = keras.layers.BatchNormalization(**bn_params)(x)
+    x = keras.layers.ReLU(threshold=threshold)(x)
+    return x
 
 # ---------------------------------------------------------------------
 
@@ -202,7 +298,7 @@ def build_resnet_model(
         depthwise_regularizer=kernel_regularizer,
         depthwise_initializer=kernel_initializer
     )
-    # intermediate convs
+    # intermediate conv
     intermediate_conv_params = copy.deepcopy(conv_params)
     intermediate_conv_params["kernel_size"] = 1
 
@@ -311,7 +407,7 @@ def build_gatenet_model(
         depthwise_regularizer=kernel_regularizer,
         depthwise_initializer=kernel_initializer
     )
-    # intermediate convs
+    # intermediate conv
     intermediate_conv_params = copy.deepcopy(conv_params)
     intermediate_conv_params["kernel_size"] = 1
 
