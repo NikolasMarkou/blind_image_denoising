@@ -440,16 +440,19 @@ def build_gatenet_model(
 
         # --- add extra layers
         if i == 0:
-            g_layer = previous_g_layer
             s_layer = previous_s_layer
+            g_layer = previous_g_layer
         else:
+            s_layer = \
+                keras.layers.Concatenate()([
+                    previous_s_layer,
+                    input_layer])
             g_layer = \
                 keras.layers.Concatenate()([
-                    previous_g_layer,
-                    keras.backend.stop_gradient(previous_s_layer)
+                    previous_s_layer,
+                    previous_g_layer
                 ])
-            s_layer = \
-                keras.layers.Concatenate()([previous_s_layer, input_layer])
+        g_layer = keras.backend.stop_gradient(g_layer)
 
         # --- expand
         s_layer = \
