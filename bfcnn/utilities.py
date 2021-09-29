@@ -398,7 +398,7 @@ def build_gatenet_model(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation="linear",
+        activation="relu",
         kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
@@ -471,7 +471,13 @@ def build_gatenet_model(
             keras.layers.Conv2D(**gate_conv_params)(g_layer)
         # similar to average but better for weight management
         g_layer_activation = \
-            keras.backend.sum(g_layer_activation, axis=[1, 2])
+            keras.layers.GlobalAvgPool2D()(g_layer_activation)
+        g_layer_activation = \
+            keras.layers.Dense(
+                units=filters,
+                use_bias=False,
+                kernel_regularizer=kernel_regularizer,
+                kernel_initializer=kernel_initializer)(g_layer_activation)
         g_layer_activation = \
             (keras.layers.Activation("tanh")(g_layer_activation * 2) + 1.0) / 2.0
 
