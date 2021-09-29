@@ -496,10 +496,11 @@ def build_gatenet_model(
             keras.layers.Multiply()([s_layer, g_layer_activation])
 
         # add skip connection
-        s_layer = \
-            keras.layers.Add()([previous_s_layer, s_layer])
-        g_layer = \
-            keras.layers.Add()([previous_g_layer, g_layer])
+        if i != 0:
+            s_layer = \
+                keras.layers.Add()([previous_s_layer, s_layer])
+            g_layer = \
+                keras.layers.Add()([previous_g_layer, g_layer])
 
     # --- output to original channels
     output_layer = \
