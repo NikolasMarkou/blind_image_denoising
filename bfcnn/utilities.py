@@ -473,7 +473,7 @@ def build_gatenet_model(
         g_layer_activation = \
             keras.layers.GlobalAvgPool2D()(g_layer_activation)
         g_layer_activation = \
-            keras.layers.Activation("tanh")(g_layer_activation * 2)
+            keras.layers.Activation("hard_sigmoid")(g_layer_activation * 4)
 
         # mask channels
         s_layer = \
