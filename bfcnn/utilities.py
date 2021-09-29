@@ -398,7 +398,7 @@ def build_gatenet_model(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation="relu",
+        activation="linear",
         kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
@@ -473,13 +473,7 @@ def build_gatenet_model(
         g_layer_activation = \
             keras.layers.GlobalAvgPool2D()(g_layer_activation)
         g_layer_activation = \
-            keras.layers.Dense(
-                units=filters,
-                use_bias=False,
-                kernel_regularizer=kernel_regularizer,
-                kernel_initializer=kernel_initializer)(g_layer_activation)
-        g_layer_activation = \
-            (keras.layers.Activation("tanh")(g_layer_activation * 2) + 1.0) / 2.0
+            keras.layers.Activation("tanh")(g_layer_activation * 2)
 
         # mask channels
         s_layer = \
