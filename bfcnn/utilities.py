@@ -55,6 +55,7 @@ def normal_empirical_cdf(
 def conv2d_sparse(
         input_layer,
         sparsity: float = 0.5,
+        negative_slope: float = 0.0,
         filters: int = 32,
         padding: str = "same",
         strides: Tuple[int, int] = (1, 1),
@@ -69,6 +70,7 @@ def conv2d_sparse(
 
     :param input_layer:
     :param sparsity: sparsity of the results
+    :param negative_slope: slope of values below the threshold (0 cuts them off)
     :param filters:
     :param padding:
     :param strides:
@@ -102,13 +104,17 @@ def conv2d_sparse(
         scale=True,
         momentum=0.999,
         epsilon=1e-4)
-    # compute threshold for target sparsity
-    threshold = normal_empirical_cdf(sparsity)
+    # relu params
+    relu_params = dict(
+        # compute threshold for target sparsity
+        threshold=normal_empirical_cdf(sparsity),
+        negative_slope=negative_slope
+    )
 
     # --- computation is conv2d - batchnorm - relu with custom threshold
     x = keras.layers.Conv2D(**conv2d_params)(input_layer)
     x = keras.layers.BatchNormalization(**bn_params)(x)
-    x = keras.layers.ReLU(threshold=threshold)(x)
+    x = keras.layers.ReLU(**relu_params)(x)
     return x
 
 # ---------------------------------------------------------------------
@@ -461,13 +467,12 @@ def build_gatenet_model(
             keras.layers.Conv2D(**intermediate_conv_params)(g_layer)
 
         # --- compute activation per channel
-        # (needs to be in convolutions so it can be reshaped)
         g_layer_activation = \
             keras.layers.Conv2D(**gate_conv_params)(g_layer)
+        # similar to average but better for weight management
         g_layer_activation = \
-            keras.layers.GlobalAvgPool2D()(g_layer_activation)
-        g_layer_activation = \
-            (keras.layers.Activation("tanh")(g_layer_activation * 2) + 1.0) / 2.0
+            keras.backend.sum(g_layer_activation, axis=[1, 2])
+        g_layer_activation = keras.activations.sigmoid(g_layer_activation)
 
         # mask channels
         s_layer = \
@@ -490,7 +495,6 @@ def build_gatenet_model(
         name=name,
         inputs=input_layer,
         outputs=output_layer)
-
 
 # ==============================================================================
 
