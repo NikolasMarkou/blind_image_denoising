@@ -125,22 +125,6 @@ def dataset_builder(
                         fill_mode="constant",
                         interpolation="bilinear")
 
-        # --- random downsample
-        if random_downsample:
-            if np.random.choice([True, False]):
-                input_batch = \
-                    tf.nn.max_pool(
-                        input_batch,
-                        ksize=2,
-                        strides=1,
-                        padding="SAME")
-                noisy_batch = \
-                    tf.nn.max_pool(
-                        noisy_batch,
-                        ksize=2,
-                        strides=1,
-                        padding="SAME")
-
         # --- random invert colors
         if random_invert:
             if np.random.choice([True, False]):
@@ -169,6 +153,16 @@ def dataset_builder(
                     noisy_batch,
                     clip_value_min=min_value,
                     clip_value_max=max_value)
+
+        # --- random downsample
+        if random_downsample:
+            if np.random.choice([True, False]):
+                noisy_batch = \
+                    tf.nn.max_pool(
+                        noisy_batch,
+                        ksize=3,
+                        strides=1,
+                        padding="SAME")
 
         return input_batch, noisy_batch
 

@@ -56,6 +56,7 @@ def conv2d_sparse(
         input_layer,
         sparsity: float = 0.5,
         negative_slope: float = 0.0,
+        rectify: bool = False,
         filters: int = 32,
         padding: str = "same",
         strides: Tuple[int, int] = (1, 1),
@@ -71,6 +72,7 @@ def conv2d_sparse(
     :param input_layer:
     :param sparsity: sparsity of the results
     :param negative_slope: slope of values below the threshold (0 cuts them off)
+    :param rectify: amplify signal to original magnitude
     :param filters:
     :param padding:
     :param strides:
@@ -112,10 +114,18 @@ def conv2d_sparse(
     )
 
     # --- computation is conv2d - batchnorm - relu with custom threshold
-    x = keras.layers.Conv2D(**conv2d_params)(input_layer)
-    x = keras.layers.BatchNormalization(**bn_params)(x)
-    x = keras.layers.ReLU(**relu_params)(x)
-    return x
+    conv_x = keras.layers.Conv2D(**conv2d_params)(input_layer)
+    bn_x = keras.layers.BatchNormalization(**bn_params)(conv_x)
+    relu_x = keras.layers.ReLU(**relu_params)(bn_x)
+
+    if rectify:
+        return \
+            keras.layers.Multiply()([
+                keras.backend.abs(relu_x),
+                keras.backend.stop_gradient(conv_x),
+                keras.backend.stop_gradient(keras.backend.sign(conv_x)),
+            ])
+    return relu_x
 
 # ---------------------------------------------------------------------
 
