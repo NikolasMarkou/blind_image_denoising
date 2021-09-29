@@ -47,8 +47,12 @@ def loss_function_builder(
         # --- mean relative error from prediction
         mean_relative_error_loss = 0.0
         if input_batch is not None and prediction_batch is not None:
-            diff = tf.abs(input_batch - prediction_batch)
-            diff_mean = tf.reduce_mean(diff, axis=[1, 2], keepdims=True)
+            diff = input_batch - prediction_batch
+            diff_mean = \
+                tf.reduce_mean(
+                    diff,
+                    axis=[1, 2],
+                    keepdims=True)
             diff_sigma = \
                 tf.sqrt(
                     tf.reduce_mean(
