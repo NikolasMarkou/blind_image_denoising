@@ -441,11 +441,12 @@ def build_gatenet_model(
         # --- add extra layers
         if i == 0:
             g_layer = previous_g_layer
+            s_layer = previous_s_layer
         else:
             g_layer = \
                 keras.layers.Concatenate()([previous_g_layer, previous_s_layer])
-        s_layer = \
-            keras.layers.Concatenate()([previous_s_layer, input_layer])
+            s_layer = \
+                keras.layers.Concatenate()([previous_s_layer, input_layer])
 
         # --- expand
         s_layer = \
@@ -468,8 +469,9 @@ def build_gatenet_model(
 
         # --- compute activation per channel
         g_layer_activation = \
-            keras.layers.Conv2D(**gate_conv_params)(g_layer)
-        # similar to average but better for weight management
+            keras.layers.BatchNormalization(**bn_params)(g_layer)
+        g_layer_activation = \
+            keras.layers.Conv2D(**gate_conv_params)(g_layer_activation)
         g_layer_activation = \
             keras.layers.GlobalAvgPool2D()(g_layer_activation)
         g_layer_activation = \
