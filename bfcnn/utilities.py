@@ -472,7 +472,8 @@ def build_gatenet_model(
         # similar to average but better for weight management
         g_layer_activation = \
             keras.backend.sum(g_layer_activation, axis=[1, 2])
-        g_layer_activation = keras.activations.sigmoid(g_layer_activation)
+        g_layer_activation = \
+            (keras.layers.Activation("tanh")(g_layer_activation * 2) + 1.0) / 2.0
 
         # mask channels
         s_layer = \
