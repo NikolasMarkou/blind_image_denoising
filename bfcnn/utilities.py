@@ -468,7 +468,7 @@ def build_gatenet_model(
         s_layer = \
             keras.layers.DepthwiseConv2D(**depth_conv_params)(s_layer)
         g_layer = \
-            keras.layers.DepthwiseConv2D(**depth_conv_params)(g_layer)
+            keras.layers.Conv2D(**conv_params)(g_layer)
 
         # --- normalize
         if use_bn:
@@ -481,13 +481,11 @@ def build_gatenet_model(
         s_layer = \
             keras.layers.Conv2D(**intermediate_conv_params)(s_layer)
         g_layer = \
-            keras.layers.Conv2D(**intermediate_conv_params)(g_layer)
+            keras.layers.Conv2D(**gate_conv_params)(g_layer)
 
         # --- compute activation per channel
         g_layer_activation = \
-            keras.layers.Conv2D(**gate_conv_params)(g_layer)
-        g_layer_activation = \
-            keras.layers.GlobalAvgPool2D()(g_layer_activation)
+            keras.layers.GlobalAvgPool2D()(g_layer)
         g_layer_activation = \
             (keras.layers.Activation("tanh")(g_layer_activation * 2) + 1.0) / 2.0
 
