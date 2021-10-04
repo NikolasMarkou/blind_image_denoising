@@ -528,7 +528,6 @@ def build_sparse_resnet_model(
     for i in range(no_layers):
         previous_layer = x
         x = keras.layers.BatchNormalization()(x)
-        x = keras.layers.Concatenate()([x, model_input])
         x = conv2d_sparse(x, **sparse_conv_params)
         x = conv2d_sparse(x, **dense_conv_params)
         x = keras.layers.Add()([previous_layer, x])
