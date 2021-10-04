@@ -502,7 +502,6 @@ def build_sparse_resnet_model(
         padding="same",
         strides=(1, 1),
         symmetric=True,
-        axis=[1, 2, 3],
         kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
@@ -515,7 +514,6 @@ def build_sparse_resnet_model(
         padding="same",
         strides=(1, 1),
         symmetric=True,
-        axis=[-1],
         kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
