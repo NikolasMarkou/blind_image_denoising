@@ -502,19 +502,21 @@ def build_sparse_resnet_model(
         padding="same",
         strides=(1, 1),
         symmetric=True,
+        axis=[1, 2, 3],
         kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
     dense_conv_params = dict(
-        threshold_sigma=0.5,
+        threshold_sigma=0.1,
         negative_slope=0.0,
         max_value=None,
         filters=filters,
         padding="same",
         strides=(1, 1),
         symmetric=True,
-        kernel_size=3,
+        axis=[-1],
+        kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
