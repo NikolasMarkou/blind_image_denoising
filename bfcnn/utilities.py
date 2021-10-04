@@ -94,9 +94,10 @@ def conv2d_sparse(
         input_layer,
         threshold_sigma: float = 1.0,
         negative_slope: float = 0.0,
-        max_value: float = 3.0,
+        max_value: float = None,
         symmetric: bool = True,
         axis: List[int] = [-1],
+        groups: int = 1,
         filters: int = 32,
         padding: str = "same",
         strides: Tuple[int, int] = (1, 1),
@@ -114,6 +115,8 @@ def conv2d_sparse(
     :param negative_slope: slope of values below the threshold (0 cuts them off)
     :param max_value: max allowed value
     :param symmetric: if true allow negative values else zero them off
+    :param axis: axis to perform batch norm (default is channels)
+    :param groups: groups to perform convolution in
     :param filters:
     :param padding:
     :param strides:
@@ -133,14 +136,16 @@ def conv2d_sparse(
     # --- setup parameters
     # convolution parameters
     conv2d_params = dict(
-        filters=filters,
-        strides=strides,
-        padding=padding,
+        groups=groups,
         use_bias=False,
+        filters=filters,
+        padding=padding,
+        strides=strides,
         activation="linear",
         kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer)
+        kernel_initializer=kernel_initializer
+    )
     # batchnorm parameters
     bn_params = dict(
         # must be true so it is always centered (mean 0)
@@ -148,8 +153,9 @@ def conv2d_sparse(
         # must be true so variance is always 1 (sigma 1)
         scale=True,
         axis=axis,
-        momentum=0.999,
-        epsilon=1e-4)
+        epsilon=1e-4,
+        momentum=0.999
+    )
     # relu params
     relu_params = dict(
         max_value=max_value,
@@ -172,7 +178,46 @@ def conv2d_sparse(
             ])
     else:
         x_result = keras.layers.ReLU(**relu_params)(x_bn)
+
     return x_result
+
+# ---------------------------------------------------------------------
+
+
+def sparse_dense_block(
+        input_layer,
+        filters: int = 32,
+        kernel_size: Tuple[int, int] = (3, 3),
+        kernel_regularizer: str = "l1",
+        kernel_initializer: str = "glorot_normal"):
+
+    x = input_layer
+
+    # --- sparse
+    x = \
+        conv2d_sparse(
+            input_layer=x,
+            filters=filters * 2,
+            kernel_size=kernel_size,
+            axis=[1, 2, 3],
+            symmetric=True,
+            threshold_sigma=1.0,
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer)
+
+    # --- dense
+    x = \
+        conv2d_sparse(
+            input_layer=x,
+            filters=filters,
+            kernel_size=(1, 1),
+            axis=[-1],
+            symmetric=False,
+            threshold_sigma=0.1,
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer)
+
+    return x
 
 # ---------------------------------------------------------------------
 
@@ -452,7 +497,7 @@ def build_sparse_resnet_model(
         kernel_initializer=kernel_initializer
     )
     dense_conv_params = dict(
-        threshold_sigma=0.05,
+        threshold_sigma=0.1,
         negative_slope=0.0,
         max_value=None,
         filters=filters,
@@ -482,6 +527,7 @@ def build_sparse_resnet_model(
     # --- add resnet layers
     for i in range(no_layers):
         previous_layer = x
+        x = keras.layers.BatchNormalization()(x)
         x = conv2d_sparse(x, **sparse_conv_params)
         x = conv2d_sparse(x, **dense_conv_params)
         x = keras.layers.Add()([previous_layer, x])
