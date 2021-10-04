@@ -9,6 +9,7 @@ __license__ = "None"
 # ---------------------------------------------------------------------
 
 import tensorflow as tf
+from tensorflow import keras
 from typing import List, Dict, Callable
 
 # ---------------------------------------------------------------------
@@ -20,6 +21,7 @@ def loss_function_builder(
     Constructs the loss function of the depth prediction model
     """
     # controls how we discount each level
+    hinge = config.get("hinge", 1.0)
     mae_multiplier = config.get("mae_multiplier", 1.0)
     mre_multiplier = config.get("mre_multiplier", 1.0)
     regularization_multiplier = config.get("regularization", 1.0)
@@ -41,8 +43,20 @@ def loss_function_builder(
         mean_absolute_error_loss = 0.0
         if input_batch is not None and prediction_batch is not None:
             diff = tf.abs(input_batch - prediction_batch)
+            diff = keras.layers.ReLU(threshold=hinge)(diff)
             diff = tf.reduce_mean(diff, axis=[1, 2, 3])
             mean_absolute_error_loss = tf.reduce_mean(diff, axis=[0])
+
+        # --- mean absolute error from noisy
+        mean_absolute_error_noise = 0.0
+        if input_batch is not None and noisy_batch is not None:
+            diff = tf.abs(input_batch - noisy_batch)
+            diff = keras.layers.ReLU(threshold=hinge)(diff)
+            diff = tf.reduce_mean(diff, axis=[1, 2, 3])
+            mean_absolute_error_noise = tf.reduce_mean(diff, axis=[0])
+
+        mean_absolute_error_improvement = \
+            mean_absolute_error_noise - mean_absolute_error_loss
 
         # --- mean relative error from prediction
         mean_relative_error_loss = 0.0
@@ -66,16 +80,6 @@ def loss_function_builder(
                 tf.reduce_mean(diff_relative, axis=[1, 2, 3])
             mean_relative_error_loss = \
                 tf.reduce_mean(diff_relative, axis=[0])
-
-        # --- mean absolute error from noisy
-        mean_absolute_error_noise = 0.0
-        if input_batch is not None and noisy_batch is not None:
-            diff = tf.abs(input_batch - noisy_batch)
-            diff = tf.reduce_mean(diff, axis=[1, 2, 3])
-            mean_absolute_error_noise = tf.reduce_mean(diff, axis=[0])
-
-        mean_absolute_error_improvement = \
-            mean_absolute_error_noise - mean_absolute_error_loss
 
         # --- regularization error
         regularization_loss = 0.0

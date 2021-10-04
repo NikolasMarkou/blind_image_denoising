@@ -83,6 +83,15 @@ def dataset_builder(
                         sigma=sigma,
                         filter_shape=kernel)
 
+        # --- additive noise (independent)
+        noise_std = np.random.choice(additive_noise)
+        noisy_batch = \
+            noisy_batch + \
+            tf.random.normal(
+                mean=0,
+                stddev=noise_std,
+                shape=tf.shape(noisy_batch))
+
         # --- flip left right
         if random_left_right:
             if np.random.choice([True, False]):
@@ -98,6 +107,8 @@ def dataset_builder(
                     tf.image.flip_up_down(input_batch)
                 noisy_batch = \
                     tf.image.flip_up_down(noisy_batch)
+
+
 
         # --- randomly rotate input
         if random_rotate > 0.0:
@@ -130,15 +141,6 @@ def dataset_builder(
             if np.random.choice([True, False]):
                 input_batch = max_value - (input_batch - min_value)
                 noisy_batch = max_value - (noisy_batch - min_value)
-
-        # --- additive noise (independent)
-        noise_std = np.random.choice(additive_noise)
-        noisy_batch = \
-            noisy_batch + \
-            tf.random.normal(
-                mean=0,
-                stddev=noise_std,
-                shape=tf.shape(noisy_batch))
 
         # --- clip values within boundaries
         if clip_value:

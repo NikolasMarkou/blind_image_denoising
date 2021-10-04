@@ -5,7 +5,7 @@
     "min_value": 0,
     "max_value": 255,
     "kernel_size": 3,
-    "type": "gatenet",
+    "type": "sparse_resnet",
     "batchnorm": true,
     "activation": "relu",
     "output_multiplier": 1.0,

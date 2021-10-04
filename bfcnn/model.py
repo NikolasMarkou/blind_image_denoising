@@ -63,6 +63,16 @@ def model_builder(
                 final_activation=final_activation,
                 kernel_regularizer=kernel_regularizer,
                 kernel_initializer=kernel_initializer)
+    elif model_type == "sparse_resnet":
+        model_denoise = \
+            build_sparse_resnet_model(
+                filters=filters,
+                no_layers=no_layers,
+                input_dims=input_shape,
+                kernel_size=kernel_size,
+                final_activation=final_activation,
+                kernel_regularizer=kernel_regularizer,
+                kernel_initializer=kernel_initializer)
     elif model_type == "gatenet":
         model_denoise = \
             build_gatenet_model(

@@ -2,15 +2,15 @@ import copy
 import keras
 import itertools
 import numpy as np
+import tensorflow as tf
 from typing import List, Tuple
-from keras import backend as K
 
 # ---------------------------------------------------------------------
 # local imports
 # ---------------------------------------------------------------------
 
-
 from .custom_logger import logger
+
 
 # ---------------------------------------------------------------------
 
@@ -26,7 +26,8 @@ def normal_empirical_cdf(
     """
     # --- argument checking
     if target_cdf <= 0.0001 or target_cdf >= 0.9999:
-        raise ValueError("target_cdf [{0}] must be between 0 and 1".format(target_cdf))
+        raise ValueError(
+            "target_cdf [{0}] must be between 0 and 1".format(target_cdf))
     if sigma <= 0:
         raise ValueError("sigma [{0}] must be > 0".format(sigma))
 
@@ -52,11 +53,50 @@ def normal_empirical_cdf(
 # ---------------------------------------------------------------------
 
 
+def coords_layer(
+        input_layer):
+    """
+    Create a coords layer
+
+    :param input_layer:
+    :return:
+    """
+    # --- argument checking
+    if input_layer is None:
+        raise ValueError("input_layer cannot be empty")
+    shape = keras.backend.int_shape(input_layer)
+    if len(shape) != 4:
+        raise ValueError("input_layer must be a 4d tensor")
+    # ---
+    height = shape[1]
+    width = shape[2]
+    x_grid = np.linspace(0, 1, width)
+    y_grid = np.linspace(0, 1, height)
+    xx_grid, yy_grid = np.meshgrid(x_grid, y_grid)
+    xx_grid = \
+        tf.constant(
+            value=xx_grid,
+            dtype=tf.float32,
+            shape=(1, xx_grid.shape[0], xx_grid.shape[1], 1))
+    yy_grid = \
+        tf.constant(
+            value=yy_grid,
+            dtype=tf.float32,
+            shape=(1, yy_grid.shape[0], yy_grid.shape[1], 1))
+    xx_grid = tf.repeat(xx_grid, axis=0, repeats=tf.shape(input_layer)[0])
+    yy_grid = tf.repeat(yy_grid, axis=0, repeats=tf.shape(input_layer)[0])
+    return keras.layers.Concatenate(axis=3)([input_layer, yy_grid, xx_grid])
+
+# ---------------------------------------------------------------------
+
+
 def conv2d_sparse(
         input_layer,
-        sparsity: float = 0.5,
+        threshold_sigma: float = 1.0,
         negative_slope: float = 0.0,
-        rectify: bool = False,
+        max_value: float = 3.0,
+        symmetric: bool = True,
+        axis: List[int] = [-1],
         filters: int = 32,
         padding: str = "same",
         strides: Tuple[int, int] = (1, 1),
@@ -70,9 +110,10 @@ def conv2d_sparse(
     that is forced by the batch normalization
 
     :param input_layer:
-    :param sparsity: sparsity of the results
+    :param threshold_sigma: sparsity of the results
     :param negative_slope: slope of values below the threshold (0 cuts them off)
-    :param rectify: amplify signal to original magnitude
+    :param max_value: max allowed value
+    :param symmetric: if true allow negative values else zero them off
     :param filters:
     :param padding:
     :param strides:
@@ -82,10 +123,12 @@ def conv2d_sparse(
     :return: sparse convolution results
     """
     # --- argument checking
-    if sparsity is None or \
-            not isinstance(sparsity, float) or \
-            (sparsity <= 0.05 or sparsity >= 0.95):
-        raise ValueError(f"sparsity [{sparsity}] must be between 0.05 and 0.95")
+    if threshold_sigma < 0:
+        raise ValueError("threshold_sigma must be >= 0")
+    if max_value is not None and max_value < 0:
+        raise ValueError("max_value must be >= 0")
+    if max_value is not None and threshold_sigma >= max_value:
+        raise ValueError("threshold_sigma must be < max_value")
 
     # --- setup parameters
     # convolution parameters
@@ -104,28 +147,32 @@ def conv2d_sparse(
         center=True,
         # must be true so variance is always 1 (sigma 1)
         scale=True,
+        axis=axis,
         momentum=0.999,
         epsilon=1e-4)
     # relu params
     relu_params = dict(
-        # compute threshold for target sparsity
-        threshold=normal_empirical_cdf(sparsity),
+        max_value=max_value,
+        threshold=threshold_sigma,
         negative_slope=negative_slope
     )
 
     # --- computation is conv2d - batchnorm - relu with custom threshold
-    conv_x = keras.layers.Conv2D(**conv2d_params)(input_layer)
-    bn_x = keras.layers.BatchNormalization(**bn_params)(conv_x)
-    relu_x = keras.layers.ReLU(**relu_params)(bn_x)
+    x_conv = keras.layers.Conv2D(**conv2d_params)(input_layer)
+    x_bn = keras.layers.BatchNormalization(**bn_params)(x_conv)
 
-    if rectify:
-        return \
+    if symmetric:
+        x_abs = keras.backend.abs(x_bn)
+        x_sign = keras.backend.sign(x_bn)
+        x_relu = keras.layers.ReLU(**relu_params)(x_abs)
+        x_result = \
             keras.layers.Multiply()([
-                keras.backend.abs(relu_x),
-                keras.backend.stop_gradient(conv_x),
-                keras.backend.stop_gradient(keras.backend.sign(conv_x)),
+                x_relu,
+                x_sign,
             ])
-    return relu_x
+    else:
+        x_result = keras.layers.ReLU(**relu_params)(x_bn)
+    return x_result
 
 # ---------------------------------------------------------------------
 
@@ -178,7 +225,7 @@ def layer_denormalize(args):
     Convert input [-0.5, +0.5] to [v0, v1] range
     """
     y, v_min, v_max = args
-    y_clip = K.clip(y, min_value=-0.5, max_value=+0.5)
+    y_clip = tf.clip_by_value(y, clip_value_min=-0.5, clip_value_max=0.5)
     return (y_clip + 0.5) * (v_max - v_min) + v_min
 
 
@@ -190,7 +237,7 @@ def layer_normalize(args):
     Convert input from [v0, v1] to [-0.5, +0.5] range
     """
     y, v_min, v_max = args
-    y_clip = K.clip(y, min_value=v_min, max_value=v_max)
+    y_clip = tf.clip_by_value(y, clip_value_min=v_min, clip_value_max=v_max)
     return (y_clip - v_min) / (v_max - v_min) - 0.5
 
 
@@ -356,6 +403,102 @@ def build_resnet_model(
 
 # ---------------------------------------------------------------------
 
+
+def build_sparse_resnet_model(
+        input_dims,
+        no_layers: int,
+        kernel_size: int,
+        filters: int,
+        final_activation: str = "linear",
+        kernel_regularizer="l1",
+        kernel_initializer="glorot_normal",
+        channel_index: int = 2,
+        name="sparse_resnet") -> keras.Model:
+    """
+    Build a sparse resnet model
+
+    :param input_dims: Models input dimensions
+    :param no_layers: Number of resnet layers
+    :param kernel_size: kernel size of the conv layers
+    :param filters: number of filters per convolutional layer
+    :param final_activation: activation of the final layer
+    :param channel_index: Index of the channel in dimensions
+    :param kernel_regularizer: Kernel weight regularizer
+    :param kernel_initializer: Kernel weight initializer
+    :param name: Name of the model
+    :return:
+    """
+    # --- variables
+    conv_params = dict(
+        filters=filters,
+        strides=(1, 1),
+        padding="same",
+        use_bias=False,
+        activation="relu",
+        kernel_size=kernel_size,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+    sparse_conv_params = dict(
+        threshold_sigma=1.0,
+        negative_slope=0.0,
+        max_value=None,
+        filters=filters * 2,
+        padding="same",
+        strides=(1, 1),
+        symmetric=True,
+        kernel_size=kernel_size,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+    dense_conv_params = dict(
+        threshold_sigma=0.05,
+        negative_slope=0.0,
+        max_value=None,
+        filters=filters,
+        padding="same",
+        strides=(1, 1),
+        symmetric=False,
+        kernel_size=1,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+    final_conv_params = dict(
+        kernel_size=1,
+        padding="same",
+        strides=(1, 1),
+        activation=final_activation,
+        filters=input_dims[channel_index],
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
+    # --- set input
+    model_input = keras.Input(shape=input_dims)
+
+    # --- add base layer
+    x = keras.layers.Conv2D(**conv_params)(model_input)
+
+    # --- add resnet layers
+    for i in range(no_layers):
+        previous_layer = x
+        x = conv2d_sparse(x, **sparse_conv_params)
+        x = conv2d_sparse(x, **dense_conv_params)
+        x = keras.layers.Add()([previous_layer, x])
+
+    # --- output to original channels
+    output_layer = \
+        keras.layers.Conv2D(**final_conv_params)(x)
+
+    return keras.Model(
+        name=name,
+        inputs=model_input,
+        outputs=output_layer)
+
+
+# ---------------------------------------------------------------------
+
+
 def build_gatenet_model(
         input_dims,
         no_layers: int,
@@ -487,7 +630,8 @@ def build_gatenet_model(
         g_layer_activation = \
             keras.layers.GlobalAvgPool2D()(g_layer)
         g_layer_activation = \
-            (keras.layers.Activation("tanh")(g_layer_activation * 2) + 1.0) / 2.0
+            (keras.layers.Activation("tanh")(
+                g_layer_activation * 2) + 1.0) / 2.0
 
         # mask channels
         s_layer = \
@@ -511,6 +655,7 @@ def build_gatenet_model(
         name=name,
         inputs=input_layer,
         outputs=output_layer)
+
 
 # ==============================================================================
 
