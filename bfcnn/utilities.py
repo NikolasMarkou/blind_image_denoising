@@ -479,7 +479,7 @@ def build_sparse_resnet_model(
         strides=(1, 1),
         padding="same",
         use_bias=False,
-        activation="relu",
+        activation="linear",
         kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
@@ -521,6 +521,7 @@ def build_sparse_resnet_model(
         x = keras.layers.Add()([previous_layer, x])
 
     # --- output to original channels
+    x = keras.layers.BatchNormalization()(x)
     output_layer = \
         keras.layers.Conv2D(**final_conv_params)(x)
 
