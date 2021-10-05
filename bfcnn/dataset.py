@@ -61,7 +61,11 @@ def dataset_builder(
         input_batch = \
             tf.image.random_crop(
                 value=input_batch,
-                size=(batch_size, input_shape[0], input_shape[1], 3)
+                size=(
+                    tf.shape(input_batch)[0],
+                    input_shape[0],
+                    input_shape[1],
+                    tf.shape(input_batch)[3])
             )
         noisy_batch = tf.identity(input_batch)
 
