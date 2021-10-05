@@ -474,9 +474,14 @@ def build_sparse_resnet_model(
     :return:
     """
     # --- variables
-    conv_params = dict(
+    bn_params = dict(
+        center=False,
+        scale=True,
+        momentum=0.999,
+        epsilon=1e-4
+    )
+    base_conv_params = dict(
         filters=filters,
-        strides=(1, 1),
         padding="same",
         use_bias=False,
         activation="linear",
@@ -488,11 +493,19 @@ def build_sparse_resnet_model(
         threshold_sigma=1.0,
         negative_slope=0.0,
         max_value=3,
-        filters=filters,
+        filters=filters * 2,
         padding="same",
-        strides=(1, 1),
         symmetric=True,
         kernel_size=kernel_size,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+    dense_conv_params = dict(
+        filters=filters,
+        padding="same",
+        use_bias=False,
+        activation="linear",
+        kernel_size=1,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -510,18 +523,18 @@ def build_sparse_resnet_model(
     model_input = keras.Input(shape=input_dims)
 
     # --- add base layer
-    x = keras.layers.Conv2D(**conv_params)(model_input)
+    x = keras.layers.Conv2D(**base_conv_params)(model_input)
 
     # --- add resnet layers
     for i in range(no_layers):
         previous_layer = x
-        x = keras.layers.BatchNormalization()(x)
+        x = keras.layers.BatchNormalization(**bn_params)(x)
         x = conv2d_sparse(x, **sparse_conv_params)
-        x = keras.layers.Conv2D(**conv_params)(x)
+        x = keras.layers.Conv2D(**dense_conv_params)(x)
         x = keras.layers.Add()([previous_layer, x])
 
     # --- output to original channels
-    x = keras.layers.BatchNormalization()(x)
+    x = keras.layers.BatchNormalization(**bn_params)(x)
     output_layer = \
         keras.layers.Conv2D(**final_conv_params)(x)
 

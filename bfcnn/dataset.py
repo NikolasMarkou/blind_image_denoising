@@ -38,14 +38,9 @@ def dataset_builder(
     random_rotate = config.get("random_rotate", 0.0)
     random_invert = config.get("random_invert", False)
     random_up_down = config.get("random_up_down", False)
-    additive_noise = config.get("additive_noise", [0.1])
     random_downsample = config.get("random_downsample", False)
     random_left_right = config.get("random_left_right", False)
     multiplicative_noise = config.get("multiplicative_noise", [0.01])
-    # blurring variables
-    sigmas = [1, 2]
-    kernels = [(3, 3), (5, 5)]
-    choice_index = [i for i in range(len(kernels))]
 
     # --- define generator function from directory
     if directory is not None:
@@ -56,19 +51,19 @@ def dataset_builder(
                 label_mode=None,
                 directory=directory,
                 batch_size=batch_size,
-                image_size=(input_shape[0], input_shape[1]))
+                image_size=(256, 768))
     else:
         raise ValueError("don't know how to handle non directory datasets")
 
     # --- define augmentation function
     def augmentation(input_batch):
-        # --- additive noise (independent)
-        noisy_batch = \
-            input_batch + \
-            tf.random.normal(
-                mean=0,
-                shape=tf.shape(input_batch),
-                stddev=np.random.choice(additive_noise))
+
+        input_batch = \
+            tf.image.random_crop(
+                value=input_batch,
+                size=(batch_size, input_shape[0], input_shape[1], 3)
+            )
+        noisy_batch = tf.identity(input_batch)
 
         # --- flip left right
         if random_left_right:
@@ -101,13 +96,13 @@ def dataset_builder(
                     tfa.image.rotate(
                         images=input_batch,
                         angles=angles,
-                        fill_mode="wrap",
+                        fill_mode="reflect",
                         interpolation="bilinear")
                 noisy_batch = \
                     tfa.image.rotate(
                         images=noisy_batch,
                         angles=angles,
-                        fill_mode="wrap",
+                        fill_mode="reflect",
                         interpolation="bilinear")
 
         # --- random invert colors
