@@ -62,35 +62,13 @@ def dataset_builder(
 
     # --- define augmentation function
     def augmentation(input_batch):
-        # --- multiplicative noise
-        noise_std = np.random.choice(multiplicative_noise)
-        noisy_batch = \
-            input_batch * \
-            tf.random.normal(
-                mean=1,
-                stddev=noise_std,
-                shape=tf.shape(input_batch))
-
-        # --- blur to embed noise
-        if random_blur:
-            if np.random.choice([True, False]):
-                choice = np.random.choice(choice_index)
-                kernel = kernels[int(choice)]
-                sigma = sigmas[int(choice)]
-                noisy_batch = \
-                    tfa.image.gaussian_filter2d(
-                        image=noisy_batch,
-                        sigma=sigma,
-                        filter_shape=kernel)
-
         # --- additive noise (independent)
-        noise_std = np.random.choice(additive_noise)
         noisy_batch = \
-            noisy_batch + \
+            input_batch + \
             tf.random.normal(
                 mean=0,
-                stddev=noise_std,
-                shape=tf.shape(noisy_batch))
+                shape=tf.shape(input_batch),
+                stddev=np.random.choice(additive_noise))
 
         # --- flip left right
         if random_left_right:
@@ -108,8 +86,6 @@ def dataset_builder(
                 noisy_batch = \
                     tf.image.flip_up_down(noisy_batch)
 
-
-
         # --- randomly rotate input
         if random_rotate > 0.0:
             if np.random.choice([True, False]):
@@ -125,15 +101,13 @@ def dataset_builder(
                     tfa.image.rotate(
                         images=input_batch,
                         angles=angles,
-                        fill_value=0,
-                        fill_mode="constant",
+                        fill_mode="wrap",
                         interpolation="bilinear")
                 noisy_batch = \
                     tfa.image.rotate(
                         images=noisy_batch,
                         angles=angles,
-                        fill_value=0,
-                        fill_mode="constant",
+                        fill_mode="wrap",
                         interpolation="bilinear")
 
         # --- random invert colors
@@ -141,6 +115,24 @@ def dataset_builder(
             if np.random.choice([True, False]):
                 input_batch = max_value - (input_batch - min_value)
                 noisy_batch = max_value - (noisy_batch - min_value)
+
+        # --- multiplicative noise
+        noise_std = np.random.choice(multiplicative_noise)
+        noisy_batch = \
+            noisy_batch * \
+            tf.random.normal(
+                mean=1,
+                stddev=noise_std,
+                shape=tf.shape(input_batch))
+
+        # --- blur to embed noise
+        if random_blur:
+            if np.random.choice([True, False]):
+                noisy_batch = \
+                    tfa.image.gaussian_filter2d(
+                        image=noisy_batch,
+                        sigma=1,
+                        filter_shape=(3, 3))
 
         # --- clip values within boundaries
         if clip_value:
