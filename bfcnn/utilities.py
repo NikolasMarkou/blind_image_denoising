@@ -475,7 +475,7 @@ def build_sparse_resnet_model(
     """
     # --- variables
     bn_params = dict(
-        center=False,
+        center=True,
         scale=True,
         momentum=0.999,
         epsilon=1e-4
@@ -493,7 +493,7 @@ def build_sparse_resnet_model(
         threshold_sigma=1.0,
         negative_slope=0.0,
         max_value=3,
-        filters=filters * 2,
+        filters=filters,
         padding="same",
         symmetric=True,
         kernel_size=kernel_size,
