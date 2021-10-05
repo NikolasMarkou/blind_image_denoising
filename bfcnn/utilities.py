@@ -485,7 +485,7 @@ def build_sparse_resnet_model(
         padding="same",
         use_bias=False,
         activation="linear",
-        kernel_size=kernel_size,
+        kernel_size=5,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
