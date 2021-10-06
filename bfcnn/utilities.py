@@ -142,15 +142,11 @@ def mean_sigma_global(
     if len(shape) != 4:
         raise ValueError("input_layer must be a 4d tensor")
 
-    # ---
-    def f(x):
-        mean = keras.backend.mean(x, keepdims=True)
-        diff_2 = keras.backend.square(input_layer - mean)
-        variance = keras.backend.mean(diff_2, keepdims=True)
-        sigma = keras.backend.sqrt(keras.backend.abs(variance) + 0.00001)
-        return mean, sigma
-
-    return keras.layers.Lambda(function=f)(input_layer)
+    mean = keras.backend.mean(input_layer, keepdims=True)
+    diff_2 = keras.backend.square(input_layer - mean)
+    variance = keras.backend.mean(diff_2, keepdims=True)
+    sigma = keras.backend.sqrt(keras.backend.abs(variance) + 0.00001)
+    return mean, sigma
 
 
 # ---------------------------------------------------------------------
