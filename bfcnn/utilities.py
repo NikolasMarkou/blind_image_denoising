@@ -88,6 +88,7 @@ def coords_layer(
     yy_grid = tf.repeat(yy_grid, axis=0, repeats=tf.shape(input_layer)[0])
     return keras.layers.Concatenate(axis=3)([input_layer, yy_grid, xx_grid])
 
+
 # ---------------------------------------------------------------------
 
 
@@ -122,6 +123,7 @@ def mean_sigma_local(
     sigma = tf.sqrt(tf.abs(variance) + 0.00001)
     return avg, sigma
 
+
 # ---------------------------------------------------------------------
 
 
@@ -139,12 +141,17 @@ def mean_sigma_global(
     shape = keras.backend.int_shape(input_layer)
     if len(shape) != 4:
         raise ValueError("input_layer must be a 4d tensor")
+
     # ---
-    avg = keras.backend.mean(input_layer, keepdims=True)
-    diff_2 = keras.backend.square(input_layer - avg)
-    variance = keras.backend.mean(diff_2, keepdims=True)
-    sigma = keras.backend.sqrt(keras.backend.abs(variance) + 0.00001)
-    return avg, sigma
+    def f(x):
+        mean = keras.backend.mean(x, keepdims=True)
+        diff_2 = keras.backend.square(input_layer - mean)
+        variance = keras.backend.mean(diff_2, keepdims=True)
+        sigma = keras.backend.sqrt(keras.backend.abs(variance) + 0.00001)
+        return mean, sigma
+
+    return keras.layers.Lambda(function=f)(input_layer)
+
 
 # ---------------------------------------------------------------------
 
@@ -152,7 +159,6 @@ def mean_sigma_global(
 def sparse_block(
         input_layer,
         threshold_sigma: float = 1.0,
-        negative_slope: float = 0.0,
         max_value: float = None,
         symmetric: bool = True,
         axis: List[int] = [-1]):
@@ -161,7 +167,6 @@ def sparse_block(
 
     :param input_layer:
     :param threshold_sigma: sparsity of the results
-    :param negative_slope: slope of values below the threshold (0 cuts them off)
     :param max_value: max allowed value
     :param symmetric: if true allow negative values else zero them off
     :param axis: axis to perform batch norm (default is channels)
@@ -176,41 +181,30 @@ def sparse_block(
     if max_value is not None and threshold_sigma >= max_value:
         raise ValueError("threshold_sigma must be < max_value")
 
-    # --- setup parameters
-    # batchnorm parameters
-    bn_params = dict(
-        # must be true so it is always centered (mean 0)
-        center=True,
-        # must be true so variance is always 1 (sigma 1)
-        scale=True,
-        axis=axis,
-        epsilon=1e-4,
-        momentum=0.999
-    )
-    # relu params
-    relu_params = dict(
-        max_value=max_value,
-        threshold=threshold_sigma,
-        negative_slope=negative_slope
-    )
-
-    # --- computation is batchnorm - relu with custom threshold
+    # --- computation is relu((mean-x)/sigma) with custom threshold
     mean, sigma = mean_sigma_global(input_layer)
-
     x_mean = input_layer - mean
     x_bn = x_mean / sigma
 
     if symmetric:
         x_abs = keras.backend.abs(x_bn)
         x_sign = keras.backend.sign(x_bn)
-        x_relu = keras.layers.ReLU(**relu_params)(x_abs)
+        x_relu = \
+            keras.backend.relu(
+                x_abs,
+                threshold=threshold_sigma,
+                max_value=max_value)
         x_result = \
             keras.layers.Multiply()([
                 x_relu,
                 x_sign,
             ])
     else:
-        x_result = keras.layers.ReLU(**relu_params)(x_bn)
+        x_result = \
+            keras.backend.relu(
+                x_bn,
+                threshold=threshold_sigma,
+                max_value=max_value)
 
     return x_result
 
@@ -600,6 +594,7 @@ def build_sparse_resnet_model(
         inputs=model_input,
         outputs=output_layer)
 
+
 # ---------------------------------------------------------------------
 
 
@@ -696,6 +691,7 @@ def build_sparse_resnet_mean_sigma_model(
         name=name,
         inputs=model_input,
         outputs=output_layer)
+
 
 # ---------------------------------------------------------------------
 

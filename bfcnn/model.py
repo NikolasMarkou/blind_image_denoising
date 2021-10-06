@@ -109,12 +109,17 @@ def model_builder(
     if normalize_denormalize:
         x = model_normalize(x)
 
+    mean, sigma = mean_sigma_global(x)
+    x = (x - mean) / sigma
+
     # denoise image
     x = model_denoise(x)
 
     # uplift a bit because of tanh saturation
     if output_multiplier != 1.0:
         x = x * output_multiplier
+
+    x = x * sigma + mean
 
     # add denormalize cap
     if normalize_denormalize:
