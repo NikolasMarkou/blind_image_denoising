@@ -128,11 +128,13 @@ def mean_sigma_local(
 
 
 def mean_sigma_global(
-        input_layer):
+        input_layer,
+        axis: List[int] = [1, 2, 3]):
     """
     Create a global mean sigma per channel
 
     :param input_layer:
+    :param axis:
     :return:
     """
     # --- argument checking
@@ -142,9 +144,10 @@ def mean_sigma_global(
     if len(shape) != 4:
         raise ValueError("input_layer must be a 4d tensor")
 
-    mean = keras.backend.mean(input_layer, keepdims=True)
+    # --- compute mean and sigma
+    mean = keras.backend.mean(input_layer, axis=axis, keepdims=True)
     diff_2 = keras.backend.square(input_layer - mean)
-    variance = keras.backend.mean(diff_2, keepdims=True)
+    variance = keras.backend.mean(diff_2, axis=axis, keepdims=True)
     sigma = keras.backend.sqrt(keras.backend.abs(variance) + 0.00001)
     return mean, sigma
 
@@ -156,8 +159,7 @@ def sparse_block(
         input_layer,
         threshold_sigma: float = 1.0,
         max_value: float = None,
-        symmetric: bool = True,
-        axis: List[int] = [-1]):
+        symmetric: bool = True):
     """
     Create sparsity in an input layer
 
@@ -165,7 +167,6 @@ def sparse_block(
     :param threshold_sigma: sparsity of the results
     :param max_value: max allowed value
     :param symmetric: if true allow negative values else zero them off
-    :param axis: axis to perform batch norm (default is channels)
 
     :return: sparse results
     """
@@ -178,7 +179,7 @@ def sparse_block(
         raise ValueError("threshold_sigma must be < max_value")
 
     # --- computation is relu((mean-x)/sigma) with custom threshold
-    mean, sigma = mean_sigma_global(input_layer)
+    mean, sigma = mean_sigma_global(input_layer, axis=[1, 2])
     x_mean = input_layer - mean
     x_bn = x_mean / sigma
 
@@ -218,7 +219,6 @@ def conv2d_sparse(
         kernel_regularizer: str = "l1",
         kernel_initializer: str = "glorot_normal",
         threshold_sigma: float = 1.0,
-        negative_slope: float = 0.0,
         max_value: float = None,
         symmetric: bool = True,
         axis: List[int] = [-1]):
