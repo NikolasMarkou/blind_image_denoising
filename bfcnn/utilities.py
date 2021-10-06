@@ -194,10 +194,11 @@ def sparse_block(
         negative_slope=negative_slope
     )
 
-    avg, sigma = mean_sigma_global(input_layer)
-
     # --- computation is batchnorm - relu with custom threshold
-    x_bn = keras.layers.BatchNormalization(**bn_params)(input_layer)
+    mean, sigma = mean_sigma_global(input_layer)
+
+    x_mean = input_layer - mean
+    x_bn = x_mean / sigma
 
     if symmetric:
         x_abs = keras.backend.abs(x_bn)
