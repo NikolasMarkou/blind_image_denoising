@@ -91,7 +91,7 @@ def coords_layer(
 # ---------------------------------------------------------------------
 
 
-def mean_sigma(
+def mean_sigma_local(
         input_layer,
         kernel_size: Tuple[int, int] = (5, 5)):
     """
@@ -120,6 +120,30 @@ def mean_sigma(
             padding="SAME",
             pool_size=kernel_size)(diff_2)
     sigma = tf.sqrt(tf.abs(variance) + 0.00001)
+    return avg, sigma
+
+# ---------------------------------------------------------------------
+
+
+def mean_sigma_global(
+        input_layer):
+    """
+    Create a global mean sigma per channel
+
+    :param input_layer:
+    :return:
+    """
+    # --- argument checking
+    if input_layer is None:
+        raise ValueError("input_layer cannot be empty")
+    shape = keras.backend.int_shape(input_layer)
+    if len(shape) != 4:
+        raise ValueError("input_layer must be a 4d tensor")
+    # ---
+    avg = keras.backend.mean(input_layer, keepdims=True)
+    diff_2 = keras.backend.square(input_layer - avg)
+    variance = keras.backend.mean(diff_2, keepdims=True)
+    sigma = keras.backend.sqrt(keras.backend.abs(variance) + 0.00001)
     return avg, sigma
 
 # ---------------------------------------------------------------------
@@ -169,6 +193,8 @@ def sparse_block(
         threshold=threshold_sigma,
         negative_slope=negative_slope
     )
+
+    avg, sigma = mean_sigma_global(input_layer)
 
     # --- computation is batchnorm - relu with custom threshold
     x_bn = keras.layers.BatchNormalization(**bn_params)(input_layer)
@@ -646,7 +672,7 @@ def build_sparse_resnet_mean_sigma_model(
     # --- add base layer
     x = model_input
     x = keras.layers.Conv2D(**base_conv_params)(x)
-    _, sigma = mean_sigma(x, kernel_size=(5, 5))
+    _, sigma = mean_sigma_local(x, kernel_size=(5, 5))
     x = keras.layers.Concatenate()([x, sigma])
 
     # --- add resnet layers
@@ -654,7 +680,7 @@ def build_sparse_resnet_mean_sigma_model(
         previous_layer = x
         x = conv2d_sparse(x, **sparse_conv_params)
         x = keras.layers.Conv2D(**conv_params)(x)
-        _, sigma = mean_sigma(x, kernel_size=(5, 5))
+        _, sigma = mean_sigma_local(x, kernel_size=(5, 5))
         x = keras.layers.Concatenate()([x, sigma])
         x = keras.layers.Add()([previous_layer, x])
 
