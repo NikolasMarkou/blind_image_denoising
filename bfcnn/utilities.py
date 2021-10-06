@@ -642,10 +642,10 @@ def build_sparse_resnet_mean_sigma_model(
 
     # --- set input
     model_input = keras.Input(shape=input_dims)
-    mean, sigma = mean_sigma(model_input, kernel_size=(5, 5))
 
     # --- add base layer
     x = model_input
+    mean, sigma = mean_sigma(x, kernel_size=(5, 5))
     x = keras.layers.Concatenate()([x, mean, sigma])
     x = keras.layers.Conv2D(**base_conv_params)(x)
 
