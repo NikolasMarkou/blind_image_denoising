@@ -12,7 +12,7 @@ __license__ = "None"
 
 CUDA_DEVICE = 0
 MODEL_DIRECTORY = "/media/fast/training/bfcnn"
-PIPELINE_CONFIG_FILE = "configs/sparse_resnet_10_bn_3x3.json"
+PIPELINE_CONFIG_FILE = "configs/sparse_resnet_mean_sigma_10_bn_3x3.json"
 
 # ---------------------------------------------------------------------
 
