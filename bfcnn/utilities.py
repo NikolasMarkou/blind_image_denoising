@@ -662,6 +662,9 @@ def build_sparse_resnet_mean_sigma_model(
     output_layer = \
         keras.layers.Conv2D(**final_conv_params)(x)
 
+    output_layer = \
+        keras.layers.Add()([output_layer, model_input])
+
     return keras.Model(
         name=name,
         inputs=model_input,
