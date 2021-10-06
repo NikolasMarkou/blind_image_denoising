@@ -38,21 +38,25 @@ def loss_function_builder(
         :param: model_losses: weight/regularization losses
         :return loss
         """
+
+        def hinge_mae_loss(x, y, h):
+            loss = 0
+            if x is not None and y is not None:
+                d = tf.abs(x - y)
+                d = keras.layers.ReLU(threshold=h)(d)
+                # sum over all dims
+                d = tf.reduce_mean(d, axis=[1, 2, 3])
+                # mean over batch
+                loss = tf.reduce_mean(d, axis=[0])
+            return loss
+
         # --- mean absolute error from prediction
-        mae_prediction_loss = 0.0
-        if input_batch is not None and prediction_batch is not None:
-            diff = tf.abs(input_batch - prediction_batch)
-            diff = keras.layers.ReLU(threshold=hinge)(diff)
-            diff = tf.reduce_mean(diff, axis=[1, 2, 3])
-            mae_prediction_loss = tf.reduce_mean(diff, axis=[0])
+        mae_prediction_loss = \
+            hinge_mae_loss(input_batch, prediction_batch, hinge)
 
         # --- mean absolute error from noisy
-        mae_noisy = 0.0
-        if input_batch is not None and noisy_batch is not None:
-            diff = tf.abs(input_batch - noisy_batch)
-            diff = keras.layers.ReLU(threshold=hinge)(diff)
-            diff = tf.reduce_mean(diff, axis=[1, 2, 3])
-            mae_noisy = tf.reduce_mean(diff, axis=[0])
+        mae_noisy = \
+            hinge_mae_loss(input_batch, noisy_batch, hinge)
 
         mae_improvement = \
             mae_noisy - mae_prediction_loss
