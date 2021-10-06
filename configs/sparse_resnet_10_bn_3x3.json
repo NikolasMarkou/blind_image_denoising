@@ -24,7 +24,7 @@
     "visualization_every": 100,
     "optimizer": {
       "decay_rate": 0.9,
-      "decay_steps": 24000,
+      "decay_steps": 50000,
       "learning_rate": 0.001,
       "gradient_clipping_by_norm": 1.0
     }
@@ -35,7 +35,7 @@
     "regularization": 0.01
   },
   "dataset": {
-    "batch_size": 8,
+    "batch_size": 16,
     "min_value": 0,
     "max_value": 255,
     "clip_value": true,
