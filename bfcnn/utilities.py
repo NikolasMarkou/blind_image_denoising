@@ -111,11 +111,13 @@ def mean_sigma(
     avg = \
         keras.layers.AveragePooling2D(
             strides=(1, 1),
+            padding="SAME",
             pool_size=kernel_size)(input_layer)
     diff_2 = tf.square(input_layer - avg)
     variance = \
         keras.layers.AveragePooling2D(
             strides=(1, 1),
+            padding="SAME",
             pool_size=kernel_size)(diff_2)
     sigma = tf.sqrt(variance)
     return avg, sigma
