@@ -191,10 +191,9 @@ def train_loop(
                     # --- add loss summaries for tensorboard
                     for name, key in [
                         ("loss/mae", "mae_loss"),
-                        ("loss/mre", "mre_loss"),
                         ("loss/total", "mean_total_loss"),
-                        ("loss/regularization", "regularization_loss"),
                         ("quality/mae_noise", "mae_noise"),
+                        ("loss/regularization", "regularization_loss"),
                         ("quality/mae_improvement", "mae_improvement")
                     ]:
                         tf.summary.scalar(
