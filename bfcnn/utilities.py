@@ -50,6 +50,7 @@ def normal_empirical_cdf(
 
     return -1
 
+
 # ---------------------------------------------------------------------
 
 
@@ -87,23 +88,90 @@ def coords_layer(
     yy_grid = tf.repeat(yy_grid, axis=0, repeats=tf.shape(input_layer)[0])
     return keras.layers.Concatenate(axis=3)([input_layer, yy_grid, xx_grid])
 
+
 # ---------------------------------------------------------------------
 
 
-def conv2d_sparse(
+def sparse_block(
         input_layer,
         threshold_sigma: float = 1.0,
         negative_slope: float = 0.0,
         max_value: float = None,
         symmetric: bool = True,
-        axis: List[int] = [-1],
+        axis: List[int] = [-1]):
+    """
+    Create sparsity in an input layer
+
+    :param input_layer:
+    :param threshold_sigma: sparsity of the results
+    :param negative_slope: slope of values below the threshold (0 cuts them off)
+    :param max_value: max allowed value
+    :param symmetric: if true allow negative values else zero them off
+    :param axis: axis to perform batch norm (default is channels)
+
+    :return: sparse results
+    """
+    # --- argument checking
+    if threshold_sigma < 0:
+        raise ValueError("threshold_sigma must be >= 0")
+    if max_value is not None and max_value < 0:
+        raise ValueError("max_value must be >= 0")
+    if max_value is not None and threshold_sigma >= max_value:
+        raise ValueError("threshold_sigma must be < max_value")
+
+    # --- setup parameters
+    # batchnorm parameters
+    bn_params = dict(
+        # must be true so it is always centered (mean 0)
+        center=True,
+        # must be true so variance is always 1 (sigma 1)
+        scale=True,
+        axis=axis,
+        epsilon=1e-4,
+        momentum=0.999
+    )
+    # relu params
+    relu_params = dict(
+        max_value=max_value,
+        threshold=threshold_sigma,
+        negative_slope=negative_slope
+    )
+
+    # --- computation is batchnorm - relu with custom threshold
+    x_bn = keras.layers.BatchNormalization(**bn_params)(input_layer)
+
+    if symmetric:
+        x_abs = keras.backend.abs(x_bn)
+        x_sign = keras.backend.sign(x_bn)
+        x_relu = keras.layers.ReLU(**relu_params)(x_abs)
+        x_result = \
+            keras.layers.Multiply()([
+                x_relu,
+                x_sign,
+            ])
+    else:
+        x_result = keras.layers.ReLU(**relu_params)(x_bn)
+
+    return x_result
+
+
+# ---------------------------------------------------------------------
+
+
+def conv2d_sparse(
+        input_layer,
         groups: int = 1,
         filters: int = 32,
         padding: str = "same",
         strides: Tuple[int, int] = (1, 1),
         kernel_size: Tuple[int, int] = (3, 3),
         kernel_regularizer: str = "l1",
-        kernel_initializer: str = "glorot_normal"):
+        kernel_initializer: str = "glorot_normal",
+        threshold_sigma: float = 1.0,
+        negative_slope: float = 0.0,
+        max_value: float = None,
+        symmetric: bool = True,
+        axis: List[int] = [-1]):
     """
     Create a conv2d layer that is always sparse by %x percent
     This works by applying relu with a given threshold calculated
@@ -125,14 +193,6 @@ def conv2d_sparse(
     :param kernel_initializer:
     :return: sparse convolution results
     """
-    # --- argument checking
-    if threshold_sigma < 0:
-        raise ValueError("threshold_sigma must be >= 0")
-    if max_value is not None and max_value < 0:
-        raise ValueError("max_value must be >= 0")
-    if max_value is not None and threshold_sigma >= max_value:
-        raise ValueError("threshold_sigma must be < max_value")
-
     # --- setup parameters
     # convolution parameters
     conv2d_params = dict(
@@ -146,78 +206,19 @@ def conv2d_sparse(
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
-    # batchnorm parameters
-    bn_params = dict(
-        # must be true so it is always centered (mean 0)
-        center=True,
-        # must be true so variance is always 1 (sigma 1)
-        scale=True,
-        axis=axis,
-        epsilon=1e-4,
-        momentum=0.999
-    )
-    # relu params
-    relu_params = dict(
-        max_value=max_value,
-        threshold=threshold_sigma,
-        negative_slope=negative_slope
-    )
 
-    # --- computation is conv2d - batchnorm - relu with custom threshold
+    # --- run convolution and then sparse it
     x_conv = keras.layers.Conv2D(**conv2d_params)(input_layer)
-    x_bn = keras.layers.BatchNormalization(**bn_params)(x_conv)
 
-    if symmetric:
-        x_abs = keras.backend.abs(x_bn)
-        x_sign = keras.backend.sign(x_bn)
-        x_relu = keras.layers.ReLU(**relu_params)(x_abs)
-        x_result = \
-            keras.layers.Multiply()([
-                x_relu,
-                x_sign,
-            ])
-    else:
-        x_result = keras.layers.ReLU(**relu_params)(x_bn)
+    return \
+        sparse_block(
+            input_layer=x_conv,
+            threshold_sigma=threshold_sigma,
+            negative_slope=negative_slope,
+            symmetric=symmetric,
+            max_value=max_value,
+            axis=axis)
 
-    return x_result
-
-# ---------------------------------------------------------------------
-
-
-def sparse_dense_block(
-        input_layer,
-        filters: int = 32,
-        kernel_size: Tuple[int, int] = (3, 3),
-        kernel_regularizer: str = "l1",
-        kernel_initializer: str = "glorot_normal"):
-
-    x = input_layer
-
-    # --- sparse
-    x = \
-        conv2d_sparse(
-            input_layer=x,
-            filters=filters * 2,
-            kernel_size=kernel_size,
-            axis=[1, 2, 3],
-            symmetric=True,
-            threshold_sigma=1.0,
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer)
-
-    # --- dense
-    x = \
-        conv2d_sparse(
-            input_layer=x,
-            filters=filters,
-            kernel_size=(1, 1),
-            axis=[-1],
-            symmetric=False,
-            threshold_sigma=0.1,
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer)
-
-    return x
 
 # ---------------------------------------------------------------------
 
@@ -304,10 +305,12 @@ def build_normalize_model(
     :return:
     """
     model_input = keras.Input(shape=input_dims)
+
     # --- normalize input from [min_value, max_value] to [-0.5, +0.5]
     model_output = \
         keras.layers.Lambda(layer_normalize, trainable=False)([
             model_input, float(min_value), float(max_value)])
+
     # --- wrap model
     return keras.Model(
         name=name,
@@ -334,10 +337,12 @@ def build_denormalize_model(
     :return:
     """
     model_input = keras.Input(shape=input_dims)
+
     # --- normalize input from [min_value, max_value] to [-0.5, +0.5]
     model_output = \
         keras.layers.Lambda(layer_denormalize, trainable=False)([
             model_input, float(min_value), float(max_value)])
+
     # --- wrap model
     return keras.Model(
         name=name,
@@ -484,28 +489,19 @@ def build_sparse_resnet_model(
         filters=filters,
         padding="same",
         use_bias=False,
-        activation="linear",
-        kernel_size=5,
+        activation="relu",
+        kernel_size=3,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
     sparse_conv_params = dict(
         threshold_sigma=1.0,
         negative_slope=0.0,
-        max_value=3,
+        max_value=None,
         filters=filters,
         padding="same",
         symmetric=True,
         kernel_size=kernel_size,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-    dense_conv_params = dict(
-        filters=filters,
-        padding="same",
-        use_bias=False,
-        activation="linear",
-        kernel_size=1,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -530,7 +526,7 @@ def build_sparse_resnet_model(
         previous_layer = x
         x = keras.layers.BatchNormalization(**bn_params)(x)
         x = conv2d_sparse(x, **sparse_conv_params)
-        x = keras.layers.Conv2D(**dense_conv_params)(x)
+        x = keras.layers.Conv2D(**base_conv_params)(x)
         x = keras.layers.Add()([previous_layer, x])
 
     # --- output to original channels
