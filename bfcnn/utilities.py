@@ -268,7 +268,6 @@ def conv2d_sparse(
         sparse_block(
             input_layer=x_conv,
             threshold_sigma=threshold_sigma,
-            negative_slope=negative_slope,
             symmetric=symmetric,
             max_value=max_value,
             axis=axis)
