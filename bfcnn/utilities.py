@@ -119,7 +119,7 @@ def mean_sigma(
             strides=(1, 1),
             padding="SAME",
             pool_size=kernel_size)(diff_2)
-    sigma = tf.sqrt(tf.abs(variance + 0.00001))
+    sigma = tf.sqrt(tf.abs(variance) + 0.00001)
     return avg, sigma
 
 # ---------------------------------------------------------------------
