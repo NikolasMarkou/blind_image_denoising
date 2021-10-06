@@ -16,7 +16,7 @@
     "kernel_initializer": "glorot_normal"
   },
   "train": {
-    "epochs": 10,
+    "epochs": 20,
     "total_steps": -1,
     "checkpoints_to_keep": 3,
     "checkpoint_every": 1000,
