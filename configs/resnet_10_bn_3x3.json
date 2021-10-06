@@ -19,7 +19,7 @@
     "epochs": 10,
     "total_steps": -1,
     "checkpoints_to_keep": 3,
-    "checkpoint_every": 1000,
+    "checkpoint_every": 10000,
     "visualization_number": 5,
     "visualization_every": 100,
     "optimizer": {
@@ -30,6 +30,7 @@
     }
   },
   "loss": {
+    "hinge": 2.5,
     "mae_multiplier": 1.0,
     "regularization": 0.01
   },
@@ -39,7 +40,7 @@
     "max_value": 255,
     "clip_value": true,
     "random_blur": true,
-    "random_invert": true,
+    "random_invert": false,
     "random_rotate": 0.314,
     "random_up_down": true,
     "random_left_right": true,

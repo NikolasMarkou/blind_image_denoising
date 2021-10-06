@@ -88,6 +88,37 @@ def coords_layer(
     yy_grid = tf.repeat(yy_grid, axis=0, repeats=tf.shape(input_layer)[0])
     return keras.layers.Concatenate(axis=3)([input_layer, yy_grid, xx_grid])
 
+# ---------------------------------------------------------------------
+
+
+def mean_sigma(
+        input_layer,
+        kernel_size: Tuple[int, int] = (5, 5)):
+    """
+    Create a mean sigma
+
+    :param input_layer:
+    :param kernel_size:
+    :return:
+    """
+    # --- argument checking
+    if input_layer is None:
+        raise ValueError("input_layer cannot be empty")
+    shape = keras.backend.int_shape(input_layer)
+    if len(shape) != 4:
+        raise ValueError("input_layer must be a 4d tensor")
+    # ---
+    avg = \
+        keras.layers.AveragePooling2D(
+            strides=(1, 1),
+            pool_size=kernel_size)(input_layer)
+    diff_2 = tf.square(input_layer - avg)
+    variance = \
+        keras.layers.AveragePooling2D(
+            strides=(1, 1),
+            pool_size=kernel_size)(diff_2)
+    sigma = tf.sqrt(variance)
+    return avg, sigma
 
 # ---------------------------------------------------------------------
 
@@ -479,12 +510,6 @@ def build_sparse_resnet_model(
     :return:
     """
     # --- variables
-    bn_params = dict(
-        center=True,
-        scale=True,
-        momentum=0.999,
-        epsilon=1e-4
-    )
     base_conv_params = dict(
         filters=filters,
         padding="same",
@@ -546,6 +571,96 @@ def build_sparse_resnet_model(
         inputs=model_input,
         outputs=output_layer)
 
+# ---------------------------------------------------------------------
+
+
+def build_sparse_resnet_mean_sigma_model(
+        input_dims,
+        no_layers: int,
+        kernel_size: int,
+        filters: int,
+        final_activation: str = "linear",
+        kernel_regularizer="l1",
+        kernel_initializer="glorot_normal",
+        channel_index: int = 2,
+        name="sparse_resnet") -> keras.Model:
+    """
+    Build a mean variance sparse resnet model
+
+    :param input_dims: Models input dimensions
+    :param no_layers: Number of resnet layers
+    :param kernel_size: kernel size of the conv layers
+    :param filters: number of filters per convolutional layer
+    :param final_activation: activation of the final layer
+    :param channel_index: Index of the channel in dimensions
+    :param kernel_regularizer: Kernel weight regularizer
+    :param kernel_initializer: Kernel weight initializer
+    :param name: Name of the model
+    :return:
+    """
+    # --- variables
+    base_conv_params = dict(
+        filters=filters,
+        padding="same",
+        use_bias=False,
+        activation="relu",
+        kernel_size=5,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+    conv_params = dict(
+        filters=filters,
+        padding="same",
+        use_bias=False,
+        activation="relu",
+        kernel_size=1,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+    sparse_conv_params = dict(
+        threshold_sigma=1.0,
+        negative_slope=0.0,
+        max_value=None,
+        filters=filters,
+        padding="same",
+        symmetric=False,
+        kernel_size=kernel_size,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+    final_conv_params = dict(
+        kernel_size=1,
+        padding="same",
+        strides=(1, 1),
+        activation=final_activation,
+        filters=input_dims[channel_index],
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
+    # --- set input
+    model_input = keras.Input(shape=input_dims)
+
+    # --- add base layer
+    x = keras.layers.Conv2D(**base_conv_params)(model_input)
+
+    # --- add resnet layers
+    for i in range(no_layers):
+        previous_layer = x
+        mean, sigma = mean_sigma(x, kernel_size=(5, 5))
+        x = conv2d_sparse(x, **sparse_conv_params)
+        x = keras.layers.Concatenate()([x, mean, sigma])
+        x = keras.layers.Conv2D(**conv_params)(x)
+        x = keras.layers.Add()([previous_layer, x])
+
+    # --- output to original channels
+    output_layer = \
+        keras.layers.Conv2D(**final_conv_params)(x)
+
+    return keras.Model(
+        name=name,
+        inputs=model_input,
+        outputs=output_layer)
 
 # ---------------------------------------------------------------------
 
