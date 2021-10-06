@@ -264,8 +264,7 @@ def conv2d_sparse(
             input_layer=x_conv,
             threshold_sigma=threshold_sigma,
             symmetric=symmetric,
-            max_value=max_value,
-            axis=axis)
+            max_value=max_value)
 
 
 # ---------------------------------------------------------------------
