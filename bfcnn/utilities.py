@@ -230,7 +230,6 @@ def conv2d_sparse(
 
     :param input_layer:
     :param threshold_sigma: sparsity of the results
-    :param negative_slope: slope of values below the threshold (0 cuts them off)
     :param max_value: max allowed value
     :param symmetric: if true allow negative values else zero them off
     :param axis: axis to perform batch norm (default is channels)
@@ -548,7 +547,6 @@ def build_sparse_resnet_model(
     )
     sparse_conv_params = dict(
         threshold_sigma=1.0,
-        negative_slope=0.0,
         max_value=None,
         filters=filters,
         padding="same",
@@ -638,7 +636,6 @@ def build_sparse_resnet_mean_sigma_model(
     )
     sparse_conv_params = dict(
         threshold_sigma=1.0,
-        negative_slope=0.0,
         max_value=None,
         filters=filters,
         padding="same",
