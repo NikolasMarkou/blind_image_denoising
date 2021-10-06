@@ -119,7 +119,7 @@ def mean_sigma(
             strides=(1, 1),
             padding="SAME",
             pool_size=kernel_size)(diff_2)
-    sigma = tf.sqrt(variance)
+    sigma = tf.sqrt(tf.abs(variance + 0.00001))
     return avg, sigma
 
 # ---------------------------------------------------------------------
@@ -585,7 +585,7 @@ def build_sparse_resnet_mean_sigma_model(
         kernel_regularizer="l1",
         kernel_initializer="glorot_normal",
         channel_index: int = 2,
-        name="sparse_resnet") -> keras.Model:
+        name="sparse_resnet_mean_sigma") -> keras.Model:
     """
     Build a mean variance sparse resnet model
 
