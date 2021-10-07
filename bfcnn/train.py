@@ -15,17 +15,10 @@ __license__ = "None"
 
 
 def main(args):
-    # --- Argument checking
+    # --- argument checking
     if not os.path.isfile(args.pipeline_config):
         raise ValueError("Pipeline configuration [{0}] is not valid".format(
             args.pipeline_config))
-    if not os.path.isdir(args.model_dir):
-        # if path does not exist attempt to make it
-        pathlib.Path(args.model_dir).mkdir(parents=True, exist_ok=True)
-        # if it fails again throw exception
-        if not os.path.isdir(args.model_dir):
-            raise ValueError("Model directory [{0}] is not valid".format(
-                args.model_dir))
     # --- Launch train loop
     train_eval_loop.train_loop(
         pipeline_config_path=args.pipeline_config,

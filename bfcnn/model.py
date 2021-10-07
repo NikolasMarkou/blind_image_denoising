@@ -1,9 +1,5 @@
-import os
-import math
-import copy
-import keras
-import pathlib
-import numpy as np
+import tensorflow as tf
+from tensorflow import keras
 from typing import List, Tuple, Union, Dict
 
 # ---------------------------------------------------------------------
@@ -52,6 +48,7 @@ def model_builder(
             min_value=min_value,
             max_value=max_value)
 
+    # --- build denoise model
     if model_type == "resnet":
         model_denoise = \
             build_resnet_model(
@@ -119,7 +116,12 @@ def model_builder(
     if output_multiplier != 1.0:
         x = x * output_multiplier
 
-    x = x * sigma + mean
+    x = (x * sigma) + mean
+    x = \
+        keras.backend.clip(
+            x,
+            min_value=min_value,
+            max_value=max_value)
 
     # add denormalize cap
     if normalize_denormalize:
@@ -135,5 +137,74 @@ def model_builder(
         model_denoise, \
         model_normalize, \
         model_denormalize
+
+# ---------------------------------------------------------------------
+
+
+class DenoisingInferenceModule(tf.Module):
+    """denoising inference module."""
+
+    def __init__(
+            self,
+            model_denoise: keras.Model,
+            model_normalize: keras.Model = None,
+            model_denormalize: keras.Model = None,
+            iterations: int = 1,
+            cast_to_uint8: bool = True):
+        """
+        Initializes a module for detection.
+
+        :param model_denoise: denoising model to use for inference.
+        :param model_normalize:
+        :param model_denormalize:
+        :param iterations: how many times to run the model
+        :param cast_to_uint8: cast output to uint8
+        """
+        # --- argument checking
+        if model_denoise is None:
+            raise ValueError("model_denoise should not be None")
+        if iterations <= 0:
+            raise ValueError("iterations should be > 0")
+
+        # --- setup instance variables
+        self._model_denoise = model_denoise
+        self._model_normalize = model_normalize
+        self._model_denormalize = model_denormalize
+        self._iterations = iterations
+        self._cast_to_uint8 = cast_to_uint8
+
+    def _run_inference_on_images(self, image):
+        """
+        Cast image to float and run inference.
+
+        :param image: uint8 Tensor of shape [1, None, None, 3]
+        :return: denoised image: uint8 Tensor of shape [1, None, None, 3]
+        """
+        x = tf.cast(image, dtype=tf.float32)
+
+        # --- normalize
+        if self._model_normalize is not None:
+            x = self._model_normalize(x)
+
+        # --- run denoise model as many times as required
+        for i in range(self._iterations):
+            x = self._model_denoise(x)
+
+        # --- denormalize
+        if self._model_denormalize is not None:
+            x = self._model_denormalize(x)
+
+        # --- cast to uint8
+        if self._cast_to_uint8:
+            x = tf.round(x)
+            x = tf.cast(x, dtype=tf.uint8)
+        
+        return x
+
+    @tf.function(
+        input_signature=[
+            tf.TensorSpec(shape=[1, None, None, 3], dtype=tf.uint8)])
+    def __call__(self, input_tensor):
+        return self._run_inference_on_images(input_tensor)
 
 # ---------------------------------------------------------------------

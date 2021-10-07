@@ -11,6 +11,7 @@ __license__ = "None"
 import os
 import time
 import json
+import pathlib
 import tensorflow as tf
 from pathlib import Path
 from typing import Union, Dict
@@ -53,7 +54,7 @@ def load_config(
 
 def train_loop(
         pipeline_config_path: Union[str, Dict, Path],
-        model_dir):
+        model_dir: Union[str, Path]):
     """
     Trains a blind image denoiser
 
@@ -71,12 +72,22 @@ def train_loop(
     :param model_dir: directory to save checkpoints into
     :return:
     """
+    # --- create model_dir if not exist
+    if not os.path.isdir(str(model_dir)):
+        # if path does not exist attempt to make it
+        Path(str(model_dir)).mkdir(parents=True, exist_ok=True)
+        # if it fails again throw exception
+        if not os.path.isdir(str(model_dir)):
+            raise ValueError("Model directory [{0}] is not valid".format(
+                model_dir))
+
     # --- load configuration
     config = load_config(pipeline_config_path)
 
     # --- build the model
     model_denoise, model_normalize, model_denormalize = \
         model_builder(config=config["model"])
+
     # summary of model
     model_denoise.summary(print_fn=logger.info)
     # save model so we can visualize it easier

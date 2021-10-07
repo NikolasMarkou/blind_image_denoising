@@ -159,7 +159,8 @@ def sparse_block(
         input_layer,
         threshold_sigma: float = 1.0,
         max_value: float = None,
-        symmetric: bool = True):
+        symmetric: bool = True,
+        local_sparse: bool = False):
     """
     Create sparsity in an input layer
 
@@ -167,6 +168,7 @@ def sparse_block(
     :param threshold_sigma: sparsity of the results
     :param max_value: max allowed value
     :param symmetric: if true allow negative values else zero them off
+    :param local_sparse: if true perform sparsity on per channel level
 
     :return: sparse results
     """
@@ -179,7 +181,17 @@ def sparse_block(
         raise ValueError("threshold_sigma must be < max_value")
 
     # --- computation is relu((mean-x)/sigma) with custom threshold
-    mean, sigma = mean_sigma_global(input_layer, axis=[1, 2])
+    # compute axis to perform mean/sigma calculation on
+    shape = keras.backend.int_shape(input_layer)
+    int_shape = len(shape)
+    k = 1
+    if local_sparse:
+        k = 2
+    axis = list([i + 1 for i in range(max(int_shape - k, 1))])
+    mean, sigma = \
+        mean_sigma_global(
+            input_layer,
+            axis=axis)
     x_mean = input_layer - mean
     x_bn = x_mean / sigma
 
@@ -220,8 +232,7 @@ def conv2d_sparse(
         kernel_initializer: str = "glorot_normal",
         threshold_sigma: float = 1.0,
         max_value: float = None,
-        symmetric: bool = True,
-        axis: List[int] = [-1]):
+        symmetric: bool = True):
     """
     Create a conv2d layer that is always sparse by %x percent
     This works by applying relu with a given threshold calculated
@@ -232,7 +243,6 @@ def conv2d_sparse(
     :param threshold_sigma: sparsity of the results
     :param max_value: max allowed value
     :param symmetric: if true allow negative values else zero them off
-    :param axis: axis to perform batch norm (default is channels)
     :param groups: groups to perform convolution in
     :param filters:
     :param padding:
@@ -265,35 +275,6 @@ def conv2d_sparse(
             threshold_sigma=threshold_sigma,
             symmetric=symmetric,
             max_value=max_value)
-
-
-# ---------------------------------------------------------------------
-
-
-def collage(images_batch):
-    """
-    Create a collage of image from a batch
-
-    :param images_batch:
-    :return:
-    """
-    shape = images_batch.shape
-    no_images = shape[0]
-    images = []
-    result = None
-    width = np.ceil(np.sqrt(no_images))
-
-    for i in range(no_images):
-        images.append(images_batch[i, :, :, :])
-
-        if len(images) % width == 0:
-            if result is None:
-                result = np.hstack(images)
-            else:
-                tmp = np.hstack(images)
-                result = np.vstack([result, tmp])
-            images.clear()
-    return result
 
 
 # ---------------------------------------------------------------------
