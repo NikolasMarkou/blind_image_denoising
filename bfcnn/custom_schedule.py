@@ -1,7 +1,15 @@
-import numpy as np
-from keras.callbacks import LearningRateScheduler
+# ---------------------------------------------------------------------
 
-# ==============================================================================
+__author__ = "Nikolas Markou"
+__version__ = "0.1.0"
+__license__ = "None"
+
+# ---------------------------------------------------------------------
+
+import numpy as np
+from tensorflow.keras.callbacks import LearningRateScheduler
+
+# ---------------------------------------------------------------------
 
 
 def step_decay_schedule(initial_lr, 
@@ -9,6 +17,7 @@ def step_decay_schedule(initial_lr,
                         step_size=1):
     """
     Wrapper function to create a LearningRateScheduler with step decay schedule
+
     :param initial_lr:
     :param decay_factor:
     :param step_size:
@@ -20,4 +29,4 @@ def step_decay_schedule(initial_lr,
 
     return LearningRateScheduler(schedule)
 
-# ==============================================================================
+# ---------------------------------------------------------------------

@@ -1,7 +1,17 @@
+# ---------------------------------------------------------------------
+
+__author__ = "Nikolas Markou"
+__version__ = "0.1.0"
+__license__ = "None"
+
+# ---------------------------------------------------------------------
+
 import tensorflow as tf
 from tensorflow import keras
 from typing import List, Tuple, Union, Dict
 
+# ---------------------------------------------------------------------
+# local imports
 # ---------------------------------------------------------------------
 
 from .utilities import *

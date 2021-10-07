@@ -10,12 +10,12 @@ __license__ = "None"
 
 import os
 import time
-import json
-import pathlib
 import tensorflow as tf
 from pathlib import Path
 from typing import Union, Dict
 
+# ---------------------------------------------------------------------
+# local imports
 # ---------------------------------------------------------------------
 
 from .utilities import *

@@ -1,13 +1,23 @@
+r"""build weight pruning strategies"""
+
+# ---------------------------------------------------------------------
+
+__author__ = "Nikolas Markou"
+__version__ = "0.1.0"
+__license__ = "None"
+
+# ---------------------------------------------------------------------
+
 import copy
 import keras
 import itertools
 import numpy as np
 from enum import Enum
 from typing import List
-from keras import backend as K
-from keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras import backend as K
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
-# ==============================================================================
+# ---------------------------------------------------------------------
 
 
 class PruneStrategy(Enum):
@@ -15,7 +25,7 @@ class PruneStrategy(Enum):
     MINIMUM_THRESHOLD_BIFURCATE = 2
     MINIMUM_THRESHOLD_SHRINKAGE = 3
 
-# ==============================================================================
+# ---------------------------------------------------------------------
 
 
 def prune_conv2d_weights(

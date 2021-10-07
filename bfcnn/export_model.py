@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------
+
+__author__ = "Nikolas Markou"
+__version__ = "0.1.0"
+__license__ = "None"
+
+# ---------------------------------------------------------------------
+
 import os
 import json
 import tensorflow as tf
@@ -11,12 +19,6 @@ from typing import List, Union, Tuple, Dict
 from .custom_logger import logger
 from .utilities import load_config
 from .model import model_builder, DenoisingInferenceModule
-
-# ---------------------------------------------------------------------
-
-__author__ = "Nikolas Markou"
-__version__ = "0.1.0"
-__license__ = "None"
 
 # ---------------------------------------------------------------------
 

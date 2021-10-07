@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------
+
+__author__ = "Nikolas Markou"
+__version__ = "0.1.0"
+__license__ = "None"
+
+# ---------------------------------------------------------------------
+
 import os
 import copy
 import json
@@ -38,6 +46,27 @@ def load_config(
         with open(str(config), "r") as f:
             return json.load(f)
     raise ValueError("don't know how to handle config [{0}]".format(config))
+
+# ---------------------------------------------------------------------
+
+
+def get_conv2d_weights(
+        model: keras.Model) -> np.ndarray:
+    """
+    Get the conv2d weights from the model concatenated
+    """
+    weights = []
+    for layer in model.layers:
+        layer_config = layer.get_config()
+        if "layers" not in layer_config:
+            continue
+        layer_weights = layer.get_weights()
+        for i, l in enumerate(layer_config["layers"]):
+            if l["class_name"] == "Conv2D":
+                for w in layer_weights[i]:
+                    w_flat = w.flatten()
+                    weights.append(w_flat)
+    return np.concatenate(weights)
 
 # ---------------------------------------------------------------------
 
@@ -876,26 +905,5 @@ def build_gatenet_model(
         name=name,
         inputs=input_layer,
         outputs=output_layer)
-
-# ---------------------------------------------------------------------
-
-
-def get_conv2d_weights(
-        model: keras.Model) -> np.ndarray:
-    """
-    Get the conv2d weights from the model concatenated
-    """
-    weights = []
-    for layer in model.layers:
-        layer_config = layer.get_config()
-        if "layers" not in layer_config:
-            continue
-        layer_weights = layer.get_weights()
-        for i, l in enumerate(layer_config["layers"]):
-            if l["class_name"] == "Conv2D":
-                for w in layer_weights[i]:
-                    w_flat = w.flatten()
-                    weights.append(w_flat)
-    return np.concatenate(weights)
 
 # ---------------------------------------------------------------------

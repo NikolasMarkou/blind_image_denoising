@@ -1,3 +1,11 @@
+# ---------------------------------------------------------------------
+
+__author__ = "Nikolas Markou"
+__version__ = "0.1.0"
+__license__ = "None"
+
+# ---------------------------------------------------------------------
+
 import os
 import glob
 import pathlib
@@ -8,16 +16,18 @@ import matplotlib.pyplot as plt
 from skimage.transform import resize
 from keras.callbacks import Callback
 
-# ==============================================================================
+# ---------------------------------------------------------------------
 
 from .utilities import *
+from .visualize import *
 from .custom_logger import logger
 from .pruning import prune_conv2d_weights, PruneStrategy
-# ==============================================================================
+
+# ---------------------------------------------------------------------
 
 matplotlib.use("Agg")
 
-# ==============================================================================
+# ---------------------------------------------------------------------
 
 
 class BatchNormalizationFlipCallback(Callback):
@@ -29,8 +39,6 @@ class BatchNormalizationFlipCallback(Callback):
         self._epoch = initial_epoch
         self._every_n_batches = every_n_batches
         self._state = True
-
-    # --------------------------------------------------
 
     @staticmethod
     def set_batchnorm_trainable(
@@ -49,15 +57,11 @@ class BatchNormalizationFlipCallback(Callback):
                 l.trainable = value
         return model
 
-    # --------------------------------------------------
-
     def disable_batchnorm_training(self) -> keras.Model:
         """
         Disable training on batch norms
         """
         return self.set_batchnorm_trainable(self._model, False)
-
-    # --------------------------------------------------
 
     def enable_batchnorm_training(self) -> keras.Model:
         """
@@ -65,20 +69,16 @@ class BatchNormalizationFlipCallback(Callback):
         """
         return self.set_batchnorm_trainable(self._model, False)
 
-    # --------------------------------------------------
-
     def on_batch_end(self, batch, logs={}):
         if batch % self._every_n_batches != 0:
             return
         self._state = not self._state
         self.set_batchnorm_trainable(self._model, self._state)
 
-    # --------------------------------------------------
-
     def on_epoch_begin(self, epoch, logs={}):
         self._epoch += 1
 
-# ==============================================================================
+# ---------------------------------------------------------------------
 
 
 class SaveIntermediateResultsCallback(Callback):
@@ -130,20 +130,21 @@ class SaveIntermediateResultsCallback(Callback):
                 logger.error(
                     "Error while deleting file [{0}] : {1}".format(filename, e))
 
-    # --------------------------------------------------
-
     def on_batch_end(self, batch, logs={}):
         if batch % self._every_n_batches != 0:
             return
         predictions = self._model.predict(self._noisy_images)
+
         # --- create collage of the predictions
         x = collage(predictions / 255.0)
         y = collage(self._noisy_images / 255.0)
         z = collage(self._original_images / 255.0)
+
         # --- resize to output size
         x = resize(x, self._resize_shape, order=0)
         y = resize(y, self._resize_shape, order=0)
         z = resize(z, self._resize_shape, order=0)
+
         # --- concat image and save result
         result = np.concatenate((z, y, x), axis=1)
         filepath_result = os.path.join(
@@ -159,6 +160,7 @@ class SaveIntermediateResultsCallback(Callback):
             plt.imsave(filepath_result, result)
         # --- save weights snapshot
         weights = get_conv2d_weights(self._model)
+
         filepath_result = os.path.join(
             self._run_folder,
             "images",
@@ -174,12 +176,10 @@ class SaveIntermediateResultsCallback(Callback):
         plt.savefig(filepath_result)
         plt.close()
 
-    # --------------------------------------------------
-
     def on_epoch_begin(self, epoch, logs={}):
         self._epoch += 1
 
-# ==============================================================================
+# ---------------------------------------------------------------------
 
 
 class WeightsPrunerCallback(Callback):
@@ -193,8 +193,6 @@ class WeightsPrunerCallback(Callback):
         self._every_n_batches = every_n_batches
         self._minimum_threshold = minimum_threshold
 
-    # --------------------------------------------------
-
     def on_batch_end(self, batch, logs={}):
         if batch % self._every_n_batches != 0:
             return
@@ -207,10 +205,8 @@ class WeightsPrunerCallback(Callback):
                 "to_zero_threshold": self._minimum_threshold * 0.01
             })
 
-    # --------------------------------------------------
-
     def on_epoch_begin(self, epoch, logs={}):
         self._epoch += 1
 
 
-# ==============================================================================
+# ---------------------------------------------------------------------

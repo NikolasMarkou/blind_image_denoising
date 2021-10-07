@@ -12,7 +12,7 @@ __license__ = "None"
 # ---------------------------------------------------------------------
 
 CUDA_DEVICE = 0
-MODEL_DIRECTORY = "/media/fast/training/bfcnn"
+CHECKPOINT_DIRECTORY = "/media/fast/training/bfcnn"
 CONFIGS = {
     "resnet": "bfcnn/configs/resnet_10_bn_3x3.json",
     "gatenet": "bfcnn/configs/gatenet_10_bn_3x3.json",
@@ -30,7 +30,7 @@ def main(config):
         subprocess.check_call([
             sys.executable,
             "-m", "bfcnn.train",
-            "--model-directory", MODEL_DIRECTORY,
+            "--model-directory", CHECKPOINT_DIRECTORY,
             "--pipeline-config", config
         ])
 
