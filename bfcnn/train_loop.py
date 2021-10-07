@@ -18,36 +18,13 @@ from typing import Union, Dict
 
 # ---------------------------------------------------------------------
 
-
+from .utilities import *
 from .model import model_builder
+from .visualize import visualize
+from .custom_logger import logger
 from .dataset import dataset_builder
 from .loss import loss_function_builder
-
-from .custom_logger import logger
-from .visualize import visualize
 from .optimizer import optimizer_builder
-
-# ---------------------------------------------------------------------
-
-
-def load_config(
-        config: Union[str, Dict, Path]) -> Dict:
-    """
-    Load configuration from multiple sources
-    """
-    if config is None:
-        raise ValueError("config should not be empty")
-    if isinstance(config, Dict):
-        return config
-    if isinstance(config, str) or isinstance(config, Path):
-        if not os.path.isfile(str(config)):
-            return ValueError(
-                "configuration path [{0}] is not valid".format(
-                    str(config)
-                ))
-        with open(str(config), "r") as f:
-            return json.load(f)
-    raise ValueError("don't know how to handle config [{0}]".format(config))
 
 # ---------------------------------------------------------------------
 
