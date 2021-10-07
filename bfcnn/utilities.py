@@ -135,20 +135,32 @@ def mean_sigma_local(
     shape = keras.backend.int_shape(input_layer)
     if len(shape) != 4:
         raise ValueError("input_layer must be a 4d tensor")
+    # --- define functions
+
+    def func_diff_2(args):
+        x, y = args
+        return tf.square(x - y)
+
+    def func_sqrt_robust(args):
+        x = args
+        return tf.sqrt(tf.abs(x) + 0.00001)
     # ---
-    avg = \
+    mean = \
         keras.layers.AveragePooling2D(
             strides=(1, 1),
             padding="SAME",
             pool_size=kernel_size)(input_layer)
-    diff_2 = tf.square(input_layer - avg)
+    diff_2 = \
+        keras.layers.Lambda(func_diff_2, trainable=False)([input_layer, mean])
     variance = \
         keras.layers.AveragePooling2D(
             strides=(1, 1),
             padding="SAME",
             pool_size=kernel_size)(diff_2)
-    sigma = tf.sqrt(tf.abs(variance) + 0.00001)
-    return avg, sigma
+    sigma = \
+        keras.layers.Lambda(func_sqrt_robust, trainable=False)(variance)
+
+    return mean, sigma
 
 
 # ---------------------------------------------------------------------
@@ -172,12 +184,14 @@ def mean_sigma_global(
         raise ValueError("input_layer must be a 4d tensor")
 
     # --- compute mean and sigma
-    mean = keras.backend.mean(input_layer, axis=axis, keepdims=True)
-    diff_2 = keras.backend.square(input_layer - mean)
-    variance = keras.backend.mean(diff_2, axis=axis, keepdims=True)
-    sigma = keras.backend.sqrt(keras.backend.abs(variance) + 0.00001)
-    return mean, sigma
+    def func(x):
+        mean = keras.backend.mean(x, axis=axis, keepdims=True)
+        diff_2 = keras.backend.square(x - mean)
+        variance = keras.backend.mean(diff_2, axis=axis, keepdims=True)
+        sigma = keras.backend.sqrt(keras.backend.abs(variance) + 0.00001)
+        return mean, sigma
 
+    return keras.layers.Lambda(func, trainable=False)(input_layer)
 
 # ---------------------------------------------------------------------
 
@@ -219,17 +233,27 @@ def sparse_block(
         mean_sigma_global(
             input_layer,
             axis=axis)
-    x_mean = input_layer - mean
-    x_bn = x_mean / sigma
+
+    def func_norm(args):
+        x, mean_x, sigma_x = args
+        return (x - mean_x) / sigma_x
+
+    x_bn = \
+        keras.layers.Lambda(func_norm, trainable=False)([
+            input_layer, mean, sigma])
 
     if symmetric:
-        x_abs = keras.backend.abs(x_bn)
-        x_sign = keras.backend.sign(x_bn)
+        def func_abs_sign(args):
+            x = args
+            x_abs = keras.backend.abs(x)
+            x_sign = keras.backend.sign(x)
+            return x_abs, x_sign
+        x_abs, x_sign = \
+            keras.layers.Lambda(func_abs_sign, trainable=False)(x_bn)
         x_relu = \
-            keras.backend.relu(
-                x_abs,
+            keras.layers.ReLU(
                 threshold=threshold_sigma,
-                max_value=max_value)
+                max_value=max_value)(x_abs)
         x_result = \
             keras.layers.Multiply()([
                 x_relu,
@@ -237,10 +261,9 @@ def sparse_block(
             ])
     else:
         x_result = \
-            keras.backend.relu(
-                x_bn,
+            keras.layers.ReLU(
                 threshold=threshold_sigma,
-                max_value=max_value)
+                max_value=max_value)(x_bn)
 
     return x_result
 

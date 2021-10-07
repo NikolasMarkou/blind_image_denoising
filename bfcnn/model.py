@@ -106,8 +106,21 @@ def model_builder(
     if normalize_denormalize:
         x = model_normalize(x)
 
-    mean, sigma = mean_sigma_global(x)
-    x = (x - mean) / sigma
+    mean, sigma = mean_sigma_global(x, axis=[1, 2])
+
+    def func_sigma_norm(args):
+        x, mean_x, sigma_x = args
+        return (x - mean_x) / sigma_x
+
+    def func_sigma_denorm(args):
+        x, mean_x, sigma_x = args
+        return (x * sigma_x) + mean_x
+
+    x = \
+        keras.layers.Lambda(
+            name="mean_sigma_normalization",
+            function=func_sigma_norm,
+            trainable=False)([x, mean, sigma])
 
     # denoise image
     x = model_denoise(x)
@@ -116,12 +129,11 @@ def model_builder(
     if output_multiplier != 1.0:
         x = x * output_multiplier
 
-    x = (x * sigma) + mean
     x = \
-        keras.backend.clip(
-            x,
-            min_value=-0.5,
-            max_value=+0.5)
+        keras.layers.Lambda(
+            name="mean_sigma_denormalization",
+            function=func_sigma_denorm,
+            trainable=False)([x, mean, sigma])
 
     # add denormalize cap
     if normalize_denormalize:
@@ -189,6 +201,7 @@ class DenoisingInferenceModule(tf.Module):
         # --- run denoise model as many times as required
         for i in range(self._iterations):
             x = self._model_denoise(x)
+            x = keras.backend.clip(x, min_value=-0.5, max_value=+0.5)
 
         # --- denormalize
         if self._model_denormalize is not None:
