@@ -19,7 +19,7 @@
     "epochs": 20,
     "total_steps": -1,
     "checkpoints_to_keep": 3,
-    "checkpoint_every": 1000,
+    "checkpoint_every": 10000,
     "visualization_number": 5,
     "visualization_every": 100,
     "optimizer": {
