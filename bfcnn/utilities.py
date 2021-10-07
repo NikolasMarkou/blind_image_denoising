@@ -396,7 +396,6 @@ def build_normalize_model(
         outputs=model_output,
         trainable=False)
 
-
 # ---------------------------------------------------------------------
 
 
@@ -427,7 +426,6 @@ def build_denormalize_model(
         inputs=model_input,
         outputs=model_output,
         trainable=False)
-
 
 # ---------------------------------------------------------------------
 
@@ -501,10 +499,10 @@ def build_resnet_model(
     del final_conv_params["kernel_regularizer"]
 
     # --- set input
-    model_input = keras.Input(shape=input_dims)
+    input_layer = keras.Input(shape=input_dims)
 
     # --- add base layer
-    x = keras.layers.Conv2D(**conv_params)(model_input)
+    x = keras.layers.Conv2D(**conv_params)(input_layer)
     if use_bn:
         x = keras.layers.BatchNormalization(**bn_params)(x)
 
@@ -523,11 +521,13 @@ def build_resnet_model(
     output_layer = \
         keras.layers.Conv2D(**final_conv_params)(x)
 
+    output_layer = \
+        keras.layers.Add()([output_layer, input_layer])
+
     return keras.Model(
         name=name,
-        inputs=model_input,
+        inputs=input_layer,
         outputs=output_layer)
-
 
 # ---------------------------------------------------------------------
 
@@ -597,10 +597,10 @@ def build_sparse_resnet_model(
     )
 
     # --- set input
-    model_input = keras.Input(shape=input_dims)
+    input_layer = keras.Input(shape=input_dims)
 
     # --- add base layer
-    x = keras.layers.Conv2D(**base_conv_params)(model_input)
+    x = keras.layers.Conv2D(**base_conv_params)(input_layer)
 
     # --- add resnet layers
     for i in range(no_layers):
@@ -613,11 +613,13 @@ def build_sparse_resnet_model(
     output_layer = \
         keras.layers.Conv2D(**final_conv_params)(x)
 
+    output_layer = \
+        keras.layers.Add()([output_layer, input_layer])
+
     return keras.Model(
         name=name,
-        inputs=model_input,
+        inputs=input_layer,
         outputs=output_layer)
-
 
 # ---------------------------------------------------------------------
 
@@ -687,10 +689,10 @@ def build_sparse_resnet_mean_sigma_model(
     )
 
     # --- set input
-    model_input = keras.Input(shape=input_dims)
+    input_layer = keras.Input(shape=input_dims)
 
     # --- add base layer
-    x = model_input
+    x = input_layer
     _, sigma = mean_sigma_local(x, kernel_size=(5, 5))
     x = keras.layers.Concatenate()([x, sigma])
     x = keras.layers.Conv2D(**base_conv_params)(x)
@@ -708,13 +710,12 @@ def build_sparse_resnet_mean_sigma_model(
         keras.layers.Conv2D(**final_conv_params)(x)
 
     output_layer = \
-        keras.layers.Add()([output_layer, model_input])
+        keras.layers.Add()([output_layer, input_layer])
 
     return keras.Model(
         name=name,
-        inputs=model_input,
+        inputs=input_layer,
         outputs=output_layer)
-
 
 # ---------------------------------------------------------------------
 
@@ -876,8 +877,7 @@ def build_gatenet_model(
         inputs=input_layer,
         outputs=output_layer)
 
-
-# ==============================================================================
+# ---------------------------------------------------------------------
 
 
 def mobilenet_v2_block(
@@ -962,8 +962,7 @@ def mobilenet_v2_block(
             epsilon=bn_epsilon)(tmp)
     return tmp
 
-
-# ==============================================================================
+# ---------------------------------------------------------------------
 
 
 def get_conv2d_weights(
@@ -984,4 +983,4 @@ def get_conv2d_weights(
                     weights.append(w_flat)
     return np.concatenate(weights)
 
-# ==============================================================================
+# ---------------------------------------------------------------------
