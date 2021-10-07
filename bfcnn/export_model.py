@@ -32,6 +32,17 @@ def export_model(
         input_shape: List[int] = [1, 768, 256, 3],
         to_tflite: bool = True,
         test_model: bool = True):
+    """
+    build and export a denoising model
+
+    :param pipeline_config:
+    :param checkpoint_directory:
+    :param output_directory:
+    :param input_shape:
+    :param to_tflite:
+    :param test_model:
+    :return:
+    """
     # --- argument checking
     if pipeline_config is None:
         raise ValueError("Pipeline configuration [{0}] is not valid".format(
