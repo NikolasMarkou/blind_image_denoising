@@ -4,7 +4,7 @@ import argparse
 
 # ---------------------------------------------------------------------
 
-from . import train_eval_loop
+from . import train_loop
 
 # ---------------------------------------------------------------------
 
@@ -22,7 +22,7 @@ def main(args):
             args.pipeline_config))
 
     # --- launch train loop
-    train_eval_loop.train_loop(
+    train_loop.train_loop(
         pipeline_config_path=args.pipeline_config,
         model_dir=args.model_dir)
 
