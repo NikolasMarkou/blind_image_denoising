@@ -1,14 +1,15 @@
 import os
 import json
-import pathlib
 import tensorflow as tf
-from typing import List, Union, Tuple
+from pathlib import Path
+from typing import List, Union, Tuple, Dict
 
 # ---------------------------------------------------------------------
 # local imports
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
+from .utilities import load_config
 from .model import model_builder, DenoisingInferenceModule
 
 # ---------------------------------------------------------------------
@@ -25,9 +26,9 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
 def export_model(
-        pipeline_config,
-        checkpoint_directory,
-        output_directory,
+        pipeline_config: Union[str, Dict, Path],
+        checkpoint_directory: Union[str, Path],
+        output_directory: Union[str, Path],
         input_shape: List[int] = [1, 768, 256, 3],
         to_tflite: bool = True,
         test_model: bool = True):
@@ -41,7 +42,7 @@ def export_model(
             checkpoint_directory))
     if not os.path.isdir(output_directory):
         # if path does not exist attempt to make it
-        pathlib.Path(output_directory).mkdir(parents=True, exist_ok=True)
+        Path(output_directory).mkdir(parents=True, exist_ok=True)
         if not os.path.isdir(output_directory):
             raise ValueError("Output directory [{0}] is not valid".format(
                 output_directory))
@@ -53,11 +54,10 @@ def export_model(
 
     # --- load and export denoising model
     logger.info("building denoising model")
-    with open(pipeline_config) as f:
-        pipeline_config = json.load(f)
-        model_denoise, model_normalize, model_denormalize = \
-            model_builder(
-                pipeline_config["model"])
+    pipeline_config = load_config(pipeline_config)
+    model_denoise, model_normalize, model_denormalize = \
+        model_builder(
+            pipeline_config["model"])
     logger.info("saving configuration pipeline")
     with open(
             os.path.join(
@@ -150,3 +150,5 @@ def export_model(
                 step=0,
                 profiler_outdir=output_log,
                 name="denoising_module")
+
+# ---------------------------------------------------------------------
