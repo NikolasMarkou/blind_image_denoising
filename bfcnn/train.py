@@ -1,6 +1,7 @@
 import os
+import sys
 import argparse
-import pathlib
+
 # ---------------------------------------------------------------------
 
 from . import train_eval_loop
@@ -19,10 +20,13 @@ def main(args):
     if not os.path.isfile(args.pipeline_config):
         raise ValueError("Pipeline configuration [{0}] is not valid".format(
             args.pipeline_config))
-    # --- Launch train loop
+
+    # --- launch train loop
     train_eval_loop.train_loop(
         pipeline_config_path=args.pipeline_config,
         model_dir=args.model_dir)
+
+    return 0
 
 # ---------------------------------------------------------------------
 
@@ -52,6 +56,6 @@ if __name__ == "__main__":
     # parse the arguments and pass them to main
     args = parser.parse_args()
 
-    main(args)
+    sys.exit(main(args))
 
 # ---------------------------------------------------------------------

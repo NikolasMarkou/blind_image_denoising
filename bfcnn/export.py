@@ -1,22 +1,36 @@
 import os
-import json
-import pathlib
+import sys
 import argparse
-import tensorflow as tf
 
 # ---------------------------------------------------------------------
 # local imports
 # ---------------------------------------------------------------------
 
-from .custom_logger import logger
 from .export_model import export_model
-from .model import model_builder, DenoisingInferenceModule
 
 # ---------------------------------------------------------------------
 
 __author__ = "Nikolas Markou"
 __version__ = "0.1.0"
 __license__ = "None"
+
+# ---------------------------------------------------------------------
+
+
+def main(args):
+    # --- argument checking
+    if not os.path.isfile(args.pipeline_config):
+        raise ValueError("Pipeline configuration [{0}] is not valid".format(
+            args.pipeline_config))
+
+    export_model(
+        pipeline_config=args.pipeline_config,
+        checkpoint_directory=args.checkpoint_directory,
+        output_directory=args.output_directory,
+        input_shape=args.input_shape,
+        to_tflite=args.to_tflite,
+        test_model=args.test_model)
+    return 0
 
 # ---------------------------------------------------------------------
 
@@ -73,12 +87,6 @@ if __name__ == "__main__":
     # parse the arguments and pass them to main
     args = parser.parse_args()
 
-    export_model(
-        pipeline_config=args.pipeline_config,
-        checkpoint_directory=args.checkpoint_directory,
-        output_directory=args.output_directory,
-        input_shape=args.input_shape,
-        to_tflite=args.to_tflite,
-        test_model=args.test_model)
+    sys.exit(main(args))
 
 # ---------------------------------------------------------------------
