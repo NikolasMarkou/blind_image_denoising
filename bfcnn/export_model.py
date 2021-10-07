@@ -76,7 +76,7 @@ def export_model(
                 "pipeline.json"), "w") as f:
         f.write(json.dumps(pipeline_config))
     logger.info("restoring checkpoint weights")
-    checkpoint = tf.train.Checkpoint(model=model_denoise)
+    checkpoint = tf.train.Checkpoint(model_denoise=model_denoise)
     manager = tf.train.CheckpointManager(
         checkpoint, checkpoint_directory, max_to_keep=1)
     status = checkpoint.restore(manager.latest_checkpoint).expect_partial()
@@ -101,11 +101,13 @@ def export_model(
                 name="input")
         )
 
-    status.assert_existing_objects_matched()
-
+    logger.info("saving model")
     # export the model as save_model format (default)
-    exported_checkpoint_manager = tf.train.CheckpointManager(
-        checkpoint, output_checkpoint, max_to_keep=1)
+    exported_checkpoint_manager = \
+        tf.train.CheckpointManager(
+            checkpoint,
+            output_checkpoint,
+            max_to_keep=1)
     exported_checkpoint_manager.save(checkpoint_number=0)
     options = tf.saved_model.SaveOptions(save_debug_info=True)
     tf.saved_model.save(

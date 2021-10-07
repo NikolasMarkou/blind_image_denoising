@@ -5,6 +5,7 @@
     "min_value": 0,
     "max_value": 255,
     "kernel_size": 3,
+    "type": "resnet",
     "batchnorm": true,
     "activation": "relu",
     "output_multiplier": 1.0,
@@ -12,14 +13,13 @@
     "final_activation": "tanh",
     "input_shape": [256, 256, 3],
     "normalize_denormalize": false,
-    "type": "sparse_resnet_mean_sigma",
     "kernel_initializer": "glorot_normal"
   },
   "train": {
     "epochs": 20,
     "total_steps": -1,
     "checkpoints_to_keep": 3,
-    "checkpoint_every": 10000,
+    "checkpoint_every": 1000,
     "visualization_number": 5,
     "visualization_every": 100,
     "optimizer": {
@@ -30,12 +30,12 @@
     }
   },
   "loss": {
-    "hinge": 0.5,
+    "hinge": 2.5,
     "mae_multiplier": 1.0,
     "regularization": 0.01
   },
   "dataset": {
-    "batch_size": 12,
+    "batch_size": 8,
     "min_value": 0,
     "max_value": 255,
     "clip_value": true,

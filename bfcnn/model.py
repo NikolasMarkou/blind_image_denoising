@@ -120,8 +120,8 @@ def model_builder(
     x = \
         keras.backend.clip(
             x,
-            min_value=min_value,
-            max_value=max_value)
+            min_value=-0.5,
+            max_value=+0.5)
 
     # add denormalize cap
     if normalize_denormalize:
