@@ -39,7 +39,8 @@ def main(config):
             os.path.join(
                 OUTPUT_DIRECTORY,
                 os.path.splitext(os.path.basename(config))[0]),
-            "--to-tflite"
+            "--to-tflite",
+            "--test-model"
         ])
 
 # ---------------------------------------------------------------------

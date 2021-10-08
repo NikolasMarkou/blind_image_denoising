@@ -49,6 +49,9 @@ def train_loop(
     :param model_dir: directory to save checkpoints into
     :return:
     """
+    # --- load configuration
+    config = load_config(pipeline_config_path)
+
     # --- create model_dir if not exist
     if not os.path.isdir(str(model_dir)):
         # if path does not exist attempt to make it
@@ -57,9 +60,6 @@ def train_loop(
         if not os.path.isdir(str(model_dir)):
             raise ValueError("Model directory [{0}] is not valid".format(
                 model_dir))
-
-    # --- load configuration
-    config = load_config(pipeline_config_path)
 
     # --- build the model
     model_denoise, model_normalize, model_denormalize = \
@@ -118,8 +118,7 @@ def train_loop(
                 directory=model_dir,
                 max_to_keep=checkpoints_to_keep)
         status =\
-            checkpoint.restore(manager.latest_checkpoint)\
-                .expect_partial()
+            checkpoint.restore(manager.latest_checkpoint).expect_partial()
         trainable_weights = \
             model_denoise.trainable_weights
 

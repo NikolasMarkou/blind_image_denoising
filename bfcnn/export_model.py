@@ -31,7 +31,7 @@ def export_model(
         pipeline_config: Union[str, Dict, Path],
         checkpoint_directory: Union[str, Path],
         output_directory: Union[str, Path],
-        input_shape: List[int] = [1, 768, 256, 3],
+        input_shape: List[int] = [1, 256, 768, 3],
         to_tflite: bool = True,
         test_model: bool = True):
     """
@@ -41,7 +41,7 @@ def export_model(
     :param checkpoint_directory:
     :param output_directory:
     :param input_shape:
-    :param to_tflite:
+    :param to_tflite: if true convert to tflite
     :param test_model:
     :return:
     """
@@ -76,7 +76,7 @@ def export_model(
             os.path.join(
                 output_directory,
                 "pipeline.json"), "w") as f:
-        f.write(json.dumps(pipeline_config))
+        f.write(json.dumps(pipeline_config, indent=4))
     logger.info("restoring checkpoint weights")
     checkpoint = tf.train.Checkpoint(model_denoise=model_denoise)
     manager = tf.train.CheckpointManager(
@@ -121,9 +121,10 @@ def export_model(
     # --- export to tflite
     if to_tflite:
         converter = \
-            tf.lite.TFLiteConverter.from_concrete_functions([concrete_function])
+            tf.lite.TFLiteConverter.from_concrete_functions(
+                [concrete_function])
         converter.target_spec.supported_ops = \
-            [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
+            [tf.lite.OpsSet.TFLITE_BUILTINS]
         converter.optimizations = \
             [tf.lite.Optimize.OPTIMIZE_FOR_LATENCY]
         tflite_model = converter.convert()
@@ -137,8 +138,9 @@ def export_model(
 
     # --- run graph with random input
     if test_model:
+        logger.info("testing modes with shape [{0}]".format(input_shape))
         output_log = \
-            os.path.join(output_directory, "log")
+            os.path.join(output_directory, "trace_log")
         writer = \
             tf.summary.create_file_writer(
                 output_log)
