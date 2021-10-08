@@ -729,7 +729,6 @@ def build_sparse_resnet_mean_sigma_model(
     # --- add resnet layers
     for i in range(no_layers):
         previous_layer = x
-        x = keras.layers.Concatenate()([x, sigma])
         x = conv2d_sparse(x, **sparse_conv_params)
         x = keras.layers.Conv2D(**conv_params)(x)
         x = keras.layers.Add()([previous_layer, x])
