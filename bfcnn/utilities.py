@@ -832,15 +832,14 @@ def build_gatenet_model(
         keras.Input(shape=input_dims)
 
     # --- add base layer
-    x = keras.layers.Conv2D(**conv_params)(input_layer)
-    # --- add base layer
     x = input_layer
     mean = \
         keras.layers.AveragePooling2D(
             strides=(1, 1),
             padding="SAME",
             pool_size=(5, 5))(x)
-    x = keras.layers.Conv2D(**conv_params)(x - mean)
+    diff = x - mean
+    x = keras.layers.Conv2D(**conv_params)(diff)
 
     # --- add signal/gate resnet layers
     s_layer = x
@@ -857,7 +856,7 @@ def build_gatenet_model(
             s_layer = \
                 keras.layers.Concatenate()([
                     previous_s_layer,
-                    input_layer])
+                    diff])
             g_layer = \
                 keras.layers.Concatenate()([
                     previous_s_layer,
@@ -890,9 +889,20 @@ def build_gatenet_model(
             (keras.layers.Activation("tanh")(
                 g_layer_activation * 2) + 1.0) / 2.0
 
+        # --- compute activation per pixel
+        p_layer_activation = \
+            keras.backend.mean(g_layer, keepdims=True, axis=[3])
+        p_layer_activation = \
+            (keras.layers.Activation("tanh")(
+                p_layer_activation * 2) + 1.0) / 2.0
+
         # mask channels
         s_layer = \
             keras.layers.Multiply()([s_layer, g_layer_activation])
+
+        # mask positions
+        s_layer = \
+            keras.layers.Multiply()([s_layer, p_layer_activation])
 
         # add skip connection
         if i != 0:
