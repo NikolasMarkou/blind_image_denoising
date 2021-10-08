@@ -833,6 +833,14 @@ def build_gatenet_model(
 
     # --- add base layer
     x = keras.layers.Conv2D(**conv_params)(input_layer)
+    # --- add base layer
+    x = input_layer
+    mean = \
+        keras.layers.AveragePooling2D(
+            strides=(1, 1),
+            padding="SAME",
+            pool_size=(5, 5))(x)
+    x = keras.layers.Conv2D(**conv_params)(x - mean)
 
     # --- add signal/gate resnet layers
     s_layer = x
@@ -855,7 +863,6 @@ def build_gatenet_model(
                     previous_s_layer,
                     previous_g_layer
                 ])
-        g_layer = keras.backend.stop_gradient(g_layer)
 
         # --- expand
         s_layer = \

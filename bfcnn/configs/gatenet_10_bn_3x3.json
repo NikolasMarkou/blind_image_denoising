@@ -6,7 +6,7 @@
     "max_value": 255,
     "kernel_size": 3,
     "type": "gatenet",
-    "batchnorm": true,
+    "batchnorm": false,
     "activation": "relu",
     "output_multiplier": 1.0,
     "kernel_regularizer": "l1",

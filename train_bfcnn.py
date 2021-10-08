@@ -24,14 +24,14 @@ CONFIGS = {
 # ---------------------------------------------------------------------
 
 
-def main(config):
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(CUDA_DEVICE)
+def main(args):
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
     return \
         subprocess.check_call([
             sys.executable,
             "-m", "bfcnn.train",
-            "--model-directory", CHECKPOINT_DIRECTORY,
-            "--pipeline-config", config
+            "--model-directory", os.path.join(CHECKPOINT_DIRECTORY, args.model),
+            "--pipeline-config", CONFIGS[args.model.lower()]
         ])
 
 # ---------------------------------------------------------------------
@@ -47,11 +47,15 @@ if __name__ == "__main__":
         dest="model",
         help="model")
 
+    parser.add_argument(
+        "--gpu",
+        default=CUDA_DEVICE,
+        dest="gpu",
+        help="gpu")
+
     # parse the arguments and pass them to main
     args = parser.parse_args()
 
-    config = CONFIGS[args.model.lower()]
-
-    sys.exit(main(config))
+    sys.exit(main(args))
 
 # ---------------------------------------------------------------------
