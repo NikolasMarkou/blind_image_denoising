@@ -164,8 +164,8 @@ def mean_sigma_local(
     shape = keras.backend.int_shape(input_layer)
     if len(shape) != 4:
         raise ValueError("input_layer must be a 4d tensor")
-    # --- define functions
 
+    # --- define functions
     def func_diff_2(args):
         x, y = args
         return tf.square(x - y)
@@ -723,8 +723,7 @@ def build_sparse_resnet_mean_sigma_model(
     # --- add base layer
     x = input_layer
     mean, sigma = mean_sigma_local(x, kernel_size=(5, 5))
-    x = keras.layers.Concatenate()([x - mean, sigma])
-    x = keras.layers.Conv2D(**base_conv_params)(x)
+    x = keras.layers.Conv2D(**base_conv_params)(x - mean)
 
     # --- add resnet layers
     for i in range(no_layers):
@@ -733,6 +732,7 @@ def build_sparse_resnet_mean_sigma_model(
         x = conv2d_sparse(x, **sparse_conv_params)
         x = keras.layers.Conv2D(**conv_params)(x)
         x = keras.layers.Add()([previous_layer, x])
+    x = keras.layers.Concatenate()([x, sigma])
 
     # --- output to original channels
     output_layer = \
