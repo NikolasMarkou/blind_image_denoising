@@ -1,13 +1,16 @@
-import os
-import sys
-import argparse
-import subprocess
-
+r"""train a bfcnn model"""
 # ---------------------------------------------------------------------
 
 __author__ = "Nikolas Markou"
 __version__ = "0.1.0"
 __license__ = "None"
+
+# ---------------------------------------------------------------------
+
+import os
+import sys
+import argparse
+import subprocess
 
 # ---------------------------------------------------------------------
 
@@ -25,13 +28,17 @@ CONFIGS = {
 
 
 def main(args):
+    model = args.model.lower()
+    config = CONFIGS[model]
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
     return \
         subprocess.check_call([
             sys.executable,
             "-m", "bfcnn.train",
-            "--model-directory", os.path.join(CHECKPOINT_DIRECTORY, args.model),
-            "--pipeline-config", CONFIGS[args.model.lower()]
+            "--model-directory",
+            os.path.join(CHECKPOINT_DIRECTORY, model),
+            "--pipeline-config",
+            config
         ])
 
 # ---------------------------------------------------------------------

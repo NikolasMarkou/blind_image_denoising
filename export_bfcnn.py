@@ -1,13 +1,16 @@
-import os
-import sys
-import argparse
-import subprocess
-
+r"""export a bfcnn model"""
 # ---------------------------------------------------------------------
 
 __author__ = "Nikolas Markou"
 __version__ = "0.1.0"
 __license__ = "None"
+
+# ---------------------------------------------------------------------
+
+import os
+import sys
+import argparse
+import subprocess
 
 # ---------------------------------------------------------------------
 
@@ -26,7 +29,8 @@ CONFIGS = {
 
 
 def main(args):
-    config = CONFIGS[args.model.lower()]
+    model = args.model.lower()
+    config = CONFIGS[model]
     os.environ["CUDA_VISIBLE_DEVICES"] = str(CUDA_DEVICE)
     return \
         subprocess.check_call([
@@ -34,14 +38,14 @@ def main(args):
             "-m", "bfcnn.export",
             "--checkpoint-directory",
             os.path.join(
-		CHECKPOINT_DIRECTORY,
-		args.model),
+                CHECKPOINT_DIRECTORY,
+                model),
             "--pipeline-config",
             config,
             "--output-directory",
             os.path.join(
                 OUTPUT_DIRECTORY,
-                args.model),
+                model),
             "--to-tflite",
             "--test-model"
         ])

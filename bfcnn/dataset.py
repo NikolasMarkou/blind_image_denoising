@@ -1,6 +1,6 @@
 # ---------------------------------------------------------------------
 
-__author__ = ""
+__author__ = "Nikolas Markou"
 __version__ = "0.1.0"
 __license__ = "None"
 
@@ -24,6 +24,8 @@ from .custom_logger import logger
 
 def dataset_builder(
         config: Dict):
+    # ---
+    logger.info("creating dataset_builder with configuration [{0}]".format(config))
     # --- argument parsing
     batch_size = config["batch_size"]
     input_shape = config["input_shape"]
@@ -57,7 +59,6 @@ def dataset_builder(
 
     # --- define augmentation function
     def augmentation(input_batch):
-
         input_batch = \
             tf.image.random_crop(
                 value=input_batch,
