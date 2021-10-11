@@ -84,6 +84,7 @@ def model_builder(
     elif model_type == "sparse_resnet_mean_sigma":
         model_denoise = \
             build_sparse_resnet_mean_sigma_model(
+                use_bn=batchnorm,
                 filters=filters,
                 no_layers=no_layers,
                 input_dims=input_shape,
