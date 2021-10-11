@@ -158,6 +158,7 @@ def train_loop(
 
                     # compute the loss value for this mini-batch
                     loss_map = loss_fn(
+                        difficulty=noise_std,
                         input_batch=input_batch,
                         noisy_batch=noisy_batch,
                         prediction_batch=prediction_batch,
