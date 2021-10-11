@@ -158,7 +158,7 @@ def dataset_builder(
                         strides=1,
                         padding="SAME")
 
-        return input_batch, noisy_batch
+        return input_batch, noisy_batch, noise_std
 
     # --- create the dataset
     return {

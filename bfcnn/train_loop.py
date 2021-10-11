@@ -130,7 +130,7 @@ def train_loop(
                 start_time = time.time()
 
                 # augment data
-                input_batch, noisy_batch = \
+                input_batch, noisy_batch, noise_std = \
                     augmentation_fn(input_batch)
 
                 input_batch = \
@@ -145,8 +145,12 @@ def train_loop(
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
-                    prediction_batch = \
-                        model_denoise(noisy_batch, training=True)
+                    # add iterations for stability
+                    iterations = np.random.choice([1, 1, 1, 2, 2, 3])
+                    prediction_batch = tf.identity(noisy_batch)
+                    for iteration in range(iterations):
+                        prediction_batch = \
+                            model_denoise(prediction_batch, training=True)
 
                     input_batch = \
                         model_denormalize(input_batch)
