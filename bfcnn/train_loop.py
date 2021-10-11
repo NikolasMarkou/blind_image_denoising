@@ -131,6 +131,10 @@ def train_loop(
             for input_batch in dataset:
                 start_time = time.time()
 
+                # declare variables
+                loss_map = None
+                tmp_prediction_batch = None
+
                 # augment data
                 input_batch, noisy_batch, noise_std = \
                     augmentation_fn(input_batch)
@@ -140,7 +144,6 @@ def train_loop(
 
                 # run multiple iterations for stability
                 iterations = np.random.choice(iterations_choice)
-                tmp_prediction_batch = None
 
                 for iteration in range(iterations):
                     # Open a GradientTape to record the operations run
@@ -176,26 +179,27 @@ def train_loop(
                         optimizer.apply_gradients(
                             zip(grads, trainable_weights))
 
-                        # --- add loss summaries for tensorboard
-                        for name, key in [
-                            ("loss/mae", "mae_loss"),
-                            ("loss/total", "mean_total_loss"),
-                            ("quality/mae_noise", "mae_noise"),
-                            ("loss/regularization", "regularization_loss"),
-                            ("quality/mae_improvement", "mae_improvement")
-                        ]:
-                            tf.summary.scalar(
-                                name,
-                                loss_map[key], step=global_step)
+                # --- add loss summaries for tensorboard
+                if loss_map is not None:
+                    for name, key in [
+                        ("loss/mae", "mae_loss"),
+                        ("loss/total", "mean_total_loss"),
+                        ("quality/mae_noise", "mae_noise"),
+                        ("loss/regularization", "regularization_loss"),
+                        ("quality/mae_improvement", "mae_improvement")
+                    ]:
+                        tf.summary.scalar(
+                            name,
+                            loss_map[key], step=global_step)
 
-                    # --- add image prediction for tensorboard
-                    if global_step % visualization_every == 0:
-                        visualize(
-                            global_step=global_step,
-                            input_batch=input_batch,
-                            noisy_batch=noisy_batch,
-                            prediction_batch=tmp_prediction_batch,
-                            visualization_number=visualization_number)
+                # --- add image prediction for tensorboard
+                if global_step % visualization_every == 0:
+                    visualize(
+                        global_step=global_step,
+                        input_batch=input_batch,
+                        noisy_batch=noisy_batch,
+                        prediction_batch=tmp_prediction_batch,
+                        visualization_number=visualization_number)
 
                 # --- check if it is time to save a checkpoint
                 if checkpoint_every > 0:
