@@ -143,6 +143,10 @@ def train_loop(
                 # Open a GradientTape to record the operations run
                 # during the forward pass, which enables auto-differentiation.
                 with tf.GradientTape() as tape:
+                    input_batch = \
+                        model_denormalize(input_batch)
+                    noisy_batch = \
+                        model_denormalize(noisy_batch)
                     # Run the forward pass of the layer.
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
@@ -154,33 +158,29 @@ def train_loop(
                         prediction_batch = \
                             model_denoise(prediction_batch, training=True)
 
-                    input_batch = \
-                        model_denormalize(input_batch)
-                    noisy_batch = \
-                        model_denormalize(noisy_batch)
-                    prediction_batch = \
-                        model_denormalize(prediction_batch)
+                        tmp_prediction_batch = \
+                            model_denormalize(prediction_batch)
 
-                    # compute the loss value for this mini-batch
-                    loss_map = loss_fn(
-                        difficulty=noise_std,
-                        input_batch=input_batch,
-                        noisy_batch=noisy_batch,
-                        prediction_batch=prediction_batch,
-                        model_losses=model_denoise.losses)
+                        # compute the loss value for this mini-batch
+                        loss_map = loss_fn(
+                            difficulty=noise_std,
+                            input_batch=input_batch,
+                            noisy_batch=noisy_batch,
+                            prediction_batch=tmp_prediction_batch,
+                            model_losses=model_denoise.losses)
 
-                    # Use the gradient tape to automatically retrieve
-                    # the gradients of the trainable variables
-                    # with respect to the loss.
-                    grads = \
-                        tape.gradient(
-                            loss_map["mean_total_loss"],
-                            trainable_weights)
+                        # Use the gradient tape to automatically retrieve
+                        # the gradients of the trainable variables
+                        # with respect to the loss.
+                        grads = \
+                            tape.gradient(
+                                loss_map["mean_total_loss"],
+                                trainable_weights)
 
-                    # Run one step of gradient descent by updating
-                    # the value of the variables to minimize the loss.
-                    optimizer.apply_gradients(
-                        zip(grads, trainable_weights))
+                        # Run one step of gradient descent by updating
+                        # the value of the variables to minimize the loss.
+                        optimizer.apply_gradients(
+                            zip(grads, trainable_weights))
 
                     # --- add loss summaries for tensorboard
                     for name, key in [
