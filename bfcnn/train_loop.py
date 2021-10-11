@@ -140,6 +140,8 @@ def train_loop(
 
                 # run multiple iterations for stability
                 iterations = np.random.choice(iterations_choice)
+                tmp_prediction_batch = None
+
                 for iteration in range(iterations):
                     # Open a GradientTape to record the operations run
                     # during the forward pass, which enables auto-differentiation.
@@ -192,7 +194,7 @@ def train_loop(
                             global_step=global_step,
                             input_batch=input_batch,
                             noisy_batch=noisy_batch,
-                            prediction_batch=prediction_batch,
+                            prediction_batch=tmp_prediction_batch,
                             visualization_number=visualization_number)
 
                 # --- check if it is time to save a checkpoint
