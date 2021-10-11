@@ -154,7 +154,9 @@ def train_loop(
                         # to its inputs are going to be recorded
                         # on the GradientTape.
                         prediction_batch = \
-                            model_denoise(prediction_batch, training=True)
+                            model_denoise(
+                                prediction_batch,
+                                training=True)
                         tmp_prediction_batch = \
                             model_denormalize(prediction_batch)
 
