@@ -135,29 +135,21 @@ def train_loop(
                 input_batch, noisy_batch, noise_std = \
                     augmentation_fn(input_batch)
 
-                input_batch = \
-                    model_normalize(input_batch, training=False)
-                noisy_batch = \
+                prediction_batch = \
                     model_normalize(noisy_batch, training=False)
 
-                # Open a GradientTape to record the operations run
-                # during the forward pass, which enables auto-differentiation.
-                with tf.GradientTape() as tape:
-                    input_batch = \
-                        model_denormalize(input_batch)
-                    noisy_batch = \
-                        model_denormalize(noisy_batch)
-                    # Run the forward pass of the layer.
-                    # The operations that the layer applies
-                    # to its inputs are going to be recorded
-                    # on the GradientTape.
-                    # add iterations for stability
-                    iterations = np.random.choice(iterations_choice)
-                    prediction_batch = tf.identity(noisy_batch)
-                    for iteration in range(iterations):
+                # run multiple iterations for stability
+                iterations = np.random.choice(iterations_choice)
+                for iteration in range(iterations):
+                    # Open a GradientTape to record the operations run
+                    # during the forward pass, which enables auto-differentiation.
+                    with tf.GradientTape() as tape:
+                        # Run the forward pass of the layer.
+                        # The operations that the layer applies
+                        # to its inputs are going to be recorded
+                        # on the GradientTape.
                         prediction_batch = \
                             model_denoise(prediction_batch, training=True)
-
                         tmp_prediction_batch = \
                             model_denormalize(prediction_batch)
 
@@ -182,17 +174,17 @@ def train_loop(
                         optimizer.apply_gradients(
                             zip(grads, trainable_weights))
 
-                    # --- add loss summaries for tensorboard
-                    for name, key in [
-                        ("loss/mae", "mae_loss"),
-                        ("loss/total", "mean_total_loss"),
-                        ("quality/mae_noise", "mae_noise"),
-                        ("loss/regularization", "regularization_loss"),
-                        ("quality/mae_improvement", "mae_improvement")
-                    ]:
-                        tf.summary.scalar(
-                            name,
-                            loss_map[key], step=global_step)
+                        # --- add loss summaries for tensorboard
+                        for name, key in [
+                            ("loss/mae", "mae_loss"),
+                            ("loss/total", "mean_total_loss"),
+                            ("quality/mae_noise", "mae_noise"),
+                            ("loss/regularization", "regularization_loss"),
+                            ("quality/mae_improvement", "mae_improvement")
+                        ]:
+                            tf.summary.scalar(
+                                name,
+                                loss_map[key], step=global_step)
 
                     # --- add image prediction for tensorboard
                     if global_step % visualization_every == 0:
