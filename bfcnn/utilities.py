@@ -575,7 +575,7 @@ def build_sparse_resnet_model(
         channel_index: int = 2,
         name="resnet") -> keras.Model:
     """
-    Build a resnet model
+    Build a resnet model with a sparsity constraint
 
     :param input_dims: Models input dimensions
     :param no_layers: Number of resnet layers
@@ -641,7 +641,12 @@ def build_sparse_resnet_model(
     for i in range(no_layers):
         previous_layer = x
         x = keras.layers.DepthwiseConv2D(**depth_conv_params)(x)
-        x = sparse_block(x, threshold_sigma=1.0, symmetric=True, per_channel_sparsity=True)
+        x = \
+            sparse_block(
+                x,
+                threshold_sigma=1.0,
+                symmetric=True,
+                per_channel_sparsity=True)
         x = keras.layers.Conv2D(**intermediate_conv_params)(x)
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
