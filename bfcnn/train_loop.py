@@ -92,6 +92,8 @@ def train_loop(
     # --- get the train configuration
     train_config = config["train"]
     epochs = train_config["epochs"]
+    # how many times to run the model on a single batch
+    iterations_choice = train_config.get("iterations_choice", [1])
     total_steps = train_config.get("total_steps", -1)
     # how many checkpoints to keep
     checkpoints_to_keep = train_config.get("checkpoints_to_keep", 3)
@@ -146,8 +148,11 @@ def train_loop(
                     # to its inputs are going to be recorded
                     # on the GradientTape.
                     # add iterations for stability
-                    prediction_batch = \
-                        model_denoise(noisy_batch, training=True)
+                    iterations = np.random.choice(iterations_choice)
+                    prediction_batch = tf.identity(noisy_batch)
+                    for iteration in range(iterations):
+                        prediction_batch = \
+                            model_denoise(prediction_batch, training=True)
 
                     input_batch = \
                         model_denormalize(input_batch)
