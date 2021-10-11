@@ -29,13 +29,15 @@ def loss_function_builder(
             input_batch,
             prediction_batch,
             noisy_batch=None,
-            model_losses=None) -> Dict:
+            model_losses=None,
+            difficulty: float = -1.0) -> Dict:
         """
         The loss function of the depth prediction model
 
         :param: input_batch: ground truth
         :param: prediction_batch: prediction
         :param: model_losses: weight/regularization losses
+        :param: difficulty: if >= 0 then it is an indication how corrupted the noisy batch is
         :return loss
         """
 
