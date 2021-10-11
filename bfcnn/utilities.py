@@ -613,7 +613,7 @@ def build_sparse_resnet_model(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation=activation,
+        activation="linear",
         kernel_size=kernel_size,
         depthwise_regularizer=kernel_regularizer,
         depthwise_initializer=kernel_initializer
