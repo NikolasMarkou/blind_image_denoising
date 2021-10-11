@@ -68,6 +68,11 @@ def loss_function_builder(
         if model_losses is not None:
             regularization_loss = tf.add_n(model_losses)
 
+        # --- difficulty computation
+        if difficulty >= 0:
+            # TODO
+            pass
+
         # --- add up loss
         mean_total_loss = \
             mae_prediction_loss * mae_multiplier + \
