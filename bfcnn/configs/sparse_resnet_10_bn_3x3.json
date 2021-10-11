@@ -12,7 +12,6 @@
     "kernel_regularizer": "l1",
     "final_activation": "tanh",
     "input_shape": [128, 128, 3],
-    "normalize_denormalize": false,
     "kernel_initializer": "glorot_normal"
   },
   "train": {

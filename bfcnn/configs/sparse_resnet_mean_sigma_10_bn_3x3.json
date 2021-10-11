@@ -11,8 +11,6 @@
     "kernel_regularizer": "l1",
     "final_activation": "tanh",
     "input_shape": [256, 256, 3],
-    "normalize_denormalize": false,
-    "type": "sparse_resnet_mean_sigma",
     "kernel_initializer": "glorot_normal"
   },
   "train": {

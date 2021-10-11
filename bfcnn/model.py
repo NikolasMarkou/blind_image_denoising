@@ -42,7 +42,6 @@ def model_builder(
     output_multiplier = config.get("output_multiplier", 1.0)
     final_activation = config.get("final_activation", "linear")
     kernel_regularizer = config.get("kernel_regularizer", "l1")
-    normalize_denormalize = config.get("normalize_denormalize", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
 
     # --- build normalize denormalize models
@@ -114,11 +113,9 @@ def model_builder(
             shape=input_shape,
             name="input_tensor")
     x = model_input
-    # add normalize cap
-    if normalize_denormalize:
-        x = model_normalize(x)
 
-    mean, sigma = mean_sigma_global(x, axis=[1, 2])
+    mean, sigma = \
+        mean_sigma_local(x, kernel_size=[5, 5])
 
     def func_sigma_norm(args):
         x, mean_x, sigma_x = args
@@ -146,10 +143,6 @@ def model_builder(
             name="mean_sigma_denormalization",
             function=func_sigma_denorm,
             trainable=False)([x, mean, sigma])
-
-    # add denormalize cap
-    if normalize_denormalize:
-        x = model_denormalize(x)
 
     # --- wrap model
     model_denoise = \
