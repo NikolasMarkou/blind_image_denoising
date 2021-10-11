@@ -28,8 +28,11 @@ def dataset_builder(
     logger.info("creating dataset_builder with configuration [{0}]".format(config))
     # --- argument parsing
     batch_size = config["batch_size"]
+    # crop image from dataset
     input_shape = config["input_shape"]
     directory = config.get("directory", None)
+    # resolution of the files loaded (reshape)
+    dataset_shape = config.get("dataset_shape", [256, 768])
     # --- clip values
     min_value = config.get("min_value", 0)
     max_value = config.get("max_value", 255)
@@ -53,7 +56,7 @@ def dataset_builder(
                 label_mode=None,
                 directory=directory,
                 batch_size=batch_size,
-                image_size=(256, 768))
+                image_size=dataset_shape)
     else:
         raise ValueError("don't know how to handle non directory datasets")
 

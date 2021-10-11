@@ -46,6 +46,7 @@
     "random_up_down": true,
     "random_left_right": true,
     "random_downsample": false,
+    "dataset_shape": [256, 768],
     "input_shape": [128, 128, 3],
     "multiplicative_noise": [0.05, 0.1, 0.2],
     "directory": "/media/data1_4tb/datasets/KITTI/data/depth/raw_image_values/"
