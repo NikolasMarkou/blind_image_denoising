@@ -1,5 +1,6 @@
 {
   "model": {
+    "levels": 3,
     "filters": 16,
     "no_layers": 10,
     "min_value": 0,

@@ -32,6 +32,7 @@ def model_builder(
 
     # --- argument parsing
     model_type = config["type"]
+    levels = config.get("levels", 1)
     filters = config.get("filters", 32)
     no_layers = config.get("no_layers", 5)
     min_value = config.get("min_value", 0)
@@ -90,7 +91,7 @@ def model_builder(
     model_pyramid = \
         build_gaussian_pyramid_model(
             input_dims=input_shape,
-            levels=3)
+            levels=levels)
 
     def func_sigma_norm(args):
         y, mean_y, sigma_y = args
@@ -117,10 +118,13 @@ def model_builder(
                 keras.layers.UpSampling2D(
                     size=(2, 2),
                     interpolation="bilinear")(x_previous_result)
-            x_level = x_previous_result - x_level
+            x_level = \
+                keras.layers.Add()([x_previous_result, x_level])
 
         mean, sigma = \
-            mean_sigma_local(x_level, kernel_size=[5, 5])
+            mean_sigma_local(
+                x_level,
+                kernel_size=[5, 5])
 
         x_level = \
             keras.layers.Lambda(
@@ -147,7 +151,8 @@ def model_builder(
         if x_previous_result is None:
             x_previous_result = x_level
         else:
-            x_previous_result = x_previous_result + x_level
+            x_previous_result = \
+                keras.layers.Add()([x_previous_result, x_level])
         level = level + 1
 
     # --- wrap model
