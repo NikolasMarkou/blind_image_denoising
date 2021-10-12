@@ -358,6 +358,206 @@ def conv2d_sparse(
 # ---------------------------------------------------------------------
 
 
+def build_gaussian_pyramid_model(
+        input_dims,
+        levels: int):
+
+    def _downsample(x):
+        """
+        Downsample and upsample the input
+
+        :param x: input
+        :return:
+        """
+        # gaussian filter
+        x = \
+            gaussian_filter_block(
+                input_layer,
+                strides=(1, 1),
+                xy_max=(1, 1),
+                kernel_size=(3, 3))
+
+        # downsample by order of 2
+        x = \
+            keras.layers.MaxPool2D(
+                pool_size=(1, 1),
+                strides=(2, 2),
+                padding="valid")(x)
+
+        return x
+
+    # --- prepare input
+    input_layer = \
+        keras.Input(shape=input_dims)
+
+    # --- split input in levels
+    x = input_layer
+    multiscale_layers = []
+    for i in range(levels):
+        if i == levels - 1:
+            multiscale_layers.append(x)
+        else:
+            x = _downsample(x)
+            multiscale_layers.append(x)
+
+    return \
+        keras.Model(
+            inputs=input_layer,
+            outputs=multiscale_layers)
+
+# ---------------------------------------------------------------------
+
+
+def laplacian_transform_split(
+        input_dims,
+        levels: int,
+        name: str = None,
+        gaussian_xy_max: tuple = (1, 1),
+        gaussian_kernel_size: tuple = (3, 3)):
+    """
+    Normalize input values and the compute laplacian pyramid
+    """
+
+    def _downsample_upsample(
+            i0):
+        """
+        Downsample and upsample the input
+
+        :param i0: input
+        :return:
+        """
+        # gaussian filter
+        filtered = \
+            gaussian_filter_block(
+                i0,
+                strides=(1, 1),
+                xy_max=gaussian_xy_max,
+                kernel_size=gaussian_kernel_size)
+
+        # downsample by order of 2
+        filtered_downsampled = \
+            keras.layers.MaxPool2D(
+                pool_size=(1, 1),
+                strides=(2, 2),
+                padding="valid")(filtered)
+
+        # upsample back
+        filtered_downsampled_upsampled = \
+            keras.layers.UpSampling2D(
+                size=(2, 2),
+                interpolation="bilinear")(filtered_downsampled)
+
+        diff = keras.layers.Subtract()([i0, filtered_downsampled_upsampled])
+        return filtered_downsampled, diff
+
+    # --- prepare input
+    input_layer = \
+        keras.Input(shape=input_dims)
+
+    # --- split input in levels
+    x = input_layer
+    output_multiscale_layers = []
+    for i in range(levels):
+        if i == levels - 1:
+            output_multiscale_layers.append(x)
+        else:
+            x, up = \
+                _downsample_upsample(x)
+            output_multiscale_layers.append(up)
+
+    return \
+        keras.Model(
+            name=name,
+            inputs=input_layer,
+            outputs=output_multiscale_layers)
+
+
+# ---------------------------------------------------------------------
+
+
+def laplacian_transform_merge(
+        input_dims,
+        levels: int,
+        name: str = None,
+        min_value: float = 0.0,
+        max_value: float = 255.0,
+        trainable: bool = False,
+        filters: int = 32,
+        activation: str = "relu",
+        kernel_regularizer: str = None,
+        kernel_initializer: str = None):
+    """
+    Merge laplacian pyramid stages and then denormalize
+    """
+
+    def _denormalize(args):
+        """
+        Convert input [-1, +1] to [v0, v1] range
+        """
+        y, v0, v1 = args
+        return keras.backend.clip(
+            (y + 1.0) * (v1 - v0) / 2.0 + v0,
+            min_value=v0,
+            max_value=v1)
+
+    # prepare input layers for each level
+    input_layers = [
+        keras.Input(shape=input_dims[i])
+        for i in range(levels)
+    ]
+
+    output_layer = None
+
+    for i in range(levels - 1, -1, -1):
+        if i == levels - 1:
+            output_layer = input_layers[i]
+        else:
+            x = \
+                keras.layers.UpSampling2D(
+                    size=(2, 2),
+                    interpolation="bilinear")(output_layer)
+            if trainable:
+                # add conditional
+                x = keras.layers.Concatenate()(
+                    [x, input_layers[i]])
+                # mixing
+                x = keras.layers.Conv2D(
+                    filters=filters,
+                    strides=(1, 1),
+                    padding="same",
+                    kernel_size=(3, 3),
+                    activation=activation,
+                    kernel_regularizer=kernel_regularizer,
+                    kernel_initializer=kernel_initializer)(x)
+                # retargeting
+                x = keras.layers.Conv2D(
+                    use_bias=False,
+                    strides=(1, 1),
+                    padding="same",
+                    kernel_size=(1, 1),
+                    activation="tanh",
+                    filters=input_dims[i][-1],
+                    kernel_regularizer=kernel_regularizer,
+                    kernel_initializer=kernel_initializer)(x)
+            output_layer = \
+                keras.layers.Add()([x, input_layers[i]])
+
+    # bring bang to initial value range
+    output_denormalize_layer = \
+        keras.layers.Lambda(
+            _denormalize,
+            name="denormalize")(
+            [output_layer, min_value, max_value])
+
+    return \
+        keras.Model(
+            name=name,
+            inputs=input_layers,
+            outputs=output_denormalize_layer)
+
+# ---------------------------------------------------------------------
+
+
 def resnet_blocks(
         input_layer,
         no_layers: int,
