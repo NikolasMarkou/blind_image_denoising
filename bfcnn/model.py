@@ -157,7 +157,7 @@ def model_builder(
     model_denoise = \
         keras.Model(
             inputs=model_input,
-            outputs=x_result)
+            outputs=x_previous_result)
 
     return \
         model_denoise, \
