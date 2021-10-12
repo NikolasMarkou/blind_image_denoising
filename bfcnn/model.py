@@ -109,14 +109,6 @@ def model_builder(
             shape=input_shape,
             name="input_tensor")
     x = model_input
-    mean, sigma = \
-        mean_sigma_local(
-            x,
-            kernel_size=[5, 5])
-    x = \
-        keras.layers.Lambda(
-            function=func_sigma_norm,
-            trainable=False)([x, mean, sigma])
     x_levels = model_pyramid(x)
     x_previous_result = None
     level = 0
@@ -133,6 +125,14 @@ def model_builder(
             if stop_grads:
                 x_level = keras.backend.stop_gradient(x_level)
 
+        mean, sigma = \
+            mean_sigma_local(
+                x_level,
+                kernel_size=[5, 5])
+        x_level = \
+            keras.layers.Lambda(
+                function=func_sigma_norm,
+                trainable=False)([x_level, mean, sigma])
         # denoise image
         x_level = \
             build_resnet_model(
@@ -143,17 +143,17 @@ def model_builder(
         if output_multiplier != 1.0:
             x_level = x_level * output_multiplier
 
+        x_level = \
+            keras.layers.Lambda(
+                function=func_sigma_denorm,
+                trainable=False)([x_level, mean, sigma])
+
         if x_previous_result is None:
             x_previous_result = x_level
         else:
             x_previous_result = \
                 keras.layers.Add()([x_previous_result, x_level])
         level = level + 1
-
-    x = \
-        keras.layers.Lambda(
-            function=func_sigma_denorm,
-            trainable=False)([x_previous_result, mean, sigma])
 
     # --- wrap model
     model_denoise = \
