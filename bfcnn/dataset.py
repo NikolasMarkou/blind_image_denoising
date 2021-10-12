@@ -117,6 +117,8 @@ def dataset_builder(
                 "multiplicative",
                 "subsample",
                 "none"])
+        # TODO assign a difficulty
+        difficulty = 0
 
         if noise_type == "additional":
             # --- additional noise
@@ -169,7 +171,7 @@ def dataset_builder(
                     clip_value_min=min_value,
                     clip_value_max=max_value)
 
-        return input_batch, noisy_batch, noise_std
+        return input_batch, noisy_batch, difficulty
 
     # --- create the dataset
     return {
