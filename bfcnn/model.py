@@ -32,18 +32,24 @@ def model_builder(
 
     # --- argument parsing
     model_type = config["type"]
-    input_shape = config["input_shape"]
     filters = config.get("filters", 32)
     no_layers = config.get("no_layers", 5)
     min_value = config.get("min_value", 0)
     max_value = config.get("max_value", 255)
     batchnorm = config.get("batchnorm", True)
     kernel_size = config.get("kernel_size", 3)
+    input_shape = config.get("input_shape", (None, None, 3))
     output_multiplier = config.get("output_multiplier", 1.0)
     final_activation = config.get("final_activation", "linear")
     kernel_regularizer = config.get("kernel_regularizer", "l1")
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
 
+    for i in range(len(input_shape)):
+        if input_shape[i] == "?" or \
+                input_shape[i] == "" or \
+                input_shape[i] == "-1":
+            input_shape[i] = None
+            
     # --- build normalize denormalize models
     model_normalize = \
         build_normalize_model(
