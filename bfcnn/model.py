@@ -39,6 +39,7 @@ def model_builder(
     max_value = config.get("max_value", 255)
     batchnorm = config.get("batchnorm", True)
     kernel_size = config.get("kernel_size", 3)
+    stop_grads = config.get("stop_grads", False)
     input_shape = config.get("input_shape", (None, None, 3))
     output_multiplier = config.get("output_multiplier", 1.0)
     final_activation = config.get("final_activation", "linear")
@@ -120,6 +121,9 @@ def model_builder(
                     interpolation="nearest")(x_previous_result)
             x_level = \
                 keras.layers.Add()([x_level, -x_previous_result])
+            # stop gradient to the upper level (makes learning faster)
+            if stop_grads:
+                x_level = keras.backend.stop_gradient(x_level)
 
         mean, sigma = \
             mean_sigma_local(

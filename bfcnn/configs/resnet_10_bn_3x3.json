@@ -8,6 +8,7 @@
     "kernel_size": 3,
     "type": "resnet",
     "batchnorm": true,
+    "stop_grads": true,
     "activation": "relu",
     "output_multiplier": 1.0,
     "kernel_regularizer": "l1",
