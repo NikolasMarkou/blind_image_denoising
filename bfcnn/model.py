@@ -103,7 +103,6 @@ def model_builder(
             name="input_tensor")
     x = model_input
     x_levels = model_pyramid(x)
-    x_levels = [x] + x_levels
     x_previous_result = None
 
     for x_level in x_levels[::-1]:

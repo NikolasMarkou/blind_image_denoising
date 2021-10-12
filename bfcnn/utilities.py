@@ -362,29 +362,29 @@ def build_gaussian_pyramid_model(
         input_dims,
         levels: int):
 
-    def _downsample(x):
+    def _downsample(y):
         """
         Downsample and upsample the input
 
-        :param x: input
+        :param y: input
         :return:
         """
         # gaussian filter
-        x = \
+        y = \
             gaussian_filter_block(
-                input_layer,
+                y,
                 strides=(1, 1),
                 xy_max=(1, 1),
                 kernel_size=(3, 3))
 
         # downsample by order of 2
-        x = \
+        y = \
             keras.layers.MaxPool2D(
                 pool_size=(1, 1),
                 strides=(2, 2),
                 padding="valid")(x)
 
-        return x
+        return y
 
     # --- prepare input
     input_layer = \
@@ -392,8 +392,8 @@ def build_gaussian_pyramid_model(
 
     # --- split input in levels
     x = input_layer
-    multiscale_layers = []
-    for i in range(levels):
+    multiscale_layers = [x]
+    for i in range(levels-1):
         x = _downsample(x)
         multiscale_layers.append(x)
 
