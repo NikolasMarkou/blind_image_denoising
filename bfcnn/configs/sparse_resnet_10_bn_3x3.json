@@ -17,7 +17,7 @@
   "train": {
     "epochs": 20,
     "total_steps": -1,
-    "iterations_choice": [2],
+    "iterations_choice": [1],
     "checkpoints_to_keep": 3,
     "checkpoint_every": 10000,
     "visualization_number": 5,
@@ -35,19 +35,18 @@
     "regularization": 0.01
   },
   "dataset": {
-    "batch_size": 16,
+    "batch_size": 8,
     "min_value": 0,
     "max_value": 255,
     "clip_value": true,
-    "random_blur": true,
     "random_invert": false,
     "random_rotate": 0.314,
     "random_up_down": true,
     "random_left_right": true,
-    "random_downsample": false,
     "dataset_shape": [256, 768],
     "input_shape": [256, 256, 3],
-    "multiplicative_noise": [0.05, 0.1, 0.2],
+    "additional_noise": [5, 10, 20],
+    "multiplicative_noise": [0.1, 0.15, 0.2],
     "directory": "/media/data1_4tb/datasets/KITTI/data/depth/raw_image_values/"
   }
 }

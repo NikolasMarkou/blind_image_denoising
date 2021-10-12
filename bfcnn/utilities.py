@@ -355,6 +355,280 @@ def conv2d_sparse(
             symmetric=symmetric,
             max_value=max_value)
 
+# ---------------------------------------------------------------------
+
+
+def resnet_blocks(
+        input_layer,
+        no_layers: int,
+        depth_conv_params: Dict,
+        intermediate_conv_params: Dict,
+        bn_params: Dict = None,
+        sparse_params: Dict = None,
+        gate_params: Dict = None):
+    """
+    Create a series of residual network blocks
+    """
+    # --- argument check
+    if input_layer is None:
+        raise ValueError("input_layer must be none")
+    if no_layers < 0:
+        raise ValueError("no_layers must be >= 0")
+    use_bn = bn_params is not None
+    use_gate = gate_params is not None
+    use_sparse = sparse_params is not None
+
+    # --- setup resnet
+    x = input_layer
+    for i in range(no_layers):
+        previous_layer = x
+        c_layer_activation = None
+        p_layer_activation = None
+        if use_bn:
+            x = keras.layers.BatchNormalization(**bn_params)(x)
+        x = keras.layers.DepthwiseConv2D(**depth_conv_params)(x)
+        if use_sparse:
+            x = sparse_block(x, **sparse_params)
+        elif use_bn:
+            x = keras.layers.BatchNormalization(**bn_params)(x)
+        # calculate gate results
+        if use_gate:
+            g_layer = keras.backend.stop_gradient(x)
+            c_layer_activation = \
+                keras.layers.Conv2D(**gate_params)(g_layer)
+            # compute activation per channel
+            c_layer_activation = \
+                keras.layers.GlobalAvgPool2D()(c_layer_activation)
+            c_layer_activation = \
+                (keras.layers.Activation("tanh")(
+                    c_layer_activation * 2) + 1.0) / 2.0
+            # compute activation per pixel
+            p_layer_activation = \
+                keras.layers.Conv2D(**gate_params)(g_layer)
+            p_layer_activation = \
+                keras.backend.mean(
+                    p_layer_activation,
+                    keepdims=True,
+                    axis=[3])
+            p_layer_activation = \
+                (keras.layers.Activation("tanh")(
+                    p_layer_activation * 2) + 1.0) / 2.0
+        # output results
+        x = keras.layers.Conv2D(**intermediate_conv_params)(x)
+        # mask channels / pixels
+        if use_gate:
+            x = \
+                keras.layers.Multiply()([x, c_layer_activation])
+            x = \
+                keras.layers.Multiply()([x, p_layer_activation])
+        # skip connection
+        x = keras.layers.Add()([previous_layer, x])
+    return x
+
+# ---------------------------------------------------------------------
+
+
+def gaussian_filter_block(
+        input_layer,
+        kernel_size: int = 3,
+        strides: Tuple[int, int] = (1, 1),
+        dilation_rate: Tuple[int, int] = (1, 1),
+        padding: str = "same",
+        xy_max: Tuple[float, float] = (1.5, 1.5),
+        activation: str = "linear",
+        trainable: bool = False,
+        use_bias: bool = False):
+    """
+    Build a gaussian filter block
+    :param input_layer:
+    :param kernel_size:
+    :param activation:
+    :param trainable:
+    :param use_bias:
+    :param strides:
+    :param padding:
+    :param xy_max:
+    :param dilation_rate:
+
+    :return:
+    """
+
+    def gaussian_kernel(size, nsig):
+        """
+        Returns a 2D Gaussian kernel array
+        """
+        assert len(nsig) == 2
+        assert len(size) == 2
+        kern1d = []
+        for i in range(2):
+            x = np.linspace(start=-np.abs(nsig[i]),
+                            stop=np.abs(nsig[i]),
+                            num=size[i],
+                            endpoint=True)
+            kern1d.append(x)
+        x, y = np.meshgrid(kern1d[0], kern1d[1])
+        d = np.sqrt(x * x + y * y)
+        sigma, mu = 1.0, 0.0
+        g = np.exp(-((d - mu) ** 2 / (2.0 * sigma ** 2)))
+        kernel = g / g.sum()
+        return kernel
+
+    # Initialise to set kernel to required value
+    def kernel_init(shape, dtype):
+        kernel = np.zeros(shape)
+        kernel[:, :, 0, 0] = gaussian_kernel([shape[0], shape[1]], xy_max)
+        return kernel
+
+    return keras.layers.DepthwiseConv2D(
+        kernel_size=kernel_size,
+        strides=strides,
+        padding=padding,
+        depth_multiplier=1,
+        dilation_rate=dilation_rate,
+        activation=activation,
+        use_bias=use_bias,
+        trainable=trainable,
+        depthwise_initializer=kernel_init,
+        kernel_initializer=kernel_init)(input_layer)
+
+
+# ---------------------------------------------------------------------
+
+
+def delta_x(
+        input_layer,
+        kernel_size: int = 3):
+    """
+    Compute delta x for each channel layer
+
+    :param input_layer:
+    :param kernel_size: 2,3,4,5
+
+    :return:
+    """
+
+    # Initialise to set kernel to required value
+    if kernel_size == 2:
+        def kernel_init(shape, dtype):
+            kernel = np.zeros(shape)
+            for i in range(shape[2]):
+                kernel[:, :, i, 0] = \
+                    [[+1.0, -1.0],
+                     [+1.0, -1.0]]
+            return kernel
+    elif kernel_size == 3:
+        def kernel_init(shape, dtype):
+            kernel = np.zeros(shape)
+            for i in range(shape[2]):
+                kernel[:, :, i, 0] = \
+                    [[+1.0, +0.0, -1.0],
+                     [+2.0, +0.0, -2.0],
+                     [+1.0, +0.0, -1.0]]
+            return kernel
+    elif kernel_size == 4:
+        def kernel_init(shape, dtype):
+            kernel = np.zeros(shape)
+            for i in range(shape[2]):
+                kernel[:, :, i, 0] = \
+                    [[+3.0, +1.0, -1.0, -3.0],
+                     [+3.0, +1.0, -1.0, -3.0],
+                     [+3.0, +1.0, -1.0, -3.0],
+                     [+3.0, +1.0, -1.0, -3.0]]
+            return kernel
+    elif kernel_size == 5:
+        def kernel_init(shape, dtype):
+            kernel = np.zeros(shape)
+            for i in range(shape[2]):
+                kernel[:, :, i, 0] = \
+                    [[+2.0, +1.0, +0.0, -1.0, -2.0],
+                     [+2.0, +1.0, +0.0, -1.0, -2.0],
+                     [+2.0, +1.0, +0.0, -1.0, -2.0],
+                     [+2.0, +1.0, +0.0, -1.0, -2.0],
+                     [+2.0, +1.0, +0.0, -1.0, -2.0]]
+            return kernel
+    else:
+        raise ValueError(
+            "don't know how to handle kernel size [{0}]".format(kernel_size))
+
+    return keras.layers.DepthwiseConv2D(
+        depth_multiplier=1,
+        kernel_size=(kernel_size, kernel_size),
+        strides=(1, 1),
+        padding="same",
+        activation="linear",
+        use_bias=False,
+        depthwise_initializer=kernel_init,
+        kernel_initializer=kernel_init,
+        trainable=False)(input_layer)
+
+
+# ---------------------------------------------------------------------
+
+
+def delta_y(
+        input_layer,
+        kernel_size: int = 3):
+    """
+    Compute delta y for each channel layer
+
+    :param input_layer:
+    :param kernel_size: 2,3,4,5
+
+    :return:
+    """
+    # Initialise to set kernel to required value
+    if kernel_size == 2:
+        def kernel_init(shape, dtype):
+            kernel = np.zeros(shape)
+            for i in range(shape[2]):
+                kernel[:, :, i, 0] = \
+                    [[+1.0, +1.0],
+                     [-1.0, -1.0]]
+            return kernel
+    elif kernel_size == 3:
+        def kernel_init(shape, dtype):
+            kernel = np.zeros(shape)
+            for i in range(shape[2]):
+                kernel[:, :, i, 0] = \
+                    [[+1.0, +2.0, +1.0],
+                     [+0.0, +0.0, +0.0],
+                     [-1.0, -2.0, -1.0]]
+            return kernel
+    elif kernel_size == 4:
+        def kernel_init(shape, dtype):
+            kernel = np.zeros(shape)
+            for i in range(shape[2]):
+                kernel[:, :, i, 0] = \
+                    [[+3.0, +3.0, +3.0, +3.0],
+                     [+1.0, +1.0, +1.0, +1.0],
+                     [-1.0, -1.0, -1.0, -1.0],
+                     [-3.0, -3.0, -3.0, -3.0]]
+            return kernel
+    elif kernel_size == 5:
+        def kernel_init(shape, dtype):
+            kernel = np.zeros(shape)
+            for i in range(shape[2]):
+                kernel[:, :, i, 0] = \
+                    [[+2.0, +2.0, +2.0, +2.0, +2.0],
+                     [+1.0, +1.0, +1.0, +1.0, +1.0],
+                     [+0.0, +0.0, +0.0, +0.0, +0.0],
+                     [-1.0, -1.0, -1.0, -1.0, -1.0],
+                     [-2.0, -2.0, -2.0, -2.0, -2.0]]
+            return kernel
+    else:
+        raise ValueError(
+            "don't know how to handle kernel size [{0}]".format(kernel_size))
+
+    return keras.layers.DepthwiseConv2D(
+        depth_multiplier=1,
+        kernel_size=(kernel_size, kernel_size),
+        strides=(1, 1),
+        padding="same",
+        activation="linear",
+        use_bias=False,
+        depthwise_initializer=kernel_init,
+        kernel_initializer=kernel_init,
+        trainable=False)(input_layer)
 
 # ---------------------------------------------------------------------
 
@@ -378,7 +652,8 @@ def layer_denormalize(args):
     Convert input [-0.5, +0.5] to [v0, v1] range
     """
     y, v_min, v_max = args
-    y_clip = tf.clip_by_value(y, clip_value_min=-0.5, clip_value_max=0.5)
+    y_clip = \
+        tf.clip_by_value(y, clip_value_min=-0.5, clip_value_max=0.5)
     return (y_clip + 0.5) * (v_max - v_min) + v_min
 
 
@@ -390,7 +665,8 @@ def layer_normalize(args):
     Convert input from [v0, v1] to [-0.5, +0.5] range
     """
     y, v_min, v_max = args
-    y_clip = tf.clip_by_value(y, clip_value_min=v_min, clip_value_max=v_max)
+    y_clip = \
+        tf.clip_by_value(y, clip_value_min=v_min, clip_value_max=v_max)
     return (y_clip - v_min) / (v_max - v_min) - 0.5
 
 
@@ -471,6 +747,8 @@ def build_resnet_model(
         kernel_regularizer="l1",
         kernel_initializer="glorot_normal",
         channel_index: int = 2,
+        add_sparsity: bool = False,
+        add_gates: bool = False,
         name="resnet") -> keras.Model:
     """
     Build a resnet model
@@ -486,16 +764,25 @@ def build_resnet_model(
     :param use_bias: use bias
     :param kernel_regularizer: Kernel weight regularizer
     :param kernel_initializer: Kernel weight initializer
+    :param add_sparsity: if true add sparsity layer
+    :param add_gates: if true add gate layer
     :param name: Name of the model
     :return:
     """
-    # --- variables
+    # --- setup parameters
     bn_params = dict(
         center=use_bias,
         scale=True,
         momentum=0.999,
         epsilon=1e-4
     )
+
+    sparse_params = dict(
+        symmetric=True,
+        threshold_sigma=1.0,
+        per_channel_sparsity=True
+    )
+
     conv_params = dict(
         filters=filters,
         strides=(1, 1),
@@ -506,6 +793,18 @@ def build_resnet_model(
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
+
+    gate_params = dict(
+        filters=filters,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation="linear",
+        kernel_size=kernel_size,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
     depth_conv_params = dict(
         depth_multiplier=2,
         strides=(1, 1),
@@ -516,433 +815,61 @@ def build_resnet_model(
         depthwise_regularizer=kernel_regularizer,
         depthwise_initializer=kernel_initializer
     )
-    # intermediate conv
-    intermediate_conv_params = copy.deepcopy(conv_params)
-    intermediate_conv_params["kernel_size"] = 1
 
-    # final conv
-    final_conv_params = copy.deepcopy(conv_params)
-    final_conv_params["kernel_size"] = 1
-    final_conv_params["activation"] = final_activation
-    final_conv_params["filters"] = input_dims[channel_index]
-    del final_conv_params["kernel_regularizer"]
+    intermediate_conv_params = dict(
+        kernel_size=1,
+        filters=filters,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation=activation,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
 
-    # --- set input
+    final_conv_params = dict(
+        kernel_size=1,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation=final_activation,
+        filters=input_dims[channel_index],
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
+    resnet_params = dict(
+        sparse_params=None,
+        no_layers=no_layers,
+        bn_params=bn_params,
+        depth_conv_params=depth_conv_params,
+        intermediate_conv_params=intermediate_conv_params
+    )
+
+    if add_sparsity:
+        resnet_params["sparse_params"] = sparse_params
+
+    if add_gates:
+        resnet_params["gate_params"] = gate_params
+
+    # --- build model
+    # set input
     input_layer = keras.Input(shape=input_dims)
 
-    # --- add base layer
+    # add base layer
     x = keras.layers.Conv2D(**conv_params)(input_layer)
 
-    # --- add resnet layers
-    for i in range(no_layers):
-        previous_layer = x
-        if use_bn:
-            x = keras.layers.BatchNormalization(**bn_params)(x)
-        x = keras.layers.DepthwiseConv2D(**depth_conv_params)(x)
-        if use_bn:
-            x = keras.layers.BatchNormalization(**bn_params)(x)
-        x = keras.layers.Conv2D(**intermediate_conv_params)(x)
-        x = keras.layers.Add()([previous_layer, x])
+    # add resnet blocks
+    x = \
+        resnet_blocks(
+            input_layer=x,
+            **resnet_params)
 
-    # --- output to original channels
+    # output to original channels
     if use_bn:
         x = keras.layers.BatchNormalization(**bn_params)(x)
     output_layer = \
         keras.layers.Conv2D(**final_conv_params)(x)
-
-    output_layer = \
-        keras.layers.Add()([output_layer, input_layer])
-
-    return keras.Model(
-        name=name,
-        inputs=input_layer,
-        outputs=output_layer)
-
-# ---------------------------------------------------------------------
-
-
-def build_sparse_resnet_model(
-        input_dims,
-        no_layers: int,
-        kernel_size: int,
-        filters: int,
-        activation: str = "relu",
-        final_activation: str = "linear",
-        use_bn: bool = True,
-        use_bias: bool = False,
-        kernel_regularizer="l1",
-        kernel_initializer="glorot_normal",
-        channel_index: int = 2,
-        name="sparse_resnet") -> keras.Model:
-    """
-    Build a resnet model with a sparsity constraint
-
-    :param input_dims: Models input dimensions
-    :param no_layers: Number of resnet layers
-    :param kernel_size: kernel size of the conv layers
-    :param filters: number of filters per convolutional layer
-    :param activation: intermediate activation
-    :param final_activation: activation of the final layer
-    :param channel_index: Index of the channel in dimensions
-    :param use_bn: Use Batch Normalization
-    :param use_bias: use bias
-    :param kernel_regularizer: Kernel weight regularizer
-    :param kernel_initializer: Kernel weight initializer
-    :param name: Name of the model
-    :return:
-    """
-    # --- variables
-    bn_params = dict(
-        center=use_bias,
-        scale=True,
-        momentum=0.999,
-        epsilon=1e-4
-    )
-    conv_params = dict(
-        filters=filters,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation=activation,
-        kernel_size=kernel_size,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-    depth_conv_params = dict(
-        depth_multiplier=2,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation="linear",
-        kernel_size=kernel_size,
-        depthwise_regularizer=kernel_regularizer,
-        depthwise_initializer=kernel_initializer
-    )
-    # intermediate conv
-    intermediate_conv_params = copy.deepcopy(conv_params)
-    intermediate_conv_params["kernel_size"] = 1
-
-    # final conv
-    final_conv_params = copy.deepcopy(conv_params)
-    final_conv_params["kernel_size"] = 1
-    final_conv_params["activation"] = final_activation
-    final_conv_params["filters"] = input_dims[channel_index]
-    del final_conv_params["kernel_regularizer"]
-
-    # --- set input
-    input_layer = keras.Input(shape=input_dims)
-
-    # --- add base layer
-    x = keras.layers.Conv2D(**conv_params)(input_layer)
-    if use_bn:
-        x = keras.layers.BatchNormalization(**bn_params)(x)
-
-    # --- add resnet layers
-    for i in range(no_layers):
-        previous_layer = x
-        x = keras.layers.DepthwiseConv2D(**depth_conv_params)(x)
-        x = \
-            sparse_block(
-                x,
-                threshold_sigma=1.0,
-                symmetric=True,
-                per_channel_sparsity=True)
-        x = keras.layers.Conv2D(**intermediate_conv_params)(x)
-        if use_bn:
-            x = keras.layers.BatchNormalization(**bn_params)(x)
-        x = keras.layers.Add()([previous_layer, x])
-
-    # --- output to original channels
-    output_layer = \
-        keras.layers.Conv2D(**final_conv_params)(x)
-
-    output_layer = \
-        keras.layers.Add()([output_layer, input_layer])
-
-    return keras.Model(
-        name=name,
-        inputs=input_layer,
-        outputs=output_layer)
-
-# ---------------------------------------------------------------------
-
-
-def build_sparse_resnet_mean_sigma_model(
-        input_dims,
-        no_layers: int,
-        kernel_size: int,
-        filters: int,
-        activation: str = "relu",
-        final_activation: str = "linear",
-        use_bn: bool = True,
-        use_bias: bool = False,
-        kernel_regularizer="l1",
-        kernel_initializer="glorot_normal",
-        channel_index: int = 2,
-        name="sparse_resnet_mean_sigma") -> keras.Model:
-    """
-    Build a sparse resnet model and additional mean sigma layer
-
-    :param input_dims: Models input dimensions
-    :param no_layers: Number of resnet layers
-    :param kernel_size: kernel size of the conv layers
-    :param filters: number of filters per convolutional layer
-    :param activation: intermediate activation
-    :param final_activation: activation of the final layer
-    :param channel_index: Index of the channel in dimensions
-    :param use_bn: Use Batch Normalization
-    :param use_bias: use bias
-    :param kernel_regularizer: Kernel weight regularizer
-    :param kernel_initializer: Kernel weight initializer
-    :param name: Name of the model
-    :return:
-    """
-    # --- variables
-    bn_params = dict(
-        center=use_bias,
-        scale=True,
-        momentum=0.999,
-        epsilon=1e-4
-    )
-    conv_params = dict(
-        filters=filters,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation=activation,
-        kernel_size=kernel_size,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-    depth_conv_params = dict(
-        depth_multiplier=2,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation="linear",
-        kernel_size=kernel_size,
-        depthwise_regularizer=kernel_regularizer,
-        depthwise_initializer=kernel_initializer
-    )
-    # intermediate conv
-    intermediate_conv_params = copy.deepcopy(conv_params)
-    intermediate_conv_params["kernel_size"] = 1
-
-    # final conv
-    final_conv_params = copy.deepcopy(conv_params)
-    final_conv_params["kernel_size"] = 1
-    final_conv_params["activation"] = final_activation
-    final_conv_params["filters"] = input_dims[channel_index]
-    del final_conv_params["kernel_regularizer"]
-
-    # --- set input
-    input_layer = keras.Input(shape=input_dims)
-    x = input_layer
-    mean, sigma = mean_sigma_local(x, kernel_size=(5, 5))
-
-    # --- add base layer
-    x = (x - mean) / sigma
-    x = keras.layers.Concatenate()([x, sigma])
-    x = keras.layers.Conv2D(**conv_params)(x)
-    if use_bn:
-        x = keras.layers.BatchNormalization(**bn_params)(x)
-
-    # --- add resnet layers
-    for i in range(no_layers):
-        previous_layer = x
-        x = keras.layers.DepthwiseConv2D(**depth_conv_params)(x)
-        x = \
-            sparse_block(
-                x,
-                threshold_sigma=1.0,
-                symmetric=True,
-                per_channel_sparsity=True)
-        x = keras.layers.Conv2D(**intermediate_conv_params)(x)
-        if use_bn:
-            x = keras.layers.BatchNormalization(**bn_params)(x)
-        x = keras.layers.Add()([previous_layer, x])
-
-    # --- output to original channels
-    output_layer = \
-        keras.layers.Conv2D(**final_conv_params)(x)
-
-    output_layer = \
-        keras.layers.Add()([output_layer, input_layer])
-
-    return keras.Model(
-        name=name,
-        inputs=input_layer,
-        outputs=output_layer)
-
-# ---------------------------------------------------------------------
-
-
-def build_gatenet_model(
-        input_dims,
-        no_layers: int,
-        kernel_size: int,
-        filters: int,
-        activation: str = "relu",
-        final_activation: str = "linear",
-        use_bn: bool = True,
-        use_bias: bool = False,
-        kernel_regularizer="l1",
-        kernel_initializer="glorot_normal",
-        channel_index: int = 2,
-        name="gatenet") -> keras.Model:
-    """
-    Build a gatenet model
-
-    :param input_dims: Models input dimensions
-    :param no_layers: Number of resnet layers
-    :param kernel_size: kernel size of the conv layers
-    :param filters: number of filters per convolutional layer
-    :param activation: intermediate activation
-    :param final_activation: activation of the final layer
-    :param channel_index: Index of the channel in dimensions
-    :param use_bn: Use Batch Normalization
-    :param use_bias: use bias
-    :param kernel_regularizer: Kernel weight regularizer
-    :param kernel_initializer: Kernel weight initializer
-    :param name: Name of the model
-    :return:
-    """
-    # --- variables
-    bn_params = dict(
-        center=use_bias,
-        scale=True,
-        momentum=0.999,
-        epsilon=1e-4
-    )
-    conv_params = dict(
-        filters=filters,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation=activation,
-        kernel_size=kernel_size,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-    gate_conv_params = dict(
-        filters=filters,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation="linear",
-        kernel_size=kernel_size,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-    depth_conv_params = dict(
-        depth_multiplier=2,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation=activation,
-        kernel_size=kernel_size,
-        depthwise_regularizer=kernel_regularizer,
-        depthwise_initializer=kernel_initializer
-    )
-    # intermediate conv
-    intermediate_conv_params = copy.deepcopy(conv_params)
-    intermediate_conv_params["kernel_size"] = 1
-
-    # final conv
-    final_conv_params = copy.deepcopy(conv_params)
-    final_conv_params["kernel_size"] = 1
-    final_conv_params["activation"] = final_activation
-    final_conv_params["filters"] = input_dims[channel_index]
-    del final_conv_params["kernel_regularizer"]
-
-    # --- set input
-    input_layer = \
-        keras.Input(shape=input_dims)
-
-    # --- add base layer
-    x = input_layer
-    mean = \
-        keras.layers.AveragePooling2D(
-            strides=(1, 1),
-            padding="SAME",
-            pool_size=(5, 5))(x)
-    diff = x - mean
-    x = keras.layers.Conv2D(**conv_params)(diff)
-
-    # --- add signal/gate resnet layers
-    s_layer = x
-    g_layer = x
-    for i in range(no_layers):
-        previous_s_layer = s_layer
-        previous_g_layer = g_layer
-
-        # --- add extra layers
-        if i == 0:
-            s_layer = previous_s_layer
-            g_layer = previous_g_layer
-        else:
-            s_layer = \
-                keras.layers.Concatenate()([
-                    previous_s_layer,
-                    diff])
-            g_layer = \
-                keras.layers.Concatenate()([
-                    previous_s_layer,
-                    previous_g_layer
-                ])
-
-        # --- expand
-        s_layer = \
-            keras.layers.DepthwiseConv2D(**depth_conv_params)(s_layer)
-        g_layer = \
-            keras.layers.Conv2D(**conv_params)(g_layer)
-
-        # --- normalize
-        if use_bn:
-            s_layer = \
-                keras.layers.BatchNormalization(**bn_params)(s_layer)
-            g_layer = \
-                keras.layers.BatchNormalization(**bn_params)(g_layer)
-
-        # --- compress
-        s_layer = \
-            keras.layers.Conv2D(**intermediate_conv_params)(s_layer)
-        g_layer = \
-            keras.layers.Conv2D(**gate_conv_params)(g_layer)
-
-        # --- compute activation per channel
-        g_layer_activation = \
-            keras.layers.GlobalAvgPool2D()(g_layer)
-        g_layer_activation = \
-            (keras.layers.Activation("tanh")(
-                g_layer_activation * 2) + 1.0) / 2.0
-
-        # --- compute activation per pixel
-        p_layer_activation = \
-            keras.backend.mean(g_layer, keepdims=True, axis=[3])
-        p_layer_activation = \
-            (keras.layers.Activation("tanh")(
-                p_layer_activation * 2) + 1.0) / 2.0
-
-        # mask channels
-        s_layer = \
-            keras.layers.Multiply()([s_layer, g_layer_activation])
-
-        # mask positions
-        s_layer = \
-            keras.layers.Multiply()([s_layer, p_layer_activation])
-
-        # add skip connection
-        if i != 0:
-            s_layer = \
-                keras.layers.Add()([previous_s_layer, s_layer])
-            g_layer = \
-                keras.layers.Add()([previous_g_layer, g_layer])
-
-    # --- output to original channels
-    output_layer = \
-        keras.layers.Conv2D(**final_conv_params)(s_layer)
-
     output_layer = \
         keras.layers.Add()([output_layer, input_layer])
 

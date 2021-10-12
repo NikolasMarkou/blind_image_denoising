@@ -58,53 +58,30 @@ def model_builder(
             max_value=max_value)
 
     # --- build denoise model
+    model_params = dict(
+        add_gates=False,
+        filters=filters,
+        use_bn=batchnorm,
+        add_sparsity=False,
+        no_layers=no_layers,
+        input_dims=input_shape,
+        kernel_size=kernel_size,
+        final_activation=final_activation,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
     if model_type == "resnet":
-        model_denoise = \
-            build_resnet_model(
-                use_bn=batchnorm,
-                filters=filters,
-                no_layers=no_layers,
-                input_dims=input_shape,
-                kernel_size=kernel_size,
-                final_activation=final_activation,
-                kernel_regularizer=kernel_regularizer,
-                kernel_initializer=kernel_initializer)
+        pass
     elif model_type == "sparse_resnet":
-        model_denoise = \
-            build_sparse_resnet_model(
-                use_bn=batchnorm,
-                filters=filters,
-                no_layers=no_layers,
-                input_dims=input_shape,
-                kernel_size=kernel_size,
-                final_activation=final_activation,
-                kernel_regularizer=kernel_regularizer,
-                kernel_initializer=kernel_initializer)
-    elif model_type == "sparse_resnet_mean_sigma":
-        model_denoise = \
-            build_sparse_resnet_mean_sigma_model(
-                use_bn=batchnorm,
-                filters=filters,
-                no_layers=no_layers,
-                input_dims=input_shape,
-                kernel_size=kernel_size,
-                final_activation=final_activation,
-                kernel_regularizer=kernel_regularizer,
-                kernel_initializer=kernel_initializer)
+        model_params["add_sparsity"] = True
     elif model_type == "gatenet":
-        model_denoise = \
-            build_gatenet_model(
-                use_bn=batchnorm,
-                filters=filters,
-                no_layers=no_layers,
-                input_dims=input_shape,
-                kernel_size=kernel_size,
-                final_activation=final_activation,
-                kernel_regularizer=kernel_regularizer,
-                kernel_initializer=kernel_initializer)
+        model_params["add_gates"] = True
     else:
         raise ValueError(
             "don't know how to build model [{0}]".format(model_type))
+    model_denoise = \
+        build_resnet_model(**model_params)
 
     # --- connect the parts of the model
     # setup input
