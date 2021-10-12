@@ -80,8 +80,7 @@ def model_builder(
     else:
         raise ValueError(
             "don't know how to build model [{0}]".format(model_type))
-    model_denoise = \
-        build_resnet_model(**model_params)
+
     model_pyramid = \
         build_gaussian_pyramid_model(
             input_dims=input_shape,
@@ -122,7 +121,7 @@ def model_builder(
                 trainable=False)([x_level, mean, sigma])
 
         # denoise image
-        x_level = model_denoise(x_level)
+        x_level = build_resnet_model(**model_params)(x_level)
 
         # uplift a bit because of tanh saturation
         if output_multiplier != 1.0:
