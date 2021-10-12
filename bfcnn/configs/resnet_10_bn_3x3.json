@@ -1,8 +1,8 @@
 {
   "model": {
-    "levels": 3,
+    "levels": 4,
     "filters": 16,
-    "no_layers": 5,
+    "no_layers": 3,
     "min_value": 0,
     "max_value": 255,
     "kernel_size": 3,
@@ -37,7 +37,7 @@
     "regularization": 0.01
   },
   "dataset": {
-    "batch_size": 8,
+    "batch_size": 16,
     "min_value": 0,
     "max_value": 255,
     "clip_value": true,
