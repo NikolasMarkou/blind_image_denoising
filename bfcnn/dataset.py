@@ -116,7 +116,6 @@ def dataset_builder(
                 "additional",
                 "multiplicative",
                 "subsample",
-                "salt_pepper"
                 "none"])
 
         if noise_type == "additional":
