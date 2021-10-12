@@ -151,7 +151,7 @@ def dataset_builder(
             noisy_batch = \
                 tf.nn.max_pool(
                     noisy_batch,
-                    ksize=3,
+                    ksize=2,
                     strides=1,
                     padding="SAME")
         elif noise_type == "none":
