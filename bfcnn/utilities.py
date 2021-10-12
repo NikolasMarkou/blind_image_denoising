@@ -382,7 +382,7 @@ def build_gaussian_pyramid_model(
             keras.layers.MaxPool2D(
                 pool_size=(1, 1),
                 strides=(2, 2),
-                padding="valid")(x)
+                padding="valid")(y)
 
         return y
 
