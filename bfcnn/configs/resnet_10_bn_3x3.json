@@ -41,6 +41,8 @@
     "min_value": 0,
     "max_value": 255,
     "clip_value": true,
+    "random_blur": true,
+    "subsample_size": -1,
     "random_invert": false,
     "random_rotate": 0.314,
     "random_up_down": true,

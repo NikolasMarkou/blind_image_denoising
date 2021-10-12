@@ -42,12 +42,22 @@ def dataset_builder(
     # --- dataset augmentation
     random_blur = config.get("random_blur", False)
     # in radians
+    subsample_size = config.get("subsample_size", -1)
     random_rotate = config.get("random_rotate", 0.0)
     random_invert = config.get("random_invert", False)
     random_up_down = config.get("random_up_down", False)
     random_left_right = config.get("random_left_right", False)
-    additional_noise = config.get("additional_noise", [5])
-    multiplicative_noise = config.get("multiplicative_noise", [0.01])
+    additional_noise = config.get("additional_noise", [])
+    multiplicative_noise = config.get("multiplicative_noise", [])
+
+    # build noise options
+    noise_choices = []
+    if len(additional_noise) > 0:
+        noise_choices.append("additional")
+    if len(multiplicative_noise) > 0:
+        noise_choices.append("multiplicative")
+    if subsample_size > 0:
+        noise_choices.append("subsample_size")
 
     # --- define generator function from directory
     if directory is not None:
@@ -111,13 +121,7 @@ def dataset_builder(
 
         # --- random select noise type
         noisy_batch = tf.identity(input_batch)
-
-        noise_type = \
-            np.random.choice([
-                "additional",
-                "multiplicative",
-                "subsample",
-                "none"])
+        noise_type = np.random.choice(noise_choices)
         # TODO assign a difficulty
         difficulty = 0
 
@@ -141,23 +145,27 @@ def dataset_builder(
                     shape=tf.shape(input_batch))
 
             # blur to embed noise
-            if np.random.choice([True, False]):
-                noisy_batch = \
-                    tfa.image.gaussian_filter2d(
-                        image=noisy_batch,
-                        sigma=1,
-                        filter_shape=(3, 3))
+            if random_blur:
+                if np.random.choice([True, False]):
+                    noisy_batch = \
+                        tfa.image.gaussian_filter2d(
+                            image=noisy_batch,
+                            sigma=1,
+                            filter_shape=(3, 3))
         elif noise_type == "subsample":
             # subsample
+            stride = (subsample_size, subsample_size)
             noisy_batch = \
                 keras.layers.MaxPool2D(
                     pool_size=(1, 1),
-                    strides=(2, 2))(noisy_batch)
+                    strides=stride)(noisy_batch)
             noisy_batch = \
                 keras.layers.UpSampling2D(
-                    size=(2, 2))(noisy_batch)
-        elif noise_type == "none":
-            pass
+                    size=stride)(noisy_batch)
+        else:
+            logger.info(
+                "don't know how to handle noise_type [{0}]".format(
+                    noise_type))
 
         # --- clip values within boundaries
         if clip_value:
