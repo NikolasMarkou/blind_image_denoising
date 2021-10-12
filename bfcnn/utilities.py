@@ -391,7 +391,7 @@ def build_gaussian_pyramid_model(
         keras.Input(shape=input_dims)
 
     # --- split input in levels
-    x = input_layer
+    x = keras.layers.Layer()(input_layer)
     multiscale_layers = [x]
     for i in range(levels-1):
         x = _downsample(x)
