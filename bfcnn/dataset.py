@@ -7,6 +7,8 @@ __license__ = "None"
 # ---------------------------------------------------------------------
 
 import os
+
+import keras.layers
 import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
@@ -43,7 +45,6 @@ def dataset_builder(
     random_rotate = config.get("random_rotate", 0.0)
     random_invert = config.get("random_invert", False)
     random_up_down = config.get("random_up_down", False)
-    random_downsample = config.get("random_downsample", False)
     random_left_right = config.get("random_left_right", False)
     additional_noise = config.get("additional_noise", [5])
     multiplicative_noise = config.get("multiplicative_noise", [0.01])
@@ -149,11 +150,12 @@ def dataset_builder(
         elif noise_type == "subsample":
             # subsample
             noisy_batch = \
-                tf.nn.max_pool(
-                    noisy_batch,
-                    ksize=2,
-                    strides=1,
-                    padding="SAME")
+                keras.layers.MaxPool2D(
+                    pool_size=(1, 1),
+                    strides=(2, 2))(noisy_batch)
+            noisy_batch = \
+                keras.layers.UpSampling2D(
+                    size=(2, 2))(noisy_batch)
         elif noise_type == "none":
             pass
 
