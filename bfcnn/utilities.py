@@ -800,7 +800,7 @@ def build_resnet_model(
         padding="same",
         use_bias=use_bias,
         activation="linear",
-        kernel_size=kernel_size,
+        kernel_size=1,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
