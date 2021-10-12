@@ -109,9 +109,20 @@ def model_builder(
             name="input_tensor")
     x_levels = model_pyramid(model_input)
     x_results = []
+    x_previous_result = None
     level = 0
 
-    for x_level in x_levels:
+    for x_level in x_levels[::-1]:
+        if x_previous_result is not None:
+            x_previous_result = \
+                keras.backend.stop_gradient(x_previous_result)
+            x_previous_result = \
+                keras.layers.UpSampling2D(
+                    size=(2, 2),
+                    interpolation="nearest")(x_previous_result)
+            x_level = \
+                keras.layers.Add()([x_level, -x_previous_result])
+
         mean, sigma = \
             mean_sigma_local(
                 x_level,
@@ -137,11 +148,12 @@ def model_builder(
                 function=func_sigma_denorm,
                 trainable=False)([x_level, mean, sigma])
 
-        x_level = \
-            keras.layers.UpSampling2D(
-                size=(2**level, 2**level))(x_level)
+        if x_previous_result is None:
+            x_previous_result = x_level
+        else:
+            x_previous_result = \
+                keras.layers.Add()([x_previous_result, x_level])
 
-        x_results.append(x_level)
         level = level + 1
     x_result = keras.layers.Add()(x_results)
 
