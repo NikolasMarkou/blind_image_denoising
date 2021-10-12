@@ -121,7 +121,7 @@ def dataset_builder(
         difficulty = 0
 
         if noise_type == "additional":
-            # --- additional noise
+            # additional noise
             noise_std = np.random.choice(additional_noise)
             noisy_batch = \
                 noisy_batch + \
@@ -130,7 +130,7 @@ def dataset_builder(
                     stddev=noise_std,
                     shape=tf.shape(input_batch))
         elif noise_type == "multiplicative":
-            # --- multiplicative noise
+            # multiplicative noise
             noise_std = np.random.choice(multiplicative_noise)
             noisy_batch = \
                 noisy_batch * \
@@ -139,7 +139,7 @@ def dataset_builder(
                     stddev=noise_std,
                     shape=tf.shape(input_batch))
 
-            # --- blur to embed noise
+            # blur to embed noise
             if np.random.choice([True, False]):
                 noisy_batch = \
                     tfa.image.gaussian_filter2d(
@@ -147,7 +147,7 @@ def dataset_builder(
                         sigma=1,
                         filter_shape=(3, 3))
         elif noise_type == "subsample":
-            # --- subsample
+            # subsample
             noisy_batch = \
                 tf.nn.max_pool(
                     noisy_batch,

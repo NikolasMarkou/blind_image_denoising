@@ -532,18 +532,16 @@ def build_resnet_model(
 
     # --- add base layer
     x = keras.layers.Conv2D(**conv_params)(input_layer)
-    if use_bn:
-        x = keras.layers.BatchNormalization(**bn_params)(x)
 
     # --- add resnet layers
     for i in range(no_layers):
         previous_layer = x
+        if use_bn:
+            x = keras.layers.BatchNormalization(**bn_params)(x)
         x = keras.layers.DepthwiseConv2D(**depth_conv_params)(x)
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
         x = keras.layers.Conv2D(**intermediate_conv_params)(x)
-        if use_bn:
-            x = keras.layers.BatchNormalization(**bn_params)(x)
         x = keras.layers.Add()([previous_layer, x])
 
     # --- output to original channels
