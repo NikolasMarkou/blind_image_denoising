@@ -2,7 +2,7 @@
   "model": {
     "levels": 3,
     "filters": 16,
-    "no_layers": 10,
+    "no_layers": 5,
     "min_value": 0,
     "max_value": 255,
     "kernel_size": 3,
