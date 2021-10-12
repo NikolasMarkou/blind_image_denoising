@@ -107,8 +107,7 @@ def model_builder(
         keras.Input(
             shape=input_shape,
             name="input_tensor")
-    x = model_input
-    x_levels = model_pyramid(x)
+    x_levels = model_pyramid(model_input)
     x_results = []
     level = 0
 
@@ -137,10 +136,11 @@ def model_builder(
             keras.layers.Lambda(
                 function=func_sigma_denorm,
                 trainable=False)([x_level, mean, sigma])
-        if level != 0:
-            x_level = \
-                keras.layers.UpSampling2D(
-                    size=(2**level, 2**level))(x_level)
+
+        x_level = \
+            keras.layers.UpSampling2D(
+                size=(2**level, 2**level))(x_level)
+
         x_results.append(x_level)
         level = level + 1
     x_result = keras.layers.Add()(x_results) / levels
