@@ -545,6 +545,8 @@ def build_resnet_model(
         x = keras.layers.Add()([previous_layer, x])
 
     # --- output to original channels
+    if use_bn:
+        x = keras.layers.BatchNormalization(**bn_params)(x)
     output_layer = \
         keras.layers.Conv2D(**final_conv_params)(x)
 
