@@ -143,7 +143,7 @@ def model_builder(
 
         x_results.append(x_level)
         level = level + 1
-    x_result = keras.layers.Add()(x_results) / levels
+    x_result = keras.layers.Add()(x_results)
 
     # --- wrap model
     model_denoise = \
