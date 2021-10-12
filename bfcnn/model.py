@@ -82,6 +82,18 @@ def model_builder(
             "don't know how to build model [{0}]".format(model_type))
     model_denoise = \
         build_resnet_model(**model_params)
+    model_pyramid = \
+        build_gaussian_pyramid_model(
+            input_dims=input_shape,
+            levels=3)
+
+    def func_sigma_norm(args):
+        y, mean_y, sigma_y = args
+        return (y - mean_y) / sigma_y
+
+    def func_sigma_denorm(args):
+        y, mean_y, sigma_y = args
+        return (y * sigma_y) + mean_y
 
     # --- connect the parts of the model
     # setup input
@@ -90,42 +102,48 @@ def model_builder(
             shape=input_shape,
             name="input_tensor")
     x = model_input
+    x_levels = model_pyramid(x)
+    x_levels = [x] + x_levels
+    x_previous_result = None
 
-    mean, sigma = \
-        mean_sigma_local(x, kernel_size=[5, 5])
+    for x_level in x_levels[::-1]:
+        if x_previous_result is not None:
+            x_previous_result = \
+                keras.layers.UpSampling2D(
+                    size=(2, 2),
+                    interpolation="bilinear")(x_previous_result)
+            x_level = x_previous_result - x_level
 
-    def func_sigma_norm(args):
-        x, mean_x, sigma_x = args
-        return (x - mean_x) / sigma_x
+        mean, sigma = \
+            mean_sigma_local(x_level, kernel_size=[5, 5])
 
-    def func_sigma_denorm(args):
-        x, mean_x, sigma_x = args
-        return (x * sigma_x) + mean_x
+        x_level = \
+            keras.layers.Lambda(
+                function=func_sigma_norm,
+                trainable=False)([x_level, mean, sigma])
 
-    x = \
-        keras.layers.Lambda(
-            name="mean_sigma_normalization",
-            function=func_sigma_norm,
-            trainable=False)([x, mean, sigma])
+        # denoise image
+        x_level = model_denoise(x_level)
 
-    # denoise image
-    x = model_denoise(x)
+        # uplift a bit because of tanh saturation
+        if output_multiplier != 1.0:
+            x_level = x_level * output_multiplier
 
-    # uplift a bit because of tanh saturation
-    if output_multiplier != 1.0:
-        x = x * output_multiplier
+        x_level = \
+            keras.layers.Lambda(
+                function=func_sigma_denorm,
+                trainable=False)([x_level, mean, sigma])
 
-    x = \
-        keras.layers.Lambda(
-            name="mean_sigma_denormalization",
-            function=func_sigma_denorm,
-            trainable=False)([x, mean, sigma])
+        if x_previous_result is None:
+            x_previous_result = x_level
+        else:
+            x_previous_result = x_previous_result + x_level
 
     # --- wrap model
     model_denoise = \
         keras.Model(
             inputs=model_input,
-            outputs=x)
+            outputs=x_previous_result)
 
     return \
         model_denoise, \

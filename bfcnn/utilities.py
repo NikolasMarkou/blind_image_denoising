@@ -394,11 +394,8 @@ def build_gaussian_pyramid_model(
     x = input_layer
     multiscale_layers = []
     for i in range(levels):
-        if i == levels - 1:
-            multiscale_layers.append(x)
-        else:
-            x = _downsample(x)
-            multiscale_layers.append(x)
+        x = _downsample(x)
+        multiscale_layers.append(x)
 
     return \
         keras.Model(
