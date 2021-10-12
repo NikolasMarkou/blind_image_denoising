@@ -110,6 +110,7 @@ def model_builder(
     x = model_input
     x_levels = model_pyramid(x)
     x_results = []
+    level = 0
 
     for x_level in x_levels:
         mean, sigma = \
