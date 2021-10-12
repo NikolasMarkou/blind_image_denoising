@@ -133,8 +133,6 @@ def model_builder(
 
         # denoise image
         x_level = \
-            keras.backend.stop_gradient(x_level)
-        x_level = \
             build_resnet_model(
                 name=f"level_{level}",
                 **model_params)(x_level)
