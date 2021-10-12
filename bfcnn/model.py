@@ -49,7 +49,7 @@ def model_builder(
                 input_shape[i] == "" or \
                 input_shape[i] == "-1":
             input_shape[i] = None
-            
+
     # --- build normalize denormalize models
     model_normalize = \
         build_normalize_model(
@@ -109,6 +109,7 @@ def model_builder(
     x = model_input
     x_levels = model_pyramid(x)
     x_previous_result = None
+    level = 0
 
     for x_level in x_levels[::-1]:
         if x_previous_result is not None:
@@ -127,7 +128,10 @@ def model_builder(
                 trainable=False)([x_level, mean, sigma])
 
         # denoise image
-        x_level = build_resnet_model(**model_params)(x_level)
+        x_level = \
+            build_resnet_model(
+                name=f"level_{level}",
+                **model_params)(x_level)
 
         # uplift a bit because of tanh saturation
         if output_multiplier != 1.0:
@@ -142,6 +146,7 @@ def model_builder(
             x_previous_result = x_level
         else:
             x_previous_result = x_previous_result + x_level
+        level = level + 1
 
     # --- wrap model
     model_denoise = \
