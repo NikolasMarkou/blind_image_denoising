@@ -115,8 +115,6 @@ def model_builder(
     for x_level in x_levels[::-1]:
         if x_previous_result is not None:
             x_previous_result = \
-                keras.backend.stop_gradient(x_previous_result)
-            x_previous_result = \
                 keras.layers.UpSampling2D(
                     size=(2, 2),
                     interpolation="nearest")(x_previous_result)
@@ -153,9 +151,7 @@ def model_builder(
         else:
             x_previous_result = \
                 keras.layers.Add()([x_previous_result, x_level])
-
         level = level + 1
-    x_result = keras.layers.Add()(x_results)
 
     # --- wrap model
     model_denoise = \
