@@ -45,6 +45,7 @@ def dataset_builder(
     random_up_down = config.get("random_up_down", False)
     random_downsample = config.get("random_downsample", False)
     random_left_right = config.get("random_left_right", False)
+    additional_noise = config.get("additional_noise", [5])
     multiplicative_noise = config.get("multiplicative_noise", [0.01])
 
     # --- define generator function from directory
@@ -71,23 +72,18 @@ def dataset_builder(
                     input_shape[1],
                     tf.shape(input_batch)[3])
             )
-        noisy_batch = tf.identity(input_batch)
 
         # --- flip left right
         if random_left_right:
             if np.random.choice([True, False]):
                 input_batch = \
                     tf.image.flip_left_right(input_batch)
-                noisy_batch = \
-                    tf.image.flip_left_right(noisy_batch)
 
         # --- flip up down
         if random_up_down:
             if np.random.choice([True, False]):
                 input_batch = \
                     tf.image.flip_up_down(input_batch)
-                noisy_batch = \
-                    tf.image.flip_up_down(noisy_batch)
 
         # --- randomly rotate input
         if random_rotate > 0.0:
@@ -106,36 +102,59 @@ def dataset_builder(
                         angles=angles,
                         fill_mode="reflect",
                         interpolation="bilinear")
-                noisy_batch = \
-                    tfa.image.rotate(
-                        images=noisy_batch,
-                        angles=angles,
-                        fill_mode="reflect",
-                        interpolation="bilinear")
 
         # --- random invert colors
         if random_invert:
             if np.random.choice([True, False]):
                 input_batch = max_value - (input_batch - min_value)
-                noisy_batch = max_value - (noisy_batch - min_value)
 
-        # --- multiplicative noise
-        noise_std = np.random.choice(multiplicative_noise)
-        noisy_batch = \
-            noisy_batch * \
-            tf.random.normal(
-                mean=1,
-                stddev=noise_std,
-                shape=tf.shape(input_batch))
+        # --- random select noise type
+        noisy_batch = tf.identity(input_batch)
 
-        # --- blur to embed noise
-        if random_blur:
+        noise_type = \
+            np.random.choice([
+                "additional",
+                "multiplicative",
+                "subsample",
+                "salt_pepper"
+                "none"])
+
+        if noise_type == "additional":
+            # --- additional noise
+            noise_std = np.random.choice(additional_noise)
+            noisy_batch = \
+                noisy_batch + \
+                tf.random.normal(
+                    mean=0,
+                    stddev=noise_std,
+                    shape=tf.shape(input_batch))
+        elif noise_type == "multiplicative":
+            # --- multiplicative noise
+            noise_std = np.random.choice(multiplicative_noise)
+            noisy_batch = \
+                noisy_batch * \
+                tf.random.normal(
+                    mean=1,
+                    stddev=noise_std,
+                    shape=tf.shape(input_batch))
+
+            # --- blur to embed noise
             if np.random.choice([True, False]):
                 noisy_batch = \
                     tfa.image.gaussian_filter2d(
                         image=noisy_batch,
                         sigma=1,
                         filter_shape=(3, 3))
+        elif noise_type == "subsample":
+            # --- subsample
+            noisy_batch = \
+                tf.nn.max_pool(
+                    noisy_batch,
+                    ksize=3,
+                    strides=1,
+                    padding="SAME")
+        elif noise_type == "none":
+            pass
 
         # --- clip values within boundaries
         if clip_value:
@@ -150,16 +169,6 @@ def dataset_builder(
                     noisy_batch,
                     clip_value_min=min_value,
                     clip_value_max=max_value)
-
-        # --- random downsample
-        if random_downsample:
-            if np.random.choice([True, False]):
-                noisy_batch = \
-                    tf.nn.max_pool(
-                        noisy_batch,
-                        ksize=3,
-                        strides=1,
-                        padding="SAME")
 
         return input_batch, noisy_batch, noise_std
 
