@@ -34,18 +34,21 @@ def dataset_builder(
     input_shape = config["input_shape"]
     directory = config.get("directory", None)
     # resolution of the files loaded (reshape)
-    dataset_shape = config.get("dataset_shape", [256, 768])
+    dataset_shape = config.get("dataset_shape", [256, 256])
     # --- clip values
     min_value = config.get("min_value", 0)
     max_value = config.get("max_value", 255)
-    clip_value = config.get("clip_value", False)
+    clip_value = config.get("clip_value", True)
     # --- dataset augmentation
     random_blur = config.get("random_blur", False)
-    # in radians
     subsample_size = config.get("subsample_size", -1)
+    # in radians
     random_rotate = config.get("random_rotate", 0.0)
+    # if true randomly invert
     random_invert = config.get("random_invert", False)
+    # if true randomly invert upside down image
     random_up_down = config.get("random_up_down", False)
+    # if true randomly invert left right image
     random_left_right = config.get("random_left_right", False)
     additional_noise = config.get("additional_noise", [])
     multiplicative_noise = config.get("multiplicative_noise", [])
@@ -130,7 +133,7 @@ def dataset_builder(
             noise_std = np.random.choice(additional_noise)
             noisy_batch = \
                 noisy_batch + \
-                tf.random.normal(
+                tf.random.truncated_normal(
                     mean=0,
                     stddev=noise_std,
                     shape=tf.shape(input_batch))
@@ -139,7 +142,7 @@ def dataset_builder(
             noise_std = np.random.choice(multiplicative_noise)
             noisy_batch = \
                 noisy_batch * \
-                tf.random.normal(
+                tf.random.truncated_normal(
                     mean=1,
                     stddev=noise_std,
                     shape=tf.shape(input_batch))

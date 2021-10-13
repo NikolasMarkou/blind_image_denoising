@@ -208,8 +208,8 @@ def train_loop(
                             difficulty=noise_std,
                             input_batch=input_batch,
                             noisy_batch=noisy_batch,
-                            prediction_batch=tmp_prediction_batch,
-                            model_losses=model_denoise.losses)
+                            model_losses=model_denoise.losses,
+                            prediction_batch=tmp_prediction_batch)
 
                         # Use the gradient tape to automatically retrieve
                         # the gradients of the trainable variables
