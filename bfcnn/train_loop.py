@@ -103,15 +103,18 @@ def train_loop(
     visualization_every = train_config["visualization_every"]
     # how many visualizations to show
     visualization_number = train_config.get("visualization_number", 5)
+    # how many times the random batch will be iterated
+    random_batch_iterations = \
+        train_config.get("random_batch_iterations", 1)
 
     # create random image and iterate through the model
-    def create_random_batch(max_iterations: int = 10):
+    def create_random_batch():
         x = \
             tf.random.truncated_normal(
                 mean=0.0,
                 stddev=0.25,
                 shape=(visualization_number, 256, 256, 3))
-        for _ in range(max_iterations):
+        for _ in range(random_batch_iterations):
             x = \
                 model_denoise(
                     x,
@@ -121,7 +124,10 @@ def train_loop(
                     x,
                     clip_value_min=-0.5,
                     clip_value_max=+0.5)
-        return model_denormalize(x, training=False)
+        return \
+            model_denormalize(
+                x,
+                training=False)
 
     # --- train the model
     with summary_writer.as_default():

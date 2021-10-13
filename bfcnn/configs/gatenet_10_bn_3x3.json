@@ -24,6 +24,7 @@
     "checkpoint_every": 10000,
     "visualization_number": 5,
     "visualization_every": 100,
+    "random_batch_iterations": 5,
     "optimizer": {
       "decay_rate": 0.9,
       "decay_steps": 50000,
