@@ -223,7 +223,7 @@ def train_loop(
                 # --- add image prediction for tensorboard
                 if global_step % visualization_every == 0:
                     random_batch = \
-                        create_random_batch(max_iterations=10)
+                        create_random_batch()
                     visualize(
                         global_step=global_step,
                         input_batch=input_batch,
