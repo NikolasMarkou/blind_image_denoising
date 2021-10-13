@@ -19,7 +19,7 @@ several type of noise and then try to recover the original image
 * resnet
 * resnet with sparse constraint
 * resnet with on/off gates 
-* all of the above models with multiscale processing
+* all the above models with multiscale processing
 
 ## Training
 1. prepare training input
@@ -38,77 +38,135 @@ The training configuration is in the form of a json file that follows the schema
 ```json
 {
   "model": {
-    ...
+    
   },
   "train": {
-    ...
+    
     "optimizer": {
-      ...
+      
     }
   },
   "loss": {
-    ...
+    
   },
   "dataset": {
-    ...
+    
   }
 }
 
 ```
-### Model
+### model
+Describes the type and characteristics of model.
+* `levels`: how many multiscale models to build.
+* `filters`: the number of filters per conv operations
+* `no_layers`: number of layers per level
+* `min_value`: the minimum value 
+* `max_value`: the maximum value
+* `kernel_size`: the [NxN] filter size of each convolution filter
+* `type`: type of mode `(resnet, sparse_resnet, gatenet)`
+* `batchnorm`: use batch normalization between layers
+* `stop_grads`: if true stop gradients from flowing to upper levels
+* `activation`: convolution activation
+* `output_multiplier`: multiply output with this value to avoid saturation before going to `final_activation`
+* `kernel_regularizer`: kernel regularization `(l1, l2, l1_l2)` 
+* `final_activation`: final activation at the end of the model
+* `input_shape`: the input shape (minus the batch)
+* `kernel_initializer`: kernel initializer 
 
-#### Example
+#### example
 ```json
-  "model": {
-    "levels": 4,
-    "filters": 16,
-    "no_layers": 4,
-    "min_value": 0,
-    "max_value": 255,
-    "kernel_size": 3,
-    "type": "resnet",
-    "batchnorm": true,
-    "stop_grads": false,
-    "activation": "relu",
-    "output_multiplier": 1.0,
-    "kernel_regularizer": "l1",
-    "final_activation": "tanh",
-    "input_shape": ["?", "?", 3],
-    "kernel_initializer": "glorot_normal"
-  }
+{
+  "levels": 5,
+  "filters": 16,
+  "no_layers": 4,
+  "min_value": 0,
+  "max_value": 255,
+  "kernel_size": 3,
+  "type": "resnet",
+  "batchnorm": true,
+  "stop_grads": false,
+  "activation": "relu",
+  "output_multiplier": 1.0,
+  "kernel_regularizer": "l1",
+  "final_activation": "tanh",
+  "input_shape": ["?", "?", 3],
+  "kernel_initializer": "glorot_normal"
+}
 ```
-### Train
-#### Example
+### train
+Describes how to train the model above.
+* `epochs`: how many epoch to run the training
+* `total_steps`: how many steps to run the training (set negative to ignore)
+* `iterations_choice: how many times to run the model on the same input (if not sure set to `[1]`)
+* `checkpoints_to_keep`: how many checkpoints to keep
+* `checkpoint_every`: how many iterations before a checkpoint 
+* `visualization_number`: how many visualizations to show
+* `visualization_every`: show visualizations every this many iterations
+* `random_batch_iterations`:
+* `random_batch_size`:
+* `random_batch_min_difference`:
+* `optimizer`:
+  * `decay_rate`:
+  * `decay_steps`:
+  * `learning_rate`:
+  * `gradient_clipping_by_norm`:
+  
+#### example
 ```json
-  "train": {
-    "epochs": 20,
-    "total_steps": -1,
-    "iterations_choice": [1],
-    "checkpoints_to_keep": 3,
-    "checkpoint_every": 10000,
-    "visualization_number": 5,
-    "visualization_every": 100,
-    "optimizer": {
-      "decay_rate": 0.9,
-      "decay_steps": 50000,
-      "learning_rate": 0.001,
-      "gradient_clipping_by_norm": 1.0
-    }
+{
+  "epochs": 20,
+  "total_steps": -1,
+  "iterations_choice": [1],
+  "checkpoints_to_keep": 3,
+  "checkpoint_every": 10000,
+  "visualization_number": 5,
+  "visualization_every": 100,
+  "random_batch_iterations": 20,
+  "random_batch_size": [512, 512, 3],
+  "random_batch_min_difference": 0.01,
+  "optimizer": {
+    "decay_rate": 0.9,
+    "decay_steps": 50000,
+    "learning_rate": 0.001,
+    "gradient_clipping_by_norm": 1.0
   }
+ }
 ```
-### Loss
-#### Example
+### loss
+Describes how the loss function is composed.
+* `hinge`:
+* `mae_multiplier`:
+* `regularization`:
+
+#### example
 ```json
-  "loss": {
-    "hinge": 2.5,
-    "mae_multiplier": 1.0,
-    "regularization": 0.01
-  }
+{
+  "hinge": 2.5,
+  "mae_multiplier": 1.0,
+  "regularization": 0.01
+}
 ```
-### Dataset
-#### Example
+### dataset
+Describes how the dataset is parsed and prepared.
+* `batch_size`: batch size for each iteration
+* `min_value`: minimum value (usually 0) 
+* `max_value`: maximum value (usually 255)
+* `clip_value`: if true clip values at the end to minimum, maximum
+* `random_blur`: if true apply blur in multiplicative noise
+* `subsample_size`: if greater than zero enable subsampling noise 
+* `random_invert`: if true randomly invert result
+* `random_rotate`: maximum radians for rotation augmentation
+* `random_up_down`: if true randomly invert up down
+* `random_left_right`: if true randomly invert left right
+* `dataset_shape`: resize input dataset to this size (height, width)
+* `input_shape`: randomly crop this size from each input image
+* `additional_noise`: select randomly additive noise with mean 0 and std deviation from this list
+* `multiplicative_noise`: select randomly multiplicative noise with mean 1 and std deviation from this list
+* `directory`: path to the images directory
+
+#### example
 ```json
-  "dataset": {
+  {
     "batch_size": 16,
     "min_value": 0,
     "max_value": 255,
