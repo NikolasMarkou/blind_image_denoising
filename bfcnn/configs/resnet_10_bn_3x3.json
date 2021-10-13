@@ -25,6 +25,7 @@
     "visualization_number": 5,
     "visualization_every": 100,
     "random_batch_iterations": 5,
+    "random_batch_size": [512, 512, 3],
     "optimizer": {
       "decay_rate": 0.9,
       "decay_steps": 50000,

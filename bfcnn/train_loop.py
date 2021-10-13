@@ -104,8 +104,11 @@ def train_loop(
     # how many visualizations to show
     visualization_number = train_config.get("visualization_number", 5)
     # how many times the random batch will be iterated
-    random_batch_iterations = \
-        train_config.get("random_batch_iterations", 1)
+    random_batch_iterations = train_config.get("random_batch_iterations", 1)
+    # size of the random batch
+    random_batch_size = \
+        [visualization_number] + \
+        train_config.get("random_batch_size", [256, 256, 3])
 
     # create random image and iterate through the model
     def create_random_batch():
@@ -113,7 +116,7 @@ def train_loop(
             tf.random.truncated_normal(
                 mean=0.0,
                 stddev=0.25,
-                shape=(visualization_number, 256, 256, 3))
+                shape=random_batch_size)
         for _ in range(random_batch_iterations):
             x = \
                 model_denoise(

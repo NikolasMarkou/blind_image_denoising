@@ -37,7 +37,8 @@ def loss_function_builder(
         :param: input_batch: ground truth
         :param: prediction_batch: prediction
         :param: model_losses: weight/regularization losses
-        :param: difficulty: if >= 0 then it is an indication how corrupted the noisy batch is
+        :param: difficulty:
+            if >= 0 then it is an indication how corrupted the noisy batch is
         :return loss
         """
 
