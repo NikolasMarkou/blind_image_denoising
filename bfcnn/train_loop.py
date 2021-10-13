@@ -200,8 +200,8 @@ def train_loop(
                         tf.random.truncated_normal(
                             mean=0.0,
                             stddev=0.25,
-                            shape=tf.shape(input_batch))
-                    for i in range(3):
+                            shape=(visualization_number, 256, 256, 3))
+                    for i in range(10):
                         random_batch = \
                             model_denoise(
                                 random_batch,
