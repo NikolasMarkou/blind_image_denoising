@@ -31,7 +31,23 @@ several type of noise and then try to recover the original image
 TODO
 
 ## How to use
-TODO
+
+### Train
+Prepare a training configuration and train with the following command:  
+```
+python -m bfcnn.train \ 
+  --model-directory ${TRAINING_DIR} \ 
+  --pipeline-config ${PIPELINE}
+```
+### Export
+Export to frozen graph and/or tflite with the following command:
+```
+python -m bfcnn.export \
+    --checkpoint-directory ${TRAINING_DIR} \
+    --pipeline-config ${PIPELINE} \
+    --output-directory ${OUTPUT_DIR} \
+    --to-tflite
+```
 
 ## Training configuration
 The training configuration is in the form of a json file that follows the schema:
