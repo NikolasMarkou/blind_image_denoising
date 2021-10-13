@@ -105,28 +105,42 @@ def train_loop(
     visualization_number = train_config.get("visualization_number", 5)
     # how many times the random batch will be iterated
     random_batch_iterations = train_config.get("random_batch_iterations", 1)
+    # min allowed difference
+    random_batch_min_difference = \
+        train_config.get(
+            "random_batch_min_difference",
+            0.1)
     # size of the random batch
     random_batch_size = \
         [visualization_number] + \
         train_config.get("random_batch_size", [256, 256, 3])
 
-    # create random image and iterate through the model
+    # --- create random image and iterate through the model
     def create_random_batch():
+        x_iteration = 0
+        x_diff = 1
         x = \
             tf.random.truncated_normal(
                 mean=0.0,
                 stddev=0.25,
                 shape=random_batch_size)
-        for _ in range(random_batch_iterations):
-            x = \
+        while x_iteration < random_batch_iterations and \
+                x_diff < random_batch_min_difference:
+            x_tmp = \
                 model_denoise(
                     x,
                     training=False)
-            x = \
+            x_tmp = \
                 tf.clip_by_value(
-                    x,
+                    x_tmp,
                     clip_value_min=-0.5,
                     clip_value_max=+0.5)
+            x_diff = \
+                tf.reduce_mean(
+                    tf.abs(x - x_tmp),
+                    axis=[0, 1, 2, 3])
+            x = x_tmp
+            x_iteration += 1
         return \
             model_denormalize(
                 x,
