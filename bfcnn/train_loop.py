@@ -104,6 +104,25 @@ def train_loop(
     # how many visualizations to show
     visualization_number = train_config.get("visualization_number", 5)
 
+    # create random image and iterate through the model
+    def create_random_batch(max_iterations: int = 10):
+        x = \
+            tf.random.truncated_normal(
+                mean=0.0,
+                stddev=0.25,
+                shape=(visualization_number, 256, 256, 3))
+        for _ in range(max_iterations):
+            x = \
+                model_denoise(
+                    x,
+                    training=False)
+            x = \
+                tf.clip_by_value(
+                    x,
+                    clip_value_min=-0.5,
+                    clip_value_max=+0.5)
+        return model_denormalize(x, training=False)
+
     # --- train the model
     with summary_writer.as_default():
         checkpoint = \
@@ -147,7 +166,8 @@ def train_loop(
 
                 for iteration in range(iterations):
                     # Open a GradientTape to record the operations run
-                    # during the forward pass, which enables auto-differentiation.
+                    # during the forward pass,
+                    # which enables auto-differentiation.
                     with tf.GradientTape() as tape:
                         # Run the forward pass of the layer.
                         # The operations that the layer applies
@@ -197,17 +217,7 @@ def train_loop(
                 # --- add image prediction for tensorboard
                 if global_step % visualization_every == 0:
                     random_batch = \
-                        tf.random.truncated_normal(
-                            mean=0.0,
-                            stddev=0.25,
-                            shape=(visualization_number, 256, 256, 3))
-                    for i in range(10):
-                        random_batch = \
-                            model_denoise(
-                                random_batch,
-                                training=False)
-                    random_batch = \
-                        model_denormalize(random_batch, training=False)
+                        create_random_batch(max_iterations=10)
                     visualize(
                         global_step=global_step,
                         input_batch=input_batch,
