@@ -158,7 +158,7 @@ def train_loop(
                                 prediction_batch,
                                 training=True)
                         tmp_prediction_batch = \
-                            model_denormalize(prediction_batch)
+                            model_denormalize(prediction_batch, training=False)
 
                         # compute the loss value for this mini-batch
                         loss_map = loss_fn(
@@ -196,10 +196,23 @@ def train_loop(
 
                 # --- add image prediction for tensorboard
                 if global_step % visualization_every == 0:
+                    random_batch = \
+                        tf.random.truncated_normal(
+                            mean=0.0,
+                            stddev=0.25,
+                            shape=tf.shape(input_batch))
+                    for i in range(3):
+                        random_batch = \
+                            model_denoise(
+                                random_batch,
+                                training=False)
+                    random_batch = \
+                        model_denormalize(random_batch, training=False)
                     visualize(
                         global_step=global_step,
                         input_batch=input_batch,
                         noisy_batch=noisy_batch,
+                        random_batch=random_batch,
                         prediction_batch=tmp_prediction_batch,
                         visualization_number=visualization_number)
 

@@ -11,6 +11,7 @@ __license__ = "None"
 import numpy as np
 import tensorflow as tf
 
+
 # ---------------------------------------------------------------------
 
 
@@ -40,6 +41,7 @@ def collage(
             images.clear()
     return result
 
+
 # ---------------------------------------------------------------------
 
 
@@ -48,29 +50,41 @@ def visualize(
         input_batch,
         noisy_batch,
         prediction_batch,
-        visualization_number: int):
+        random_batch=None,
+        visualization_number: int = 3):
     """
     Prepare images and add them to tensorboard
     """
     # --- save train images
-    tf.summary.image(
-        name="input",
-        step=global_step,
-        data=input_batch / 255,
-        max_outputs=visualization_number)
+    if input_batch is not None:
+        tf.summary.image(
+            name="input",
+            step=global_step,
+            data=input_batch / 255,
+            max_outputs=visualization_number)
 
     # --- noisy
-    tf.summary.image(
-        name="noisy",
-        step=global_step,
-        data=noisy_batch / 255,
-        max_outputs=visualization_number)
+    if noisy_batch is not None:
+        tf.summary.image(
+            name="noisy",
+            step=global_step,
+            data=noisy_batch / 255,
+            max_outputs=visualization_number)
 
     # --- prediction
-    tf.summary.image(
-        name="prediction",
-        step=global_step,
-        data=prediction_batch / 255,
-        max_outputs=visualization_number)
+    if prediction_batch is not None:
+        tf.summary.image(
+            name="prediction",
+            step=global_step,
+            data=prediction_batch / 255,
+            max_outputs=visualization_number)
+
+    # --- random
+    if random_batch is not None:
+        tf.summary.image(
+            name="random",
+            step=global_step,
+            data=random_batch / 255,
+            max_outputs=visualization_number)
 
 # ---------------------------------------------------------------------
