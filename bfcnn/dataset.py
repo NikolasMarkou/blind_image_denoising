@@ -36,10 +36,12 @@ def dataset_builder(
     color_mode = config.get("color_mode", "rgb")
     # resolution of the files loaded (reshape)
     dataset_shape = config.get("dataset_shape", [256, 256])
-    # --- clip values
+    # --- clip values to min max
     min_value = config.get("min_value", 0)
     max_value = config.get("max_value", 255)
     clip_value = config.get("clip_value", True)
+    # --- if true round values
+    round_values = config.get("round_values", True)
     # --- dataset augmentation
     random_blur = config.get("random_blur", False)
     subsample_size = config.get("subsample_size", -1)
@@ -184,6 +186,11 @@ def dataset_builder(
                     noisy_batch,
                     clip_value_min=min_value,
                     clip_value_max=max_value)
+
+        # --- round values to nearest integer
+        if round_values:
+            input_batch = tf.round(input_batch)
+            noisy_batch = tf.round(noisy_batch)
 
         return input_batch, noisy_batch, difficulty
 
