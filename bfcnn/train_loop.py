@@ -125,7 +125,7 @@ def train_loop(
                 stddev=0.25,
                 shape=random_batch_size)
         while x_iteration < random_batch_iterations and \
-                x_diff < random_batch_min_difference:
+                x_diff > random_batch_min_difference:
             x_tmp = \
                 model_denoise(
                     x,
