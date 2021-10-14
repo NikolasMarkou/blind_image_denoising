@@ -174,6 +174,7 @@ Describes how the dataset is parsed and prepared.
 * `min_value`: minimum value (usually 0) 
 * `max_value`: maximum value (usually 255)
 * `clip_value`: if true clip values at the end to minimum, maximum
+* `color_mode`: color mode (rgb, rgba, grayscale)
 * `random_blur`: if true apply blur in multiplicative noise
 * `subsample_size`: if greater than zero enable subsampling noise 
 * `random_invert`: if true randomly invert result
@@ -194,6 +195,7 @@ Describes how the dataset is parsed and prepared.
     "max_value": 255,
     "clip_value": true,
     "random_blur": true,
+    "color_mode": "rgb",
     "subsample_size": -1,
     "random_invert": false,
     "random_rotate": 0.314,
