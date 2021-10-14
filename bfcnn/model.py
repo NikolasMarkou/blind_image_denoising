@@ -42,9 +42,12 @@ def model_builder(
     stop_grads = config.get("stop_grads", False)
     input_shape = config.get("input_shape", (None, None, 3))
     output_multiplier = config.get("output_multiplier", 1.0)
+    local_normalization = config.get("local_normalization", -1)
     final_activation = config.get("final_activation", "linear")
     kernel_regularizer = config.get("kernel_regularizer", "l1")
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
+    use_local_normalization = local_normalization > 0
+    local_normalization_kernel = [local_normalization, local_normalization]
 
     for i in range(len(input_shape)):
         if input_shape[i] == "?" or \
@@ -126,14 +129,16 @@ def model_builder(
             if stop_grads:
                 x_level = keras.backend.stop_gradient(x_level)
 
-        mean, sigma = \
-            mean_sigma_local(
-                x_level,
-                kernel_size=[5, 5])
-        x_level = \
-            keras.layers.Lambda(
-                function=func_sigma_norm,
-                trainable=False)([x_level, mean, sigma])
+        # local normalization cap
+        if use_local_normalization:
+            mean, sigma = \
+                mean_sigma_local(
+                    x_level,
+                    kernel_size=local_normalization_kernel)
+            x_level = \
+                keras.layers.Lambda(
+                    function=func_sigma_norm,
+                    trainable=False)([x_level, mean, sigma])
 
         # denoise image
         x_level = \
@@ -145,10 +150,12 @@ def model_builder(
         if output_multiplier != 1.0:
             x_level = x_level * output_multiplier
 
-        x_level = \
-            keras.layers.Lambda(
-                function=func_sigma_denorm,
-                trainable=False)([x_level, mean, sigma])
+        # local normalization cap
+        if use_local_normalization:
+            x_level = \
+                keras.layers.Lambda(
+                    function=func_sigma_denorm,
+                    trainable=False)([x_level, mean, sigma])
 
         if x_previous_result is None:
             x_previous_result = x_level

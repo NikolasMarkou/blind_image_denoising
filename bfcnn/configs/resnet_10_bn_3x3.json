@@ -10,6 +10,7 @@
     "batchnorm": true,
     "stop_grads": false,
     "activation": "relu",
+    "local_normalization": 5,
     "output_multiplier": 1.0,
     "kernel_regularizer": "l1",
     "final_activation": "tanh",

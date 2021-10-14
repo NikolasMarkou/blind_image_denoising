@@ -84,11 +84,13 @@ Describes the type and characteristics of model.
 * `no_layers`: number of layers per level
 * `min_value`: the minimum value 
 * `max_value`: the maximum value
-* `kernel_size`: the [NxN] filter size of each convolution filter
+* `kernel_size`: the kernel size of the convolution filter
 * `type`: type of mode `(resnet, sparse_resnet, gatenet)`
 * `batchnorm`: use batch normalization between layers
 * `stop_grads`: if true stop gradients from flowing to upper levels
 * `activation`: convolution activation
+* `local_normalization`: integer, if > 0 then applies a local normalization 
+  kernel before each level
 * `output_multiplier`: multiply output with this value to avoid saturation before going to `final_activation`
 * `kernel_regularizer`: kernel regularization `(l1, l2, l1_l2)` 
 * `final_activation`: final activation at the end of the model
@@ -174,7 +176,7 @@ Describes how the dataset is parsed and prepared.
 * `min_value`: minimum value (usually 0) 
 * `max_value`: maximum value (usually 255)
 * `clip_value`: if true clip values at the end to minimum, maximum
-* `color_mode`: color mode (rgb, rgba, grayscale)
+* `color_mode`: color mode (`rgb`, `rgba`, `grayscale`)
 * `random_blur`: if true apply blur in multiplicative noise
 * `subsample_size`: if greater than zero enable subsampling noise 
 * `random_invert`: if true randomly invert result
