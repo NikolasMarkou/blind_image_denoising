@@ -1,7 +1,13 @@
 # Blind Image Denoising
 Implementing CVPR 2020 paper : 
 
-"ROBUST AND INTERPRETABLE BLIND IMAGE DENOISING VIA BIAS - FREE CONVOLUTIONAL NEURAL NETWORKS"
+["ROBUST AND INTERPRETABLE BLIND IMAGE DENOISING VIA BIAS - FREE CONVOLUTIONAL NEURAL NETWORKS"](https://arxiv.org/abs/1906.05478)
+
+This paper provides excellent results
+![](./images/bfcnn_noisy_1.png "single channel bias free denoising")
+
+Which can also be completely explainable as a mask per pixel
+![](./images/bfcnn_noisy_2.png "pixel explainability")
 
 ## Target
 The target is to create an explainable bias-free 
