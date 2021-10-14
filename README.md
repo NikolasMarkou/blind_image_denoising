@@ -6,8 +6,8 @@ Implementing CVPR 2020 paper :
 This paper provides excellent results
 ![](./images/bfcnn_noisy_1.png "single channel bias free denoising")
 
-Which can also be completely explainable as a mask per pixel
-![](./images/bfcnn_noisy_2.png "pixel explainability")
+Which can also be completely interpretable as a mask per pixel
+![](./images/bfcnn_noisy_2.png "pixel smoothing interpretability")
 
 ## Target
 The target is to create an explainable bias-free 
@@ -208,4 +208,11 @@ Describes how the dataset is parsed and prepared.
     "directory": "/media/data1_4tb/datasets/KITTI/data/depth/raw_image_values/"
   }
 ```
+
+## Full examples
+
+* [resnet configuration example](bfcnn/configs/resnet_10_bn_3x3.json)
+* [sparse resnet configuration example](bfcnn/configs/sparse_resnet_10_bn_3x3.json)
+* [gatenet configuration example](bfcnn/configs/gatenet_10_bn_3x3.json)
+
 
