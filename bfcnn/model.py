@@ -125,9 +125,6 @@ def model_builder(
                     interpolation="nearest")(x_previous_result)
             x_level = \
                 keras.layers.Add()([x_level, -x_previous_result])
-            # stop gradient to the upper level (makes learning faster)
-            if stop_grads:
-                x_level = keras.backend.stop_gradient(x_level)
 
         # local normalization cap
         if use_local_normalization:
@@ -139,6 +136,10 @@ def model_builder(
                 keras.layers.Lambda(
                     function=func_sigma_norm,
                     trainable=False)([x_level, mean, sigma])
+
+        # stop gradient to the upper level (makes learning faster)
+        if stop_grads:
+            x_level = keras.backend.stop_gradient(x_level)
 
         # denoise image
         x_level = \
