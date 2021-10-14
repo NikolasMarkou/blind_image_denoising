@@ -179,7 +179,6 @@ def dataset_builder(
                     input_batch,
                     clip_value_min=min_value,
                     clip_value_max=max_value)
-
             noisy_batch = \
                 tf.clip_by_value(
                     noisy_batch,
