@@ -25,7 +25,7 @@
     "visualization_number": 5,
     "visualization_every": 100,
     "random_batch_iterations": 20,
-    "random_batch_size": [512, 512, 3],
+    "random_batch_size": [512, 512, 1],
     "random_batch_min_difference": 0.01,
     "optimizer": {
       "decay_rate": 0.9,
@@ -49,9 +49,10 @@
     "random_invert": false,
     "random_rotate": 0.314,
     "random_up_down": true,
+    "color_mode": "grayscale",
     "random_left_right": true,
     "dataset_shape": [256, 768],
-    "input_shape": [128, 128, 3],
+    "input_shape": [128, 128, 1],
     "additional_noise": [5, 10, 20],
     "multiplicative_noise": [0.1, 0.15, 0.2],
     "directory": "/media/data1_4tb/datasets/KITTI/data/depth/raw_image_values/"

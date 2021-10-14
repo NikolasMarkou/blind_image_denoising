@@ -33,6 +33,7 @@ def dataset_builder(
     # crop image from dataset
     input_shape = config["input_shape"]
     directory = config.get("directory", None)
+    color_mode = config.get("color_mode", "rgb")
     # resolution of the files loaded (reshape)
     dataset_shape = config.get("dataset_shape", [256, 256])
     # --- clip values
@@ -71,6 +72,7 @@ def dataset_builder(
                 label_mode=None,
                 directory=directory,
                 batch_size=batch_size,
+                color_mode=color_mode,
                 image_size=dataset_shape)
     else:
         raise ValueError("don't know how to handle non directory datasets")
