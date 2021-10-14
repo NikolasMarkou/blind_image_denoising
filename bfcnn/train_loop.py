@@ -135,10 +135,16 @@ def train_loop(
                     x_tmp,
                     clip_value_min=-0.5,
                     clip_value_max=+0.5)
+            x_diff = tf.abs(x - x_tmp)
             x_diff = \
                 tf.reduce_mean(
-                    tf.abs(x - x_tmp),
-                    axis=[0, 1, 2, 3])
+                    x_diff,
+                    axis=[1, 2, 3])
+
+            x_diff = \
+                tf.reduce_sum(
+                    x_diff,
+                    axis=[0])
             x = x_tmp
             x_iteration += 1
         return \
@@ -284,7 +290,7 @@ def train_loop(
                         logger.info("total_steps reached [{0}]".format(
                             total_steps))
                         break
-            logger.info("checkpoint at epoch: {0}".format(
+            logger.info("checkpoint at end of epoch: {0}".format(
                 int(global_epoch)))
             manager.save()
             global_epoch.assign_add(1)

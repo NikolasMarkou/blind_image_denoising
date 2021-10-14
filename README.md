@@ -15,7 +15,7 @@ model that performs denoising on a three channel input image.
 
 ## Corruption types
 In order to train such a model we corrupt an input image using 
-several type of noise and then try to recover the original image
+several types of noise and then try to recover the original image
 
 * normally distributed additive noise
 * normally distributed multiplicative noise
@@ -178,7 +178,7 @@ Describes how the dataset is parsed and prepared.
 * `clip_value`: if true clip values at the end to minimum, maximum
 * `color_mode`: color mode (`rgb`, `rgba`, `grayscale`)
 * `random_blur`: if true apply blur in multiplicative noise
-* `subsample_size`: if greater than zero enable subsampling noise 
+* `subsample_size`: if > 0 enable subsampling noise (2, 4, 8) 
 * `random_invert`: if true randomly invert result
 * `random_rotate`: maximum radians for rotation augmentation
 * `random_up_down`: if true randomly invert up down
@@ -214,7 +214,7 @@ Describes how the dataset is parsed and prepared.
 ## Full examples
 
 * [resnet configuration example](bfcnn/configs/resnet_10_bn_3x3.json)
-* [sparse resnet configuration example](bfcnn/configs/sparse_resnet_10_bn_3x3.json)
 * [gatenet configuration example](bfcnn/configs/gatenet_10_bn_3x3.json)
+* [sparse resnet configuration example](bfcnn/configs/sparse_resnet_10_bn_3x3.json)
 
 
