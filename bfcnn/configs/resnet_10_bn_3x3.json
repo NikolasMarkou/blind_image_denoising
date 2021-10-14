@@ -17,7 +17,7 @@
     "kernel_initializer": "glorot_normal"
   },
   "train": {
-    "epochs": 20,
+    "epochs": 50,
     "total_steps": -1,
     "iterations_choice": [1],
     "checkpoints_to_keep": 3,
@@ -52,7 +52,7 @@
     "color_mode": "grayscale",
     "random_left_right": true,
     "dataset_shape": [256, 768],
-    "input_shape": [128, 128, 1],
+    "input_shape": [256, 256, 1],
     "additional_noise": [5, 10, 20],
     "multiplicative_noise": [0.1, 0.15, 0.2],
     "directory": "/media/data1_4tb/datasets/KITTI/data/depth/raw_image_values/"
