@@ -81,11 +81,12 @@ The training configuration is in the form of a json file that follows the schema
 Describes the type and characteristics of model.
 * `levels`: how many multiscale models to build.
 * `filters`: the number of filters per conv operations
+* `clip_values`: if true clip output values to [-0.5, 0.5]
 * `no_layers`: number of layers per level
 * `min_value`: the minimum value 
 * `max_value`: the maximum value
 * `kernel_size`: the kernel size of the convolution filter
-* `type`: type of mode `(resnet, sparse_resnet, gatenet)`
+* `type`: type of mode (`resnet`, `sparse_resnet`, `gatenet`)
 * `batchnorm`: use batch normalization between layers
 * `stop_grads`: if true stop gradients from flowing to upper levels
 * `activation`: convolution activation
@@ -93,7 +94,7 @@ Describes the type and characteristics of model.
   kernel before top level, if == 0 applies global normalization, if < 0 does 
   nothing
 * `output_multiplier`: multiply output with this value to avoid saturation before going to `final_activation`
-* `kernel_regularizer`: kernel regularization `(l1, l2, l1_l2)` 
+* `kernel_regularizer`: kernel regularization (`l1`, `l2`, `l1_l2`) 
 * `final_activation`: final activation at the end of the model
 * `input_shape`: the input shape (minus the batch)
 * `kernel_initializer`: kernel initializer 
