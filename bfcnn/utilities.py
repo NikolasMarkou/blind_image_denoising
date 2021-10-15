@@ -637,6 +637,7 @@ def gaussian_filter_block(
         use_bias: bool = False):
     """
     Build a gaussian filter block
+
     :param input_layer:
     :param kernel_size:
     :param activation:

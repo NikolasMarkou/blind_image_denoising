@@ -90,7 +90,8 @@ Describes the type and characteristics of model.
 * `stop_grads`: if true stop gradients from flowing to upper levels
 * `activation`: convolution activation
 * `local_normalization`: integer, if > 0 then applies a local normalization 
-  kernel before each level
+  kernel before top level, if == 0 applies global normalization, if < 0 does 
+  nothing
 * `output_multiplier`: multiply output with this value to avoid saturation before going to `final_activation`
 * `kernel_regularizer`: kernel regularization `(l1, l2, l1_l2)` 
 * `final_activation`: final activation at the end of the model
@@ -100,21 +101,22 @@ Describes the type and characteristics of model.
 #### example
 ```json
 {
-  "levels": 5,
-  "filters": 16,
-  "no_layers": 4,
-  "min_value": 0,
-  "max_value": 255,
-  "kernel_size": 3,
-  "type": "resnet",
-  "batchnorm": true,
-  "stop_grads": false,
-  "activation": "relu",
-  "output_multiplier": 1.0,
-  "kernel_regularizer": "l1",
-  "final_activation": "tanh",
-  "input_shape": ["?", "?", 3],
-  "kernel_initializer": "glorot_normal"
+    "levels": 6,
+    "filters": 16,
+    "no_layers": 5,
+    "min_value": 0,
+    "max_value": 255,
+    "kernel_size": 3,
+    "type": "resnet",
+    "batchnorm": true,
+    "stop_grads": false,
+    "activation": "relu",
+    "local_normalization": -1,
+    "output_multiplier": 1.0,
+    "kernel_regularizer": "l1",
+    "final_activation": "tanh",
+    "input_shape": ["?", "?", 1],
+    "kernel_initializer": "glorot_normal"
 }
 ```
 ### train

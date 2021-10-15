@@ -107,11 +107,22 @@ def model_builder(
 
     # --- connect the parts of the model
     # setup input
-    model_input = \
+    input_layer = \
         keras.Input(
             shape=input_shape,
             name="input_tensor")
-    x = model_input
+    x = input_layer
+
+    # local normalization cap
+    if use_local_normalization:
+        mean, sigma = \
+            mean_sigma_local(
+                x,
+                kernel_size=local_normalization_kernel)
+        x = \
+            keras.layers.Lambda(
+                function=func_sigma_norm,
+                trainable=False)([x, mean, sigma])
 
     x_levels = model_pyramid(x)
     x_previous_result = None
@@ -125,17 +136,6 @@ def model_builder(
                     interpolation="nearest")(x_previous_result)
             x_level = \
                 keras.layers.Add()([x_level, -x_previous_result])
-
-        # local normalization cap
-        if use_local_normalization:
-            mean, sigma = \
-                mean_sigma_local(
-                    x_level,
-                    kernel_size=local_normalization_kernel)
-            x_level = \
-                keras.layers.Lambda(
-                    function=func_sigma_norm,
-                    trainable=False)([x_level, mean, sigma])
 
         # stop gradient to the upper level (makes learning faster)
         if stop_grads:
@@ -151,13 +151,6 @@ def model_builder(
         if output_multiplier != 1.0:
             x_level = x_level * output_multiplier
 
-        # local normalization cap
-        if use_local_normalization:
-            x_level = \
-                keras.layers.Lambda(
-                    function=func_sigma_denorm,
-                    trainable=False)([x_level, mean, sigma])
-
         if x_previous_result is None:
             x_previous_result = x_level
         else:
@@ -165,11 +158,23 @@ def model_builder(
                 keras.layers.Add()([x_previous_result, x_level])
         level = level + 1
 
-    # --- wrap model
+    # local denormalization cap
+    if use_local_normalization:
+        x_previous_result = \
+            keras.layers.Lambda(
+                function=func_sigma_denorm,
+                trainable=False)([x_previous_result, mean, sigma])
+
+    # name output
+    output_layer = \
+        keras.layers.Layer(name="output_tensor")(x_previous_result)
+
+    # --- wrap and name model
     model_denoise = \
         keras.Model(
-            inputs=model_input,
-            outputs=x_previous_result)
+            inputs=input_layer,
+            outputs=output_layer,
+            name=f"{model_type}_denoiser")
 
     return \
         model_denoise, \
