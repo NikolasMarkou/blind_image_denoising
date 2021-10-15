@@ -47,6 +47,7 @@ def model_builder(
     kernel_regularizer = config.get("kernel_regularizer", "l1")
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     use_local_normalization = local_normalization > 0
+    use_global_normalization = local_normalization == 0
     local_normalization_kernel = [local_normalization, local_normalization]
 
     for i in range(len(input_shape)):
@@ -119,6 +120,15 @@ def model_builder(
             mean_sigma_local(
                 x,
                 kernel_size=local_normalization_kernel)
+        x = \
+            keras.layers.Lambda(
+                function=func_sigma_norm,
+                trainable=False)([x, mean, sigma])
+    elif use_global_normalization:
+        mean, sigma = \
+            mean_sigma_global(
+                x,
+                axis=[1, 2])
         x = \
             keras.layers.Lambda(
                 function=func_sigma_norm,

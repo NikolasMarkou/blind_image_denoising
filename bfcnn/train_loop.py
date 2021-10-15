@@ -292,8 +292,8 @@ def train_loop(
                         break
             logger.info("checkpoint at end of epoch: {0}".format(
                 int(global_epoch)))
-            manager.save()
             global_epoch.assign_add(1)
+            manager.save()
 
         # --- save checkpoint before exiting
         logger.info("checkpoint at step: {0}".format(
