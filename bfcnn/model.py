@@ -169,7 +169,8 @@ def model_builder(
         level = level + 1
 
     # local denormalization cap
-    if use_local_normalization:
+    if use_local_normalization or \
+            use_global_normalization:
         x_previous_result = \
             keras.layers.Lambda(
                 function=func_sigma_denorm,
