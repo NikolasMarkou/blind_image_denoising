@@ -129,9 +129,11 @@ Describes how to train the model above.
 * `checkpoint_every`: how many iterations before a checkpoint 
 * `visualization_number`: how many visualizations to show
 * `visualization_every`: show visualizations every this many iterations
-* `random_batch_iterations`:
-* `random_batch_size`:
-* `random_batch_min_difference`:
+* `random_batch_iterations`: how many times to run the denoiser model on the 
+  random batch
+* `random_batch_size`: how big the random patch will be
+* `random_batch_min_difference`: minimum difference between iterations in 
+  the random batch before stopping
 * `optimizer`:
   * `decay_rate`:
   * `decay_steps`:
