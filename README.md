@@ -76,6 +76,13 @@ The training configuration is in the form of a json file that follows the schema
   }
 }
 
+### Full examples
+
+* [resnet configuration example](bfcnn/configs/resnet_10_bn_3x3.json)
+* [gatenet configuration example](bfcnn/configs/gatenet_10_bn_3x3.json)
+* [sparse resnet configuration example](bfcnn/configs/sparse_resnet_10_bn_3x3.json)
+
+
 ```
 ### model
 Describes the type and characteristics of model.
@@ -219,10 +226,5 @@ Describes how the dataset is parsed and prepared.
   }
 ```
 
-## Full examples
-
-* [resnet configuration example](bfcnn/configs/resnet_10_bn_3x3.json)
-* [gatenet configuration example](bfcnn/configs/gatenet_10_bn_3x3.json)
-* [sparse resnet configuration example](bfcnn/configs/sparse_resnet_10_bn_3x3.json)
 
 
