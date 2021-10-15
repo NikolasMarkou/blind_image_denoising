@@ -123,7 +123,8 @@ Describes the type and characteristics of model.
 Describes how to train the model above.
 * `epochs`: how many epoch to run the training
 * `total_steps`: how many steps to run the training (set negative to ignore)
-* `iterations_choice: how many times to run the model on the same input (if not sure set to `[1]`)
+* `iterations_choice`: how many times to run the model on the same input (if 
+  not sure set to `[1]`)
 * `checkpoints_to_keep`: how many checkpoints to keep
 * `checkpoint_every`: how many iterations before a checkpoint 
 * `visualization_number`: how many visualizations to show
