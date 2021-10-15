@@ -168,7 +168,7 @@ def model_builder(
                 keras.layers.Add()([x_previous_result, x_level])
         level = level + 1
 
-    # local denormalization cap
+    # local or global denormalization cap
     if use_local_normalization or \
             use_global_normalization:
         x_previous_result = \
