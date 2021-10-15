@@ -135,10 +135,10 @@ Describes how to train the model above.
 * `random_batch_min_difference`: minimum difference between iterations in 
   the random batch before stopping
 * `optimizer`:
-  * `decay_rate`:
-  * `decay_steps`:
-  * `learning_rate`:
-  * `gradient_clipping_by_norm`:
+  * `decay_rate`: how much (percentage wise) to decay the learning rate
+  * `decay_steps`: learning rate is decayed (decay_rate) every this many steps
+  * `learning_rate`: initial learning rate
+  * `gradient_clipping_by_norm`: clip gradient norm to this value
   
 #### example
 ```json
@@ -163,9 +163,11 @@ Describes how to train the model above.
 ```
 ### loss
 Describes how the loss function is composed.
-* `hinge`:
-* `mae_multiplier`:
-* `regularization`:
+* `hinge`: allow this much error before counting (per pixel)
+* `mae_multiplier`: when calculating total loss multiply MAE loss by this 
+  multiplier
+* `regularization`: when calculating total loss multiple regularization loss by 
+  this multiplier
 
 #### example
 ```json

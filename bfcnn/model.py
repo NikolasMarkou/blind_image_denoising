@@ -40,6 +40,7 @@ def model_builder(
     batchnorm = config.get("batchnorm", True)
     kernel_size = config.get("kernel_size", 3)
     stop_grads = config.get("stop_grads", False)
+    clip_values = config.get("clip_values", False)
     input_shape = config.get("input_shape", (None, None, 3))
     output_multiplier = config.get("output_multiplier", 1.0)
     local_normalization = config.get("local_normalization", -1)
@@ -122,6 +123,7 @@ def model_builder(
                 kernel_size=local_normalization_kernel)
         x = \
             keras.layers.Lambda(
+                name="local_normalization",
                 function=func_sigma_norm,
                 trainable=False)([x, mean, sigma])
     elif use_global_normalization:
@@ -131,6 +133,7 @@ def model_builder(
                 axis=[1, 2])
         x = \
             keras.layers.Lambda(
+                name="global_normalization",
                 function=func_sigma_norm,
                 trainable=False)([x, mean, sigma])
 
@@ -145,7 +148,7 @@ def model_builder(
                     size=(2, 2),
                     interpolation="bilinear")(x_previous_result)
             x_level = \
-                keras.layers.Add()([x_level, -x_previous_result])
+                keras.layers.Subtract()([x_level, x_previous_result])
 
         # stop gradient to the upper level (makes learning faster)
         if stop_grads:
@@ -166,15 +169,30 @@ def model_builder(
         else:
             x_previous_result = \
                 keras.layers.Add()([x_previous_result, x_level])
+
         level = level + 1
 
     # local or global denormalization cap
-    if use_local_normalization or \
-            use_global_normalization:
+    if use_local_normalization:
         x_previous_result = \
             keras.layers.Lambda(
+                name="local_denormalization",
                 function=func_sigma_denorm,
                 trainable=False)([x_previous_result, mean, sigma])
+    elif use_global_normalization:
+        x_previous_result = \
+            keras.layers.Lambda(
+                name="global_denormalization",
+                function=func_sigma_denorm,
+                trainable=False)([x_previous_result, mean, sigma])
+
+    # clip to [-0.5, +0.5]
+    if clip_values:
+        x_previous_result = \
+            keras.backend.clip(
+                x_previous_result,
+                min_value=-0.5,
+                max_value=+0.5)
 
     # name output
     output_layer = \

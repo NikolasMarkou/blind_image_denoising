@@ -22,8 +22,10 @@ from typing import List, Tuple, Union, Dict
 
 from .custom_logger import logger
 
+DEFAULT_EPSILON = 0.0001
 
 # ---------------------------------------------------------------------
+
 
 def load_config(
         config: Union[str, Dict, Path]) -> Dict:
@@ -150,12 +152,14 @@ def coords_layer(
 
 def mean_sigma_local(
         input_layer,
-        kernel_size: Tuple[int, int] = (5, 5)):
+        kernel_size: Tuple[int, int] = (5, 5),
+        sigma_epsilon: float = DEFAULT_EPSILON):
     """
     Create a mean sigma
 
     :param input_layer:
     :param kernel_size:
+    :param sigma_epsilon: small number for robust sigma calculation
     :return:
     """
     # --- argument checking
@@ -164,6 +168,8 @@ def mean_sigma_local(
     shape = keras.backend.int_shape(input_layer)
     if len(shape) != 4:
         raise ValueError("input_layer must be a 4d tensor")
+    if not isinstance(kernel_size, tuple):
+        raise ValueError("kernel_size must be a tuple")
 
     # --- define functions
     def func_diff_2(args):
@@ -172,7 +178,10 @@ def mean_sigma_local(
 
     def func_sqrt_robust(args):
         x = args
-        return tf.sqrt(tf.abs(x) + 0.00001)
+        # fix variance
+        n = (kernel_size[0] * kernel_size[1])
+        x = x * (float(n) / float(n - 1))
+        return tf.sqrt(tf.abs(x) + sigma_epsilon)
     # ---
     mean = \
         keras.layers.AveragePooling2D(
@@ -197,12 +206,14 @@ def mean_sigma_local(
 
 def mean_sigma_global(
         input_layer,
-        axis: List[int] = [1, 2, 3]):
+        axis: List[int] = [1, 2, 3],
+        sigma_epsilon: float = DEFAULT_EPSILON):
     """
     Create a global mean sigma per channel
 
     :param input_layer:
     :param axis:
+    :param sigma_epsilon: small number to add for robust sigma calculation
     :return:
     """
     # --- argument checking
@@ -217,7 +228,7 @@ def mean_sigma_global(
         mean = keras.backend.mean(x, axis=axis, keepdims=True)
         diff_2 = keras.backend.square(x - mean)
         variance = keras.backend.mean(diff_2, axis=axis, keepdims=True)
-        sigma = keras.backend.sqrt(keras.backend.abs(variance) + 0.00001)
+        sigma = keras.backend.sqrt(keras.backend.abs(variance) + sigma_epsilon)
         return mean, sigma
 
     return keras.layers.Lambda(func, trainable=False)(input_layer)
@@ -375,7 +386,7 @@ def build_gaussian_pyramid_model(
                 y,
                 strides=(1, 1),
                 xy_max=(1, 1),
-                kernel_size=(3, 3))
+                kernel_size=(5, 5))
 
         # downsample by order of 2
         y = \
