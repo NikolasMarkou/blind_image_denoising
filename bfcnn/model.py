@@ -143,7 +143,7 @@ def model_builder(
             x_previous_result = \
                 keras.layers.UpSampling2D(
                     size=(2, 2),
-                    interpolation="nearest")(x_previous_result)
+                    interpolation="bilinear")(x_previous_result)
             x_level = \
                 keras.layers.Add()([x_level, -x_previous_result])
 
