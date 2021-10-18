@@ -4,9 +4,11 @@ Implementing CVPR 2020 paper :
 ["ROBUST AND INTERPRETABLE BLIND IMAGE DENOISING VIA BIAS - FREE CONVOLUTIONAL NEURAL NETWORKS"](https://arxiv.org/abs/1906.05478)
 
 This paper provides excellent results
+
 ![](./images/bfcnn_noisy_1.png "single channel bias free denoising")
 
 Which can also be completely interpretable as a mask per pixel
+
 ![](./images/bfcnn_noisy_2.png "pixel smoothing interpretability")
 
 ## Target
@@ -34,12 +36,13 @@ several types of noise and then try to recover the original image
 4. export
 
 ## Image examples
-* gathered while training 
-Normal                     |  Noisy                    |  Denoised
-:-------------------------:|:-------------------------:|:-------------------------:
+
+|Normal                   |  Noisy                    |  Denoised
+|-------------------------|-------------------------|-------------------------|
 ![](images/bfcnn_input_normal_1.png "normal") | ![](images/bfcnn_input_noisy_1.png "noisy") |![](images/bfcnn_input_denoised_1.png "denoised")
 ![](images/bfcnn_input_normal_2.png "normal") | ![](images/bfcnn_input_noisy_2.png "noisy") |![](images/bfcnn_input_denoised_2.png "denoised")
 
+* these images were gathered while training 
 ## How to use
 
 ### Train
