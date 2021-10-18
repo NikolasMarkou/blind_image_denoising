@@ -57,6 +57,14 @@ def model_builder(
                 input_shape[i] == "-1":
             input_shape[i] = None
 
+    # --- argument checking
+    if levels <= 0:
+        raise ValueError("levels must be > 0")
+    if filters <= 0:
+        raise ValueError("filters must be > 0")
+    if kernel_size <= 0:
+        raise ValueError("kernel_size must be > 0")
+
     # --- build normalize denormalize models
     model_normalize = \
         build_normalize_model(
