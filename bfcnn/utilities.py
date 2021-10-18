@@ -371,41 +371,23 @@ def conv2d_sparse(
 
 def build_gaussian_pyramid_model(
         input_dims,
-        levels: int):
-
-    def _downsample(y):
-        """
-        Downsample and upsample the input
-
-        :param y: input
-        :return:
-        """
-        # gaussian filter
-        y = \
-            gaussian_filter_block(
-                y,
-                strides=(1, 1),
-                xy_max=(1, 1),
-                kernel_size=(5, 5))
-
-        # downsample by order of 2
-        y = \
-            keras.layers.MaxPool2D(
-                pool_size=(1, 1),
-                strides=(2, 2),
-                padding="valid")(y)
-
-        return y
-
+        levels: int,
+        kernel_size: Tuple[int, int] = (5, 5)):
     # --- prepare input
     input_layer = \
         keras.Input(shape=input_dims)
 
     # --- split input in levels
-    x = keras.layers.Layer()(input_layer)
+    x = input_layer
     multiscale_layers = [x]
     for i in range(levels-1):
-        x = _downsample(x)
+        x = \
+            gaussian_filter_block(
+                x,
+                padding="same",
+                strides=(2, 2),
+                xy_max=(2, 2),
+                kernel_size=kernel_size)
         multiscale_layers.append(x)
 
     return \

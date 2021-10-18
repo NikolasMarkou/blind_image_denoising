@@ -8,7 +8,7 @@
     "kernel_size": 3,
     "type": "resnet",
     "batchnorm": true,
-    "stop_grads": true,
+    "stop_grads": false,
     "clip_values": false,
     "activation": "relu",
     "local_normalization": -1,
@@ -31,7 +31,7 @@
     "random_batch_min_difference": 0.1,
     "optimizer": {
       "decay_rate": 0.9,
-      "decay_steps": 50000,
+      "decay_steps": 20000,
       "learning_rate": 0.001,
       "gradient_clipping_by_norm": 1.0
     }
