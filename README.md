@@ -34,7 +34,9 @@ several types of noise and then try to recover the original image
 4. export
 
 ## Image examples
-TODO
+Normal                     |  Noisy                    |  Denoised
+:-------------------------:|:-------------------------:|:-------------------------:
+![](images/bfcnn_input_normal.png "normal") | ![](images/bfcnn_input_noisy.png "noisy") |![](images/bfcnn_input_denoised.png "denoised")
 
 ## How to use
 
