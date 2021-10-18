@@ -372,7 +372,8 @@ def conv2d_sparse(
 def build_gaussian_pyramid_model(
         input_dims,
         levels: int,
-        kernel_size: Tuple[int, int] = (5, 5)):
+        kernel_size: Tuple[int, int] = (5, 5),
+        trainable: bool = False):
     # --- prepare input
     input_layer = \
         keras.Input(shape=input_dims)
@@ -387,7 +388,8 @@ def build_gaussian_pyramid_model(
                 padding="same",
                 strides=(2, 2),
                 xy_max=(2, 2),
-                kernel_size=kernel_size)
+                kernel_size=kernel_size,
+                trainable=trainable)
         multiscale_layers.append(x)
 
     return \
