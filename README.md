@@ -27,7 +27,7 @@ several types of noise and then try to recover the original image
 * resnet
 * resnet with sparse constraint
 * resnet with on/off gates 
-* all the above models with multiscale processing
+* all the above models with multi-scale processing
 
 ## Training
 1. prepare training input
@@ -37,6 +37,10 @@ several types of noise and then try to recover the original image
 
 ## Image examples
 
+* these images were gathered while training on patches of 128x128
+* we can clearly see that the model adapts well to different ranges of noise
+
+
 |Normal                   |  Noisy                    |  Denoised
 |-------------------------|-------------------------|-------------------------|
 ![](images/bfcnn_input_normal_1.png "normal") | ![](images/bfcnn_input_noisy_1.png "noisy") |![](images/bfcnn_input_denoised_1.png "denoised")
@@ -45,9 +49,6 @@ several types of noise and then try to recover the original image
 ![](images/bfcnn_input_normal_4.png "normal") | ![](images/bfcnn_input_noisy_4.png "noisy") |![](images/bfcnn_input_denoised_4.png "denoised")
 ![](images/bfcnn_input_normal_5.png "normal") | ![](images/bfcnn_input_noisy_5.png "noisy") |![](images/bfcnn_input_denoised_5.png "denoised")
 ![](images/bfcnn_input_normal_6.png "normal") | ![](images/bfcnn_input_noisy_6.png "noisy") |![](images/bfcnn_input_denoised_6.png "denoised")
-
-* these images were gathered while training on patches of 128x128
-* we can clearly see that the model adapts well to different ranges of noise
 
 ## How to use
 
@@ -72,21 +73,21 @@ python -m bfcnn.export \
 The training configuration is in the form of a json file that follows the schema:
 ```json
 {
-  "model": {
+    "model": {
+        
+    },
+    "train": {
+        
+        "optimizer": {
     
-  },
-  "train": {
+        }
+    },
+    "loss": {
     
-    "optimizer": {
-      
+    },
+    "dataset": {
+    
     }
-  },
-  "loss": {
-    
-  },
-  "dataset": {
-    
-  }
 }
 ```
 
@@ -141,7 +142,7 @@ Describes the type and characteristics of model.
 ```
 ### train
 Describes how to train the model above.
-* `epochs`: how many epoch to run the training
+* `epochs`: how many epochs to run the training
 * `total_steps`: how many steps to run the training (set negative to ignore)
 * `iterations_choice`: how many times to run the model on the same input (if 
   not sure set to `[1]`)
@@ -163,22 +164,22 @@ Describes how to train the model above.
 #### example
 ```json
 {
-  "epochs": 20,
-  "total_steps": -1,
-  "iterations_choice": [1],
-  "checkpoints_to_keep": 3,
-  "checkpoint_every": 10000,
-  "visualization_number": 5,
-  "visualization_every": 100,
-  "random_batch_iterations": 20,
-  "random_batch_size": [512, 512, 3],
-  "random_batch_min_difference": 0.01,
-  "optimizer": {
-    "decay_rate": 0.9,
-    "decay_steps": 50000,
-    "learning_rate": 0.001,
-    "gradient_clipping_by_norm": 1.0
-  }
+    "epochs": 20,
+    "total_steps": -1,
+    "iterations_choice": [1],
+    "checkpoints_to_keep": 3,
+    "checkpoint_every": 10000,
+    "visualization_number": 5,
+    "visualization_every": 100,
+    "random_batch_iterations": 20,
+    "random_batch_size": [512, 512, 3],
+    "random_batch_min_difference": 0.01,
+    "optimizer": {
+        "decay_rate": 0.9,
+        "decay_steps": 50000,
+        "learning_rate": 0.001,
+        "gradient_clipping_by_norm": 1.0
+    }
  }
 ```
 ### loss
@@ -192,9 +193,9 @@ Describes how the loss function is composed.
 #### example
 ```json
 {
-  "hinge": 2.5,
-  "mae_multiplier": 1.0,
-  "regularization": 0.01
+    "hinge": 2.5,
+    "mae_multiplier": 1.0,
+    "regularization": 0.01
 }
 ```
 ### dataset
@@ -218,7 +219,7 @@ Describes how the dataset is parsed and prepared.
 
 #### example
 ```json
-  {
+{
     "batch_size": 16,
     "min_value": 0,
     "max_value": 255,
@@ -235,7 +236,7 @@ Describes how the dataset is parsed and prepared.
     "additional_noise": [5, 10, 20],
     "multiplicative_noise": [0.1, 0.15, 0.2],
     "directory": "/media/data1_4tb/datasets/KITTI/data/depth/raw_image_values/"
-  }
+}
 ```
 
 
