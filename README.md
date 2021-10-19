@@ -41,14 +41,12 @@ several types of noise and then try to recover the original image
 * we can clearly see that the model adapts well to different ranges of noise
 
 
-|Normal                   |  Noisy                    |  Denoised
+|Normal                   |  Noisy                  |  Denoised               |
 |-------------------------|-------------------------|-------------------------|
-![](images/bfcnn_input_normal_1.png "normal") | ![](images/bfcnn_input_noisy_1.png "noisy") |![](images/bfcnn_input_denoised_1.png "denoised")
-![](images/bfcnn_input_normal_2.png "normal") | ![](images/bfcnn_input_noisy_2.png "noisy") |![](images/bfcnn_input_denoised_2.png "denoised")
-![](images/bfcnn_input_normal_3.png "normal") | ![](images/bfcnn_input_noisy_3.png "noisy") |![](images/bfcnn_input_denoised_3.png "denoised")
-![](images/bfcnn_input_normal_4.png "normal") | ![](images/bfcnn_input_noisy_4.png "noisy") |![](images/bfcnn_input_denoised_4.png "denoised")
-![](images/bfcnn_input_normal_5.png "normal") | ![](images/bfcnn_input_noisy_5.png "noisy") |![](images/bfcnn_input_denoised_5.png "denoised")
-![](images/bfcnn_input_normal_6.png "normal") | ![](images/bfcnn_input_noisy_6.png "noisy") |![](images/bfcnn_input_denoised_6.png "denoised")
+![](images/bfcnn_input_normal_0.png "normal") | ![](images/bfcnn_input_noisy_0.png "noisy") |![](images/bfcnn_input_denoised_0.png "denoised")|
+![](images/bfcnn_input_normal_1.png "normal") | ![](images/bfcnn_input_noisy_1.png "noisy") |![](images/bfcnn_input_denoised_1.png "denoised")|
+![](images/bfcnn_input_normal_5.png "normal") | ![](images/bfcnn_input_noisy_5.png "noisy") |![](images/bfcnn_input_denoised_5.png "denoised")|
+![](images/bfcnn_input_normal_6.png "normal") | ![](images/bfcnn_input_noisy_6.png "noisy") |![](images/bfcnn_input_denoised_6.png "denoised")|
 
 ## How to use
 
