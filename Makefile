@@ -12,4 +12,6 @@ test:
 
 clean:
 	rm -rf build dist
+	rm -rf __pycache__
 	rm -rf .pytest_cache
+	rm -rf bfcnn.egg-info
