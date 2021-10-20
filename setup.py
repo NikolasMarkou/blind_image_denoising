@@ -33,7 +33,6 @@ setuptools.setup(
         "setuptools",
         "tensorflow>=2.4.1",
         "matplotlib>=3.3.4",
-        "scikit-image>=0.17.2",
         "tensorflow-addons",
     ],
     url="https://github.com/NikolasMarkou/blind_image_denoising",
