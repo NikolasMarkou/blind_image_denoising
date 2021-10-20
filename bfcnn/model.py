@@ -229,6 +229,7 @@ class DenoisingInferenceModule(tf.Module):
             model_denoise: keras.Model,
             model_normalize: keras.Model = None,
             model_denormalize: keras.Model = None,
+            training_channels: int = 1,
             iterations: int = 1,
             cast_to_uint8: bool = True):
         """
@@ -237,19 +238,24 @@ class DenoisingInferenceModule(tf.Module):
         :param model_denoise: denoising model to use for inference.
         :param model_normalize:
         :param model_denormalize:
+        param training_channels:
         :param iterations: how many times to run the model
         :param cast_to_uint8: cast output to uint8
+
         """
         # --- argument checking
         if model_denoise is None:
             raise ValueError("model_denoise should not be None")
         if iterations <= 0:
             raise ValueError("iterations should be > 0")
+        if training_channels <= 0:
+            raise ValueError("training channels should be > 0")
 
         # --- setup instance variables
         self._model_denoise = model_denoise
         self._model_normalize = model_normalize
         self._model_denormalize = model_denormalize
+        self._training_channels = training_channels
         self._iterations = iterations
         self._cast_to_uint8 = cast_to_uint8
 
@@ -257,10 +263,12 @@ class DenoisingInferenceModule(tf.Module):
         """
         Cast image to float and run inference.
 
-        :param image: uint8 Tensor of shape [1, None, None, 3]
-        :return: denoised image: uint8 Tensor of shape [1, None, None, 3]
+        :param image: uint8 Tensor of shape [1, None, None, 1]
+        :return: denoised image: uint8 Tensor of shape [1, None, None, 1]
         """
         x = tf.cast(image, dtype=tf.float32)
+
+        # --- transpose batch for channels
 
         # --- normalize
         if self._model_normalize is not None:
@@ -284,7 +292,7 @@ class DenoisingInferenceModule(tf.Module):
 
     @tf.function(
         input_signature=[
-            tf.TensorSpec(shape=[1, None, None, 3], dtype=tf.uint8)])
+            tf.TensorSpec(shape=[1, None, None, 1], dtype=tf.uint8)])
     def __call__(self, input_tensor):
         return self._run_inference_on_images(input_tensor)
 

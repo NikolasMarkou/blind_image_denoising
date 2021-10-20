@@ -654,10 +654,12 @@ def gaussian_filter_block(
         assert len(size) == 2
         kern1d = []
         for i in range(2):
-            x = np.linspace(start=-np.abs(nsig[i]),
-                            stop=np.abs(nsig[i]),
-                            num=size[i],
-                            endpoint=True)
+            x = \
+                np.linspace(
+                    start=-np.abs(nsig[i]),
+                    stop=np.abs(nsig[i]),
+                    num=size[i],
+                    endpoint=True)
             kern1d.append(x)
         x, y = np.meshgrid(kern1d[0], kern1d[1])
         d = np.sqrt(x * x + y * y)
@@ -672,156 +674,18 @@ def gaussian_filter_block(
         kernel[:, :, 0, 0] = gaussian_kernel([shape[0], shape[1]], xy_max)
         return kernel
 
-    return keras.layers.DepthwiseConv2D(
-        kernel_size=kernel_size,
-        strides=strides,
-        padding=padding,
-        depth_multiplier=1,
-        dilation_rate=dilation_rate,
-        activation=activation,
-        use_bias=use_bias,
-        trainable=trainable,
-        depthwise_initializer=kernel_init,
-        kernel_initializer=kernel_init)(input_layer)
-
-
-# ---------------------------------------------------------------------
-
-
-def delta_x(
-        input_layer,
-        kernel_size: int = 3):
-    """
-    Compute delta x for each channel layer
-
-    :param input_layer:
-    :param kernel_size: 2,3,4,5
-
-    :return:
-    """
-
-    # Initialise to set kernel to required value
-    if kernel_size == 2:
-        def kernel_init(shape, dtype):
-            kernel = np.zeros(shape)
-            for i in range(shape[2]):
-                kernel[:, :, i, 0] = \
-                    [[+1.0, -1.0],
-                     [+1.0, -1.0]]
-            return kernel
-    elif kernel_size == 3:
-        def kernel_init(shape, dtype):
-            kernel = np.zeros(shape)
-            for i in range(shape[2]):
-                kernel[:, :, i, 0] = \
-                    [[+1.0, +0.0, -1.0],
-                     [+2.0, +0.0, -2.0],
-                     [+1.0, +0.0, -1.0]]
-            return kernel
-    elif kernel_size == 4:
-        def kernel_init(shape, dtype):
-            kernel = np.zeros(shape)
-            for i in range(shape[2]):
-                kernel[:, :, i, 0] = \
-                    [[+3.0, +1.0, -1.0, -3.0],
-                     [+3.0, +1.0, -1.0, -3.0],
-                     [+3.0, +1.0, -1.0, -3.0],
-                     [+3.0, +1.0, -1.0, -3.0]]
-            return kernel
-    elif kernel_size == 5:
-        def kernel_init(shape, dtype):
-            kernel = np.zeros(shape)
-            for i in range(shape[2]):
-                kernel[:, :, i, 0] = \
-                    [[+2.0, +1.0, +0.0, -1.0, -2.0],
-                     [+2.0, +1.0, +0.0, -1.0, -2.0],
-                     [+2.0, +1.0, +0.0, -1.0, -2.0],
-                     [+2.0, +1.0, +0.0, -1.0, -2.0],
-                     [+2.0, +1.0, +0.0, -1.0, -2.0]]
-            return kernel
-    else:
-        raise ValueError(
-            "don't know how to handle kernel size [{0}]".format(kernel_size))
-
-    return keras.layers.DepthwiseConv2D(
-        depth_multiplier=1,
-        kernel_size=(kernel_size, kernel_size),
-        strides=(1, 1),
-        padding="same",
-        activation="linear",
-        use_bias=False,
-        depthwise_initializer=kernel_init,
-        kernel_initializer=kernel_init,
-        trainable=False)(input_layer)
-
-
-# ---------------------------------------------------------------------
-
-
-def delta_y(
-        input_layer,
-        kernel_size: int = 3):
-    """
-    Compute delta y for each channel layer
-
-    :param input_layer:
-    :param kernel_size: 2,3,4,5
-
-    :return:
-    """
-    # Initialise to set kernel to required value
-    if kernel_size == 2:
-        def kernel_init(shape, dtype):
-            kernel = np.zeros(shape)
-            for i in range(shape[2]):
-                kernel[:, :, i, 0] = \
-                    [[+1.0, +1.0],
-                     [-1.0, -1.0]]
-            return kernel
-    elif kernel_size == 3:
-        def kernel_init(shape, dtype):
-            kernel = np.zeros(shape)
-            for i in range(shape[2]):
-                kernel[:, :, i, 0] = \
-                    [[+1.0, +2.0, +1.0],
-                     [+0.0, +0.0, +0.0],
-                     [-1.0, -2.0, -1.0]]
-            return kernel
-    elif kernel_size == 4:
-        def kernel_init(shape, dtype):
-            kernel = np.zeros(shape)
-            for i in range(shape[2]):
-                kernel[:, :, i, 0] = \
-                    [[+3.0, +3.0, +3.0, +3.0],
-                     [+1.0, +1.0, +1.0, +1.0],
-                     [-1.0, -1.0, -1.0, -1.0],
-                     [-3.0, -3.0, -3.0, -3.0]]
-            return kernel
-    elif kernel_size == 5:
-        def kernel_init(shape, dtype):
-            kernel = np.zeros(shape)
-            for i in range(shape[2]):
-                kernel[:, :, i, 0] = \
-                    [[+2.0, +2.0, +2.0, +2.0, +2.0],
-                     [+1.0, +1.0, +1.0, +1.0, +1.0],
-                     [+0.0, +0.0, +0.0, +0.0, +0.0],
-                     [-1.0, -1.0, -1.0, -1.0, -1.0],
-                     [-2.0, -2.0, -2.0, -2.0, -2.0]]
-            return kernel
-    else:
-        raise ValueError(
-            "don't know how to handle kernel size [{0}]".format(kernel_size))
-
-    return keras.layers.DepthwiseConv2D(
-        depth_multiplier=1,
-        kernel_size=(kernel_size, kernel_size),
-        strides=(1, 1),
-        padding="same",
-        activation="linear",
-        use_bias=False,
-        depthwise_initializer=kernel_init,
-        kernel_initializer=kernel_init,
-        trainable=False)(input_layer)
+    return \
+        keras.layers.DepthwiseConv2D(
+            strides=strides,
+            padding=padding,
+            use_bias=use_bias,
+            depth_multiplier=1,
+            trainable=trainable,
+            activation=activation,
+            kernel_size=kernel_size,
+            dilation_rate=dilation_rate,
+            depthwise_initializer=kernel_init,
+            kernel_initializer=kernel_init)(input_layer)
 
 # ---------------------------------------------------------------------
 

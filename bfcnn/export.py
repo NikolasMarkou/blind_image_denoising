@@ -64,7 +64,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--input-shape",
-        default=[1, 256, 768, 3],
+        default=[1, 256, 768, 1],
         type=list,
         dest="input_shape",
         help="input shape")

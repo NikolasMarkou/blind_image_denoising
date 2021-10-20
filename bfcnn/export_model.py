@@ -37,9 +37,9 @@ def export_model(
     """
     build and export a denoising model
 
-    :param pipeline_config:
-    :param checkpoint_directory:
-    :param output_directory:
+    :param pipeline_config: path or dictionary of a configuration
+    :param checkpoint_directory: path to the checkpoint directory
+    :param output_directory: path to the output directory
     :param input_shape:
     :param to_tflite: if true convert to tflite
     :param test_model:

@@ -17,11 +17,9 @@ import subprocess
 CUDA_DEVICE = 0
 CHECKPOINT_DIRECTORY = "/media/fast/training/bfcnn"
 CONFIGS = {
-    "resnet": "bfcnn/configs/resnet_10_bn_3x3.json",
+    "resnet": "bfcnn/configs/resnet_5x5_bn_3x3.json",
     "gatenet": "bfcnn/configs/gatenet_10_bn_3x3.json",
-    "sparse_resnet": "bfcnn/configs/sparse_resnet_10_bn_3x3.json",
-    "sparse_resnet_mean_sigma":
-        "bfcnn/configs/sparse_resnet_mean_sigma_10_bn_3x3.json"
+    "sparse_resnet": "bfcnn/configs/sparse_resnet_10_bn_3x3.json"
 }
 
 # ---------------------------------------------------------------------

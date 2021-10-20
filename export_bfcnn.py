@@ -18,11 +18,9 @@ CUDA_DEVICE = 0
 CHECKPOINT_DIRECTORY = "/media/fast/training/bfcnn"
 OUTPUT_DIRECTORY = "bfcnn/pretrained/"
 CONFIGS = {
-    "resnet": "bfcnn/configs/resnet_10_bn_3x3.json",
+    "resnet": "bfcnn/configs/resnet_5x5_bn_3x3.json",
     "gatenet": "bfcnn/configs/gatenet_10_bn_3x3.json",
-    "sparse_resnet": "bfcnn/configs/sparse_resnet_10_bn_3x3.json",
-    "sparse_resnet_mean_sigma":
-        "bfcnn/configs/sparse_resnet_mean_sigma_10_bn_3x3.json"
+    "sparse_resnet": "bfcnn/configs/sparse_resnet_10_bn_3x3.json"
 }
 
 # ---------------------------------------------------------------------
@@ -31,6 +29,7 @@ CONFIGS = {
 def main(args):
     model = args.model.lower()
     config = CONFIGS[model]
+    config_basename = os.path.basename(config).split(".")[0]
     os.environ["CUDA_VISIBLE_DEVICES"] = str(CUDA_DEVICE)
     return \
         subprocess.check_call([
@@ -45,7 +44,7 @@ def main(args):
             "--output-directory",
             os.path.join(
                 OUTPUT_DIRECTORY,
-                model),
+                config_basename),
             "--to-tflite",
             "--test-model"
         ])
