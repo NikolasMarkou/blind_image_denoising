@@ -38,20 +38,6 @@ several types of noise and then try to recover the original image
 ![](images/readme/bfcnn_input_normal_1.png "normal") | ![](images/readme/bfcnn_input_noisy_1.png "noisy") |![](images/readme/bfcnn_input_denoised_1.png "denoised")|
 
 
-## Model types
-We have used traditional (bias free) architectures.
-* resnet
-* resnet with sparse constraint
-* resnet with on/off gates 
-* all the above models with multi-scale processing
-
-Our addition (not original in the paper) is the gaussian multi-scale that expands the effective receptive field without the need to add many more layers (keeping it cheap computationally)
-
-![](images/readme/gaussian_pyramid_head.png "Gaussian Head Pyramid")
-
-The different levels of the pyramid connect like this 
-![](images/readme/gaussian_pyramid_connecting_levels.png "Gaussian Head Connections")
-
 ## How to use (from scratch)
 
 1. prepare training input
@@ -62,11 +48,11 @@ The different levels of the pyramid connect like this
 
 ## How to use (pretrained)
 
-1. use any of the pretrained models included in the package
-    1. resnet_5x5_bn_3x3
-    2. sparse_resnet_5x5_bn_3x3
-    3. sparse_resnet_4x5_bn_3x3
-  
+Use any of the pretrained models included in the package
+* resnet_5x5_bn_3x3
+* sparse_resnet_5x5_bn_3x3
+* sparse_resnet_4x5_bn_3x3
+
 ### Train
 Prepare a training configuration and train with the following command:  
 ```
@@ -109,6 +95,31 @@ input_tensor = \
 # run inference
 denoised_tensor = denoiser_model(input_tensor)
 ```
+
+## Model types
+We have used traditional (bias free) architectures.
+* resnet
+* resnet with sparse constraint
+* resnet with on/off gates 
+* all the above models with multi-scale processing
+
+### Additions
+#### Multi-Scale Gaussian Pyramid
+Our addition (not in the paper) is the gaussian multi-scale 
+that expands the effective receptive field without the need to add many more layers (keeping it cheap computationally).
+
+![](images/readme/gaussian_pyramid_head.png "Gaussian Head Pyramid")
+
+The different levels of the pyramid connect like this 
+![](images/readme/gaussian_pyramid_connecting_levels.png "Gaussian Head Connections")
+
+#### Normalization layer
+Our addition (not in the paper) is a (non-channel wise and non-learnable) normalization layer (not BatchNorm) 
+after the DepthWise operations. This is to enforce sparsity with the differentiable relu below.
+
+#### Differentiable RELU
+Our addition (not in the paper) is a differentiable relu for specific operations.
+![](images/readme/differentiable_relu.png "Differentiable RELU")
 
 ## Training configuration
 The training configuration is in the form of a json file that follows the schema:
@@ -205,7 +216,11 @@ Describes how to train the model above.
   * `learning_rate`: initial learning rate
   * `gradient_clipping_by_norm`: clip gradient norm to this value
 * `prune`:
-  * `strategy`: pruning strategy (`NONE`, `MINIMUM_THRESHOLD`, `MINIMUM_THRESHOLD_BIFURCATE`, `MINIMUM_THRESHOLD_SHRINKAGE`)
+  * `strategy`: pruning strategy 
+    * `NONE`: do nothing (for debugging)
+    * `MINIMUM_THRESHOLD`: every weight in a conv2d below a threshold becomes zero
+    * `MINIMUM_THRESHOLD_BIFURCATE`: every weight in a conv2d below a threshold becomes random re-assigned
+    * `MINIMUM_THRESHOLD_SHRINKAGE`: every weight in a conv2d below a threshold gets shrunk by shrink percentage
   * `shrinkage_threshold`: threshold at which to apply shrinkage
   * `minimum_threshold`: threshold at which to zero out 
   * `shrinkage`: how much to shrink the weights that are selected
