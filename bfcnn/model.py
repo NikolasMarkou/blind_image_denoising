@@ -155,12 +155,12 @@ def model_builder(
                 keras.layers.UpSampling2D(
                     size=(2, 2),
                     interpolation="bilinear")(x_previous_result)
+            # stop gradient to the upper level (makes learning faster)
+            if stop_grads:
+                x_previous_result = \
+                    keras.backend.stop_gradient(x_previous_result)
             x_level = \
                 keras.layers.Subtract()([x_level, x_previous_result])
-
-        # stop gradient to the upper level (makes learning faster)
-        if stop_grads:
-            x_level = keras.backend.stop_gradient(x_level)
 
         # denoise image
         x_level = \

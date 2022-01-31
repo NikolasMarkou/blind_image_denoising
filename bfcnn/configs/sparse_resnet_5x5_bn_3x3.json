@@ -8,7 +8,7 @@
     "kernel_size": 3,
     "type": "sparse_resnet",
     "batchnorm": true,
-    "stop_grads": false,
+    "stop_grads": true,
     "clip_values": false,
     "activation": "relu",
     "local_normalization": -1,
