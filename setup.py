@@ -16,7 +16,7 @@ with open("LICENSE") as f:
 
 setuptools.setup(
     name="bfcnn",
-    version="0.1.0",
+    version="1.0.0",
     python_requires=">=3.6",
     description="Bias Free Convolutional Neural Network "
                 "for blind image denoising",
@@ -32,6 +32,7 @@ setuptools.setup(
         ]),
     install_requires=[
         "numpy",
+        "Keras",
         "setuptools",
         "tensorflow>=2.4.1",
         "matplotlib>=3.3.4",

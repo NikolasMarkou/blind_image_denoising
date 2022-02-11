@@ -3,7 +3,7 @@ r"""train a bfcnn model"""
 
 __author__ = "Nikolas Markou"
 __version__ = "0.1.0"
-__license__ = "None"
+__license__ = "MIT"
 
 # ---------------------------------------------------------------------
 
@@ -34,7 +34,7 @@ def main(args):
     if model not in CONFIGS:
         raise ValueError(
             "could not find model [{0}], available options [{1}]".format(
-                model, CONFIGS.keys()))
+                model, list(CONFIGS.keys())))
 
     config = CONFIGS[model]
     config_basename = os.path.basename(config).split(".")[0]
@@ -60,9 +60,9 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--model",
-        default="resnet",
+        default="",
         dest="model",
-        help="model")
+        help="model to train, options: {0}".format(list(CONFIGS.keys())))
 
     parser.add_argument(
         "--gpu",

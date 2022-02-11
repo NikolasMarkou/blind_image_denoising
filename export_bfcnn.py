@@ -3,7 +3,7 @@ r"""export a bfcnn model"""
 
 __author__ = "Nikolas Markou"
 __version__ = "0.1.0"
-__license__ = "None"
+__license__ = "MIT"
 
 # ---------------------------------------------------------------------
 
@@ -65,9 +65,9 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--model",
-        default="resnet",
+        default="",
         dest="model",
-        help="model")
+        help="model to train, options: {0}".format(list(CONFIGS.keys())))
 
     # parse the arguments and pass them to main
     args = parser.parse_args()

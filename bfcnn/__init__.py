@@ -1,17 +1,18 @@
 # ---------------------------------------------------------------------
 
 __author__ = "Nikolas Markou"
-__version__ = "0.1.0"
-__license__ = "None"
+__version__ = "1.0.0"
+__license__ = "MIT"
 
 # ---------------------------------------------------------------------
 
 import os
 import pathlib
 import tensorflow as tf
-from .model import model_builder
 from .train_loop import train_loop
 from .export_model import export_model
+from .model_denoise import model_builder
+from .pyramid import build_pyramid_model
 
 # ---------------------------------------------------------------------
 
@@ -55,7 +56,8 @@ __all__ = [
     load_model,
     export_model,
     model_builder,
-    pretrained_models
+    pretrained_models,
+    build_pyramid_model
 ]
 
 

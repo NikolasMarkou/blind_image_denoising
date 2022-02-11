@@ -1,8 +1,8 @@
 # ---------------------------------------------------------------------
 
 __author__ = "Nikolas Markou"
-__version__ = "0.1.0"
-__license__ = "None"
+__version__ = "1.0.0"
+__license__ = "MIT"
 
 # ---------------------------------------------------------------------
 
@@ -18,7 +18,7 @@ from typing import List, Union, Tuple, Dict
 
 from .custom_logger import logger
 from .utilities import load_config
-from .model import model_builder, DenoisingInferenceModule
+from .model_denoise import model_builder, DenoisingInferenceModule
 
 # ---------------------------------------------------------------------
 
