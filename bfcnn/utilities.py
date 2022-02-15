@@ -401,13 +401,22 @@ def resnet_blocks(
     x = input_layer
     for i in range(no_layers):
         previous_layer = x
-        c_layer_activation = None
-        p_layer_activation = None
+        # 1st conv
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
-        # calculate gate results
+        x = keras.layers.Conv2D(**intermediate_conv_params)(x)
+        # 2nd conv
+        if use_bn:
+            x = keras.layers.BatchNormalization(**bn_params)(x)
+        g_layer = x
+        x = keras.layers.Conv2D(**depth_conv_params)(x)
+        # 3rd conv
+        if use_bn:
+            x = keras.layers.BatchNormalization(**bn_params)(x)
+        # output results
+        x = keras.layers.Conv2D(**intermediate_conv_params)(x)
+        # mask channels / pixels
         if use_gate:
-            g_layer = x
             c_layer_activation = \
                 keras.layers.Conv2D(**gate_params)(g_layer)
             # compute activation per channel
@@ -416,26 +425,7 @@ def resnet_blocks(
             c_layer_activation = \
                 (keras.layers.Activation("tanh")(
                     c_layer_activation * 2) + 1.0) / 2.0
-            # compute activation per pixel
-            p_layer_activation = \
-                keras.layers.Conv2D(**gate_params)(g_layer)
-            p_layer_activation = \
-                keras.backend.mean(
-                    p_layer_activation,
-                    keepdims=True,
-                    axis=[3])
-            p_layer_activation = \
-                (keras.layers.Activation("tanh")(
-                    p_layer_activation * 2) + 1.0) / 2.0
-        x = keras.layers.Conv2D(**depth_conv_params)(x)
-        if use_bn:
-            x = keras.layers.BatchNormalization(**bn_params)(x)
-        # output results
-        x = keras.layers.Conv2D(**intermediate_conv_params)(x)
-        # mask channels / pixels
-        if use_gate:
             x = keras.layers.Multiply()([x, c_layer_activation])
-            x = keras.layers.Multiply()([x, p_layer_activation])
         # skip connection
         x = keras.layers.Add()([previous_layer, x])
     return x

@@ -5,6 +5,7 @@ __version__ = "1.0.0"
 __license__ = "MIT"
 
 # ---------------------------------------------------------------------
+import abc
 
 from tensorflow import keras
 from typing import List, Tuple, Union, Dict
@@ -16,6 +17,7 @@ from typing import List, Tuple, Union, Dict
 from .utilities import *
 from .custom_logger import logger
 from .pyramid import build_pyramid_model, PyramidType
+
 
 # ---------------------------------------------------------------------
 
@@ -174,7 +176,8 @@ def model_builder(
         ]
 
     # optional multiplier to help saturation
-    if output_multiplier != 1.0:
+    if output_multiplier is not None and \
+            output_multiplier > 0:
         x_levels = [
             x_level * output_multiplier
             for x_level in x_levels
@@ -230,27 +233,28 @@ def model_builder(
         model_normalize, \
         model_denormalize
 
+
 # ---------------------------------------------------------------------
 
 
-class DenoisingInferenceModule(tf.Module):
+class DenoisingInferenceModule(tf.Module, abc.ABC):
     """denoising inference module."""
 
     def __init__(
             self,
-            model_denoise: keras.Model,
+            model_denoise: keras.Model = None,
             model_normalize: keras.Model = None,
             model_denormalize: keras.Model = None,
             training_channels: int = 1,
             iterations: int = 1,
             cast_to_uint8: bool = True):
         """
-        Initializes a module for detection.
+        Initializes a module for denoising.
 
         :param model_denoise: denoising model to use for inference.
-        :param model_normalize:
-        :param model_denormalize:
-        param training_channels:
+        :param model_normalize: model that normalizes the input
+        :param model_denormalize: model that denormalizes the output
+        :param training_channels: how many color channels were used in training
         :param iterations: how many times to run the model
         :param cast_to_uint8: cast output to uint8
 
@@ -275,13 +279,15 @@ class DenoisingInferenceModule(tf.Module):
         """
         Cast image to float and run inference.
 
-        :param image: uint8 Tensor of shape [1, None, None, 1]
-        :return: denoised image: uint8 Tensor of shape [1, None, None, 1]
+        :param image: uint8 Tensor of shape
+        :return: denoised image: uint8 Tensor of shape if the input
         """
-        x = tf.cast(image, dtype=tf.float32)
+        # --- argument checking
+        # --- argument checking
+        if image is None:
+            raise ValueError("input image cannot be empty")
 
-        # --- transpose batch for channels
-        # TODO
+        x = tf.cast(image, dtype=tf.float32)
 
         # --- normalize
         if self._model_normalize is not None:
@@ -290,7 +296,7 @@ class DenoisingInferenceModule(tf.Module):
         # --- run denoise model as many times as required
         for i in range(self._iterations):
             x = self._model_denoise(x)
-            x = keras.backend.clip(x, min_value=-0.5, max_value=+0.5)
+            x = tf.clip_by_value(x, clip_value_min=-0.5, clip_value_max=+0.5)
 
         # --- denormalize
         if self._model_denormalize is not None:
@@ -300,13 +306,110 @@ class DenoisingInferenceModule(tf.Module):
         if self._cast_to_uint8:
             x = tf.round(x)
             x = tf.cast(x, dtype=tf.uint8)
-        
+
         return x
+
+    @abc.abstractmethod
+    def __call__(self, input_tensor):
+        pass
+
+# ---------------------------------------------------------------------
+
+
+class DenoisingInferenceModule1Channel(DenoisingInferenceModule):
+    def __init__(
+            self,
+            model_denoise: keras.Model = None,
+            model_normalize: keras.Model = None,
+            model_denormalize: keras.Model = None,
+            iterations: int = 1,
+            cast_to_uint8: bool = True):
+        super().__init__(
+            model_denoise=model_denoise,
+            model_normalize=model_normalize,
+            model_denormalize=model_denormalize,
+            training_channels=1,
+            iterations=iterations,
+            cast_to_uint8=cast_to_uint8)
 
     @tf.function(
         input_signature=[
-            tf.TensorSpec(shape=[1, None, None, 1], dtype=tf.uint8)])
+            tf.TensorSpec(shape=[None, None, None, 1], dtype=tf.uint8)])
     def __call__(self, input_tensor):
         return self._run_inference_on_images(input_tensor)
+
+
+# ---------------------------------------------------------------------
+
+
+class DenoisingInferenceModule3Channel(DenoisingInferenceModule):
+    def __init__(
+            self,
+            model_denoise: keras.Model = None,
+            model_normalize: keras.Model = None,
+            model_denormalize: keras.Model = None,
+            iterations: int = 1,
+            cast_to_uint8: bool = True):
+        super().__init__(
+            model_denoise=model_denoise,
+            model_normalize=model_normalize,
+            model_denormalize=model_denormalize,
+            training_channels=3,
+            iterations=iterations,
+            cast_to_uint8=cast_to_uint8)
+
+    @tf.function(
+        input_signature=[
+            tf.TensorSpec(shape=[None, None, None, 3], dtype=tf.uint8)])
+    def __call__(self, input_tensor):
+        return self._run_inference_on_images(input_tensor)
+
+
+# ---------------------------------------------------------------------
+
+
+def module_builder(
+        model_denoise: keras.Model = None,
+        model_normalize: keras.Model = None,
+        model_denormalize: keras.Model = None,
+        training_channels: int = 1,
+        iterations: int = 1,
+        cast_to_uint8: bool = True) -> DenoisingInferenceModule:
+    """
+    builds a module for denoising.
+
+    :param model_denoise: denoising model to use for inference.
+    :param model_normalize: model that normalizes the input
+    :param model_denormalize: model that denormalizes the output
+    :param training_channels: how many color channels were used in training
+    :param iterations: how many times to run the model
+    :param cast_to_uint8: cast output to uint8
+
+    :return: denoiser module
+    """
+    logger.info(
+        f"building denoising module with "
+        f"iterations:{iterations}, "
+        f"training_channels:{training_channels}, "
+        f"cast_to_uint8:{cast_to_uint8}")
+
+    if training_channels == 1:
+        return \
+            DenoisingInferenceModule1Channel(
+                model_denoise=model_denoise,
+                model_normalize=model_normalize,
+                model_denormalize=model_denormalize,
+                iterations=iterations,
+                cast_to_uint8=cast_to_uint8)
+    elif training_channels == 3:
+        return \
+            DenoisingInferenceModule3Channel(
+                model_denoise=model_denoise,
+                model_normalize=model_normalize,
+                model_denormalize=model_denormalize,
+                iterations=iterations,
+                cast_to_uint8=cast_to_uint8)
+    else:
+        raise ValueError("don't know how to handle training_channels:{0}".format(training_channels))
 
 # ---------------------------------------------------------------------

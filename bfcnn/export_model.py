@@ -18,7 +18,7 @@ from typing import List, Union, Tuple, Dict
 
 from .custom_logger import logger
 from .utilities import load_config
-from .model_denoise import model_builder, DenoisingInferenceModule
+from .model_denoise import model_builder, module_builder
 
 # ---------------------------------------------------------------------
 
@@ -86,11 +86,16 @@ def export_model(
 
     # --- combine denoise, normalize and denormalize
     logger.info("combining denoise, normalize and denormalize model")
+    dataset_config = pipeline_config["dataset"]
+    training_channels = dataset_config["input_shape"][2]
     denoising_module = \
-        DenoisingInferenceModule(
+        module_builder(
             model_denoise=model_denoise,
             model_normalize=model_normalize,
-            model_denormalize=model_denormalize)
+            model_denormalize=model_denormalize,
+            training_channels=training_channels,
+            iterations=1,
+            cast_to_uint8=True)
 
     # getting the concrete function traces the graph and forces variables to
     # be constructed, only after this can we save the
