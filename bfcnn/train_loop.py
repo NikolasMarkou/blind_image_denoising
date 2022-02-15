@@ -3,8 +3,8 @@ r"""Constructs model, inputs, and training environment."""
 # ---------------------------------------------------------------------
 
 __author__ = "Nikolas Markou"
-__version__ = "0.1.0"
-__license__ = "None"
+__version__ = "1.0.0"
+__license__ = "MIT"
 
 # ---------------------------------------------------------------------
 
@@ -20,11 +20,11 @@ from typing import Union, Dict
 
 from .pruning import *
 from .utilities import *
-from .model import model_builder
 from .visualize import visualize
 from .custom_logger import logger
 from .dataset import dataset_builder
 from .loss import loss_function_builder
+from .model_denoise import model_builder
 from .optimizer import optimizer_builder
 
 # ---------------------------------------------------------------------
@@ -205,9 +205,10 @@ def train_loop(
             logger.info("epoch: {0}, step: {1}".format(epoch, int(global_step)))
 
             # --- pruning strategy
-            if epoch >= prune_start_epoch and use_prune:
+            if use_prune and epoch >= prune_start_epoch:
                 logger.info("pruning weights")
-                model_denoise = prune_function(model=model_denoise)
+                model_denoise = \
+                    prune_function(model=model_denoise)
 
             # --- iterate over the batches of the dataset
             for input_batch in dataset:

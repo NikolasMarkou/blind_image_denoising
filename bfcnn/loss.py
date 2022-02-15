@@ -3,8 +3,8 @@ r"""Constructs the loss function of the blind image denoising"""
 # ---------------------------------------------------------------------
 
 __author__ = "Nikolas Markou"
-__version__ = "0.1.0"
-__license__ = "None"
+__version__ = "1.0.0"
+__license__ = "MIT"
 
 # ---------------------------------------------------------------------
 

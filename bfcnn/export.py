@@ -1,8 +1,8 @@
 # ---------------------------------------------------------------------
 
 __author__ = "Nikolas Markou"
-__version__ = "0.1.0"
-__license__ = "None"
+__version__ = "1.0.0"
+__license__ = "MIT"
 
 # ---------------------------------------------------------------------
 
@@ -29,7 +29,6 @@ def main(args):
         pipeline_config=args.pipeline_config,
         checkpoint_directory=args.checkpoint_directory,
         output_directory=args.output_directory,
-        input_shape=args.input_shape,
         to_tflite=args.to_tflite,
         test_model=args.test_model)
     return 0
@@ -61,13 +60,6 @@ if __name__ == "__main__":
         type=str,
         dest="output_directory",
         help="path to write outputs")
-
-    parser.add_argument(
-        "--input-shape",
-        default=[1, 256, 768, 1],
-        type=list,
-        dest="input_shape",
-        help="input shape")
 
     parser.add_argument(
         "--to-tflite",

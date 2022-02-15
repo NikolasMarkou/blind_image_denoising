@@ -1,6 +1,5 @@
 {
     "model": {
-        "levels": 5,
         "filters": 16,
         "no_layers": 5,
         "min_value": 0,
@@ -8,7 +7,6 @@
         "kernel_size": 3,
         "type": "sparse_resnet",
         "batchnorm": true,
-        "stop_grads": false,
         "clip_values": false,
         "activation": "relu",
         "local_normalization": -1,
@@ -20,10 +18,34 @@
             null,
             1
         ],
-        "kernel_initializer": "glorot_normal"
+        "kernel_initializer": "glorot_normal",
+        "pyramid": {
+            "levels": 5,
+            "type": "laplacian",
+            "xy_max": [
+                2.0,
+                2.0
+            ],
+            "kernel_size": [
+                5,
+                5
+            ]
+        },
+        "inverse_pyramid": {
+            "levels": 5,
+            "type": "inverse_laplacian",
+            "xy_max": [
+                2.0,
+                2.0
+            ],
+            "kernel_size": [
+                5,
+                5
+            ]
+        }
     },
     "train": {
-        "epochs": 100,
+        "epochs": 50,
         "total_steps": -1,
         "iterations_choice": [
             1
@@ -44,16 +66,23 @@
             "decay_steps": 20000,
             "learning_rate": 0.001,
             "gradient_clipping_by_norm": 1.0
+        },
+        "prune": {
+            "start_epoch": 1,
+            "shrinkage": 0.75,
+            "minimum_threshold": 5e-05,
+            "shrinkage_threshold": 0.0001,
+            "strategy": "minimum_threshold_shrinkage"
         }
     },
     "loss": {
         "hinge": 2.5,
-        "nae_multiplier": 1.0,
         "mae_multiplier": 1.0,
-        "regularization": 0.01
+        "regularization": 0.01,
+        "nae_multiplier": 10.0
     },
     "dataset": {
-        "batch_size": 32,
+        "batch_size": 16,
         "min_value": 0,
         "max_value": 255,
         "clip_value": true,
@@ -70,8 +99,8 @@
             768
         ],
         "input_shape": [
-            128,
-            128,
+            256,
+            256,
             1
         ],
         "multiplicative_noise": [],

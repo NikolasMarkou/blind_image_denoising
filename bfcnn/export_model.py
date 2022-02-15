@@ -1,8 +1,8 @@
 # ---------------------------------------------------------------------
 
 __author__ = "Nikolas Markou"
-__version__ = "0.1.0"
-__license__ = "None"
+__version__ = "1.0.0"
+__license__ = "MIT"
 
 # ---------------------------------------------------------------------
 
@@ -18,7 +18,7 @@ from typing import List, Union, Tuple, Dict
 
 from .custom_logger import logger
 from .utilities import load_config
-from .model import model_builder, DenoisingInferenceModule
+from .model_denoise import model_builder, module_builder
 
 # ---------------------------------------------------------------------
 
@@ -31,7 +31,6 @@ def export_model(
         pipeline_config: Union[str, Dict, Path],
         checkpoint_directory: Union[str, Path],
         output_directory: Union[str, Path],
-        input_shape: List[int] = [1, 256, 768, 3],
         to_tflite: bool = True,
         test_model: bool = True):
     """
@@ -40,7 +39,6 @@ def export_model(
     :param pipeline_config: path or dictionary of a configuration
     :param checkpoint_directory: path to the checkpoint directory
     :param output_directory: path to the output directory
-    :param input_shape:
     :param to_tflite: if true convert to tflite
     :param test_model:
     :return:
@@ -72,25 +70,36 @@ def export_model(
         model_builder(
             pipeline_config["model"])
     logger.info("saving configuration pipeline")
-    with open(
-            os.path.join(
-                output_directory,
-                "pipeline.json"), "w") as f:
+    pipeline_config_path = \
+        os.path.join(
+            output_directory,
+            "pipeline.json")
+    with open(pipeline_config_path, "w") as f:
         f.write(json.dumps(pipeline_config, indent=4))
     logger.info("restoring checkpoint weights")
     checkpoint = tf.train.Checkpoint(model_denoise=model_denoise)
-    manager = tf.train.CheckpointManager(
-        checkpoint, checkpoint_directory, max_to_keep=1)
-    status = checkpoint.restore(manager.latest_checkpoint).expect_partial()
+    manager = \
+        tf.train.CheckpointManager(
+            checkpoint=checkpoint,
+            directory=checkpoint_directory,
+            max_to_keep=1)
+    status = \
+        checkpoint.restore(manager.latest_checkpoint).expect_partial()
     status.assert_existing_objects_matched()
 
     # --- combine denoise, normalize and denormalize
     logger.info("combining denoise, normalize and denormalize model")
+    dataset_config = pipeline_config["dataset"]
+    input_shape = dataset_config["input_shape"]
+    no_channels = input_shape[2]
     denoising_module = \
-        DenoisingInferenceModule(
+        module_builder(
+            iterations=1,
+            cast_to_uint8=True,
             model_denoise=model_denoise,
             model_normalize=model_normalize,
-            model_denormalize=model_denormalize)
+            model_denormalize=model_denormalize,
+            training_channels=no_channels)
 
     # getting the concrete function traces the graph and forces variables to
     # be constructed, only after this can we save the
@@ -98,25 +107,25 @@ def export_model(
     concrete_function = \
         denoising_module.__call__.get_concrete_function(
             tf.TensorSpec(
-                shape=input_shape,
+                shape=[None, None, None] + [no_channels],
                 dtype=tf.uint8,
                 name="input")
         )
 
-    logger.info("saving model")
     # export the model as save_model format (default)
+    logger.info("saving module")
     exported_checkpoint_manager = \
         tf.train.CheckpointManager(
-            checkpoint,
-            output_checkpoint,
+            checkpoint=checkpoint,
+            directory=output_checkpoint,
             max_to_keep=1)
     exported_checkpoint_manager.save(checkpoint_number=0)
     options = tf.saved_model.SaveOptions(save_debug_info=True)
     tf.saved_model.save(
-        denoising_module,
-        output_saved_model,
+        options=options,
+        obj=denoising_module,
         signatures=concrete_function,
-        options=options)
+        export_dir=output_saved_model)
 
     # --- export to tflite
     if to_tflite:
@@ -138,7 +147,8 @@ def export_model(
 
     # --- run graph with random input
     if test_model:
-        logger.info("testing modes with shape [{0}]".format(input_shape))
+        concrete_input_shape = [1] + input_shape
+        logger.info("testing modes with shape [{0}]".format(concrete_input_shape))
         output_log = \
             os.path.join(output_directory, "trace_log")
         writer = \
@@ -148,7 +158,7 @@ def export_model(
         # sample data for your function.
         input_tensor = \
             tf.random.uniform(
-                shape=input_shape,
+                shape=concrete_input_shape,
                 minval=0,
                 maxval=255,
                 dtype=tf.int32)
@@ -158,14 +168,13 @@ def export_model(
                 dtype=tf.uint8)
 
         # Bracket the function call with
-        # tf.summary.trace_on() and tf.summary.trace_export().
         tf.summary.trace_on(graph=True, profiler=False)
         # Call only one tf.function when tracing.
         _ = concrete_function(input_tensor)
         with writer.as_default():
             tf.summary.trace_export(
                 step=0,
-                profiler_outdir=output_log,
-                name="denoising_module")
+                name="denoising_module",
+                profiler_outdir=output_log)
 
 # ---------------------------------------------------------------------

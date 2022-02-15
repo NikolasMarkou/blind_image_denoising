@@ -3,17 +3,15 @@ r"""build weight pruning strategies"""
 # ---------------------------------------------------------------------
 
 __author__ = "Nikolas Markou"
-__version__ = "0.1.0"
-__license__ = "None"
+__version__ = "1.0.0"
+__license__ = "MIT"
 
 # ---------------------------------------------------------------------
 
-import copy
 import keras
-import itertools
 import numpy as np
 from enum import Enum
-from typing import List, Dict, Callable
+from typing import Dict, Callable
 
 # ---------------------------------------------------------------------
 # local imports
@@ -43,7 +41,7 @@ class PruneStrategy(Enum):
     MINIMUM_THRESHOLD_SHRINKAGE = 3
 
     @staticmethod
-    def from_string(type_str: str):
+    def from_string(type_str: str) -> "PruneStrategy":
         # --- argument checking
         if type_str is None:
             raise ValueError("type_str must not be null")
@@ -75,8 +73,9 @@ def prune_conv2d_weights(
         if not layer.trainable:
             continue
         for layer_internal in layer.layers:
-            # skip non Conv2D operation
-            if not isinstance(layer_internal, keras.layers.Conv2D):
+            # make sure to prune only convolutions
+            if not isinstance(layer_internal, keras.layers.Conv2D) and \
+                    not isinstance(layer_internal, keras.layers.DepthwiseConv2D):
                 # skipping because not convolution
                 continue
             layer_internal_config = layer_internal.get_config()
@@ -121,7 +120,7 @@ def prune_conv2d_weights(
             layer_internal.set_weights(pruned_weights)
     return model
 
-# ==============================================================================
+# ---------------------------------------------------------------------
 
 
 def prune_function_builder(
@@ -140,4 +139,42 @@ def prune_function_builder(
 
     return prune
 
-# ==============================================================================
+# ---------------------------------------------------------------------
+
+
+def get_conv2d_weights(
+        model: keras.Model,
+        verbose: bool = False) -> np.ndarray:
+    """
+    Get the conv2d weights from the model concatenated
+    """
+    weights = []
+    for layer in model.layers:
+        layer_config = layer.get_config()
+        if "layers" not in layer_config:
+            continue
+        # get weights of the outer layer
+        layer_weights = layer.get_weights()
+        # --- iterate layer and get the weights internally
+        for i, layer_internal in enumerate(layer_config["layers"]):
+            layer_internal_name = layer_internal["name"]
+            layer_internal_class = layer_internal["class_name"]
+            # make sure to prune only convolutions
+            if not layer_internal_class == "DepthwiseConv2D" and \
+                    not layer_internal_class == "Conv2D":
+                continue
+            layer_internal_config = layer_internal["config"]
+            # make sure to prune only trainable
+            layer_trainable = layer_internal_config.get("trainable", False)
+            if not layer_trainable:
+                continue
+            if verbose:
+                logger.info("pruning layer: {0}".format(layer_internal_name))
+            for w in layer_weights[i]:
+                w_flat = w.flatten()
+                weights.append(w_flat)
+    if len(weights) == 0:
+        return np.ndarray([])
+    return np.concatenate(weights)
+
+# ---------------------------------------------------------------------

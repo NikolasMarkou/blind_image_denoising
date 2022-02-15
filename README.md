@@ -104,14 +104,25 @@ We have used traditional (bias free) architectures.
 * all the above models with multi-scale processing
 
 ### Additions
+#### Multi-Scale Laplacian Pyramid
+Our addition (not in the paper) is the laplacian multi-scale pyramid
+that expands the effective receptive field without the need to add many more layers (keeping it cheap computationally).
+
+![](images/readme/laplacian_pyramid_head.png "Laplacian Pyramid")
+
+A noise input broken into the several levels of the laplacian pyramid:
+
+![](images/readme/laplacian_levels_breakdown.png "Laplacian levels")
+
 #### Multi-Scale Gaussian Pyramid
-Our addition (not in the paper) is the gaussian multi-scale 
+Our addition (not in the paper) is the gaussian multi-scale pyramid
 that expands the effective receptive field without the need to add many more layers (keeping it cheap computationally).
 
 ![](images/readme/gaussian_pyramid_head.png "Gaussian Head Pyramid")
 
-The different levels of the pyramid connect like this 
-![](images/readme/gaussian_pyramid_connecting_levels.png "Gaussian Head Connections")
+A noise input broken into the several levels of the gaussian pyramid:
+
+![](images/readme/gaussian_levels_breakdown.png "Gaussian levels")
 
 #### Normalization layer
 Our addition (not in the paper) is a (non-channel wise and non-learnable) normalization layer (not BatchNorm) 
@@ -126,7 +137,12 @@ The training configuration is in the form of a json file that follows the schema
 ```json
 {
     "model": {
-        
+        "pyramid": {
+          
+        },
+        "inverse_pyramid": {
+          
+        }
     },
     "train": {
         "optimizer": {
@@ -148,13 +164,11 @@ The training configuration is in the form of a json file that follows the schema
 ### Full examples
 
 * [resnet configuration example](bfcnn/configs/resnet_5x5_bn_3x3.json)
-* [gatenet configuration example](bfcnn/configs/gatenet_10_bn_3x3.json)
+* [gatenet configuration example](bfcnn/configs/gatenet_5x5_bn_3x3.json)
 * [sparse resnet configuration example](bfcnn/configs/sparse_resnet_5x5_bn_3x3.json)
-* [sparse resnet configuration example](bfcnn/configs/sparse_resnet_4x5_bn_3x3.json)
 
 ### model
 Describes the type and characteristics of model.
-* `levels`: how many multiscale models to build.
 * `filters`: the number of filters per conv operations
 * `clip_values`: if true clip output values to [-0.5, 0.5]
 * `no_layers`: number of layers per level
@@ -173,11 +187,14 @@ Describes the type and characteristics of model.
 * `final_activation`: final activation at the end of the model
 * `input_shape`: the input shape (minus the batch)
 * `kernel_initializer`: kernel initializer 
-
+* `pyramid`:
+  * `levels`: how many multiscale levels to build.
+  * `type`: type of laplacian (*laplacian*, *gaussian*)
+  * `xy_max`: 
+  * `kernel_size`: size of each level's convolution kernel
 #### example
 ```json
 {
-    "levels": 6,
     "filters": 16,
     "no_layers": 5,
     "min_value": 0,
@@ -186,13 +203,20 @@ Describes the type and characteristics of model.
     "type": "resnet",
     "batchnorm": true,
     "stop_grads": false,
+    "clip_values": false,
     "activation": "relu",
     "local_normalization": -1,
     "output_multiplier": 1.0,
     "kernel_regularizer": "l1",
     "final_activation": "tanh",
     "input_shape": ["?", "?", 1],
-    "kernel_initializer": "glorot_normal"
+    "kernel_initializer": "glorot_normal",
+    "pyramid": {
+      "levels": 5,
+      "type": "laplacian",
+      "xy_max": [2.0, 2.0],
+      "kernel_size": [5, 5]
+    }
 }
 ```
 ### train
