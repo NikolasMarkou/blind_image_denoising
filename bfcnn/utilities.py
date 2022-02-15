@@ -405,27 +405,25 @@ def resnet_blocks(
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
         x = keras.layers.Conv2D(**intermediate_conv_params)(x)
+        g_layer = x
         # 2nd conv
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
-        g_layer = x
         x = keras.layers.Conv2D(**depth_conv_params)(x)
         # 3rd conv
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
         # output results
         x = keras.layers.Conv2D(**intermediate_conv_params)(x)
-        # mask channels / pixels
+        # compute activation per channel
         if use_gate:
-            c_layer_activation = \
+            g_layer = \
                 keras.layers.Conv2D(**gate_params)(g_layer)
-            # compute activation per channel
-            c_layer_activation = \
-                keras.layers.GlobalAvgPool2D()(c_layer_activation)
-            c_layer_activation = \
-                (keras.layers.Activation("tanh")(
-                    c_layer_activation * 2) + 1.0) / 2.0
-            x = keras.layers.Multiply()([x, c_layer_activation])
+            g_layer = \
+                keras.layers.GlobalAvgPool2D()(g_layer)
+            g_layer = \
+                (keras.layers.Activation("tanh")(g_layer * 2.0) + 1.0) / 2.0
+            x = keras.layers.Multiply()([x, g_layer])
         # skip connection
         x = keras.layers.Add()([previous_layer, x])
     return x
@@ -654,8 +652,8 @@ def build_resnet_model(
         intermediate_conv_params=intermediate_conv_params
     )
 
+    # make it linear so it gets sparse afterwards
     if add_sparsity:
-        # make it linear so it gets sparse afterwards
         conv_params["activation"] = "linear"
 
     if add_gates:
