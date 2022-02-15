@@ -11,7 +11,7 @@ __license__ = "MIT"
 import keras
 import numpy as np
 from enum import Enum
-from typing import Dict, Callable
+from typing import Dict, Callable, List
 
 # ---------------------------------------------------------------------
 # local imports
@@ -27,14 +27,17 @@ class PruneStrategy(Enum):
     do nothing, experimental
     """
     NONE = 0
+
     """
     every weight in a conv2d below a threshold becomes zero
     """
     MINIMUM_THRESHOLD = 1
+
     """
     every weight in a conv2d below a threshold becomes random re-assigned
     """
     MINIMUM_THRESHOLD_BIFURCATE = 2
+
     """
     every weight in a conv2d below a threshold gets shrunk by shrink percentage
     """
@@ -62,9 +65,14 @@ class PruneStrategy(Enum):
 def prune_conv2d_weights(
         model: keras.Model,
         config: Dict,
-        strategy: PruneStrategy = PruneStrategy.MINIMUM_THRESHOLD):
+        strategy: PruneStrategy = PruneStrategy.MINIMUM_THRESHOLD) -> keras.Model:
     """
+    go through the model and prune its weights given the config and strategy
 
+    :param model: model to be pruned
+    :param config: pruning configuration
+    :param strategy: pruning strategy
+    :return: pruned model
     """
     for layer in model.layers:
         layer_config = layer.get_config()
@@ -79,8 +87,8 @@ def prune_conv2d_weights(
                 # skipping because not convolution
                 continue
             layer_internal_config = layer_internal.get_config()
+            # skipping because not trainable
             if not layer_internal_config["trainable"]:
-                # skipping because not trainable
                 continue
             # ---
             pruned_weights = []
@@ -108,8 +116,8 @@ def prune_conv2d_weights(
                     pruned_weights.append(x)
             elif strategy == PruneStrategy.MINIMUM_THRESHOLD_SHRINKAGE:
                 shrinkage = config["shrinkage"]
-                shrinkage_threshold = config["shrinkage_threshold"]
                 minimum_threshold = config["minimum_threshold"]
+                shrinkage_threshold = config["shrinkage_threshold"]
                 for x in layer_weights:
                     mask = np.abs(x) < shrinkage_threshold
                     x[mask] = x[mask] * shrinkage
@@ -127,6 +135,8 @@ def prune_function_builder(
         config: Dict) -> Callable:
     """
     Constructs a pruning function
+    :param config: pruning configuration
+    :return: pruning function
     """
     strategy = PruneStrategy.from_string(config["strategy"])
 
@@ -144,9 +154,13 @@ def prune_function_builder(
 
 def get_conv2d_weights(
         model: keras.Model,
-        verbose: bool = False) -> np.ndarray:
+        verbose: bool = False) -> List[np.ndarray]:
     """
     Get the conv2d weights from the model concatenated
+
+    :param model: model to get the weights
+    :param verbose: if true show more messages
+    :return: list of weights
     """
     weights = []
     for layer in model.layers:
@@ -171,10 +185,9 @@ def get_conv2d_weights(
             if verbose:
                 logger.info("pruning layer: {0}".format(layer_internal_name))
             for w in layer_weights[i]:
-                w_flat = w.flatten()
-                weights.append(w_flat)
+                weights.append(w)
     if len(weights) == 0:
-        return np.ndarray([])
-    return np.concatenate(weights)
+        return []
+    return weights
 
 # ---------------------------------------------------------------------
