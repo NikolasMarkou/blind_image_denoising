@@ -7,7 +7,6 @@
     "kernel_size": 3,
     "type": "gatenet",
     "batchnorm": true,
-    "stop_grads": true,
     "clip_values": false,
     "activation": "relu",
     "local_normalization": -1,
@@ -18,7 +17,13 @@
     "kernel_initializer": "glorot_normal",
     "pyramid": {
       "levels": 5,
-      "type": "gaussian",
+      "type": "laplacian",
+      "xy_max": [2.0, 2.0],
+      "kernel_size": [5, 5]
+    },
+    "inverse_pyramid": {
+      "levels": 5,
+      "type": "inverse_laplacian",
       "xy_max": [2.0, 2.0],
       "kernel_size": [5, 5]
     }
@@ -55,7 +60,7 @@
     "nae_multiplier": 10.0
   },
   "dataset": {
-    "batch_size": 8,
+    "batch_size": 16,
     "min_value": 0,
     "max_value": 255,
     "clip_value": true,
