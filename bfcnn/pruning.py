@@ -154,7 +154,7 @@ def prune_function_builder(
 
 def get_conv2d_weights(
         model: keras.Model,
-        verbose: bool = False) -> List[np.ndarray]:
+        verbose: bool = False) -> np.ndarray:
     """
     Get the conv2d weights from the model concatenated
 
@@ -185,9 +185,10 @@ def get_conv2d_weights(
             if verbose:
                 logger.info("pruning layer: {0}".format(layer_internal_name))
             for w in layer_weights[i]:
-                weights.append(w)
+                w_flat = w.flatten()
+                weights.append(w_flat)
     if len(weights) == 0:
-        return []
-    return weights
+        return np.ndarray([])
+    return np.concatenate(weights)
 
 # ---------------------------------------------------------------------

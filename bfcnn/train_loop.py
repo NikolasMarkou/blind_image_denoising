@@ -27,6 +27,7 @@ from .loss import loss_function_builder
 from .model_denoise import model_builder
 from .optimizer import optimizer_builder
 
+
 # ---------------------------------------------------------------------
 
 
@@ -125,6 +126,7 @@ def train_loop(
         @tf.function()
         def optimized_model(x_input):
             return model_denoise(x_input)
+
         x = \
             tf.random.truncated_normal(
                 seed=0,
@@ -196,7 +198,7 @@ def train_loop(
                 checkpoint=checkpoint,
                 directory=model_dir,
                 max_to_keep=checkpoints_to_keep)
-        status =\
+        status = \
             checkpoint.restore(manager.latest_checkpoint).expect_partial()
         trainable_weights = \
             model_denoise.trainable_weights
@@ -274,11 +276,12 @@ def train_loop(
                         ("quality/nae_noise", "nae_noise"),
                         ("quality/signal_to_noise_ratio", "snr"),
                         ("loss/regularization", "regularization_loss"),
-                        ("quality/nae_improvement", "nae_improvement"),
+                        ("quality/nae_improvement", "nae_improvement")
                     ]:
                         tf.summary.scalar(
-                            name,
-                            loss_map[key], step=global_step)
+                            name=name,
+                            data=loss_map[key],
+                            step=global_step)
 
                 # --- add image prediction for tensorboard
                 if global_step % visualization_every == 0:
@@ -290,6 +293,14 @@ def train_loop(
                         random_batch=random_batch,
                         prediction_batch=tmp_prediction_batch,
                         visualization_number=visualization_number)
+                    weights = \
+                        get_conv2d_weights(
+                            model=model_denoise,
+                            verbose=False)
+                    tf.summary.histogram(
+                        buckets=20,
+                        data=weights,
+                        name="training/weights")
 
                 # --- check if it is time to save a checkpoint
                 if checkpoint_every > 0:
