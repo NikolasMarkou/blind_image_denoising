@@ -134,6 +134,27 @@ def model_builder(
         build_pyramid_model(
             input_dims=input_shape,
             config=inverse_pyramid_config)
+    # define normalization/denormalization layers
+    local_normalization_layer = \
+        keras.layers.Lambda(
+            name="local_normalization",
+            function=func_sigma_norm,
+            trainable=False)
+    local_denormalization_layer = \
+        keras.layers.Lambda(
+            name="local_denormalization",
+            function=func_sigma_denorm,
+            trainable=False)
+    global_normalization_layer = \
+        keras.layers.Lambda(
+            name="global_normalization",
+            function=func_sigma_norm,
+            trainable=False)
+    global_denormalization_layer = \
+        keras.layers.Lambda(
+            name="global_denormalization",
+            function=func_sigma_denorm,
+            trainable=False)
 
     # --- run inference
     x_levels = model_pyramid(x)
@@ -148,11 +169,7 @@ def model_builder(
                 mean_sigma_local(
                     input_layer=x_level,
                     kernel_size=local_normalization_kernel)
-            x_level = \
-                keras.layers.Lambda(
-                    name="local_normalization",
-                    function=func_sigma_norm,
-                    trainable=False)([x_level, mean, sigma])
+            x_level = local_normalization_layer([x_level, mean, sigma])
             means.append(mean)
             sigmas.append(sigma)
         elif use_global_normalization:
@@ -160,11 +177,7 @@ def model_builder(
                 mean_sigma_global(
                     input_layer=x_level,
                     axis=[1, 2])
-            x_level = \
-                keras.layers.Lambda(
-                    name="global_normalization",
-                    function=func_sigma_norm,
-                    trainable=False)([x_level, mean, sigma])
+            x_level = global_normalization_layer([x_level, mean, sigma])
             means.append(mean)
             sigmas.append(sigma)
         x_levels[i] = x_level
@@ -211,16 +224,12 @@ def model_builder(
     for i, x_level in enumerate(x_levels):
         if use_local_normalization:
             x_level = \
-                keras.layers.Lambda(
-                    name="local_denormalization",
-                    function=func_sigma_denorm,
-                    trainable=False)([x_level, means[i], sigmas[i]])
+                local_denormalization_layer(
+                    [x_level, means[i], sigmas[i]])
         elif use_global_normalization:
             x_level = \
-                keras.layers.Lambda(
-                    name="global_denormalization",
-                    function=func_sigma_denorm,
-                    trainable=False)([x_level, means[i], sigmas[i]])
+                global_denormalization_layer(
+                    [x_level, means[i], sigmas[i]])
         x_levels[i] = x_level
 
     # --- merge levels together
