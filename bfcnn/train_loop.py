@@ -300,6 +300,7 @@ def train_loop(
                     tf.summary.histogram(
                         buckets=20,
                         data=weights,
+                        step=global_step,
                         name="training/weights")
 
                 # --- check if it is time to save a checkpoint
