@@ -160,8 +160,8 @@ def model_builder(
     # --- run inference
     x_levels = model_pyramid(x)
 
-    means = levels * [None]
-    sigmas = levels * [None]
+    means = []
+    sigmas = []
 
     # local/global normalization cap
     if use_normalization:
@@ -183,8 +183,8 @@ def model_builder(
                 x_level = \
                     global_normalization_layer(
                         [x_level, mean, sigma])
-            means[i] = mean
-            sigmas[i] = sigma
+            means.append(mean)
+            sigmas.append(sigma)
             x_levels[i] = x_level
 
     # --- shared or separate models
