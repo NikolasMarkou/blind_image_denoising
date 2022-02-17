@@ -123,28 +123,6 @@ def model_builder(
             name="input_tensor")
     x = input_layer
 
-    # local normalization cap
-    if use_local_normalization:
-        mean, sigma = \
-            mean_sigma_local(
-                x,
-                kernel_size=local_normalization_kernel)
-        x = \
-            keras.layers.Lambda(
-                name="local_normalization",
-                function=func_sigma_norm,
-                trainable=False)([x, mean, sigma])
-    elif use_global_normalization:
-        mean, sigma = \
-            mean_sigma_global(
-                x,
-                axis=[1, 2])
-        x = \
-            keras.layers.Lambda(
-                name="global_normalization",
-                function=func_sigma_norm,
-                trainable=False)([x, mean, sigma])
-
     logger.info("building model with multiscale pyramid")
     # build pyramid
     model_pyramid = \
@@ -159,6 +137,37 @@ def model_builder(
 
     # --- run inference
     x_levels = model_pyramid(x)
+
+    means = []
+    sigmas = []
+
+    # local/global normalization cap
+    for i, x_level in enumerate(x_levels):
+        if use_local_normalization:
+            mean, sigma = \
+                mean_sigma_local(
+                    input_layer=x_level,
+                    kernel_size=local_normalization_kernel)
+            x_level = \
+                keras.layers.Lambda(
+                    name="local_normalization",
+                    function=func_sigma_norm,
+                    trainable=False)([x_level, mean, sigma])
+            means.append(mean)
+            sigmas.append(sigma)
+        elif use_global_normalization:
+            mean, sigma = \
+                mean_sigma_global(
+                    input_layer=x_level,
+                    axis=[1, 2])
+            x_level = \
+                keras.layers.Lambda(
+                    name="global_normalization",
+                    function=func_sigma_norm,
+                    trainable=False)([x_level, mean, sigma])
+            means.append(mean)
+            sigmas.append(sigma)
+        x_levels[i] = x_level
 
     # --- shared or separate models
     if shared_model:
@@ -180,7 +189,7 @@ def model_builder(
             for i, x_level in enumerate(x_levels)
         ]
 
-    # split intermediate results and actual results
+    # --- split intermediate results and actual results
     x_levels_intermediate = []
     if add_intermediate_results:
         for i, x_level in enumerate(x_levels):
@@ -190,29 +199,33 @@ def model_builder(
             for i, x_level in enumerate(x_levels)
         ]
 
-    # optional multiplier to help saturation
+    # --- optional multiplier to help saturation
     if output_multiplier is not None and \
             output_multiplier != 1:
         x_levels = [
             x_level * output_multiplier
             for x_level in x_levels
         ]
+
+    # local/global denormalization cap
+    for i, x_level in enumerate(x_levels):
+        if use_local_normalization:
+            x_level = \
+                keras.layers.Lambda(
+                    name="local_denormalization",
+                    function=func_sigma_denorm,
+                    trainable=False)([x_level, means[i], sigmas[i]])
+        elif use_global_normalization:
+            x_level = \
+                keras.layers.Lambda(
+                    name="global_denormalization",
+                    function=func_sigma_denorm,
+                    trainable=False)([x_level, means[i], sigmas[i]])
+        x_levels[i] = x_level
+
+    # --- merge levels together
     x_result = \
         model_inverse_pyramid(x_levels)
-
-    # local or global denormalization cap
-    if use_local_normalization:
-        x_result = \
-            keras.layers.Lambda(
-                name="local_denormalization",
-                function=func_sigma_denorm,
-                trainable=False)([x_result, mean, sigma])
-    elif use_global_normalization:
-        x_result = \
-            keras.layers.Lambda(
-                name="global_denormalization",
-                function=func_sigma_denorm,
-                trainable=False)([x_result, mean, sigma])
 
     # clip to [-0.5, +0.5]
     if clip_values:
