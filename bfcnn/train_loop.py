@@ -86,6 +86,7 @@ def train_loop(
     train_config = config["train"]
     epochs = train_config["epochs"]
     trace_every = train_config.get("trace_every", 100)
+    weight_buckets = train_config.get("weight_buckets", 100)
     # how many times to run the model on a single batch
     iterations_choice = train_config.get("iterations_choice", [1])
     total_steps = train_config.get("total_steps", -1)
@@ -298,9 +299,9 @@ def train_loop(
                             model=model_denoise,
                             verbose=False)
                     tf.summary.histogram(
-                        buckets=20,
                         data=weights,
                         step=global_step,
+                        buckets=weight_buckets,
                         name="training/weights")
 
                 # --- check if it is time to save a checkpoint
