@@ -132,10 +132,13 @@ def export_model(
         converter = \
             tf.lite.TFLiteConverter.from_concrete_functions(
                 [concrete_function])
-        converter.target_spec.supported_ops = \
-            [tf.lite.OpsSet.TFLITE_BUILTINS, tf.lite.OpsSet.SELECT_TF_OPS]
-        converter.optimizations = \
-            [tf.lite.Optimize.OPTIMIZE_FOR_LATENCY]
+        converter.target_spec.supported_ops = [
+            tf.lite.OpsSet.TFLITE_BUILTINS,
+            tf.lite.OpsSet.SELECT_TF_OPS
+        ]
+        converter.optimizations = [
+            tf.lite.Optimize.OPTIMIZE_FOR_LATENCY
+        ]
         tflite_model = converter.convert()
         output_tflite_model = \
             os.path.join(
