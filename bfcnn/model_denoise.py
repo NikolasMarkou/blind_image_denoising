@@ -162,15 +162,17 @@ def model_builder(
 
     # --- shared or separate models
     if shared_model:
+        logger.info("building shared model")
         resnet_model = \
             build_resnet_model(
-                name=f"level_shared",
+                name="level_shared",
                 **model_params)
         x_levels = [
             resnet_model(x_level)
             for i, x_level in enumerate(x_levels)
         ]
     else:
+        logger.info("building per scale model")
         x_levels = [
             build_resnet_model(
                 name=f"level_{i}",
