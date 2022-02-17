@@ -43,6 +43,7 @@ def model_builder(
     kernel_size = config.get("kernel_size", 3)
     pyramid_config = config.get("pyramid", None)
     clip_values = config.get("clip_values", False)
+    shared_model = config.get("shared_model", False)
     input_shape = config.get("input_shape", (None, None, 3))
     output_multiplier = config.get("output_multiplier", 1.0)
     local_normalization = config.get("local_normalization", -1)
@@ -158,6 +159,25 @@ def model_builder(
 
     # --- run inference
     x_levels = model_pyramid(x)
+
+    # --- shared or separate models
+    if shared_model:
+        resnet_model = \
+            build_resnet_model(
+                name=f"level_shared",
+                **model_params)
+        x_levels = [
+            resnet_model(x_level)
+            for i, x_level in enumerate(x_levels)
+        ]
+    else:
+        x_levels = [
+            build_resnet_model(
+                name=f"level_{i}",
+                **model_params)(x_level)
+            for i, x_level in enumerate(x_levels)
+        ]
+
     x_levels = [
         build_resnet_model(
             name=f"level_{i}",
