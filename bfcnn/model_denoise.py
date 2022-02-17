@@ -54,6 +54,7 @@ def model_builder(
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     use_local_normalization = local_normalization > 0
     use_global_normalization = local_normalization == 0
+    use_normalization = use_local_normalization or use_global_normalization
     local_normalization_kernel = [local_normalization, local_normalization]
     for i in range(len(input_shape)):
         if input_shape[i] == "?" or \
@@ -159,28 +160,32 @@ def model_builder(
     # --- run inference
     x_levels = model_pyramid(x)
 
-    means = []
-    sigmas = []
+    means = levels * [None]
+    sigmas = levels * [None]
 
     # local/global normalization cap
-    for i, x_level in enumerate(x_levels):
-        if use_local_normalization:
-            mean, sigma = \
-                mean_sigma_local(
-                    input_layer=x_level,
-                    kernel_size=local_normalization_kernel)
-            x_level = local_normalization_layer([x_level, mean, sigma])
-            means.append(mean)
-            sigmas.append(sigma)
-        elif use_global_normalization:
-            mean, sigma = \
-                mean_sigma_global(
-                    input_layer=x_level,
-                    axis=[1, 2])
-            x_level = global_normalization_layer([x_level, mean, sigma])
-            means.append(mean)
-            sigmas.append(sigma)
-        x_levels[i] = x_level
+    if use_normalization:
+        for i, x_level in enumerate(x_levels):
+            mean, sigma = None, None
+            if use_local_normalization:
+                mean, sigma = \
+                    mean_sigma_local(
+                        input_layer=x_level,
+                        kernel_size=local_normalization_kernel)
+                x_level = \
+                    local_normalization_layer(
+                        [x_level, mean, sigma])
+            if use_global_normalization:
+                mean, sigma = \
+                    mean_sigma_global(
+                        input_layer=x_level,
+                        axis=[1, 2])
+                x_level = \
+                    global_normalization_layer(
+                        [x_level, mean, sigma])
+            means[i] = mean
+            sigmas[i] = sigma
+            x_levels[i] = x_level
 
     # --- shared or separate models
     if shared_model:
@@ -220,17 +225,18 @@ def model_builder(
             for x_level in x_levels
         ]
 
-    # local/global denormalization cap
-    for i, x_level in enumerate(x_levels):
-        if use_local_normalization:
-            x_level = \
-                local_denormalization_layer(
-                    [x_level, means[i], sigmas[i]])
-        elif use_global_normalization:
-            x_level = \
-                global_denormalization_layer(
-                    [x_level, means[i], sigmas[i]])
-        x_levels[i] = x_level
+    # --- local/global denormalization cap
+    if use_normalization:
+        for i, x_level in enumerate(x_levels):
+            if use_local_normalization:
+                x_level = \
+                    local_denormalization_layer(
+                        [x_level, means[i], sigmas[i]])
+            if use_global_normalization:
+                x_level = \
+                    global_denormalization_layer(
+                        [x_level, means[i], sigmas[i]])
+            x_levels[i] = x_level
 
     # --- merge levels together
     x_result = \
@@ -253,7 +259,8 @@ def model_builder(
     output_layers = [output_layer]
     if add_intermediate_results:
         x_levels_intermediate = [
-            keras.layers.Layer(name=f"intermediate_tensor_{i}")(x_level_intermediate)
+            keras.layers.Layer(
+                name=f"intermediate_tensor_{i}")(x_level_intermediate)
             for i, x_level_intermediate in enumerate(x_levels_intermediate)
         ]
         output_layers = output_layers + x_levels_intermediate
