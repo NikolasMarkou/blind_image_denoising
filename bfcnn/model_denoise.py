@@ -180,13 +180,6 @@ def model_builder(
             for i, x_level in enumerate(x_levels)
         ]
 
-    x_levels = [
-        build_resnet_model(
-            name=f"level_{i}",
-            **model_params)(x_level)
-        for i, x_level in enumerate(x_levels)
-    ]
-
     # split intermediate results and actual results
     x_levels_intermediate = []
     if add_intermediate_results:
