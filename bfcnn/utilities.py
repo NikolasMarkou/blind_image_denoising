@@ -609,6 +609,7 @@ def build_resnet_model(
         add_gates: bool = False,
         add_upscale: bool = False,
         add_intermediate_results: bool = False,
+        add_learnable_multiplier: bool = True,
         name="resnet") -> keras.Model:
     """
     builds a resnet model
@@ -628,6 +629,7 @@ def build_resnet_model(
     :param add_gates: if true add gate layer
     :param add_upscale: if true add upscale layers
     :param add_intermediate_results: if true output results before projection
+    :param add_learnable_multiplier:
     :param name: name of the model
     :return: resnet model
     """
@@ -766,11 +768,12 @@ def build_resnet_model(
         keras.layers.Conv2D(**final_conv_params)(x)
 
     # learnable multiplier
-    output_layer = \
-        learnable_multiplier_layer(
-            input_layer=output_layer,
-            trainable=True,
-            multiplier=1.0)
+    if add_learnable_multiplier:
+        output_layer = \
+            learnable_multiplier_layer(
+                input_layer=output_layer,
+                trainable=True,
+                multiplier=1.0)
 
     # skip layer
     output_layer = \
