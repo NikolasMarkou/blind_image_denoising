@@ -765,10 +765,6 @@ def build_resnet_model(
     output_layer = \
         keras.layers.Conv2D(**final_conv_params)(x)
 
-    # optional batch norm
-    if use_bn:
-        output_layer = keras.layers.BatchNormalization(**bn_params)(output_layer)
-
     # learnable multiplier
     output_layer = \
         learnable_multiplier_layer(
