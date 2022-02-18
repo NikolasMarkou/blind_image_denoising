@@ -146,6 +146,63 @@ def coords_layer(
 
 # ---------------------------------------------------------------------
 
+def step_function(
+        input_layer,
+        offset: float = 0.0,
+        multiplier: float = 20.0):
+    """
+    Differentiable step function approximation using tanh
+    non-saturation y:(0, 1) range x:(-0.1, +0.1)
+
+    :param input_layer:
+    :param offset:
+    :param multiplier:
+    :result:
+    """
+    x = input_layer
+    if offset != 0.0:
+        x = x - offset
+    return (tf.math.tanh(x * multiplier) + 1.0) / 2.0
+
+# ---------------------------------------------------------------------
+
+
+def learnable_multiplier_layer(
+        input_layer,
+        multiplier: float = 1.0,
+        activation: str = "linear",
+        trainable: bool = True):
+    """
+    Constant learnable multiplier layer
+
+    :param input_layer: input layer to be multiplied
+    :param multiplier: multiplication constant
+    :param activation: activation after the filter
+    :param trainable: whether this layer is trainable or not
+    :return: multiplied input_layer
+    """
+    # --- initialise to set kernel to required value
+    def kernel_init(shape, dtype):
+        kernel = np.zeros(shape)
+        for i in range(shape[2]):
+            kernel[:, :, i, 0] = multiplier
+        return kernel
+
+    return \
+        keras.layers.DepthwiseConv2D(
+            kernel_size=1,
+            use_bias=False,
+            padding="same",
+            strides=(1, 1),
+            depth_multiplier=1,
+            trainable=trainable,
+            activation=activation,
+            kernel_regularizer=None,
+            kernel_initializer=kernel_init,
+            depthwise_initializer=kernel_init)(input_layer)
+
+# ---------------------------------------------------------------------
+
 
 def mean_sigma_local(
         input_layer,
@@ -704,9 +761,22 @@ def build_resnet_model(
     if use_bn:
         x = keras.layers.BatchNormalization(**bn_params)(x)
 
-    # output to original channels
+    # output to original channels / projection
     output_layer = \
         keras.layers.Conv2D(**final_conv_params)(x)
+
+    # optional batch norm
+    if use_bn:
+        output_layer = keras.layers.BatchNormalization(**bn_params)(output_layer)
+
+    # learnable multiplier
+    output_layer = \
+        learnable_multiplier_layer(
+            input_layer=output_layer,
+            trainable=True,
+            multiplier=1.0)
+
+    # skip layer
     output_layer = \
         keras.layers.Add()([output_layer, y])
     output_layer = \
@@ -724,62 +794,5 @@ def build_resnet_model(
             trainable=True,
             inputs=input_layer,
             outputs=output_layers)
-
-
-# ---------------------------------------------------------------------
-
-def step_function(
-        input_layer,
-        offset: float = 0.0,
-        multiplier: float = 20.0):
-    """
-    Differentiable step function approximation using tanh
-    non-saturation y:(0, 1) range x:(-0.1, +0.1)
-
-    :param input_layer:
-    :param offset:
-    :param multiplier:
-    :result:
-    """
-    x = input_layer
-    if offset != 0.0:
-        x = x - offset
-    return (tf.math.tanh(x * multiplier) + 1.0) / 2.0
-
-# ---------------------------------------------------------------------
-
-
-def learnable_multiplier_layer(
-        input_layer,
-        multiplier: float = 1.0,
-        activation: str = "linear",
-        trainable: bool = False):
-    """
-    Constant learnable multiplier layer
-
-    :param input_layer: input layer to be multiplied
-    :param multiplier: multiplication constant
-    :param activation: activation after the filter
-    :param trainable: whether this layer is trainable or not
-    :return: multiplied input_layer
-    """
-    # --- initialise to set kernel to required value
-    def kernel_init(shape, dtype):
-        kernel = np.zeros(shape)
-        for i in range(shape[2]):
-            kernel[:, :, i, 0] = multiplier
-        return kernel
-
-    return \
-        keras.layers.DepthwiseConv2D(
-            kernel_size=1,
-            use_bias=False,
-            padding="same",
-            strides=(1, 1),
-            depth_multiplier=1,
-            trainable=trainable,
-            activation=activation,
-            kernel_initializer=kernel_init,
-            depthwise_initializer=kernel_init)(input_layer)
 
 # ---------------------------------------------------------------------
