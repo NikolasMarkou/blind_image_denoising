@@ -1,5 +1,32 @@
+<div align="center">
+
+**A library for blind image denoising algorithms using bias free denoising CNN's**
+___
+
+[Getting Started](#Pretrained) •
+[License](https://github.com/NikolasMarkou/blind_image_denoising/blob/main/LICENSE)
+
+[![python](https://img.shields.io/badge/python-3.6%2B-green)]()
+[![tensorflow](https://img.shields.io/badge/tensorflow-2.8%2B-green)]()
+
+</div>
+
+___
+
 # Blind Image Denoising
-Implementing CVPR 2020 paper : 
+
+## Target
+The target is to create a series of:
+
+* interpretable
+* multi scale
+* high performance
+* low memory footprint
+ 
+models that performs denoising on an input (grayscale or colored) image. 
+
+## Interpretation 
+Interpretation comes naturally by implementing the CVPR 2020 paper : 
 
 ["ROBUST AND INTERPRETABLE BLIND IMAGE DENOISING VIA BIAS - FREE CONVOLUTIONAL NEURAL NETWORKS"](https://arxiv.org/abs/1906.05478)
 
@@ -11,9 +38,13 @@ Which can also be completely interpretable as a mask per pixel
 
 ![](images/readme/bfcnn_noisy_2.png "pixel smoothing interpretability")
 
-## Target
-The target is to create an explainable bias-free 
-model that performs denoising on an input image.
+## Multi-Scale
+The system is trained in multiple scales by implementing ideas 
+from LapSRN (Laplacian Pyramid Super-Resolution Network) and MS-LapSRN (Multi-Scale Laplacian Pyramid Super-Resolution Network)
+
+![](images/readme/laplacian_pyramid_decomposition.png "laplacian pyramid decomposition")
+
+![](images/readme/laplacian_pyramid_recomposition.png "laplacian pyramid recomposition")
 
 ## Corruption types
 In order to train such a model we corrupt an input image using 
@@ -21,7 +52,6 @@ several types of noise and then try to recover the original image
 
 * normally distributed additive noise
 * normally distributed multiplicative noise
-* subsampling
 
 ## Image examples
 

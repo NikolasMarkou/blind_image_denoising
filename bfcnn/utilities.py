@@ -171,13 +171,17 @@ def learnable_multiplier_layer(
         input_layer,
         multiplier: float = 1.0,
         activation: str = "linear",
+        use_bias: bool = False,
+        kernel_regularizer: str = None,
         trainable: bool = True):
     """
     Constant learnable multiplier layer
 
     :param input_layer: input layer to be multiplied
     :param multiplier: multiplication constant
-    :param activation: activation after the filter
+    :param activation: activation after the filter (linear by default)
+    :param use_bias: use offset bias (false by default)
+    :param kernel_regularizer: regularize kernel weights (None by default)
     :param trainable: whether this layer is trainable or not
     :return: multiplied input_layer
     """
@@ -191,14 +195,14 @@ def learnable_multiplier_layer(
     return \
         keras.layers.DepthwiseConv2D(
             kernel_size=1,
-            use_bias=False,
             padding="same",
             strides=(1, 1),
+            use_bias=use_bias,
             depth_multiplier=1,
             trainable=trainable,
             activation=activation,
-            kernel_regularizer=None,
             kernel_initializer=kernel_init,
+            kernel_regularizer=kernel_regularizer,
             depthwise_initializer=kernel_init)(input_layer)
 
 # ---------------------------------------------------------------------
@@ -773,7 +777,8 @@ def build_resnet_model(
             learnable_multiplier_layer(
                 input_layer=output_layer,
                 trainable=True,
-                multiplier=1.0)
+                multiplier=1.0,
+                activation="linear")
 
     # skip layer
     output_layer = \

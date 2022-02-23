@@ -13,6 +13,13 @@ from tensorflow import keras
 from typing import List, Dict, Callable
 
 # ---------------------------------------------------------------------
+# local imports
+# ---------------------------------------------------------------------
+
+from .custom_logger import logger
+from .delta import delta_xy_magnitude
+
+# ---------------------------------------------------------------------
 
 DEFAULT_EPSILON = 0.0001
 
@@ -37,6 +44,84 @@ def snr(
         (tf.reduce_mean(d_2, axis=[0]) + DEFAULT_EPSILON)
     return multiplier * tf.math.log(result) / tf.math.log(base)
 
+# ---------------------------------------------------------------------
+
+
+def mae_weighted(
+        original,
+        noisy,
+        prediction,
+        hinge: float = 0):
+    """
+    Mean Absolute Error (mean over channels and batches) with weights
+
+    :param original:
+    :param noisy:
+    :param prediction:
+    :param hinge: hinge value
+    """
+    # --- calculate the weight per pixel based on how noisy it is
+    d_weight = tf.pow(original - noisy, 2) + DEFAULT_EPSILON
+    if hinge != 0.0:
+        d_weight = keras.layers.ReLU(threshold=hinge)(d_weight)
+    d_weight = keras.layers.Softmax(axis=[1, 2])(d_weight)
+    d_weight = 1.0 - d_weight
+
+    # --- calculate hinged absolute diff
+    d = tf.abs(original - prediction)
+    if hinge != 0.0:
+        d = keras.layers.ReLU(threshold=hinge)(d)
+
+    # --- multiply diff and weight
+    d = keras.layers.Multiply()([d, d_weight])
+
+    # --- sum over all dims
+    d = tf.reduce_mean(d, axis=[1, 2, 3])
+
+    # --- mean over batch
+    loss = tf.reduce_mean(d, axis=[0])
+
+    return loss
+
+# ---------------------------------------------------------------------
+
+
+def mae_weighted_delta(
+        original,
+        prediction,
+        hinge: float = 0):
+    """
+    Mean Absolute Error (mean over channels and batches) with weights
+
+    :param original:
+    :param prediction:
+    :param hinge: hinge value
+    """
+    original_delta = \
+        delta_xy_magnitude(
+            input_layer=original,
+            kernel_size=5,
+            alpha=1.0,
+            beta=1.0,
+            eps=DEFAULT_EPSILON)
+    d_weight = \
+        keras.layers.Softmax(axis=[1, 2])(original_delta)
+
+    # --- calculate hinged absolute diff
+    d = tf.abs(original - prediction)
+    if hinge != 0.0:
+        d = keras.layers.ReLU(threshold=hinge)(d)
+
+    # --- multiply diff and weight
+    d = keras.layers.Multiply()([d, d_weight])
+
+    # --- sum over all dims
+    d = tf.reduce_mean(d, axis=[1, 2, 3])
+
+    # --- mean over batch
+    loss = tf.reduce_mean(d, axis=[0])
+
+    return loss
 
 # ---------------------------------------------------------------------
 
@@ -102,6 +187,8 @@ def loss_function_builder(
     hinge = config.get("hinge", 0.0)
     nae_multiplier = config.get("nae_multiplier", 0.0)
     mae_multiplier = config.get("mae_multiplier", 1.0)
+    mae_delta_enabled = config.get("mae_delta", False)
+    mae_weighted_enabled = config.get("mae_weighted", False)
     regularization_multiplier = config.get("regularization", 1.0)
 
     def loss_function(
@@ -122,9 +209,26 @@ def loss_function_builder(
         """
 
         # --- mean absolute error from prediction
+        mae_weighted_delta_loss = 0.0
+        mae_weighted_prediction_loss = 0.0
         mae_prediction_loss = \
-            mae(input_batch, prediction_batch, hinge)
-
+            mae(
+                original=input_batch,
+                prediction=prediction_batch,
+                hinge=hinge)
+        if mae_delta_enabled:
+            mae_weighted_delta_loss = \
+                mae_weighted_delta(
+                    original=input_batch,
+                    prediction=prediction_batch,
+                    hinge=hinge)
+        if mae_weighted_enabled:
+            mae_weighted_prediction_loss = \
+                mae_weighted(
+                    original=input_batch,
+                    noisy=noisy_batch,
+                    prediction=prediction_batch,
+                    hinge=hinge)
         # ---
         nae_prediction = \
             nae(input_batch, prediction_batch, hinge)
@@ -151,7 +255,9 @@ def loss_function_builder(
         # --- add up loss
         mean_total_loss = \
             nae_prediction * nae_multiplier + \
-            mae_prediction_loss * mae_multiplier + \
+            (mae_prediction_loss +
+             mae_weighted_delta_loss +
+             mae_weighted_prediction_loss) * mae_multiplier + \
             regularization_loss * regularization_multiplier
 
         return {

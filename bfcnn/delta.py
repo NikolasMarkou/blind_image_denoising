@@ -63,7 +63,7 @@ def delta(
         for i in range(shape[2]):
             kernel[:, :, i, 0] = delta_kernel
         if transpose:
-            kernel = np.transpose(kernel, axes=[0, 1])
+            kernel = np.transpose(kernel, axes=[1, 0, 2, 3])
         return kernel
 
     return \
@@ -145,8 +145,12 @@ def delta_xy_magnitude(
     """
     dx = delta_x(input_layer, kernel_size=kernel_size)
     dy = delta_y(input_layer, kernel_size=kernel_size)
-    dx = keras.backend.square(dx) * alpha
-    dy = keras.backend.square(dy) * beta
+    dx = keras.backend.square(dx)
+    dy = keras.backend.square(dy)
+    if alpha != 1.0:
+        dx = dx * alpha
+    if beta != 1.0:
+        dy = dy * beta
     dd = keras.backend.sqrt(keras.backend.abs(dx + dy) + eps)
     return dd
 

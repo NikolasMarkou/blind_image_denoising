@@ -324,7 +324,7 @@ def build_inverse_gaussian_pyramid_model(
                 kernel_size=kernel_size)
         output_layer = \
             keras.layers.Add()([level_up_x, input_layers[i]])
-        output_layer = output_layer * 0.5
+    output_layer = output_layer / levels
     output_layer = \
         keras.layers.Layer(name="output_tensor")(output_layer)
 
