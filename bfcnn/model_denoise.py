@@ -5,10 +5,9 @@ __version__ = "1.0.0"
 __license__ = "MIT"
 
 # ---------------------------------------------------------------------
-import abc
 
+import abc
 from tensorflow import keras
-from typing import List, Tuple, Union, Dict
 
 # ---------------------------------------------------------------------
 # local imports
@@ -16,7 +15,7 @@ from typing import List, Tuple, Union, Dict
 
 from .utilities import *
 from .custom_logger import logger
-from .pyramid import build_pyramid_model, PyramidType
+from .pyramid import build_pyramid_model, build_inverse_pyramid_model
 
 
 # ---------------------------------------------------------------------
@@ -132,7 +131,7 @@ def model_builder(
             config=pyramid_config)
     # build inverse pyramid
     model_inverse_pyramid = \
-        build_pyramid_model(
+        build_inverse_pyramid_model(
             input_dims=input_shape,
             config=inverse_pyramid_config)
     # define normalization/denormalization layers
