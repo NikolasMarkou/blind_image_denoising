@@ -63,15 +63,14 @@ def gaussian_filter_layer(
         """
         assert len(nsig) == 2
         assert len(size) == 2
-        kern1d = []
-        for i in range(2):
-            x = \
-                np.linspace(
-                    start=-np.abs(nsig[i]),
-                    stop=np.abs(nsig[i]),
-                    num=size[i],
-                    endpoint=True)
-            kern1d.append(x)
+        kern1d = [
+            np.linspace(
+                start=-np.abs(nsig[i]),
+                stop=np.abs(nsig[i]),
+                num=size[i],
+                endpoint=True)
+            for i in range(2)
+        ]
         x, y = np.meshgrid(kern1d[0], kern1d[1])
         d = np.sqrt(x * x + y * y)
         sigma, mu = 1.0, 0.0
