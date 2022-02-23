@@ -55,7 +55,8 @@ def gaussian_filter_layer(
             size: Tuple[int, int],
             nsig: Tuple[float, float]) -> np.ndarray:
         """
-        Returns a 2D Gaussian kernel array
+        builds a 2D Gaussian kernel array
+
         :param size: size of of the grid
         :param nsig: max value out of the gaussian on the xy axis
         :return: 2d gaussian grid
@@ -230,30 +231,6 @@ class PyramidType(Enum):
 
         # --- clean string and get
         return PyramidType[type_str.strip().upper()]
-
-    def to_string(self) -> str:
-        return self.name
-
-# ---------------------------------------------------------------------
-
-
-class InversePyramidType(Enum):
-    NONE = 1
-    INVERSE_GAUSSIAN = 2
-    INVERSE_LAPLACIAN = 3
-
-    @staticmethod
-    def from_string(type_str: str) -> "InversePyramidType":
-        # --- argument checking
-        if type_str is None:
-            raise ValueError("type_str must not be null")
-        if not isinstance(type_str, str):
-            raise ValueError("type_str must be string")
-        if len(type_str.strip()) <= 0:
-            raise ValueError("stripped type_str must not be empty")
-
-        # --- clean string and get
-        return InversePyramidType[type_str.strip().upper()]
 
     def to_string(self) -> str:
         return self.name
@@ -514,11 +491,11 @@ def build_inverse_pyramid_model(
     :param config: pyramid configuration
     :return: inverse pyramid model
     """
-    pyramid_type = InversePyramidType.from_string(config["type"])
+    pyramid_type = PyramidType.from_string(config["type"])
     xy_max = config.get("xy_max", DEFAULT_XY_MAX)
     kernel_size = config.get("kernel_size", DEFAULT_KERNEL_SIZE)
 
-    if pyramid_type == InversePyramidType.INVERSE_GAUSSIAN:
+    if pyramid_type == PyramidType.GAUSSIAN:
         no_levels = config["levels"]
         pyramid_model = \
             build_inverse_gaussian_pyramid_model(
@@ -526,7 +503,7 @@ def build_inverse_pyramid_model(
                 levels=no_levels,
                 xy_max=xy_max,
                 kernel_size=kernel_size)
-    elif pyramid_type == InversePyramidType.INVERSE_LAPLACIAN:
+    elif pyramid_type == PyramidType.LAPLACIAN:
         no_levels = config["levels"]
         pyramid_model = \
             build_inverse_laplacian_pyramid_model(
@@ -534,7 +511,7 @@ def build_inverse_pyramid_model(
                 levels=no_levels,
                 xy_max=xy_max,
                 kernel_size=kernel_size)
-    elif pyramid_type == InversePyramidType.NONE:
+    elif pyramid_type == PyramidType.NONE:
         raise NotImplementedError()
     else:
         raise ValueError(

@@ -23,7 +23,7 @@
     },
     "inverse_pyramid": {
       "levels": 5,
-      "type": "inverse_laplacian",
+      "type": "laplacian",
       "xy_max": [2.0, 2.0],
       "kernel_size": [5, 5]
     }
