@@ -46,6 +46,11 @@ from LapSRN (Laplacian Pyramid Super-Resolution Network) and MS-LapSRN (Multi-Sc
 
 ![](images/readme/laplacian_pyramid_recomposition.png "laplacian pyramid recomposition")
 
+## Low-Memory footprint
+By using a gaussian pyramid and a shared bias-free CNN model between each scale, 
+we can ensure that we have a small enough model to run on very small devices while ensure we
+have a big enough ERF (effective receptive field) for the task at hand.
+
 ## Corruption types
 In order to train such a model we corrupt an input image using 
 several types of noise and then try to recover the original image
@@ -138,21 +143,9 @@ We have used traditional (bias free) architectures.
 Our addition (not in the paper) is the laplacian multi-scale pyramid
 that expands the effective receptive field without the need to add many more layers (keeping it cheap computationally).
 
-![](images/readme/laplacian_pyramid_head.png "Laplacian Pyramid")
-
-A noise input broken into the several levels of the laplacian pyramid:
-
-![](images/readme/laplacian_levels_breakdown.png "Laplacian levels")
-
 #### Multi-Scale Gaussian Pyramid
 Our addition (not in the paper) is the gaussian multi-scale pyramid
 that expands the effective receptive field without the need to add many more layers (keeping it cheap computationally).
-
-![](images/readme/gaussian_pyramid_head.png "Gaussian Head Pyramid")
-
-A noise input broken into the several levels of the gaussian pyramid:
-
-![](images/readme/gaussian_levels_breakdown.png "Gaussian levels")
 
 #### Normalization layer
 Our addition (not in the paper) is a (non-channel wise and non-learnable) normalization layer (not BatchNorm) 
