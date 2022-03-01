@@ -182,7 +182,12 @@ def loss_function_builder(
         config: Dict) -> Callable:
     """
     Constructs the loss function of the depth prediction model
+
+    :param config: configuration dictionary
+    :return: callable loss function
     """
+    logger.info("building loss_function with config [{0}]".format(config))
+
     # controls how we discount each level
     hinge = config.get("hinge", 0.0)
     nae_multiplier = config.get("nae_multiplier", 0.0)

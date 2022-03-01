@@ -56,6 +56,8 @@
   },
   "loss": {
     "hinge": 2.5,
+    "mae_delta": true,
+    "mae_weighted": true,
     "mae_multiplier": 1.0,
     "regularization": 0.01,
     "nae_multiplier": 10.0

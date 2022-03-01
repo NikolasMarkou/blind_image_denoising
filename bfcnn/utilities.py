@@ -767,18 +767,18 @@ def build_resnet_model(
     if use_bn:
         x = keras.layers.BatchNormalization(**bn_params)(x)
 
-    # output to original channels / projection
-    output_layer = \
-        keras.layers.Conv2D(**final_conv_params)(x)
-
     # learnable multiplier
     if add_learnable_multiplier:
-        output_layer = \
+        x = \
             learnable_multiplier_layer(
-                input_layer=output_layer,
+                input_layer=x,
                 trainable=True,
                 multiplier=1.0,
                 activation="linear")
+
+    # output to original channels / projection
+    output_layer = \
+        keras.layers.Conv2D(**final_conv_params)(x)
 
     # skip layer
     output_layer = \
