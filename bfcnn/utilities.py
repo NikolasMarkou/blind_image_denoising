@@ -440,58 +440,6 @@ def sparse_block(
 # ---------------------------------------------------------------------
 
 
-def resnet_blocks(
-        input_layer,
-        no_layers: int,
-        depth_conv_params: Dict,
-        intermediate_conv_params: Dict,
-        bn_params: Dict = None,
-        gate_params: Dict = None):
-    """
-    Create a series of residual network blocks
-    """
-    # --- argument check
-    if input_layer is None:
-        raise ValueError("input_layer must be none")
-    if no_layers < 0:
-        raise ValueError("no_layers must be >= 0")
-    use_bn = bn_params is not None
-    use_gate = gate_params is not None
-
-    # --- setup resnet
-    x = input_layer
-    for i in range(no_layers):
-        previous_layer = x
-        # 1st conv
-        if use_bn:
-            x = keras.layers.BatchNormalization(**bn_params)(x)
-        x = keras.layers.Conv2D(**intermediate_conv_params)(x)
-        g_layer = x
-        # 2nd conv
-        if use_bn:
-            x = keras.layers.BatchNormalization(**bn_params)(x)
-        x = keras.layers.Conv2D(**depth_conv_params)(x)
-        # 3rd conv
-        if use_bn:
-            x = keras.layers.BatchNormalization(**bn_params)(x)
-        # output results
-        x = keras.layers.Conv2D(**intermediate_conv_params)(x)
-        # compute activation per channel
-        if use_gate:
-            g_layer = \
-                keras.layers.Conv2D(**gate_params)(g_layer)
-            g_layer = \
-                keras.layers.GlobalAvgPool2D()(g_layer)
-            g_layer = \
-                (keras.layers.Activation("tanh")(g_layer * 2.0) + 1.0) / 2.0
-            x = keras.layers.Multiply()([x, g_layer])
-        # skip connection
-        x = keras.layers.Add()([previous_layer, x])
-    return x
-
-# ---------------------------------------------------------------------
-
-
 def layer_denormalize(args):
     """
     Convert input [-0.5, +0.5] to [v0, v1] range
@@ -536,7 +484,7 @@ def build_normalize_model(
     :param min_value: Minimum value
     :param max_value: Maximum value
     :param name: name of the model
-    :return:
+    :return: normalization model
     """
     model_input = keras.Input(shape=input_dims)
 
@@ -572,7 +520,7 @@ def build_denormalize_model(
     :param min_value: Minimum value
     :param max_value: Maximum value
     :param name: name of the model
-    :return:
+    :return: denormalization model
     """
     model_input = keras.Input(shape=input_dims)
 
@@ -597,6 +545,70 @@ def build_denormalize_model(
 # ---------------------------------------------------------------------
 
 
+def resnet_blocks(
+        input_layer,
+        no_layers: int,
+        depth_conv_params: Dict,
+        intermediate_conv_params: Dict,
+        bn_params: Dict = None,
+        gate_params: Dict = None):
+    """
+    Create a series of residual network blocks
+
+    :param input_layer: the input layer to perform on
+    :param no_layers: how many residual network blocks to add
+    :param depth_conv_params: the parameters of the middle conv
+    :param intermediate_conv_params: the parameters of the start and end conv
+    :param bn_params: batch normalization parameters
+    :param gate_params: gate optional parameters
+
+    :return: filtered input_layer
+    """
+    # --- argument check
+    if input_layer is None:
+        raise ValueError("input_layer must be none")
+    if no_layers < 0:
+        raise ValueError("no_layers must be >= 0")
+    use_bn = bn_params is not None
+    use_gate = gate_params is not None
+
+    # --- setup resnet
+    x = input_layer
+
+    # --- create several number of residual blocks
+    for i in range(no_layers):
+        previous_layer = x
+        # 1st conv
+        if use_bn:
+            x = keras.layers.BatchNormalization(**bn_params)(x)
+        x = keras.layers.Conv2D(**intermediate_conv_params)(x)
+        # 2nd conv
+        if use_bn:
+            x = keras.layers.BatchNormalization(**bn_params)(x)
+        g_layer = x
+        x = keras.layers.Conv2D(**depth_conv_params)(x)
+        # 3rd conv
+        if use_bn:
+            x = keras.layers.BatchNormalization(**bn_params)(x)
+        # output results
+        x = keras.layers.Conv2D(**intermediate_conv_params)(x)
+        # compute activation per channel
+        if use_gate:
+            g_layer = \
+                keras.layers.Conv2D(**gate_params)(g_layer)
+            g_layer = \
+                keras.layers.GlobalAvgPool2D()(g_layer)
+            g_layer = \
+                (keras.layers.Activation("tanh")(g_layer * 2.0) + 1.0) / 2.0
+            x = keras.layers.Multiply()([x, g_layer])
+        # skip connection
+        x = keras.layers.Add()([previous_layer, x])
+
+    return x
+
+# ---------------------------------------------------------------------
+
+
 def build_resnet_model(
         input_dims,
         no_layers: int,
@@ -611,7 +623,7 @@ def build_resnet_model(
         channel_index: int = 2,
         add_sparsity: bool = False,
         add_gates: bool = False,
-        add_upscale: bool = False,
+        add_sigma: bool = False,
         add_intermediate_results: bool = False,
         add_learnable_multiplier: bool = True,
         name="resnet") -> keras.Model:
@@ -631,7 +643,7 @@ def build_resnet_model(
     :param kernel_initializer: Kernel weight initializer
     :param add_sparsity: if true add sparsity layer
     :param add_gates: if true add gate layer
-    :param add_upscale: if true add upscale layers
+    :param add_sigma: if true add sigma
     :param add_intermediate_results: if true output results before projection
     :param add_learnable_multiplier:
     :param name: name of the model
@@ -722,9 +734,6 @@ def build_resnet_model(
     if add_gates:
         resnet_params["gate_params"] = gate_params
 
-    if add_upscale:
-        conv_params["dilation_rate"] = (2, 2)
-
     # --- build model
     # set input
     input_layer = \
@@ -739,16 +748,7 @@ def build_resnet_model(
         x = keras.layers.BatchNormalization(**bn_params)(x)
 
     # add base layer
-    if add_upscale:
-        x = keras.layers.Conv2DTranspose(**conv_params)(x)
-        y = \
-            upscale_2x2_block(
-                input_layer=y,
-                kernel_size=(5, 5),
-                xy_max=(2, 2),
-                trainable=False)
-    else:
-        x = keras.layers.Conv2D(**conv_params)(x)
+    x = keras.layers.Conv2D(**conv_params)(x)
 
     if add_sparsity:
         x = \
