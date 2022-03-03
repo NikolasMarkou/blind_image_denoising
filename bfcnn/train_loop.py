@@ -302,11 +302,18 @@ def train_loop(
                                 ones_batch, zeros_batch])
 
                         # --- compute the loss value for this mini-batch
+                        model_losses = None
+                        if denoiser_step:
+                            model_losses = model_denoise.losses
+
+                        if discriminator_step:
+                            model_losses = model_discriminate.losses
+
                         loss_map = loss_fn(
                             difficulty=noise_std,
                             input_batch=input_batch,
                             noisy_batch=noisy_batch,
-                            model_losses=model_denoise.losses,
+                            model_losses=model_losses,
                             prediction_batch=denormalized_denoised_batch,
                             discriminate_batch=discriminate_output_batch,
                             discriminate_ground_truth=discriminate_ground_truth)
@@ -314,7 +321,7 @@ def train_loop(
                         if denoiser_step:
                             grads = \
                                 tape.gradient(
-                                    target=loss_map[DISCRIMINATE_LOSS_STR],
+                                    target=loss_map[DISCRIMINATE_LOSS_STR] + loss_map[MEAN_TOTAL_LOSS_STR],
                                     sources=model_denoise.trainable_weights)
 
                             optimizer.apply_gradients(
