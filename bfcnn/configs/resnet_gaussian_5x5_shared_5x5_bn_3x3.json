@@ -1,7 +1,7 @@
 {
   "model_denoise": {
     "filters": 16,
-    "no_layers": 10,
+    "no_layers": 5,
     "min_value": 0,
     "max_value": 255,
     "kernel_size": 3,
@@ -20,13 +20,43 @@
       "levels": 5,
       "type": "gaussian",
       "xy_max": [2.0, 2.0],
-      "kernel_size": [7, 7]
+      "kernel_size": [5, 5]
     },
     "inverse_pyramid": {
       "levels": 5,
       "type": "gaussian",
       "xy_max": [2.0, 2.0],
-      "kernel_size": [7, 7]
+      "kernel_size": [5, 5]
+    }
+  },
+  "model_discriminate": {
+    "filters": 16,
+    "no_layers": 2,
+    "min_value": 0,
+    "max_value": 255,
+    "kernel_size": 3,
+    "type": "resnet",
+    "batchnorm": true,
+    "clip_values": false,
+    "activation": "relu",
+    "shared_model": true,
+    "local_normalization": -1,
+    "output_multiplier": 1.0,
+    "kernel_regularizer": "l1",
+    "final_activation": "sigmoid",
+    "input_shape": ["?", "?", 1],
+    "kernel_initializer": "glorot_normal",
+    "pyramid": {
+      "levels": 5,
+      "type": "gaussian",
+      "xy_max": [2.0, 2.0],
+      "kernel_size": [5, 5]
+    },
+    "inverse_pyramid": {
+      "levels": 5,
+      "type": "gaussian",
+      "xy_max": [2.0, 2.0],
+      "kernel_size": [5, 5]
     }
   },
   "train": {
@@ -55,14 +85,14 @@
   },
   "loss": {
     "hinge": 2.5,
-    "mae_delta": true,
-    "mae_weighted": true,
+    "mae_delta": false,
+    "mae_weighted": false,
     "mae_multiplier": 1.0,
     "regularization": 0.01,
     "nae_multiplier": 10.0
   },
   "dataset": {
-    "batch_size": 16,
+    "batch_size": 12,
     "min_value": 0,
     "max_value": 255,
     "clip_value": true,
