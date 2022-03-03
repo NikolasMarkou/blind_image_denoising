@@ -132,7 +132,7 @@ def model_builder(
     # build inverse pyramid
     model_inverse_pyramid = \
         build_inverse_pyramid_model(
-            input_dims=input_shape,
+            input_dims=input_shape[:-1] + [2],
             config=inverse_pyramid_config)
     # define normalization/denormalization layers
     local_normalization_layer = \
