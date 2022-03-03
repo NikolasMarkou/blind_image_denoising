@@ -249,6 +249,9 @@ def model_builder(
                 min_value=-0.5,
                 max_value=+0.5)
 
+    x_result = \
+        keras.layers.Softmax(axis=-1)(x_result)
+
     # name output
     output_layer = \
         keras.layers.Layer(name="output_tensor")(
