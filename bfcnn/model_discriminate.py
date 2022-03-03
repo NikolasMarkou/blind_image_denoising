@@ -27,7 +27,7 @@ def model_builder(
     Reads a configuration and returns 3 models,
 
     :param config: configuration dictionary
-    :return: denoiser model, normalize model, denormalize model
+    :return: discriminator model, normalize model, denormalize model
     """
     logger.info("building model with config [{0}]".format(config))
 
@@ -190,7 +190,7 @@ def model_builder(
     if shared_model:
         logger.info("building shared model")
         resnet_model = \
-            build_model_denoise_resnet(
+            build_model_discriminate_resnet(
                 name="level_shared",
                 **model_params)
         x_levels = [
@@ -200,7 +200,7 @@ def model_builder(
     else:
         logger.info("building per scale model")
         x_levels = [
-            build_model_denoise_resnet(
+            build_model_discriminate_resnet(
                 name=f"level_{i}",
                 **model_params)(x_level)
             for i, x_level in enumerate(x_levels)
@@ -265,32 +265,31 @@ def model_builder(
         output_layers = output_layers + x_levels_intermediate
 
     # --- wrap and name model
-    model_denoise = \
+    model_discriminate = \
         keras.Model(
             inputs=input_layer,
             outputs=output_layers,
-            name=f"{model_type}_denoiser")
+            name=f"{model_type}_discriminate")
 
     return \
-        model_denoise, \
+        model_discriminate, \
         model_normalize, \
         model_denormalize
 
 # ---------------------------------------------------------------------
 
 
-def build_model_denoise_resnet(
+def build_model_discriminate_resnet(
         input_dims,
         no_layers: int,
         kernel_size: int,
         filters: int,
         activation: str = "relu",
-        final_activation: str = "linear",
+        final_activation: str = "softmax",
         use_bn: bool = True,
         use_bias: bool = False,
         kernel_regularizer="l1",
         kernel_initializer="glorot_normal",
-        channel_index: int = 2,
         add_sparsity: bool = False,
         add_gates: bool = False,
         add_intermediate_results: bool = False,
@@ -305,7 +304,6 @@ def build_model_denoise_resnet(
     :param filters: number of filters per convolutional layer
     :param activation: intermediate activation
     :param final_activation: activation of the final layer
-    :param channel_index: Index of the channel in dimensions
     :param use_bn: Use Batch Normalization
     :param use_bias: use bias
     :param kernel_regularizer: Kernel weight regularizer
@@ -378,12 +376,13 @@ def build_model_denoise_resnet(
     )
 
     final_conv_params = dict(
+        filters=2,
         kernel_size=1,
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
+        name="output_tensor",
         activation=final_activation,
-        filters=input_dims[channel_index],
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -409,7 +408,6 @@ def build_model_denoise_resnet(
             name="input_tensor",
             shape=input_dims)
     x = input_layer
-    y = input_layer
 
     # optional batch norm
     if use_bn:
@@ -444,15 +442,9 @@ def build_model_denoise_resnet(
                 multiplier=1.0,
                 activation="linear")
 
-    # output to original channels / projection
+    # output to probability
     output_layer = \
         keras.layers.Conv2D(**final_conv_params)(x)
-
-    # skip layer
-    output_layer = \
-        keras.layers.Add()([output_layer, y])
-    output_layer = \
-        keras.layers.Layer(name="output_tensor")(output_layer)
 
     # return intermediate results if flag is turned on
     output_layers = [output_layer]
@@ -469,180 +461,3 @@ def build_model_denoise_resnet(
 
 # ---------------------------------------------------------------------
 
-
-class DenoisingInferenceModule(tf.Module, abc.ABC):
-    """denoising inference module."""
-
-    def __init__(
-            self,
-            model_denoise: keras.Model = None,
-            model_normalize: keras.Model = None,
-            model_denormalize: keras.Model = None,
-            training_channels: int = 1,
-            iterations: int = 1,
-            cast_to_uint8: bool = True):
-        """
-        Initializes a module for denoising.
-
-        :param model_denoise: denoising model to use for inference.
-        :param model_normalize: model that normalizes the input
-        :param model_denormalize: model that denormalizes the output
-        :param training_channels: how many color channels were used in training
-        :param iterations: how many times to run the model
-        :param cast_to_uint8: cast output to uint8
-
-        """
-        # --- argument checking
-        if model_denoise is None:
-            raise ValueError("model_denoise should not be None")
-        if iterations <= 0:
-            raise ValueError("iterations should be > 0")
-        if training_channels <= 0:
-            raise ValueError("training channels should be > 0")
-
-        # --- setup instance variables
-        self._iterations = iterations
-        self._cast_to_uint8 = cast_to_uint8
-        self._model_denoise = model_denoise
-        self._model_normalize = model_normalize
-        self._model_denormalize = model_denormalize
-        self._training_channels = training_channels
-
-    def _run_inference_on_images(self, image):
-        """
-        Cast image to float and run inference.
-
-        :param image: uint8 Tensor of shape
-        :return: denoised image: uint8 Tensor of shape if the input
-        """
-        # --- argument checking
-        # --- argument checking
-        if image is None:
-            raise ValueError("input image cannot be empty")
-
-        x = tf.cast(image, dtype=tf.float32)
-
-        # --- normalize
-        if self._model_normalize is not None:
-            x = self._model_normalize(x)
-
-        # --- run denoise model as many times as required
-        for i in range(self._iterations):
-            x = self._model_denoise(x)
-            x = tf.clip_by_value(x, clip_value_min=-0.5, clip_value_max=+0.5)
-
-        # --- denormalize
-        if self._model_denormalize is not None:
-            x = self._model_denormalize(x)
-
-        # --- cast to uint8
-        if self._cast_to_uint8:
-            x = tf.round(x)
-            x = tf.cast(x, dtype=tf.uint8)
-
-        return x
-
-    @abc.abstractmethod
-    def __call__(self, input_tensor):
-        pass
-
-# ---------------------------------------------------------------------
-
-
-class DenoisingInferenceModule1Channel(DenoisingInferenceModule):
-    def __init__(
-            self,
-            model_denoise: keras.Model = None,
-            model_normalize: keras.Model = None,
-            model_denormalize: keras.Model = None,
-            iterations: int = 1,
-            cast_to_uint8: bool = True):
-        super().__init__(
-            model_denoise=model_denoise,
-            model_normalize=model_normalize,
-            model_denormalize=model_denormalize,
-            training_channels=1,
-            iterations=iterations,
-            cast_to_uint8=cast_to_uint8)
-
-    @tf.function(
-        input_signature=[
-            tf.TensorSpec(shape=[None, None, None, 1], dtype=tf.uint8)])
-    def __call__(self, input_tensor):
-        return self._run_inference_on_images(input_tensor)
-
-
-# ---------------------------------------------------------------------
-
-
-class DenoisingInferenceModule3Channel(DenoisingInferenceModule):
-    def __init__(
-            self,
-            model_denoise: keras.Model = None,
-            model_normalize: keras.Model = None,
-            model_denormalize: keras.Model = None,
-            iterations: int = 1,
-            cast_to_uint8: bool = True):
-        super().__init__(
-            model_denoise=model_denoise,
-            model_normalize=model_normalize,
-            model_denormalize=model_denormalize,
-            training_channels=3,
-            iterations=iterations,
-            cast_to_uint8=cast_to_uint8)
-
-    @tf.function(
-        input_signature=[
-            tf.TensorSpec(shape=[None, None, None, 3], dtype=tf.uint8)])
-    def __call__(self, input_tensor):
-        return self._run_inference_on_images(input_tensor)
-
-
-# ---------------------------------------------------------------------
-
-
-def module_builder(
-        model_denoise: keras.Model = None,
-        model_normalize: keras.Model = None,
-        model_denormalize: keras.Model = None,
-        training_channels: int = 1,
-        iterations: int = 1,
-        cast_to_uint8: bool = True) -> DenoisingInferenceModule:
-    """
-    builds a module for denoising.
-
-    :param model_denoise: denoising model to use for inference.
-    :param model_normalize: model that normalizes the input
-    :param model_denormalize: model that denormalizes the output
-    :param training_channels: how many color channels were used in training
-    :param iterations: how many times to run the model
-    :param cast_to_uint8: cast output to uint8
-
-    :return: denoiser module
-    """
-    logger.info(
-        f"building denoising module with "
-        f"iterations:{iterations}, "
-        f"training_channels:{training_channels}, "
-        f"cast_to_uint8:{cast_to_uint8}")
-
-    if training_channels == 1:
-        return \
-            DenoisingInferenceModule1Channel(
-                model_denoise=model_denoise,
-                model_normalize=model_normalize,
-                model_denormalize=model_denormalize,
-                iterations=iterations,
-                cast_to_uint8=cast_to_uint8)
-    elif training_channels == 3:
-        return \
-            DenoisingInferenceModule3Channel(
-                model_denoise=model_denoise,
-                model_normalize=model_normalize,
-                model_denormalize=model_denormalize,
-                iterations=iterations,
-                cast_to_uint8=cast_to_uint8)
-    else:
-        raise ValueError("don't know how to handle training_channels:{0}".format(training_channels))
-
-# ---------------------------------------------------------------------

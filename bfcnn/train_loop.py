@@ -10,6 +10,8 @@ __license__ = "MIT"
 
 import os
 import time
+
+import keras.backend
 import tensorflow as tf
 from pathlib import Path
 from typing import Union, Dict
@@ -19,13 +21,15 @@ from typing import Union, Dict
 # ---------------------------------------------------------------------
 
 from .pruning import *
+from .constants import *
 from .utilities import *
 from .visualize import visualize
 from .custom_logger import logger
 from .dataset import dataset_builder
 from .loss import loss_function_builder
-from .model_denoise import model_builder
 from .optimizer import optimizer_builder
+from .model_denoise import model_builder as model_denoise_builder
+from .model_discriminate import model_builder as model_discriminate_builder
 
 
 # ---------------------------------------------------------------------
@@ -114,12 +118,13 @@ def train_loop(
         PruneStrategy.from_string(prune_config["strategy"]) != PruneStrategy.NONE
     prune_start_epoch = prune_config.get("start_epoch", 0)
     prune_function = prune_function_builder(prune_config)
+    use_discriminator = MODEL_DISCRIMINATE_STR in config
 
-    # --- build the model
+    # --- build the denoise model
     tf.summary.trace_on(graph=True, profiler=False)
     with summary_writer.as_default():
         model_denoise, model_normalize, model_denormalize = \
-            model_builder(config=config["model"])
+            model_denoise_builder(config=config[MODEL_DENOISE_STR])
 
         # The function to be traced.
         @tf.function()
@@ -142,7 +147,37 @@ def train_loop(
     model_denoise.summary(print_fn=logger.info)
     # save model so we can visualize it easier
     model_denoise.save(
-        os.path.join(model_dir, "model_denoise.h5"))
+        os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR))
+
+    # --- build the discriminate model
+    if use_discriminator:
+        tf.summary.trace_on(graph=True, profiler=False)
+        with summary_writer.as_default():
+            model_discriminate, _, _ = \
+                model_discriminate_builder(config=config[MODEL_DISCRIMINATE_STR])
+
+            # The function to be traced.
+            @tf.function()
+            def optimized_model(x_input):
+                return model_discriminate(x_input)
+
+            x = \
+                tf.random.truncated_normal(
+                    seed=0,
+                    mean=0.0,
+                    stddev=0.25,
+                    shape=random_batch_size)
+            _ = optimized_model(x)
+            tf.summary.trace_export(
+                step=0,
+                name="discriminator")
+            tf.summary.flush()
+            tf.summary.trace_off()
+        # summary of model
+        model_discriminate.summary(print_fn=logger.info)
+        # save model so we can visualize it easier
+        model_discriminate.save(
+            os.path.join(model_dir, MODEL_DISCRIMINATE_DEFAULT_NAME_STR))
 
     # --- create random image and iterate through the model
     def create_random_batch():
@@ -199,8 +234,6 @@ def train_loop(
                 max_to_keep=checkpoints_to_keep)
         status = \
             checkpoint.restore(manager.latest_checkpoint).expect_partial()
-        trainable_weights = \
-            model_denoise.trainable_weights
 
         for epoch in range(int(global_epoch), int(epochs), 1):
             logger.info("epoch: {0}, step: {1}".format(epoch, int(global_step)))
@@ -215,64 +248,129 @@ def train_loop(
             for input_batch in dataset:
                 start_time = time.time()
 
-                # declare variables
-                loss_map = None
-                tmp_prediction_batch = None
-
                 # augment data
                 input_batch, noisy_batch, noise_std = \
                     augmentation_fn(input_batch)
 
-                prediction_batch = \
+                normalized_noisy_batch = \
                     model_normalize(noisy_batch, training=False)
 
-                # Open a GradientTape to record the operations run
-                # during the forward pass,
-                # which enables auto-differentiation.
-                with tf.GradientTape() as tape:
-                    # Run the forward pass of the layer.
-                    # The operations that the layer applies
-                    # to its inputs are going to be recorded
-                    # on the GradientTape.
-                    prediction_batch = \
-                        model_denoise(
-                            prediction_batch,
-                            training=True)
-                    tmp_prediction_batch = \
-                        model_denormalize(
-                            prediction_batch,
-                            training=False)
+                # --- add discriminator loss
+                if use_discriminator:
+                    with tf.GradientTape() as tape:
+                        denoiser_step = global_step % 2 == 0
+                        discriminator_step = not denoiser_step
 
-                    # compute the loss value for this mini-batch
-                    loss_map = loss_fn(
-                        difficulty=noise_std,
-                        input_batch=input_batch,
-                        noisy_batch=noisy_batch,
-                        model_losses=model_denoise.losses,
-                        prediction_batch=tmp_prediction_batch)
+                        # --- denoise and discriminate
+                        normalized_input_batch = \
+                            model_normalize(
+                                input_batch,
+                                training=False)
 
-                    # Use the gradient tape to automatically retrieve
-                    # the gradients of the trainable variables
-                    # with respect to the loss.
-                    grads = \
-                        tape.gradient(
-                            loss_map["mean_total_loss"],
-                            trainable_weights)
+                        denoised_batch = \
+                            model_denoise(
+                                normalized_noisy_batch,
+                                training=denoiser_step)
 
-                    # Run one step of gradient descent by updating
-                    # the value of the variables to minimize the loss.
-                    optimizer.apply_gradients(
-                        zip(grads, trainable_weights))
+                        discriminate_input_batch = \
+                            keras.layers.Concatenate(axis=0)([
+                                normalized_input_batch, denoised_batch])
+
+                        discriminate_output_batch = \
+                            model_discriminate(
+                                discriminate_input_batch,
+                                training=discriminator_step)
+
+                        # --- create discriminate ground truth
+                        input_shape = \
+                            keras.backend.int_shape(input_batch)
+                        ones_batch = \
+                            tf.ones(
+                                shape=(input_shape[0], input_shape[1], input_shape[2], 1),
+                                dtype=tf.uint64)
+                        zeros_batch = \
+                            tf.zeros(
+                                shape=(input_shape[0], input_shape[1], input_shape[2], 1),
+                                dtype=tf.uint64)
+                        discriminate_ground_truth = \
+                            keras.layers.Concatenate(axis=0)([
+                                ones_batch, zeros_batch])
+
+                        # --- compute the loss value for this mini-batch
+                        loss_map = loss_fn(
+                            difficulty=noise_std,
+                            input_batch=input_batch,
+                            noisy_batch=noisy_batch,
+                            model_losses=model_denoise.losses,
+                            prediction_batch=denormalized_denoised_batch,
+                            discriminate_batch=discriminate_output_batch,
+                            discriminate_ground_truth=discriminate_ground_truth)
+
+                        if denoiser_step:
+                            grads = \
+                                tape.gradient(
+                                    target=loss_map[DISCRIMINATE_LOSS_STR],
+                                    sources=model_denoise.trainable_weights)
+
+                            optimizer.apply_gradients(
+                                grads_and_vars=zip(grads, model_denoise.trainable_weights))
+
+                        if discriminator_step:
+                            grads = \
+                                tape.gradient(
+                                    target=loss_map[DISCRIMINATE_LOSS_STR],
+                                    sources=model_discriminate.trainable_weights)
+
+                            optimizer.apply_gradients(
+                                grads_and_vars=zip(grads, model_discriminate.trainable_weights))
+                else:
+                    # Open a GradientTape to record the operations run
+                    # during the forward pass,
+                    # which enables auto-differentiation.
+                    with tf.GradientTape() as tape:
+                        # Run the forward pass of the layer.
+                        # The operations that the layer applies
+                        # to its inputs are going to be recorded
+                        # on the GradientTape.
+                        denoised_batch = \
+                            model_denoise(
+                                normalized_noisy_batch,
+                                training=True)
+                        denormalized_denoised_batch = \
+                            model_denormalize(
+                                denoised_batch,
+                                training=False)
+
+                        # compute the loss value for this mini-batch
+                        loss_map = loss_fn(
+                            difficulty=noise_std,
+                            input_batch=input_batch,
+                            noisy_batch=noisy_batch,
+                            model_losses=model_denoise.losses,
+                            prediction_batch=denormalized_denoised_batch)
+
+                        # Use the gradient tape to automatically retrieve
+                        # the gradients of the trainable variables
+                        # with respect to the loss.
+                        grads = \
+                            tape.gradient(
+                                target=loss_map[MEAN_TOTAL_LOSS_STR],
+                                sources=model_denoise.trainable_weights)
+
+                        # Run one step of gradient descent by updating
+                        # the value of the variables to minimize the loss.
+                        optimizer.apply_gradients(
+                            grads_and_vars=zip(grads, model_denoise.trainable_weights))
 
                 # --- add loss summaries for tensorboard
                 if loss_map is not None:
                     for name, key in [
                         ("loss/mae", "mae_loss"),
                         ("loss/nae", "nae_prediction"),
-                        ("loss/total", "mean_total_loss"),
+                        ("loss/total", MEAN_TOTAL_LOSS_STR),
                         ("quality/nae_noise", "nae_noise"),
                         ("quality/signal_to_noise_ratio", "snr"),
-                        ("loss/regularization", "regularization_loss"),
+                        ("loss/regularization", REGULARIZATION_LOSS_STR),
                         ("quality/nae_improvement", "nae_improvement")
                     ]:
                         tf.summary.scalar(
@@ -288,7 +386,7 @@ def train_loop(
                         input_batch=input_batch,
                         noisy_batch=noisy_batch,
                         random_batch=random_batch,
-                        prediction_batch=tmp_prediction_batch,
+                        prediction_batch=denormalized_denoised_batch,
                         visualization_number=visualization_number)
                     weights = \
                         get_conv2d_weights(

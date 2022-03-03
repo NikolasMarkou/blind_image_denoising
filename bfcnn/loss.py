@@ -16,12 +16,9 @@ from typing import List, Dict, Callable
 # local imports
 # ---------------------------------------------------------------------
 
+from .constants import *
 from .custom_logger import logger
 from .delta import delta_xy_magnitude
-
-# ---------------------------------------------------------------------
-
-DEFAULT_EPSILON = 0.0001
 
 # ---------------------------------------------------------------------
 
@@ -40,8 +37,8 @@ def snr(
     d_prediction = tf.reduce_sum(prediction, axis=[1, 2, 3])
     # mean over batch
     result = \
-        (tf.reduce_mean(d_prediction, axis=[0]) + DEFAULT_EPSILON) / \
-        (tf.reduce_mean(d_2, axis=[0]) + DEFAULT_EPSILON)
+        (tf.reduce_mean(d_prediction, axis=[0]) + EPSILON_DEFAULT) / \
+        (tf.reduce_mean(d_2, axis=[0]) + EPSILON_DEFAULT)
     return multiplier * tf.math.log(result) / tf.math.log(base)
 
 # ---------------------------------------------------------------------
@@ -61,7 +58,7 @@ def mae_weighted(
     :param hinge: hinge value
     """
     # --- calculate the weight per pixel based on how noisy it is
-    d_weight = tf.pow(original - noisy, 2) + DEFAULT_EPSILON
+    d_weight = tf.pow(original - noisy, 2) + EPSILON_DEFAULT
     if hinge != 0.0:
         d_weight = keras.layers.ReLU(threshold=hinge)(d_weight)
     d_weight = keras.layers.Softmax(axis=[1, 2])(d_weight)
@@ -103,7 +100,7 @@ def mae_weighted_delta(
             kernel_size=5,
             alpha=1.0,
             beta=1.0,
-            eps=DEFAULT_EPSILON)
+            eps=EPSILON_DEFAULT)
     d_weight = \
         keras.layers.Softmax(axis=[1, 2])(original_delta)
 
@@ -171,7 +168,7 @@ def nae(
     # mean over batch
     loss = \
         tf.reduce_mean(d, axis=[0]) / \
-        (tf.reduce_mean(d_x, axis=[0]) + DEFAULT_EPSILON)
+        (tf.reduce_mean(d_x, axis=[0]) + EPSILON_DEFAULT)
     return loss
 
 
@@ -201,6 +198,8 @@ def loss_function_builder(
             prediction_batch,
             noisy_batch=None,
             model_losses=None,
+            discriminate_batch=None,
+            discriminate_ground_truth=None,
             difficulty: float = -1.0) -> Dict:
         """
         The loss function of the depth prediction model
@@ -210,7 +209,7 @@ def loss_function_builder(
         :param: model_losses: weight/regularization losses
         :param: difficulty:
             if >= 0 then it is an indication how corrupted the noisy batch is
-        :return loss
+        :return: dictionary of losses
         """
 
         # --- mean absolute error from prediction
@@ -243,6 +242,16 @@ def loss_function_builder(
 
         nae_improvement = nae_noise - nae_prediction
 
+        # ---
+        discriminate_loss = 0
+        if discriminate_batch is not None and \
+                discriminate_ground_truth is not None:
+            discriminate_loss = \
+                keras.losses.sparse_categorical_crossentropy(
+                    y_true=discriminate_ground_truth,
+                    y_pred=discriminate_batch,
+                    axis=-1)
+
         # --- regularization error
         regularization_loss = 0.0
         if model_losses is not None:
@@ -270,9 +279,10 @@ def loss_function_builder(
             "snr": signal_to_noise_ratio,
             "mae_loss": mae_prediction_loss,
             "nae_prediction": nae_prediction,
-            "mean_total_loss": mean_total_loss,
+            MEAN_TOTAL_LOSS_STR: mean_total_loss,
             "nae_improvement": nae_improvement,
-            "regularization_loss": regularization_loss
+            DISCRIMINATE_LOSS_STR: discriminate_loss,
+            REGULARIZATION_LOSS_STR: regularization_loss
         }
 
     return loss_function

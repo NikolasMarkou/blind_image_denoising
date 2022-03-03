@@ -1,5 +1,5 @@
 {
-  "model": {
+  "model_denoise": {
     "filters": 16,
     "no_layers": 5,
     "min_value": 0,

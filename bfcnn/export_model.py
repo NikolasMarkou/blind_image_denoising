@@ -16,6 +16,7 @@ from typing import List, Union, Tuple, Dict
 # local imports
 # ---------------------------------------------------------------------
 
+from .constants import *
 from .custom_logger import logger
 from .utilities import load_config
 from .model_denoise import model_builder, module_builder
@@ -68,7 +69,7 @@ def export_model(
     pipeline_config = load_config(pipeline_config)
     model_denoise, model_normalize, model_denormalize = \
         model_builder(
-            pipeline_config["model"])
+            pipeline_config[MODEL_DENOISE_STR])
     logger.info("saving configuration pipeline")
     pipeline_config_path = \
         os.path.join(
