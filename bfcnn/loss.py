@@ -301,7 +301,11 @@ def loss_function_builder(
             MEAN_TOTAL_LOSS_STR: mean_total_loss,
             "nae_improvement": nae_improvement,
             DISCRIMINATE_LOSS_STR: discriminate_loss,
-            REGULARIZATION_LOSS_STR: regularization_loss
+            REGULARIZATION_LOSS_STR: regularization_loss,
+            "discriminate_loss_0": discriminate_loss * discriminate_multiplier,
+            "mae_loss_0": (mae_prediction_loss +
+                           mae_weighted_delta_loss +
+                           mae_weighted_prediction_loss) * mae_multiplier,
         }
 
     return loss_function
