@@ -208,17 +208,16 @@ def learnable_multiplier_layer(
 # ---------------------------------------------------------------------
 
 
-def mean_sigma_local(
+def mean_variance_local(
         input_layer,
-        kernel_size: Tuple[int, int] = (5, 5),
-        epsilon: float = DEFAULT_EPSILON):
+        kernel_size: Tuple[int, int] = (5, 5)):
     """
-    calculate window mean per channel and window sigma per channel
+    calculate window mean per channel and window variance per channel
 
     :param input_layer: the layer to operate on
     :param kernel_size: size of the kernel (window)
     :param epsilon: small number for robust sigma calculation
-    :return: mean, sigma tensors
+    :return: mean, variance tensors
     """
     # --- argument checking
     if input_layer is None:
@@ -233,13 +232,6 @@ def mean_sigma_local(
     def func_diff_2(args):
         x, y = args
         return tf.square(x - y)
-
-    def func_sqrt_robust(args):
-        x = args
-        # fix variance
-        n = (kernel_size[0] * kernel_size[1])
-        x = x * (float(n) / float(n - 1))
-        return tf.sqrt(tf.abs(x) + epsilon)
 
     # ---
     mean = \
@@ -256,6 +248,37 @@ def mean_sigma_local(
             strides=(1, 1),
             padding="same",
             pool_size=kernel_size)(diff_2)
+
+    return mean, variance
+
+# ---------------------------------------------------------------------
+
+
+def mean_sigma_local(
+        input_layer,
+        kernel_size: Tuple[int, int] = (5, 5),
+        epsilon: float = DEFAULT_EPSILON):
+    """
+    calculate window mean per channel and window sigma per channel
+
+    :param input_layer: the layer to operate on
+    :param kernel_size: size of the kernel (window)
+    :param epsilon: small number for robust sigma calculation
+    :return: mean, sigma tensors
+    """
+    mean, variance = \
+        mean_variance_local(
+            input_layer=input_layer,
+            kernel_size=kernel_size,
+            epsilon=epsilon)
+
+    def func_sqrt_robust(args):
+        x = args
+        # fix variance
+        n = (kernel_size[0] * kernel_size[1])
+        x = x * (float(n) / float(n - 1))
+        return tf.sqrt(tf.abs(x) + epsilon)
+
     sigma = \
         keras.layers.Lambda(
             function=func_sqrt_robust,
@@ -551,7 +574,8 @@ def resnet_blocks(
         depth_conv_params: Dict,
         intermediate_conv_params: Dict,
         bn_params: Dict = None,
-        gate_params: Dict = None):
+        gate_params: Dict = None,
+        var_params: Dict = None):
     """
     Create a series of residual network blocks
 
@@ -571,9 +595,16 @@ def resnet_blocks(
         raise ValueError("no_layers must be >= 0")
     use_bn = bn_params is not None
     use_gate = gate_params is not None
+    use_var = var_params is not None
 
     # --- setup resnet
     x = input_layer
+
+    if use_var:
+        _, x_sigma = \
+            mean_variance_local(
+                input_layer=x,
+                kernel_size=(5, 5))
 
     # --- create several number of residual blocks
     for i in range(no_layers):
@@ -581,6 +612,8 @@ def resnet_blocks(
         # 1st conv
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
+        if use_var:
+            x = keras.layers.Concatenate(axis=-1)([x, x_sigma])
         x = keras.layers.Conv2D(**intermediate_conv_params)(x)
         # 2nd conv
         if use_bn:

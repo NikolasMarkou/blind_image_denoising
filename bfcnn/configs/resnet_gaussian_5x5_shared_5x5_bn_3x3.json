@@ -43,7 +43,7 @@
     "local_normalization": -1,
     "output_multiplier": 1.0,
     "kernel_regularizer": "l1",
-    "final_activation": "sigmoid",
+    "final_activation": "relu",
     "input_shape": ["?", "?", 1],
     "kernel_initializer": "glorot_normal",
     "pyramid": {
