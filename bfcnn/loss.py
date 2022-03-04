@@ -260,6 +260,10 @@ def loss_function_builder(
                     y_pred=discriminate_batch,
                     axis=-1)
             discriminate_loss = \
+                keras.layers.ReLU(
+                    max_value=1.0,
+                    trainable=False)(discriminate_loss)
+            discriminate_loss = \
                 tf.reduce_mean(
                     input_tensor=discriminate_loss,
                     axis=[1, 2],

@@ -585,6 +585,7 @@ def resnet_blocks(
     :param intermediate_conv_params: the parameters of the start and end conv
     :param bn_params: batch normalization parameters
     :param gate_params: gate optional parameters
+    :param var_params: variance optional parameters
 
     :return: filtered input_layer
     """
