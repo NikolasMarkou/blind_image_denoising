@@ -7,7 +7,7 @@
     "kernel_size": 3,
     "type": "resnet",
     "batchnorm": true,
-    "clip_values": false,
+    "clip_values": true,
     "activation": "relu",
     "shared_model": true,
     "local_normalization": -1,

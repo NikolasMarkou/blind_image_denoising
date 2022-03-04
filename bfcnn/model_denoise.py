@@ -237,17 +237,18 @@ def model_builder(
                         [x_level, means[i], sigmas[i]])
             x_levels[i] = x_level
 
+    # --- clip levels to [-0.5, +0.5]
+    if clip_values:
+        for i, x_level in enumerate(x_levels):
+            x_levels[i] = \
+                keras.backend.clip(
+                    x_level,
+                    min_value=-0.5,
+                    max_value=+0.5)
+
     # --- merge levels together
     x_result = \
         model_inverse_pyramid(x_levels)
-
-    # clip to [-0.5, +0.5]
-    if clip_values:
-        x_result = \
-            keras.backend.clip(
-                x_result,
-                min_value=-0.5,
-                max_value=+0.5)
 
     # name output
     output_layer = \
