@@ -192,7 +192,7 @@ def loss_function_builder(
     mae_delta_enabled = config.get("mae_delta", False)
     mae_weighted_enabled = config.get("mae_weighted", False)
     regularization_multiplier = config.get("regularization", 1.0)
-    discriminate_multiplier = config.get("discriminate_multiplier, 1.0")
+    discriminate_multiplier = config.get("discriminate_multiplier", 1.0)
 
     def loss_function(
             input_batch,
