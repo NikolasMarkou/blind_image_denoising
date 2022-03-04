@@ -336,7 +336,7 @@ def train_loop(
                         if denoiser_step:
                             grads = \
                                 tape.gradient(
-                                    target=loss_map["mae_loss_0"],
+                                    target=loss_map["denoise_loss_0"],
                                     sources=model_denoise_weights)
 
                             optimizer.apply_gradients(

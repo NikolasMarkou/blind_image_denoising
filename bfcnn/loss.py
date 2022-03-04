@@ -303,9 +303,10 @@ def loss_function_builder(
             DISCRIMINATE_LOSS_STR: discriminate_loss,
             REGULARIZATION_LOSS_STR: regularization_loss,
             "discriminate_loss_0": discriminate_loss * discriminate_multiplier,
-            "mae_loss_0": (mae_prediction_loss +
-                           mae_weighted_delta_loss +
-                           mae_weighted_prediction_loss) * mae_multiplier,
+            "denoise_loss_0": (mae_prediction_loss +
+                               mae_weighted_delta_loss +
+                               mae_weighted_prediction_loss) * mae_multiplier +
+                              (1.0 - discriminate_loss) * discriminate_multiplier,
         }
 
     return loss_function

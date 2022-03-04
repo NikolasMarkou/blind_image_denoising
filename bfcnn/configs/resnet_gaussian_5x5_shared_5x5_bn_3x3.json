@@ -84,7 +84,7 @@
     }
   },
   "loss": {
-    "hinge": 5.0,
+    "hinge": 2.5,
     "mae_delta": false,
     "mae_weighted": false,
     "mae_multiplier": 0.5,
