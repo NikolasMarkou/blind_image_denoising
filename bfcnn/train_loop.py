@@ -287,9 +287,14 @@ def train_loop(
                                 denoised_batch,
                                 training=False)
 
+                        normalized_denoised_batch = \
+                            model_normalize(
+                                denormalized_denoised_batch,
+                                training=False)
+
                         discriminate_input_batch = \
                             keras.layers.Concatenate(axis=0)([
-                                normalized_input_batch, denoised_batch])
+                                normalized_input_batch, normalized_denoised_batch])
 
                         discriminate_output_batch = \
                             model_discriminate(
