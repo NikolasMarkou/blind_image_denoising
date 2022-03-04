@@ -251,6 +251,10 @@ def loss_function_builder(
                     y_true=discriminate_ground_truth,
                     y_pred=discriminate_batch,
                     axis=-1)
+            discriminate_loss = \
+                tf.reduce_sum(discriminate_loss, axis=[1, 2], keepdims=False)
+            discriminate_loss = \
+                tf.reduce_mean(discriminate_loss, axis=[0])
 
         # --- regularization error
         regularization_loss = 0.0
