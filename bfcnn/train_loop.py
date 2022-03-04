@@ -323,7 +323,7 @@ def train_loop(
                         if denoiser_step:
                             grads = \
                                 tape.gradient(
-                                    target=loss_map[DISCRIMINATE_LOSS_STR] + loss_map[MEAN_TOTAL_LOSS_STR],
+                                    target=loss_map[DISCRIMINATE_LOSS_STR] + loss_map[MEAN_TOTAL_LOSS_STR] * 0.1,
                                     sources=model_denoise.trainable_weights)
 
                             optimizer.apply_gradients(
@@ -384,9 +384,12 @@ def train_loop(
                         ("loss/total", MEAN_TOTAL_LOSS_STR),
                         ("quality/nae_noise", "nae_noise"),
                         ("quality/signal_to_noise_ratio", "snr"),
-                        ("loss/regularization", REGULARIZATION_LOSS_STR),
-                        ("quality/nae_improvement", "nae_improvement")
+                        ("quality/nae_improvement", "nae_improvement"),
+                        ("loss/discrimination", DISCRIMINATE_LOSS_STR),
+                        ("loss/regularization", REGULARIZATION_LOSS_STR)
                     ]:
+                        if key not in loss_map:
+                            continue
                         tf.summary.scalar(
                             name=name,
                             data=loss_map[key],

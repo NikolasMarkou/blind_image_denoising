@@ -78,8 +78,8 @@
     "prune": {
       "start_epoch": 1,
       "shrinkage": 0.75,
-      "minimum_threshold": 0.00005,
-      "shrinkage_threshold": 0.0001,
+      "minimum_threshold": 0.000005,
+      "shrinkage_threshold": 0.00001,
       "strategy": "minimum_threshold_shrinkage"
     }
   },
@@ -92,7 +92,7 @@
     "nae_multiplier": 10.0
   },
   "dataset": {
-    "batch_size": 12,
+    "batch_size": 16,
     "min_value": 0,
     "max_value": 255,
     "clip_value": true,
