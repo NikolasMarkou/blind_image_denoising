@@ -241,10 +241,10 @@ def model_builder(
     if clip_values:
         for i, x_level in enumerate(x_levels):
             x_levels[i] = \
-                keras.backend.clip(
-                    x_level,
-                    min_value=-0.5,
-                    max_value=+0.5)
+                tf.clip_by_value(
+                    t=x_level,
+                    clip_value_min=-0.75,
+                    clip_value_max=+0.75)
 
     # --- merge levels together
     x_result = \
