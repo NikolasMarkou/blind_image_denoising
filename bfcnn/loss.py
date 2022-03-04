@@ -20,6 +20,7 @@ from .constants import *
 from .custom_logger import logger
 from .delta import delta_xy_magnitude
 
+
 # ---------------------------------------------------------------------
 
 
@@ -40,6 +41,7 @@ def snr(
         (tf.reduce_mean(d_prediction, axis=[0]) + EPSILON_DEFAULT) / \
         (tf.reduce_mean(d_2, axis=[0]) + EPSILON_DEFAULT)
     return multiplier * tf.math.log(result) / tf.math.log(base)
+
 
 # ---------------------------------------------------------------------
 
@@ -80,6 +82,7 @@ def mae_weighted(
 
     return loss
 
+
 # ---------------------------------------------------------------------
 
 
@@ -119,6 +122,7 @@ def mae_weighted_delta(
     loss = tf.reduce_mean(d, axis=[0])
 
     return loss
+
 
 # ---------------------------------------------------------------------
 
@@ -214,26 +218,29 @@ def loss_function_builder(
         """
 
         # --- mean absolute error from prediction
+        mae_prediction_loss = 0.0
         mae_weighted_delta_loss = 0.0
         mae_weighted_prediction_loss = 0.0
-        mae_prediction_loss = \
-            mae(
-                original=input_batch,
-                prediction=prediction_batch,
-                hinge=hinge)
-        if mae_delta_enabled:
-            mae_weighted_delta_loss = \
-                mae_weighted_delta(
+        if input_batch is not None and \
+                prediction_batch is not None:
+            mae_prediction_loss = \
+                mae(
                     original=input_batch,
                     prediction=prediction_batch,
                     hinge=hinge)
-        if mae_weighted_enabled:
-            mae_weighted_prediction_loss = \
-                mae_weighted(
-                    original=input_batch,
-                    noisy=noisy_batch,
-                    prediction=prediction_batch,
-                    hinge=hinge)
+            if mae_delta_enabled:
+                mae_weighted_delta_loss = \
+                    mae_weighted_delta(
+                        original=input_batch,
+                        prediction=prediction_batch,
+                        hinge=hinge)
+            if mae_weighted_enabled:
+                mae_weighted_prediction_loss = \
+                    mae_weighted(
+                        original=input_batch,
+                        noisy=noisy_batch,
+                        prediction=prediction_batch,
+                        hinge=hinge)
         # ---
         nae_prediction = \
             nae(input_batch, prediction_batch, hinge)
@@ -243,8 +250,8 @@ def loss_function_builder(
 
         nae_improvement = nae_noise - nae_prediction
 
-        # ---
-        discriminate_loss = 0
+        # --- discrimination loss
+        discriminate_loss = 0.0
         if discriminate_batch is not None and \
                 discriminate_ground_truth is not None:
             discriminate_loss = \

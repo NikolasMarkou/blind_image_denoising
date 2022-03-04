@@ -246,6 +246,14 @@ def train_loop(
                 model_denoise = \
                     prune_function(model=model_denoise)
 
+            model_denoise_weights = None
+            model_discriminate_weights = None
+
+            if model_denoise is not None:
+                model_denoise_weights = model_denoise.trainable_weights
+            if model_discriminate is not None:
+                model_discriminate_weights = model_discriminate.trainable_weights
+
             # --- iterate over the batches of the dataset
             for input_batch in dataset:
                 start_time = time.time()
@@ -324,19 +332,19 @@ def train_loop(
                             grads = \
                                 tape.gradient(
                                     target=loss_map[MEAN_TOTAL_LOSS_STR],
-                                    sources=model_denoise.trainable_weights)
+                                    sources=model_denoise_weights)
 
                             optimizer.apply_gradients(
-                                grads_and_vars=zip(grads, model_denoise.trainable_weights))
+                                grads_and_vars=zip(grads, model_denoise_weights))
 
                         if discriminator_step:
                             grads = \
                                 tape.gradient(
                                     target=loss_map[MEAN_TOTAL_LOSS_STR],
-                                    sources=model_discriminate.trainable_weights)
+                                    sources=model_discriminate_weights)
 
                             optimizer.apply_gradients(
-                                grads_and_vars=zip(grads, model_discriminate.trainable_weights))
+                                grads_and_vars=zip(grads, model_discriminate_weights))
                 else:
                     # Open a GradientTape to record the operations run
                     # during the forward pass,
