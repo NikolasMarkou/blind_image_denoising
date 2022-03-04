@@ -192,6 +192,7 @@ def loss_function_builder(
     mae_delta_enabled = config.get("mae_delta", False)
     mae_weighted_enabled = config.get("mae_weighted", False)
     regularization_multiplier = config.get("regularization", 1.0)
+    discriminate_multiplier = config.get("discriminate_multiplier, 1.0")
 
     def loss_function(
             input_batch,
@@ -276,7 +277,8 @@ def loss_function_builder(
             (mae_prediction_loss +
              mae_weighted_delta_loss +
              mae_weighted_prediction_loss) * mae_multiplier + \
-            regularization_loss * regularization_multiplier
+            regularization_loss * regularization_multiplier + \
+            discriminate_loss * discriminate_multiplier
 
         return {
             "nae_noise": nae_noise,

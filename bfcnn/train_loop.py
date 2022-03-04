@@ -323,7 +323,7 @@ def train_loop(
                         if denoiser_step:
                             grads = \
                                 tape.gradient(
-                                    target=loss_map[DISCRIMINATE_LOSS_STR] + loss_map[MEAN_TOTAL_LOSS_STR] * 0.1,
+                                    target=loss_map[MEAN_TOTAL_LOSS_STR],
                                     sources=model_denoise.trainable_weights)
 
                             optimizer.apply_gradients(
@@ -332,7 +332,7 @@ def train_loop(
                         if discriminator_step:
                             grads = \
                                 tape.gradient(
-                                    target=loss_map[DISCRIMINATE_LOSS_STR],
+                                    target=loss_map[MEAN_TOTAL_LOSS_STR],
                                     sources=model_discriminate.trainable_weights)
 
                             optimizer.apply_gradients(

@@ -76,7 +76,7 @@
       "gradient_clipping_by_norm": 1.0
     },
     "prune": {
-      "start_epoch": 1,
+      "start_epoch": 10,
       "shrinkage": 0.75,
       "minimum_threshold": 0.000005,
       "shrinkage_threshold": 0.00001,
@@ -84,12 +84,13 @@
     }
   },
   "loss": {
-    "hinge": 2.5,
+    "hinge": 5.0,
     "mae_delta": false,
     "mae_weighted": false,
-    "mae_multiplier": 1.0,
+    "mae_multiplier": 0.5,
     "regularization": 0.01,
-    "nae_multiplier": 10.0
+    "nae_multiplier": 10.0,
+    "discriminate_multiplier": 5.0
   },
   "dataset": {
     "batch_size": 16,
