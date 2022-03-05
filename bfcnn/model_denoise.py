@@ -432,9 +432,9 @@ def build_model_denoise_resnet(
             input_layer=x,
             **resnet_params)
 
-    # # optional batch norm
-    # if use_bn:
-    #     x = keras.layers.BatchNormalization(**bn_params)(x)
+    # optional batch norm
+    if use_bn:
+        x = keras.layers.BatchNormalization(**bn_params)(x)
 
     # learnable multiplier
     if add_learnable_multiplier:

@@ -31,7 +31,7 @@
   },
   "model_discriminate": {
     "filters": 16,
-    "no_layers": 2,
+    "no_layers": 3,
     "min_value": 0,
     "max_value": 255,
     "kernel_size": 3,
