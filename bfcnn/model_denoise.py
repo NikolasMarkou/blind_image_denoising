@@ -357,6 +357,7 @@ def build_model_denoise_resnet(
     )
 
     depth_conv_params = dict(
+        groups=2,
         kernel_size=3,
         filters=filters * 2,
         strides=(1, 1),
