@@ -571,8 +571,9 @@ def build_denormalize_model(
 def resnet_blocks(
         input_layer,
         no_layers: int,
-        depth_conv_params: Dict,
-        intermediate_conv_params: Dict,
+        first_conv_params: Dict,
+        second_conv_params: Dict,
+        third_conv_params: Dict,
         bn_params: Dict = None,
         gate_params: Dict = None,
         var_params: Dict = None):
@@ -581,8 +582,9 @@ def resnet_blocks(
 
     :param input_layer: the input layer to perform on
     :param no_layers: how many residual network blocks to add
-    :param depth_conv_params: the parameters of the middle conv
-    :param intermediate_conv_params: the parameters of the start and end conv
+    :param first_conv_params: the parameters of the first conv
+    :param second_conv_params: the parameters of the middle conv
+    :param third_conv_params: the parameters of the third conv
     :param bn_params: batch normalization parameters
     :param gate_params: gate optional parameters
     :param var_params: variance optional parameters
@@ -615,17 +617,17 @@ def resnet_blocks(
             x = keras.layers.BatchNormalization(**bn_params)(x)
         if use_var:
             x = keras.layers.Concatenate(axis=-1)([x, x_sigma])
-        x = keras.layers.Conv2D(**intermediate_conv_params)(x)
+        x = keras.layers.Conv2D(**first_conv_params)(x)
         # 2nd conv
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
         g_layer = x
-        x = keras.layers.Conv2D(**depth_conv_params)(x)
+        x = keras.layers.Conv2D(**second_conv_params)(x)
         # 3rd conv
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
         # output results
-        x = keras.layers.Conv2D(**intermediate_conv_params)(x)
+        x = keras.layers.Conv2D(**third_conv_params)(x)
         # compute activation per channel
         if use_gate:
             g_layer = \

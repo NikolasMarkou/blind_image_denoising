@@ -356,7 +356,18 @@ def build_model_discriminate_resnet(
         kernel_initializer=kernel_initializer
     )
 
-    depth_conv_params = dict(
+    first_conv_params = dict(
+        kernel_size=1,
+        filters=filters,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation=activation,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
+    second_conv_params = dict(
         kernel_size=3,
         filters=filters * 2,
         strides=(1, 1),
@@ -367,7 +378,8 @@ def build_model_discriminate_resnet(
         kernel_initializer=kernel_initializer
     )
 
-    intermediate_conv_params = dict(
+    third_conv_params = dict(
+        groups=2,
         kernel_size=1,
         filters=filters,
         strides=(1, 1),
@@ -393,8 +405,9 @@ def build_model_discriminate_resnet(
     resnet_params = dict(
         no_layers=no_layers,
         bn_params=bn_params,
-        depth_conv_params=depth_conv_params,
-        intermediate_conv_params=intermediate_conv_params
+        first_conv_params=first_conv_params,
+        second_conv_params=second_conv_params,
+        third_conv_params=third_conv_params
     )
 
     # make it linear so it gets sparse afterwards
