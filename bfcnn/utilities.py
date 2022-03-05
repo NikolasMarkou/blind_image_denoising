@@ -636,7 +636,7 @@ def resnet_blocks(
                 (keras.layers.Activation("tanh")(g_layer * 2.0) + 1.0) / 2.0
             x = keras.layers.Multiply()([x, g_layer])
         # skip connection
-        x = keras.layers.Add()([previous_layer, x])
+        x = keras.layers.Add()([x, previous_layer])
 
     return x
 
