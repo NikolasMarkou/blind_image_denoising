@@ -119,7 +119,7 @@ def train_loop(
     prune_start_epoch = prune_config.get("start_epoch", 0)
     prune_function = prune_function_builder(prune_config)
     use_discriminator = MODEL_DISCRIMINATE_STR in config
-    model_discriminate = None
+    model_discriminate = {}
 
     # --- build the denoise model
     tf.summary.trace_on(graph=True, profiler=False)
