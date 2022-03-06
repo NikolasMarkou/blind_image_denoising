@@ -119,7 +119,7 @@ def train_loop(
     prune_start_epoch = prune_config.get("start_epoch", 0)
     prune_function = prune_function_builder(prune_config)
     use_discriminator = MODEL_DISCRIMINATE_STR in config
-    model_discriminate = {}
+    model_discriminate = None
 
     # --- build the denoise model
     tf.summary.trace_on(graph=True, profiler=False)
@@ -220,15 +220,25 @@ def train_loop(
 
     # --- train the model
     with summary_writer.as_default():
-        checkpoint = \
-            tf.train.Checkpoint(
-                step=global_step,
-                epoch=global_epoch,
-                optimizer=optimizer,
-                model_denoise=model_denoise,
-                model_normalize=model_normalize,
-                model_denormalize=model_denormalize,
-                model_discriminate=model_discriminate)
+        if use_discriminator:
+            checkpoint = \
+                tf.train.Checkpoint(
+                    step=global_step,
+                    epoch=global_epoch,
+                    optimizer=optimizer,
+                    model_denoise=model_denoise,
+                    model_normalize=model_normalize,
+                    model_denormalize=model_denormalize,
+                    model_discriminate=model_discriminate)
+        else:
+            checkpoint = \
+                tf.train.Checkpoint(
+                    step=global_step,
+                    epoch=global_epoch,
+                    optimizer=optimizer,
+                    model_denoise=model_denoise,
+                    model_normalize=model_normalize,
+                    model_denormalize=model_denormalize)
         manager = \
             tf.train.CheckpointManager(
                 checkpoint=checkpoint,
