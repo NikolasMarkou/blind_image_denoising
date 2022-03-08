@@ -225,9 +225,9 @@ def loss_function_builder(
                 prediction_batch is not None:
             if pyramid_model is not None:
                 pyramid_input_batch = \
-                    pyramid_model(input_batch, trainable=False)
+                    pyramid_model(input_batch, training=False)
                 pyramid_prediction_batch = \
-                    pyramid_model(prediction_batch, trainable=False)
+                    pyramid_model(prediction_batch, training=False)
                 for i, _ in enumerate(pyramid_input_batch):
                     tmp_input_batch = pyramid_input_batch[i]
                     tmp_prediction_batch = pyramid_prediction_batch[i]
