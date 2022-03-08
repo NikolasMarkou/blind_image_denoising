@@ -124,7 +124,11 @@ def train_loop(
     # --- build the denoise model
     tf.summary.trace_on(graph=True, profiler=False)
     with summary_writer.as_default():
-        model_denoise, model_normalize, model_denormalize = \
+        model_denoise, \
+        model_normalize, \
+        model_denormalize, \
+        model_pyramid, \
+        model_inverse_pyramid = \
             model_denoise_builder(config=config[MODEL_DENOISE_STR])
 
         # The function to be traced.
@@ -154,7 +158,7 @@ def train_loop(
     if use_discriminator:
         tf.summary.trace_on(graph=True, profiler=False)
         with summary_writer.as_default():
-            model_discriminate, _, _ = \
+            model_discriminate, _, _, _, _ = \
                 model_discriminate_builder(config=config[MODEL_DISCRIMINATE_STR])
 
             # The function to be traced.
@@ -384,6 +388,7 @@ def train_loop(
                             input_batch=input_batch,
                             noisy_batch=noisy_batch,
                             model_losses=model_denoise.losses,
+                            pyramid_model=model_pyramid,
                             prediction_batch=denormalized_denoised_batch)
 
                         # Use the gradient tape to automatically retrieve

@@ -194,7 +194,6 @@ def loss_function_builder(
     nae_multiplier = config.get("nae_multiplier", 0.0)
     mae_multiplier = config.get("mae_multiplier", 1.0)
     mae_delta_enabled = config.get("mae_delta", False)
-    mae_weighted_enabled = config.get("mae_weighted", False)
     regularization_multiplier = config.get("regularization", 1.0)
     discriminate_multiplier = config.get("discriminate_multiplier", 1.0)
 
@@ -205,6 +204,7 @@ def loss_function_builder(
             model_losses=None,
             discriminate_batch=None,
             discriminate_ground_truth=None,
+            pyramid_model: keras.Model = None,
             difficulty: float = -1.0) -> Dict:
         """
         The loss function of the depth prediction model
@@ -223,24 +223,37 @@ def loss_function_builder(
         mae_weighted_prediction_loss = 0.0
         if input_batch is not None and \
                 prediction_batch is not None:
-            mae_prediction_loss = \
-                mae(
-                    original=input_batch,
-                    prediction=prediction_batch,
-                    hinge=hinge)
-            if mae_delta_enabled:
-                mae_weighted_delta_loss = \
-                    mae_weighted_delta(
+            if pyramid_model is not None:
+                pyramid_input_batch = \
+                    pyramid_model(input_batch, trainable=False)
+                pyramid_prediction_batch = \
+                    pyramid_model(prediction_batch, trainable=False)
+                for i, _ in enumerate(pyramid_input_batch):
+                    tmp_input_batch = pyramid_input_batch[i]
+                    tmp_prediction_batch = pyramid_prediction_batch[i]
+                    mae_prediction_loss += \
+                        mae(
+                            original=tmp_input_batch,
+                            prediction=tmp_prediction_batch,
+                            hinge=hinge)
+                    if mae_delta_enabled:
+                        mae_weighted_delta_loss += \
+                            mae_weighted_delta(
+                                original=tmp_input_batch,
+                                prediction=tmp_prediction_batch,
+                                hinge=hinge)
+            else:
+                mae_prediction_loss = \
+                    mae(
                         original=input_batch,
                         prediction=prediction_batch,
                         hinge=hinge)
-            if mae_weighted_enabled:
-                mae_weighted_prediction_loss = \
-                    mae_weighted(
-                        original=input_batch,
-                        noisy=noisy_batch,
-                        prediction=prediction_batch,
-                        hinge=hinge)
+                if mae_delta_enabled:
+                    mae_weighted_delta_loss = \
+                        mae_weighted_delta(
+                            original=input_batch,
+                            prediction=prediction_batch,
+                            hinge=hinge)
         # ---
         nae_prediction = \
             nae(input_batch, prediction_batch, hinge)

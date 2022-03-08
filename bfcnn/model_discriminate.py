@@ -22,12 +22,14 @@ from .pyramid import build_pyramid_model, build_inverse_pyramid_model
 
 
 def model_builder(
-        config: Dict) -> Tuple[keras.Model, keras.Model, keras.Model]:
+        config: Dict) -> Tuple[keras.Model, keras.Model,
+                               keras.Model, keras.Model, keras.Model]:
     """
     Reads a configuration and returns 3 models,
 
     :param config: configuration dictionary
-    :return: discriminator model, normalize model, denormalize model
+    :return: discriminator model, normalize model,
+            denormalize model, pyramid model, inverse pyramid model
     """
     logger.info("building model with config [{0}]".format(config))
 
