@@ -57,7 +57,14 @@
     "hinge": 2.5,
     "mae_multiplier": 1.0,
     "regularization": 0.01,
-    "nae_multiplier": 10.0
+    "nae_multiplier": 10.0,
+    "input_shape": ["?", "?", 1],
+    "pyramid": {
+      "levels": 5,
+      "type": "gaussian",
+      "xy_max": [2.0, 2.0],
+      "kernel_size": [5, 5]
+    }
   },
   "dataset": {
     "batch_size": 16,

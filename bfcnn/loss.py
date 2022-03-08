@@ -19,7 +19,8 @@ from typing import List, Dict, Callable
 from .constants import *
 from .custom_logger import logger
 from .delta import delta_xy_magnitude
-
+from .pyramid import build_pyramid_model
+from .utilities import input_shape_fixer
 
 # ---------------------------------------------------------------------
 
@@ -194,8 +195,20 @@ def loss_function_builder(
     nae_multiplier = config.get("nae_multiplier", 0.0)
     mae_multiplier = config.get("mae_multiplier", 1.0)
     mae_delta_enabled = config.get("mae_delta", False)
+    model_pyramid_config = config.get("pyramid", None)
+    input_shape = config.get("input_shape", (None, None, 3))
     regularization_multiplier = config.get("regularization", 1.0)
     discriminate_multiplier = config.get("discriminate_multiplier", 1.0)
+    input_shape = input_shape_fixer(input_shape)
+
+    # prepare pyramid model
+    if model_pyramid_config is None:
+        model_pyramid = None
+    else:
+        model_pyramid = \
+            build_pyramid_model(
+                input_dims=input_shape,
+                config=model_pyramid_config)
 
     def loss_function(
             input_batch,
@@ -204,7 +217,6 @@ def loss_function_builder(
             model_losses=None,
             discriminate_batch=None,
             discriminate_ground_truth=None,
-            pyramid_model: keras.Model = None,
             difficulty: float = -1.0) -> Dict:
         """
         The loss function of the depth prediction model
@@ -220,14 +232,13 @@ def loss_function_builder(
         # --- mean absolute error from prediction
         mae_prediction_loss = 0.0
         mae_weighted_delta_loss = 0.0
-        mae_weighted_prediction_loss = 0.0
         if input_batch is not None and \
                 prediction_batch is not None:
-            if pyramid_model is not None:
+            if model_pyramid is not None:
                 pyramid_input_batch = \
-                    pyramid_model(input_batch, training=False)
+                    model_pyramid(input_batch, training=False)
                 pyramid_prediction_batch = \
-                    pyramid_model(prediction_batch, training=False)
+                    model_pyramid(prediction_batch, training=False)
                 for i, _ in enumerate(pyramid_input_batch):
                     tmp_input_batch = pyramid_input_batch[i]
                     tmp_prediction_batch = pyramid_prediction_batch[i]
@@ -254,6 +265,12 @@ def loss_function_builder(
                             original=input_batch,
                             prediction=prediction_batch,
                             hinge=hinge)
+
+        mae_actual = \
+            mae(
+                original=input_batch,
+                prediction=prediction_batch,
+                hinge=0)
         # ---
         nae_prediction = \
             nae(input_batch, prediction_batch, hinge)
@@ -305,15 +322,14 @@ def loss_function_builder(
         mean_total_loss = \
             nae_prediction * nae_multiplier + \
             (mae_prediction_loss +
-             mae_weighted_delta_loss +
-             mae_weighted_prediction_loss) * mae_multiplier + \
+             mae_weighted_delta_loss) * mae_multiplier + \
             regularization_loss * regularization_multiplier + \
             discriminate_loss * discriminate_multiplier
 
         return {
             "nae_noise": nae_noise,
+            MAE_LOSS_STR: mae_actual,
             "snr": signal_to_noise_ratio,
-            "mae_loss": mae_prediction_loss,
             "nae_prediction": nae_prediction,
             MEAN_TOTAL_LOSS_STR: mean_total_loss,
             "nae_improvement": nae_improvement,
@@ -321,8 +337,7 @@ def loss_function_builder(
             REGULARIZATION_LOSS_STR: regularization_loss,
             "discriminate_loss_0": discriminate_loss * discriminate_multiplier,
             "denoise_loss_0": (mae_prediction_loss +
-                               mae_weighted_delta_loss +
-                               mae_weighted_prediction_loss) * mae_multiplier +
+                               mae_weighted_delta_loss) * mae_multiplier +
                               (1.0 - discriminate_loss) * discriminate_multiplier,
         }
 

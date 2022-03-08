@@ -388,7 +388,6 @@ def train_loop(
                             input_batch=input_batch,
                             noisy_batch=noisy_batch,
                             model_losses=model_denoise.losses,
-                            pyramid_model=model_pyramid,
                             prediction_batch=denormalized_denoised_batch)
 
                         # Use the gradient tape to automatically retrieve
@@ -407,7 +406,7 @@ def train_loop(
                 # --- add loss summaries for tensorboard
                 if loss_map is not None:
                     for name, key in [
-                        ("loss/mae", "mae_loss"),
+                        ("loss/mae", MAE_LOSS_STR),
                         ("loss/nae", "nae_prediction"),
                         ("loss/total", MEAN_TOTAL_LOSS_STR),
                         ("quality/nae_noise", "nae_noise"),

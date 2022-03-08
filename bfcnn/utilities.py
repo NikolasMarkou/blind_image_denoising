@@ -13,7 +13,7 @@ import itertools
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
-from typing import List, Tuple, Union, Dict
+from typing import List, Tuple, Union, Dict, Iterable
 
 # ---------------------------------------------------------------------
 # local imports
@@ -50,6 +50,17 @@ def load_config(
         with open(str(config), "r") as f:
             return json.load(f)
     raise ValueError("don't know how to handle config [{0}]".format(config))
+
+# ---------------------------------------------------------------------
+
+
+def input_shape_fixer(input_shape: Iterable):
+    for i, shape in enumerate(input_shape):
+        if shape == "?" or \
+                shape == "" or \
+                shape == "-1":
+            input_shape[i] = None
+    return input_shape
 
 # ---------------------------------------------------------------------
 
@@ -162,7 +173,7 @@ def step_function(
     x = input_layer
     if offset != 0.0:
         x = x - offset
-    return (tf.math.tanh(x * multiplier) + 1.0) / 2.0
+    return (tf.math.tanh(x * multiplier) + 1.0) * 0.5
 
 # ---------------------------------------------------------------------
 
@@ -635,7 +646,9 @@ def resnet_blocks(
             g_layer = \
                 keras.layers.GlobalAvgPool2D()(g_layer)
             g_layer = \
-                (keras.layers.Activation("tanh")(g_layer * 2.0) + 1.0) / 2.0
+                step_function(
+                    input_layer=g_layer,
+                    multiplier=2.0)
             x = keras.layers.Multiply()([x, g_layer])
         # skip connection
         x = keras.layers.Add()([x, previous_layer])

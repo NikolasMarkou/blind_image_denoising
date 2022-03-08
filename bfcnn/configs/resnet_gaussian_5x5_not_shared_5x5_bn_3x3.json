@@ -9,7 +9,7 @@
     "batchnorm": true,
     "clip_values": false,
     "activation": "relu",
-    "shared_model": true,
+    "shared_model": false,
     "local_normalization": -1,
     "output_multiplier": 1.0,
     "kernel_regularizer": "l1",
