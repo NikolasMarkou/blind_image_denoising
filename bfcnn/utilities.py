@@ -585,6 +585,7 @@ def resnet_blocks(
         first_conv_params: Dict,
         second_conv_params: Dict,
         third_conv_params: Dict,
+        stop_gradient: bool = True,
         bn_params: Dict = None,
         gate_params: Dict = None,
         var_params: Dict = None):
@@ -596,6 +597,7 @@ def resnet_blocks(
     :param first_conv_params: the parameters of the first conv
     :param second_conv_params: the parameters of the middle conv
     :param third_conv_params: the parameters of the third conv
+    :param stop_gradient: if True stop gradient
     :param bn_params: batch normalization parameters
     :param gate_params: gate optional parameters
     :param var_params: variance optional parameters
@@ -623,6 +625,8 @@ def resnet_blocks(
     # --- create several number of residual blocks
     for i in range(no_layers):
         previous_layer = x
+        if stop_gradient:
+            x = keras.backend.stop_gradient(x)
         # 1st conv
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
