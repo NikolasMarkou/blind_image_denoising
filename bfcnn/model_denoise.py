@@ -45,6 +45,7 @@ def model_builder(
     pyramid_config = config.get("pyramid", None)
     clip_values = config.get("clip_values", False)
     shared_model = config.get("shared_model", False)
+    stop_gradient = config.get("stop_gradient", False)
     input_shape = config.get("input_shape", (None, None, 3))
     output_multiplier = config.get("output_multiplier", 1.0)
     local_normalization = config.get("local_normalization", -1)
@@ -89,6 +90,7 @@ def model_builder(
         no_layers=no_layers,
         input_dims=input_shape,
         kernel_size=kernel_size,
+        stop_gradient=stop_gradient,
         final_activation=final_activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
@@ -292,6 +294,7 @@ def build_model_denoise_resnet(
         kernel_regularizer="l1",
         kernel_initializer="glorot_normal",
         channel_index: int = 2,
+        stop_gradient: bool = False,
         add_sparsity: bool = False,
         add_gates: bool = False,
         add_intermediate_results: bool = False,
@@ -311,6 +314,7 @@ def build_model_denoise_resnet(
     :param use_bias: use bias
     :param kernel_regularizer: Kernel weight regularizer
     :param kernel_initializer: Kernel weight initializer
+    :param stop_gradient: if true stop gradient at each resnet block
     :param add_sparsity: if true add sparsity layer
     :param add_gates: if true add gate layer
     :param add_intermediate_results: if true output results before projection
@@ -406,7 +410,8 @@ def build_model_denoise_resnet(
         bn_params=bn_params,
         first_conv_params=first_conv_params,
         second_conv_params=second_conv_params,
-        third_conv_params=third_conv_params
+        third_conv_params=third_conv_params,
+        stop_gradient=stop_gradient
     )
 
     # make it linear so it gets sparse afterwards

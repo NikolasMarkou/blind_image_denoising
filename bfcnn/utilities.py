@@ -598,7 +598,7 @@ def resnet_blocks(
     :param first_conv_params: the parameters of the first conv
     :param second_conv_params: the parameters of the middle conv
     :param third_conv_params: the parameters of the third conv
-    :param stop_gradient: if True stop gradient
+    :param stop_gradient: if true stop gradient at each resnet block
     :param bn_params: batch normalization parameters
     :param gate_params: gate optional parameters
     :param var_params: variance optional parameters
