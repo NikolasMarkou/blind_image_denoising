@@ -586,7 +586,7 @@ def resnet_blocks(
         first_conv_params: Dict,
         second_conv_params: Dict,
         third_conv_params: Dict,
-        stop_gradient: bool = True,
+        stop_gradient: bool = False,
         bn_params: Dict = None,
         gate_params: Dict = None,
         var_params: Dict = None):
