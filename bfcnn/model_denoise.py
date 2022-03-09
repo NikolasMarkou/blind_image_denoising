@@ -57,7 +57,7 @@ def model_builder(
     use_global_normalization = local_normalization == 0
     use_normalization = use_local_normalization or use_global_normalization
     local_normalization_kernel = [local_normalization, local_normalization]
-    input_shape = input_shape_fixer(input_shape_fixer)
+    input_shape = input_shape_fixer(input_shape)
 
     # --- argument checking
     if levels <= 0:

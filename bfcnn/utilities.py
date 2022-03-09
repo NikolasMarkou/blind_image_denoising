@@ -54,7 +54,8 @@ def load_config(
 # ---------------------------------------------------------------------
 
 
-def input_shape_fixer(input_shape: Iterable):
+def input_shape_fixer(
+        input_shape: Iterable):
     for i, shape in enumerate(input_shape):
         if shape == "?" or \
                 shape == "" or \
