@@ -9,11 +9,11 @@ __license__ = "MIT"
 import os
 import pathlib
 import tensorflow as tf
-from .utilities import logger
 from .train_loop import train_loop
 from .export_model import export_model
 from .model_denoise import model_builder
 from .pyramid import build_pyramid_model
+from .utilities import logger, load_config
 
 # ---------------------------------------------------------------------
 

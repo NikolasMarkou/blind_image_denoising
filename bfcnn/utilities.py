@@ -622,6 +622,7 @@ def resnet_blocks(
             mean_variance_local(
                 input_layer=x,
                 kernel_size=(5, 5))
+    g_layer = x
 
     # --- create several number of residual blocks
     for i in range(no_layers):
@@ -637,7 +638,6 @@ def resnet_blocks(
         # 2nd conv
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
-        g_layer = x
         x = keras.layers.Conv2D(**second_conv_params)(x)
         # 3rd conv
         if use_bn:
@@ -647,14 +647,19 @@ def resnet_blocks(
         # compute activation per channel
         if use_gate:
             g_layer = \
-                keras.layers.Conv2D(**gate_params)(g_layer)
-            g_layer = \
-                keras.layers.GlobalAvgPool2D()(g_layer)
-            g_layer = \
+                keras.layers.Add()([x, g_layer])
+            y = g_layer
+            if use_bn:
+                y = keras.layers.BatchNormalization(**bn_params)(y)
+            y = \
+                keras.layers.Conv2D(**gate_params)(y)
+            y = \
+                keras.layers.GlobalAvgPool2D()(y)
+            y = \
                 step_function(
-                    input_layer=g_layer,
+                    input_layer=y,
                     multiplier=2.0)
-            x = keras.layers.Multiply()([x, g_layer])
+            x = keras.layers.Multiply()([x, y])
         # skip connection
         x = keras.layers.Add()([x, previous_layer])
 
