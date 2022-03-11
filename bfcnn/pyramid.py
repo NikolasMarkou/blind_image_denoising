@@ -229,7 +229,7 @@ class MixType(Enum):
             raise ValueError("stripped type_str must not be empty")
 
         # --- clean string and get
-        return PyramidType[type_str.strip().upper()]
+        return MixType[type_str.strip().upper()]
 
     def to_string(self) -> str:
         return self.name
