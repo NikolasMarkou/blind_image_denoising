@@ -210,6 +210,30 @@ def downsample_2x2_block(
             kernel_size=kernel_size)
     return x
 
+
+# ---------------------------------------------------------------------
+
+
+class MixType(Enum):
+    EQUAL = 1
+    EXPONENTIAL = 2
+
+    @staticmethod
+    def from_string(type_str: str) -> "MixType":
+        # --- argument checking
+        if type_str is None:
+            raise ValueError("type_str must not be null")
+        if not isinstance(type_str, str):
+            raise ValueError("type_str must be string")
+        if len(type_str.strip()) <= 0:
+            raise ValueError("stripped type_str must not be empty")
+
+        # --- clean string and get
+        return PyramidType[type_str.strip().upper()]
+
+    def to_string(self) -> str:
+        return self.name
+
 # ---------------------------------------------------------------------
 
 
@@ -293,6 +317,7 @@ def build_inverse_gaussian_pyramid_model(
         kernel_size: Tuple[int, int] = DEFAULT_KERNEL_SIZE,
         xy_max: Tuple[float, float] = DEFAULT_XY_MAX,
         trainable: bool = False,
+        mix_type: MixType = MixType.EQUAL,
         name: str = "inverse_gaussian_pyramid") -> keras.Model:
     """
     Build a gaussian pyramid model
@@ -303,6 +328,7 @@ def build_inverse_gaussian_pyramid_model(
     :param xy_max: how far the gaussian are we going
         (symmetrically) on the 2 axis
     :param trainable: is the pyramid trainable (default False)
+    :param mix_type: how to mix the different layers
     :param name: name of the model
     :return: inverse gaussian pyramid keras model
     """
@@ -313,9 +339,15 @@ def build_inverse_gaussian_pyramid_model(
     ]
 
     # --- compute layer weights
-    layer_weights = np.array(range(levels))
-    layer_weights = 2 ** layer_weights
-    layer_weights = layer_weights / np.sum(layer_weights)
+    if mix_type == MixType.EQUAL:
+        layer_weights = np.array([1.0 / levels] * levels)
+    elif mix_type == MixType.EXPONENTIAL:
+        layer_weights = np.array(range(levels))
+        layer_weights = 2 ** layer_weights
+        layer_weights = layer_weights / np.sum(layer_weights)
+    else:
+        raise ValueError("don't know how to use mix_type [{0}]".format(
+            mix_type))
 
     # --- merge different levels (from smallest to biggest)
     output_layer = input_layers[-1] * layer_weights[-1]
@@ -500,6 +532,9 @@ def build_inverse_pyramid_model(
     pyramid_type = PyramidType.from_string(config["type"])
     xy_max = config.get("xy_max", DEFAULT_XY_MAX)
     kernel_size = config.get("kernel_size", DEFAULT_KERNEL_SIZE)
+    mix_type = \
+        MixType.from_string(
+            config.get("mix_type", MixType.EQUAL.to_string()))
 
     if pyramid_type == PyramidType.GAUSSIAN:
         no_levels = config["levels"]
@@ -508,6 +543,7 @@ def build_inverse_pyramid_model(
                 input_dims=input_dims,
                 levels=no_levels,
                 xy_max=xy_max,
+                mix_type=mix_type,
                 kernel_size=kernel_size)
     elif pyramid_type == PyramidType.LAPLACIAN:
         no_levels = config["levels"]
