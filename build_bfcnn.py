@@ -42,7 +42,8 @@ def main(args):
 
     config = bfcnn.load_config(CONFIGS[model])["model_denoise"]
     model_denoise, _, _, _, _ = bfcnn.model_builder(config=config)
-    model_denoise.save(args.output_filename)
+    bfcnn.logger.info("saving model to [{0}]".format(args.output_file))
+    model_denoise.save(args.output_file)
 
 # ---------------------------------------------------------------------
 
