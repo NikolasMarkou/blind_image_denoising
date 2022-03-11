@@ -312,8 +312,14 @@ def build_inverse_gaussian_pyramid_model(
         for i in range(0, levels)
     ]
 
+    # --- compute layer weights
+    layer_weights = np.array(range(levels))
+    layer_weights = 2 ** layer_weights
+    layer_weights = layer_weights / np.sum(layer_weights)
+
     # --- merge different levels (from smallest to biggest)
-    output_layer = input_layers[-1]
+    output_layer = input_layers[-1] * layer_weights[-1]
+
     for i in range(levels-2, -1, -1):
         level_up_x = \
             upscale_2x2_block(
@@ -322,8 +328,9 @@ def build_inverse_gaussian_pyramid_model(
                 trainable=trainable,
                 kernel_size=kernel_size)
         output_layer = \
-            keras.layers.Add()([level_up_x, input_layers[i]])
-    output_layer = output_layer / levels
+            keras.layers.Add()([
+                level_up_x,
+                input_layers[i] * layer_weights[i]])
     output_layer = \
         keras.layers.Layer(name="output_tensor")(output_layer)
 
