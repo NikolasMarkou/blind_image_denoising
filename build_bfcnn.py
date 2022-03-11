@@ -42,8 +42,7 @@ def main(args):
 
     config = bfcnn.load_config(CONFIGS[model])["model_denoise"]
     model_denoise, _, _, _, _ = bfcnn.model_builder(config=config)
-    model_denoise.save("model.h5")
-    return
+    model_denoise.save(args.output_filename)
 
 # ---------------------------------------------------------------------
 
@@ -57,6 +56,13 @@ if __name__ == "__main__":
         default="",
         dest="model",
         help="model to build, options: {0}".format(list(CONFIGS.keys())))
+
+    parser.add_argument(
+        "--output-file",
+        type=str,
+        default="model.h5",
+        dest="output_file",
+        help="output file name")
 
     # parse the arguments and pass them to main
     args = parser.parse_args()
