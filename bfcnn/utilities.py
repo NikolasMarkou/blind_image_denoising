@@ -646,19 +646,13 @@ def resnet_blocks(
         x = keras.layers.Conv2D(**third_conv_params)(x)
         # compute activation per channel
         if use_gate:
-            g_layer = \
-                keras.layers.Add()([x, g_layer])
+            g_layer = keras.layers.Add()([x, g_layer])
             y = g_layer
             if use_bn:
                 y = keras.layers.BatchNormalization(**bn_params)(y)
-            y = \
-                keras.layers.Conv2D(**gate_params)(y)
-            y = \
-                keras.layers.GlobalAvgPool2D()(y)
-            y = \
-                step_function(
-                    input_layer=y,
-                    multiplier=2.0)
+            y = keras.layers.Conv2D(**gate_params)(y)
+            y = keras.layers.GlobalMaxPool2D()(y)
+            y = keras.activations.hard_sigmoid(y)
             x = keras.layers.Multiply()([x, y])
         # skip connection
         x = keras.layers.Add()([x, previous_layer])
