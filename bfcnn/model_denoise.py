@@ -299,6 +299,7 @@ def build_model_denoise_resnet(
         add_gates: bool = False,
         add_intermediate_results: bool = False,
         add_learnable_multiplier: bool = True,
+        add_projection_to_input: bool = True,
         name="resnet") -> keras.Model:
     """
     builds a resnet model
@@ -319,6 +320,7 @@ def build_model_denoise_resnet(
     :param add_gates: if true add gate layer
     :param add_intermediate_results: if true output results before projection
     :param add_learnable_multiplier:
+    :param add_projection_to_input: if true project to input tensor channel number
     :param name: name of the model
     :return: resnet model
     """
@@ -462,16 +464,18 @@ def build_model_denoise_resnet(
                 trainable=True,
                 multiplier=1.0,
                 activation="linear")
+    output_layer = x
 
-    # output to original channels / projection
-    output_layer = \
-        keras.layers.Conv2D(**final_conv_params)(x)
+    if add_projection_to_input:
+        # output to original channels / projection
+        output_layer = \
+            keras.layers.Conv2D(**final_conv_params)(output_layer)
 
-    # skip layer
-    output_layer = \
-        keras.layers.Add()([output_layer, y])
-    output_layer = \
-        keras.layers.Layer(name="output_tensor")(output_layer)
+        # skip layer
+        output_layer = \
+            keras.layers.Add()([output_layer, y])
+        output_layer = \
+            keras.layers.Layer(name="output_tensor")(output_layer)
 
     # return intermediate results if flag is turned on
     output_layers = [output_layer]

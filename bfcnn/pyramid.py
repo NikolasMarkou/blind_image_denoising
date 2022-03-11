@@ -305,6 +305,7 @@ def build_gaussian_pyramid_model(
     return \
         keras.Model(
             name=name,
+            trainable=trainable,
             inputs=input_layer,
             outputs=multiscale_layers)
 
@@ -369,8 +370,10 @@ def build_inverse_gaussian_pyramid_model(
     return \
         keras.Model(
             name=name,
+            trainable=trainable,
             inputs=input_layers,
             outputs=output_layer)
+
 
 # ---------------------------------------------------------------------
 
@@ -426,6 +429,7 @@ def build_laplacian_pyramid_model(
     return \
         keras.Model(
             name=name,
+            trainable=trainable,
             inputs=input_layer,
             outputs=multiscale_layers)
 
@@ -473,6 +477,7 @@ def build_inverse_laplacian_pyramid_model(
     return \
         keras.Model(
             name=name,
+            trainable=trainable,
             inputs=input_layers,
             outputs=output_layer)
 
