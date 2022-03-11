@@ -26,6 +26,7 @@
     "inverse_pyramid": {
       "levels": 5,
       "type": "gaussian",
+      "mix_type": "exponential",
       "xy_max": [2.0, 2.0],
       "kernel_size": [5, 5]
     }
