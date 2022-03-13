@@ -239,6 +239,7 @@ def loss_function_builder(
                     model_pyramid(input_batch, training=False)
                 pyramid_prediction_batch = \
                     model_pyramid(prediction_batch, training=False)
+                levels = 0
                 for i, _ in enumerate(pyramid_input_batch):
                     tmp_input_batch = pyramid_input_batch[i]
                     tmp_prediction_batch = pyramid_prediction_batch[i]
@@ -253,6 +254,9 @@ def loss_function_builder(
                                 original=tmp_input_batch,
                                 prediction=tmp_prediction_batch,
                                 hinge=hinge)
+                    levels += 1
+                mae_prediction_loss = mae_prediction_loss / levels
+                mae_weighted_delta_loss = mae_weighted_delta_loss / levels
             else:
                 mae_prediction_loss = \
                     mae(
