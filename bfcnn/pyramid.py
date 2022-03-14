@@ -241,6 +241,7 @@ class PyramidType(Enum):
     NONE = 1
     GAUSSIAN = 2
     LAPLACIAN = 3
+    GAUSSIAN_CONCAT = 4
 
     @staticmethod
     def from_string(type_str: str) -> "PyramidType":
@@ -374,6 +375,74 @@ def build_inverse_gaussian_pyramid_model(
             inputs=input_layers,
             outputs=output_layer)
 
+# ---------------------------------------------------------------------
+
+
+def build_inverse_concat_gaussian_pyramid_model(
+        input_dims: Union[Tuple, List],
+        levels: int,
+        kernel_size: Tuple[int, int] = DEFAULT_KERNEL_SIZE,
+        xy_max: Tuple[float, float] = DEFAULT_XY_MAX,
+        trainable: bool = True,
+        name: str = "inverse_concat_gaussian_pyramid") -> keras.Model:
+    """
+    Build a trainable gaussian pyramid model
+
+    :param input_dims: input dimensions
+    :param levels: how many levels to go down the pyramid
+    :param kernel_size: kernel size tuple
+    :param xy_max: how far the gaussian are we going
+        (symmetrically) on the 2 axis
+    :param trainable: is the pyramid trainable (default False)
+    :param name: name of the model
+    :return: inverse concat gaussian pyramid keras model
+    """
+    # --- prepare input
+    input_layers = [
+        keras.Input(name=f"input_tensor_{i}", shape=input_dims)
+        for i in range(0, levels)
+    ]
+
+    output_channels = input_dims[-1]
+
+    conv_params = dict(
+        strides=(1, 1),
+        kernel_size=3,
+        padding="same",
+        use_bias=False,
+        activation="tanh",
+        filters=output_channels,
+        kernel_initializer="l1",
+        kernel_regularizer="glorot_normal",
+    )
+
+    # --- merge different levels (from smallest to biggest)
+    output_layer = input_layers[-1]
+
+    for i in range(levels-2, -1, -1):
+        level_up_x = \
+            upscale_2x2_block(
+                input_layer=output_layer,
+                xy_max=xy_max,
+                trainable=False,
+                kernel_size=kernel_size)
+        output_layer = \
+            keras.layers.Concatenate()([
+                level_up_x,
+                input_layers[i]])
+
+    # --- project to output
+    output_layer = \
+        keras.layers.Conv2D(**conv_params)(output_layer)
+    output_layer = \
+        keras.layers.Layer(name="output_tensor")(output_layer)
+
+    return \
+        keras.Model(
+            name=name,
+            trainable=trainable,
+            inputs=input_layers,
+            outputs=output_layer)
 
 # ---------------------------------------------------------------------
 
@@ -549,6 +618,14 @@ def build_inverse_pyramid_model(
                 levels=no_levels,
                 xy_max=xy_max,
                 mix_type=mix_type,
+                kernel_size=kernel_size)
+    elif pyramid_type == PyramidType.GAUSSIAN_CONCAT:
+        no_levels = config["levels"]
+        pyramid_model = \
+            build_inverse_concat_gaussian_pyramid_model(
+                input_dims=input_dims,
+                levels=no_levels,
+                xy_max=xy_max,
                 kernel_size=kernel_size)
     elif pyramid_type == PyramidType.LAPLACIAN:
         no_levels = config["levels"]

@@ -176,6 +176,7 @@ def step_function(
         x = x - offset
     return (tf.math.tanh(x * multiplier) + 1.0) * 0.5
 
+
 # ---------------------------------------------------------------------
 
 
