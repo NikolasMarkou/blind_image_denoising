@@ -184,6 +184,8 @@ def get_conv2d_weights(
                 continue
             if verbose:
                 logger.info("pruning layer: {0}".format(layer_internal_name))
+            if i >= len(layer_weights):
+                continue
             for w in layer_weights[i]:
                 w_flat = w.flatten()
                 weights.append(w_flat)
