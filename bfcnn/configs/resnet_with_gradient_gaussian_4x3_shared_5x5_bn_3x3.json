@@ -61,10 +61,10 @@
     "nae_multiplier": 10.0,
     "input_shape": ["?", "?", 1],
     "pyramid": {
-      "levels": 5,
+      "levels": 4,
       "type": "gaussian",
-      "xy_max": [2.0, 2.0],
-      "kernel_size": [5, 5]
+      "xy_max": [1.0, 1.0],
+      "kernel_size": [3, 3]
     }
   },
   "dataset": {
