@@ -412,8 +412,8 @@ def build_inverse_concat_gaussian_pyramid_model(
         use_bias=False,
         activation="tanh",
         filters=output_channels,
-        kernel_initializer="l1",
-        kernel_regularizer="glorot_normal",
+        kernel_regularizer="l1",
+        kernel_initializer="glorot_normal",
     )
 
     # --- merge different levels (from smallest to biggest)
