@@ -45,13 +45,6 @@
       "decay_steps": 20000,
       "learning_rate": 0.001,
       "gradient_clipping_by_norm": 1.0
-    },
-    "prune": {
-      "start_epoch": 1,
-      "shrinkage": 0.75,
-      "minimum_threshold": 0.000005,
-      "shrinkage_threshold": 0.00001,
-      "strategy": "minimum_threshold_shrinkage"
     }
   },
   "loss": {
