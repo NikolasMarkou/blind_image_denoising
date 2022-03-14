@@ -8,8 +8,8 @@
     "type": "resnet",
     "batchnorm": true,
     "clip_values": false,
-    "activation": "relu",
-    "shared_model": false,
+    "activation": "elu",
+    "shared_model": true,
     "stop_gradient": false,
     "local_normalization": -1,
     "output_multiplier": 1.0,
@@ -18,13 +18,13 @@
     "input_shape": ["?", "?", 1],
     "kernel_initializer": "glorot_normal",
     "pyramid": {
-      "levels": 5,
+      "levels": 4,
       "type": "gaussian",
       "xy_max": [1.0, 1.0],
       "kernel_size": [3, 3]
     },
     "inverse_pyramid": {
-      "levels": 5,
+      "levels": 4,
       "type": "gaussian",
       "xy_max": [1.0, 1.0],
       "kernel_size": [3, 3]
