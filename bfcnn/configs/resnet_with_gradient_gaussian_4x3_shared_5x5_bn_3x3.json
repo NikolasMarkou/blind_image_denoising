@@ -7,14 +7,15 @@
     "kernel_size": 3,
     "type": "resnet",
     "batchnorm": true,
-    "clip_values": false,
     "activation": "elu",
+    "clip_values": false,
     "shared_model": true,
     "stop_gradient": false,
-    "local_normalization": -1,
     "output_multiplier": 1.0,
+    "local_normalization": -1,
     "kernel_regularizer": "l1",
     "final_activation": "tanh",
+    "add_skip_with_input": true,
     "input_shape": ["?", "?", 1],
     "kernel_initializer": "glorot_normal",
     "pyramid": {
@@ -83,7 +84,7 @@
     "dataset_shape": [256, 768],
     "input_shape": [128, 128, 1],
     "multiplicative_noise": [],
-    "additional_noise": [5, 10, 20, 40, 60, 90],
+    "additional_noise": [5, 10, 20, 40],
     "directory": "/media/data1_4tb/datasets/KITTI/data/depth/raw_image_values/"
   }
 }

@@ -53,7 +53,7 @@ def model_builder(
     final_activation = config.get("final_activation", "linear")
     kernel_regularizer = config.get("kernel_regularizer", "l1")
     inverse_pyramid_config = config.get("inverse_pyramid", None)
-    add_skip_with_input = config.get("add_skip_with_input", False)
+    add_skip_with_input = config.get("add_skip_with_input", True)
     add_intermediate_results = config.get("intermediate_results", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     use_local_normalization = local_normalization > 0
