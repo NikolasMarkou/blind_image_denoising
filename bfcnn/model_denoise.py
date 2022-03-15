@@ -212,7 +212,7 @@ def model_builder(
                             kernel_size=(3, 3),
                             xy_max=(1, 1),
                             trainable=False)
-                    tmp_level = keras.layers.Add()([tmp_level, x_level])
+                    tmp_level = keras.layers.Add()([tmp_level, x_level]) / 2
                     tmp_level = resnet_model(tmp_level)
                 x_levels[i] = tmp_level
         else:
@@ -239,7 +239,7 @@ def model_builder(
                             kernel_size=(3, 3),
                             xy_max=(1, 1),
                             trainable=False)
-                    tmp_level = keras.layers.Add()([tmp_level, x_level])
+                    tmp_level = keras.layers.Add()([tmp_level, x_level]) / 2
                     tmp_level = resnet_models[i](tmp_level)
                 x_levels[i] = tmp_level
         else:
