@@ -199,19 +199,21 @@ def model_builder(
                 name="level_shared",
                 **model_params)
         if add_residual_between_models:
+            tmp_level = None
             for i, x_level in reversed(list(enumerate(x_levels))):
-                if i == levels-1:
-                    x_levels[i] = resnet_model(x_level)
+                if tmp_level is None:
+                    tmp_level = resnet_model(x_level)
+                    x_levels[i] = tmp_level
                 else:
-                    x_level_x2 = \
+                    tmp_level = \
                         upscale_2x2_block(
-                            input_layer=x_levels[i+1],
+                            input_layer=tmp_level,
                             kernel_size=(3, 3),
                             xy_max=(1, 1),
                             trainable=False)
-                    x_level_x2 = x_level_x2 + x_level
-                    x_levels[i] = \
-                        resnet_model(x_level_x2)
+                    tmp_level = tmp_level + x_level
+                    tmp_level = resnet_model(tmp_level)
+                    x_levels[i] = tmp_level
         else:
             for i, x_level in enumerate(x_levels):
                 x_levels[i] = resnet_model(x_level)
