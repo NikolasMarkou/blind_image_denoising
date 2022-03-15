@@ -352,12 +352,12 @@ def build_model_denoise_resnet(
     )
 
     gate_params = dict(
+        kernel_size=1,
         filters=filters,
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
         activation="linear",
-        kernel_size=1,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -410,10 +410,10 @@ def build_model_denoise_resnet(
     resnet_params = dict(
         no_layers=no_layers,
         bn_params=bn_params,
+        stop_gradient=stop_gradient,
         first_conv_params=first_conv_params,
         second_conv_params=second_conv_params,
         third_conv_params=third_conv_params,
-        stop_gradient=stop_gradient
     )
 
     # make it linear so it gets sparse afterwards
