@@ -199,9 +199,9 @@ def model_builder(
                 name="level_shared",
                 **model_params)
         if add_residual_between_models:
-            for i in range(levels-1, -1, -1):
+            for i, x_level in reversed(list(enumerate(x_levels))):
                 if i == levels-1:
-                    x_levels[i] = resnet_model(x_levels[i])
+                    x_levels[i] = resnet_model(x_level)
                 else:
                     x_level_x2 = \
                         upscale_2x2_block(
@@ -209,7 +209,8 @@ def model_builder(
                             kernel_size=(3, 3),
                             xy_max=(1, 1),
                             trainable=False)
-                    x_levels[i] = resnet_model(x_levels[i] + x_level_x2)
+                    x_levels[i] = \
+                        resnet_model(x_level + x_level_x2)
         else:
             for i, x_level in enumerate(x_levels):
                 x_levels[i] = resnet_model(x_level)
@@ -221,8 +222,21 @@ def model_builder(
                 **model_params)
             for i in range(levels)
         ]
-        for i, x_level in enumerate(x_levels):
-            x_levels[i] = resnet_models[i](x_level)
+        if add_residual_between_models:
+            for i in range(levels-1, -1, -1):
+                if i == levels-1:
+                    x_levels[i] = resnet_models[i](x_levels[i])
+                else:
+                    x_level_x2 = \
+                        upscale_2x2_block(
+                            input_layer=x_levels[i+1],
+                            kernel_size=(3, 3),
+                            xy_max=(1, 1),
+                            trainable=False)
+                    x_levels[i] = resnet_models[i](x_levels[i] + x_level_x2)
+        else:
+            for i, x_level in enumerate(x_levels):
+                x_levels[i] = resnet_models[i](x_level)
 
     # --- split intermediate results and actual results
     x_levels_intermediate = []
