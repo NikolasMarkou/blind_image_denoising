@@ -210,18 +210,6 @@ def model_builder(
                             xy_max=(1, 1),
                             trainable=False)
                     x_levels[i] = resnet_model(x_levels[i] - x_level_x2)
-
-            for i, x_level in enumerate(x_levels):
-                if i == 0:
-                    x_levels[i] = resnet_model(x_level)
-                else:
-                    x_level_x2 = \
-                        upscale_2x2_block(
-                            input_layer=x_levels[i-1],
-                            kernel_size=(3, 3),
-                            xy_max=(1, 1),
-                            trainable=False)
-                    x_levels[i] = resnet_model(x_level - x_level_x2)
         else:
             for i, x_level in enumerate(x_levels):
                 x_levels[i] = resnet_model(x_level)
