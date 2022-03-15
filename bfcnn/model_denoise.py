@@ -191,6 +191,8 @@ def model_builder(
             sigmas.append(sigma)
             x_levels[i] = x_level
 
+    logger.info("pyramid produces [{0}] levels".format(len(x_levels)))
+
     # --- shared or separate models
     if shared_model:
         logger.info("building shared model")
@@ -224,6 +226,7 @@ def model_builder(
                 **model_params)
             for i in range(levels)
         ]
+        logger.info("build [{0}] level models".format(len(resnet_models)))
         if add_residual_between_models:
             tmp_level = None
             for i, x_level in reversed(list(enumerate(x_levels))):
