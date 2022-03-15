@@ -56,6 +56,7 @@ def model_builder(
     add_skip_with_input = config.get("add_skip_with_input", True)
     add_intermediate_results = config.get("intermediate_results", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
+    add_residual_between_models = config.get("add_residual_between_models", True)
     use_local_normalization = local_normalization > 0
     use_global_normalization = local_normalization == 0
     use_normalization = use_local_normalization or use_global_normalization
@@ -197,18 +198,31 @@ def model_builder(
             build_model_denoise_resnet(
                 name="level_shared",
                 **model_params)
-        x_levels = [
-            resnet_model(x_level)
-            for i, x_level in enumerate(x_levels)
-        ]
+        if add_residual_between_models:
+            for i, x_level in enumerate(x_levels):
+                if i == 0:
+                    x_levels[i] = resnet_model(x_level)
+                else:
+                    x_level_x2 = \
+                        upscale_2x2_block(
+                            input_layer=x_levels[i-1],
+                            kernel_size=(3, 3),
+                            xy_max=(1, 1),
+                            trainable=False)
+                    x_levels[i] = resnet_model(x_level - x_level_x2)
+        else:
+            for i, x_level in enumerate(x_levels):
+                x_levels[i] = resnet_model(x_level)
     else:
         logger.info("building per scale model")
-        x_levels = [
+        resnet_models = [
             build_model_denoise_resnet(
                 name=f"level_{i}",
-                **model_params)(x_level)
-            for i, x_level in enumerate(x_levels)
+                **model_params)
+            for i in range(levels)
         ]
+        for i, x_level in enumerate(x_levels):
+            x_levels[i] = resnet_models[i](x_level)
 
     # --- split intermediate results and actual results
     x_levels_intermediate = []
