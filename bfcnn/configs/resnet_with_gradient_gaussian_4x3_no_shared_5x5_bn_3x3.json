@@ -16,6 +16,7 @@
     "kernel_regularizer": "l1",
     "final_activation": "tanh",
     "add_skip_with_input": true,
+    "add_residual_between_models": true,
     "input_shape": ["?", "?", 1],
     "kernel_initializer": "glorot_normal",
     "pyramid": {
