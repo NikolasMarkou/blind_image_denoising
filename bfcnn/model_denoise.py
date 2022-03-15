@@ -53,6 +53,7 @@ def model_builder(
     final_activation = config.get("final_activation", "linear")
     kernel_regularizer = config.get("kernel_regularizer", "l1")
     inverse_pyramid_config = config.get("inverse_pyramid", None)
+    add_skip_with_input = config.get("add_skip_with_input", False)
     add_intermediate_results = config.get("intermediate_results", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     use_local_normalization = local_normalization > 0
@@ -96,6 +97,7 @@ def model_builder(
         final_activation=final_activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
+        add_skip_with_input=add_skip_with_input,
         add_intermediate_results=add_intermediate_results
     )
 
@@ -297,6 +299,7 @@ def build_model_denoise_resnet(
         kernel_initializer="glorot_normal",
         channel_index: int = 2,
         stop_gradient: bool = False,
+        add_skip_with_input: bool = True,
         add_sparsity: bool = False,
         add_gates: bool = False,
         add_intermediate_results: bool = False,
@@ -318,6 +321,7 @@ def build_model_denoise_resnet(
     :param kernel_regularizer: Kernel weight regularizer
     :param kernel_initializer: Kernel weight initializer
     :param stop_gradient: if true stop gradient at each resnet block
+    :param add_skip_with_input: if true skip with input
     :param add_sparsity: if true add sparsity layer
     :param add_gates: if true add gate layer
     :param add_intermediate_results: if true output results before projection
@@ -468,16 +472,18 @@ def build_model_denoise_resnet(
                 activation="linear")
     output_layer = x
 
+    # --- output to original channels / projection
     if add_projection_to_input:
-        # output to original channels / projection
         output_layer = \
             keras.layers.Conv2D(**final_conv_params)(output_layer)
 
-        # skip layer
+    # --- skip with input layer
+    if add_skip_with_input:
         output_layer = \
             keras.layers.Add()([output_layer, y])
-        output_layer = \
-            keras.layers.Layer(name="output_tensor")(output_layer)
+
+    output_layer = \
+        keras.layers.Layer(name="output_tensor")(output_layer)
 
     # return intermediate results if flag is turned on
     output_layers = [output_layer]
