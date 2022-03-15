@@ -224,7 +224,7 @@ def model_builder(
             build_model_denoise_resnet(
                 name=f"level_{i}",
                 **model_params)
-            for i in range(levels)
+            for i in range(len(x_levels))
         ]
         logger.info("build [{0}] level models".format(len(resnet_models)))
         if add_residual_between_models:
