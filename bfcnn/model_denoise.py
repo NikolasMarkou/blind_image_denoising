@@ -209,8 +209,9 @@ def model_builder(
                             kernel_size=(3, 3),
                             xy_max=(1, 1),
                             trainable=False)
+                    x_level_x2 = x_level_x2 + x_level
                     x_levels[i] = \
-                        resnet_model(x_level + x_level_x2)
+                        resnet_model(x_level_x2)
         else:
             for i, x_level in enumerate(x_levels):
                 x_levels[i] = resnet_model(x_level)
