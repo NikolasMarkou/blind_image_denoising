@@ -43,6 +43,7 @@ def model_builder(
     batchnorm = config.get("batchnorm", True)
     kernel_size = config.get("kernel_size", 3)
     pyramid_config = config.get("pyramid", None)
+    activation = config.get("activation", "relu")
     clip_values = config.get("clip_values", False)
     shared_model = config.get("shared_model", False)
     stop_gradient = config.get("stop_gradient", False)
@@ -88,6 +89,7 @@ def model_builder(
         use_bn=batchnorm,
         add_sparsity=False,
         no_layers=no_layers,
+        activation=activation,
         input_dims=input_shape,
         kernel_size=kernel_size,
         stop_gradient=stop_gradient,
@@ -432,9 +434,9 @@ def build_model_denoise_resnet(
     x = input_layer
     y = input_layer
 
-    # optional batch norm
-    if use_bn:
-        x = keras.layers.BatchNormalization(**bn_params)(x)
+    # # optional batch norm
+    # if use_bn:
+    #     x = keras.layers.BatchNormalization(**bn_params)(x)
 
     # add base layer
     x = keras.layers.Conv2D(**conv_params)(x)
