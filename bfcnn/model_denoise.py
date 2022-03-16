@@ -209,7 +209,8 @@ def model_builder(
                     tmp_level = \
                         upscale_2x2_block(
                             input_layer=tmp_level)
-                    tmp_level = keras.layers.Add(name="level_{0}_to_{1}".format(i-1, i))([tmp_level, x_level]) * 0.5
+                    tmp_level = \
+                        keras.layers.Add(name="level_{0}_to_{1}".format(i+1, i))([tmp_level, x_level]) * 0.5
                     tmp_level = resnet_model(tmp_level)
                 x_levels[i] = tmp_level
         else:
@@ -233,7 +234,8 @@ def model_builder(
                     tmp_level = \
                         upscale_2x2_block(
                             input_layer=tmp_level)
-                    tmp_level = keras.layers.Add(name="level_{0}_to_{1}".format(i-1, i))([tmp_level, x_level]) * 0.5
+                    tmp_level = \
+                        keras.layers.Add(name="level_{0}_to_{1}".format(i+1, i))([tmp_level, x_level]) * 0.5
                     tmp_level = resnet_models[i](tmp_level)
                 x_levels[i] = tmp_level
         else:
