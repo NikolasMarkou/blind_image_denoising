@@ -19,7 +19,8 @@ from typing import Dict, Tuple, Union, List
 
 DEFAULT_XY_MAX = (2.0, 2.0)
 DEFAULT_KERNEL_SIZE = (5, 5)
-
+DEFAULT_UPSCALE_XY_MAX = (1.0, 1.0)
+DEFAULT_UPSCALE_KERNEL_SIZE = (5, 5)
 
 # ---------------------------------------------------------------------
 
@@ -154,8 +155,9 @@ def gaussian_filter_block(
 
 def upscale_2x2_block(
         input_layer,
-        kernel_size: Tuple[int, int] = DEFAULT_KERNEL_SIZE,
-        xy_max: Tuple[float, float] = DEFAULT_XY_MAX,
+        kernel_size: Tuple[int, int] = DEFAULT_UPSCALE_KERNEL_SIZE,
+        xy_max: Tuple[float, float] = DEFAULT_UPSCALE_XY_MAX,
+        cheap: bool = False,
         trainable: bool = False):
     """
     creates an upscale block and filters the input_layer
@@ -164,21 +166,28 @@ def upscale_2x2_block(
     :param kernel_size: kernel size tuple
     :param xy_max: how far the gaussian are we going
         (symmetrically) on the 2 axis
+    :param cheap: if true use bilinear up sampling
     :param trainable: is the pyramid trainable (default False)
     :return: filtered input layer
     """
-    x = \
-        keras.layers.UpSampling2D(
-            size=(2, 2),
-            interpolation="nearest")(input_layer)
-    x = \
-        gaussian_filter_block(
-            input_layer=x,
-            xy_max=xy_max,
-            padding="same",
-            strides=(1, 1),
-            trainable=trainable,
-            kernel_size=kernel_size)
+    if cheap:
+        x = \
+            keras.layers.UpSampling2D(
+                size=(2, 2),
+                interpolation="bilinear")(input_layer)
+    else:
+        x = \
+            keras.layers.UpSampling2D(
+                size=(2, 2),
+                interpolation="nearest")(input_layer)
+        x = \
+            gaussian_filter_block(
+                input_layer=x,
+                xy_max=xy_max,
+                padding="same",
+                strides=(1, 1),
+                trainable=trainable,
+                kernel_size=kernel_size)
     return x
 
 # ---------------------------------------------------------------------
