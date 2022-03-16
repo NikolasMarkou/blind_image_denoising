@@ -200,22 +200,10 @@ def model_builder(
             build_model_denoise_resnet(
                 name="level_shared",
                 **model_params)
-        if add_residual_between_models:
-            tmp_level = None
-            for i, x_level in reversed(list(enumerate(x_levels))):
-                if tmp_level is None:
-                    tmp_level = resnet_model(x_level)
-                else:
-                    tmp_level = \
-                        upscale_2x2_block(
-                            input_layer=tmp_level)
-                    tmp_level = \
-                        keras.layers.Add(name="level_{0}_to_{1}".format(i+1, i))([tmp_level, x_level]) * 0.5
-                    tmp_level = resnet_model(tmp_level)
-                x_levels[i] = tmp_level
-        else:
-            for i, x_level in enumerate(x_levels):
-                x_levels[i] = resnet_model(x_level)
+        resnet_models = [
+            resnet_model
+            for i in range(len(x_levels))
+        ]
     else:
         logger.info("building per scale model")
         resnet_models = [
@@ -224,23 +212,23 @@ def model_builder(
                 **model_params)
             for i in range(len(x_levels))
         ]
-        logger.info("build [{0}] level models".format(len(resnet_models)))
-        if add_residual_between_models:
-            tmp_level = None
-            for i, x_level in reversed(list(enumerate(x_levels))):
-                if tmp_level is None:
-                    tmp_level = resnet_models[i](x_level)
-                else:
-                    tmp_level = \
-                        upscale_2x2_block(
-                            input_layer=tmp_level)
-                    tmp_level = \
-                        keras.layers.Add(name="level_{0}_to_{1}".format(i+1, i))([tmp_level, x_level]) * 0.5
-                    tmp_level = resnet_models[i](tmp_level)
-                x_levels[i] = tmp_level
-        else:
-            for i, x_level in enumerate(x_levels):
-                x_levels[i] = resnet_models[i](x_level)
+
+    if add_residual_between_models:
+        tmp_level = None
+        for i, x_level in reversed(list(enumerate(x_levels))):
+            if tmp_level is None:
+                tmp_level = resnet_models[i](x_level)
+            else:
+                tmp_level = \
+                    upscale_2x2_block(
+                        input_layer=tmp_level)
+                tmp_level = \
+                    keras.layers.Add(name="level_{0}_to_{1}".format(i+1, i))([tmp_level, x_level]) * 0.5
+                tmp_level = resnet_models[i](tmp_level)
+            x_levels[i] = tmp_level
+    else:
+        for i, x_level in enumerate(x_levels):
+            x_levels[i] = resnet_models[i](x_level)
 
     # --- split intermediate results and actual results
     x_levels_intermediate = []
