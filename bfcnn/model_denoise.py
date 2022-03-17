@@ -200,10 +200,7 @@ def model_builder(
             build_model_denoise_resnet(
                 name="level_shared",
                 **model_params)
-        resnet_models = [
-            resnet_model
-            for i in range(len(x_levels))
-        ]
+        resnet_models = [resnet_model] * len(x_levels)
     else:
         logger.info("building per scale model")
         resnet_models = [
