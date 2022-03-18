@@ -481,15 +481,18 @@ def build_model_denoise_resnet(
     if use_bn:
         x = keras.layers.BatchNormalization(**bn_params)(x)
 
+    # --- output layer branches here,
+    # to allow space for intermediate results
+    output_layer = x
+
     # learnable multiplier
     if add_learnable_multiplier:
-        x = \
+        output_layer = \
             learnable_multiplier_layer(
-                input_layer=x,
+                input_layer=output_layer,
                 trainable=True,
                 multiplier=1.0,
                 activation="linear")
-    output_layer = x
 
     # --- output to original channels / projection
     if add_projection_to_input:
