@@ -652,8 +652,10 @@ def resnet_blocks(
             if use_bn:
                 y = keras.layers.BatchNormalization(**bn_params)(y)
             y = keras.layers.Conv2D(**gate_params)(y)
-            # TODO check 
-            # y = keras.layers.GlobalAvgPool2D()(y)
+            if use_bn:
+                y = keras.layers.BatchNormalization(**bn_params)(y)
+            y = keras.layers.Conv2D(**gate_params)(y)
+            # activation per pixel
             y = 1.0 - keras.activations.sigmoid(3.0 * y - 4.0)
             x = keras.layers.Multiply()([x, y])
         # skip connection
