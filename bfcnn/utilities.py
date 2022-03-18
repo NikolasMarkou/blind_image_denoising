@@ -651,7 +651,7 @@ def resnet_blocks(
             y = g_layer
             if use_bn:
                 y = keras.layers.BatchNormalization(**bn_params)(y)
-            y = keras.layers.Conv2D(**gate_params)(y)
+            y = keras.layers.Conv2D(**first_conv_params)(y)
             if use_bn:
                 y = keras.layers.BatchNormalization(**bn_params)(y)
             y = keras.layers.Conv2D(**gate_params)(y)
