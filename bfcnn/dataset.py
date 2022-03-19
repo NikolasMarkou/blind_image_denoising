@@ -168,13 +168,29 @@ def dataset_builder(
         elif noise_type == "multiplicative":
             # multiplicative noise
             noise_std = np.random.choice(multiplicative_noise)
-            noisy_batch = \
-                noisy_batch * \
-                tf.random.truncated_normal(
-                    seed=0,
-                    mean=1,
-                    stddev=noise_std,
-                    shape=tf.shape(input_batch))
+            if np.random.choice([True, False]):
+                # channel independent noise
+                noisy_batch = \
+                    noisy_batch * \
+                    tf.random.truncated_normal(
+                        seed=0,
+                        mean=1,
+                        stddev=noise_std,
+                        shape=tf.shape(input_batch))
+            else:
+                # channel dependent noise
+                tmp_noisy_batch = \
+                    tf.random.truncated_normal(
+                        seed=0,
+                        mean=1,
+                        stddev=noise_std,
+                        shape=(tf.shape(input_batch)[0], input_shape[0], input_shape[1], 1))
+                tmp_noisy_batch = \
+                    tf.repeat(
+                        tmp_noisy_batch,
+                        axis=3,
+                        repeats=[tf.shape(input_batch)[3]])
+                noisy_batch = tmp_noisy_batch * noisy_batch
 
             # blur to embed noise
             if random_blur:
