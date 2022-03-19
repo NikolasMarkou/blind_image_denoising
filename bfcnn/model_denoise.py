@@ -438,7 +438,16 @@ def build_model_denoise_resnet(
 
     var_params = None
     if add_var:
-        var_params = {}
+        var_params = dict(
+            kernel_size=3,
+            filters=filters,
+            strides=(1, 1),
+            padding="same",
+            use_bias=use_bias,
+            activation=activation,
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer
+        )
 
     resnet_params = dict(
         no_layers=no_layers,

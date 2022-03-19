@@ -624,6 +624,9 @@ def resnet_blocks(
             mean_variance_local(
                 input_layer=x_stop_grad,
                 kernel_size=(5, 5))
+        x_var = keras.layers.Conv2D(**var_params)(x_var)
+        if use_bn:
+            x_var = keras.layers.BatchNormalization(**bn_params)(x_var)
     g_layer = x
 
     # --- create several number of residual blocks
