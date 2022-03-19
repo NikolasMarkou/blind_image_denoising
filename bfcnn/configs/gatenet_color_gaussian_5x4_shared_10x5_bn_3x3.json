@@ -1,0 +1,92 @@
+{
+  "model_denoise": {
+    "filters": 16,
+    "no_layers": 10,
+    "min_value": 0,
+    "max_value": 255,
+    "kernel_size": 3,
+    "type": "gatenet",
+    "batchnorm": true,
+    "activation": "elu",
+    "clip_values": false,
+    "shared_model": true,
+    "stop_gradient": false,
+    "output_multiplier": 1.0,
+    "local_normalization": -1,
+    "kernel_regularizer": "l1",
+    "final_activation": "tanh",
+    "add_skip_with_input": true,
+    "add_residual_between_models": true,
+    "input_shape": ["?", "?", 3],
+    "kernel_initializer": "glorot_normal",
+    "pyramid": {
+      "levels": 5,
+      "type": "gaussian",
+      "xy_max": [1.0, 1.0],
+      "kernel_size": [3, 3]
+    },
+    "inverse_pyramid": {
+      "levels": 5,
+      "type": "gaussian",
+      "xy_max": [1.0, 1.0],
+      "kernel_size": [3, 3]
+    }
+  },
+  "train": {
+    "epochs": 50,
+    "total_steps": -1,
+    "checkpoints_to_keep": 3,
+    "checkpoint_every": 10000,
+    "visualization_number": 4,
+    "visualization_every": 100,
+    "random_batch_iterations": 10,
+    "random_batch_size": [256, 256, 1],
+    "random_batch_min_difference": 0.1,
+    "optimizer": {
+      "decay_rate": 0.9,
+      "decay_steps": 20000,
+      "learning_rate": 0.001,
+      "gradient_clipping_by_norm": 1.0
+    },
+    "prune": {
+      "start_epoch": 1,
+      "shrinkage": 0.75,
+      "minimum_threshold": 0.000005,
+      "shrinkage_threshold": 0.00001,
+      "strategy": "minimum_threshold_shrinkage"
+    }
+  },
+  "loss": {
+    "hinge": 2.5,
+    "mae_delta": true,
+    "mae_multiplier": 1.0,
+    "regularization": 0.01,
+    "nae_multiplier": 10.0,
+    "input_shape": ["?", "?", 3],
+    "pyramid": {
+      "levels": 4,
+      "type": "gaussian",
+      "xy_max": [1.0, 1.0],
+      "kernel_size": [3, 3]
+    }
+  },
+  "dataset": {
+    "batch_size": 8,
+    "min_value": 0,
+    "max_value": 255,
+    "clip_value": true,
+    "random_blur": true,
+    "subsample_size": -1,
+    "round_values": true,
+    "random_invert": false,
+    "random_rotate": 0.314,
+    "random_up_down": true,
+    "color_mode": "rgb",
+    "random_left_right": true,
+    "dataset_shape": [256, 768],
+    "input_shape": [256, 256, 3],
+    "multiplicative_noise": [],
+    "additional_noise": [5, 10, 20, 40],
+    "directory": "/media/data1_4tb/datasets/KITTI/data/depth/raw_image_values/"
+  }
+}
