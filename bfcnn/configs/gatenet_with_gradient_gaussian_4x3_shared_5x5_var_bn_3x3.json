@@ -1,10 +1,10 @@
 {
   "model_denoise": {
     "filters": 16,
-    "no_layers": 10,
+    "no_layers": 5,
     "min_value": 0,
+    "add_var": false,
     "max_value": 255,
-    "add_var": true,
     "kernel_size": 3,
     "type": "gatenet",
     "batchnorm": true,
@@ -21,13 +21,13 @@
     "input_shape": ["?", "?", 1],
     "kernel_initializer": "glorot_normal",
     "pyramid": {
-      "levels": 5,
+      "levels": 4,
       "type": "gaussian",
       "xy_max": [1.0, 1.0],
       "kernel_size": [3, 3]
     },
     "inverse_pyramid": {
-      "levels": 5,
+      "levels": 4,
       "type": "gaussian",
       "xy_max": [1.0, 1.0],
       "kernel_size": [5, 5]
