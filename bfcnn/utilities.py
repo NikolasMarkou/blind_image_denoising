@@ -619,7 +619,7 @@ def resnet_blocks(
     x = input_layer
 
     if use_var:
-        _, x_sigma = \
+        _, x_var = \
             mean_variance_local(
                 input_layer=x,
                 kernel_size=(5, 5))
@@ -634,7 +634,7 @@ def resnet_blocks(
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
         if use_var:
-            x = keras.layers.Concatenate(axis=-1)([x, x_sigma])
+            x = keras.layers.Concatenate(axis=-1)([x, x_var])
         x = keras.layers.Conv2D(**first_conv_params)(x)
         # 2nd conv
         if use_bn:

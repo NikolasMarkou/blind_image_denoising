@@ -37,6 +37,7 @@ def model_builder(
     model_type = config["type"]
     levels = config.get("levels", 1)
     filters = config.get("filters", 32)
+    add_var = config.get("add_var", False)
     no_layers = config.get("no_layers", 5)
     min_value = config.get("min_value", 0)
     max_value = config.get("max_value", 255)
@@ -87,6 +88,7 @@ def model_builder(
     # --- build denoise model
     model_params = dict(
         add_gates=False,
+        add_var=add_var,
         filters=filters,
         use_bn=batchnorm,
         add_sparsity=False,
@@ -321,6 +323,7 @@ def build_model_denoise_resnet(
         add_skip_with_input: bool = True,
         add_sparsity: bool = False,
         add_gates: bool = False,
+        add_var: bool = False,
         add_intermediate_results: bool = False,
         add_learnable_multiplier: bool = True,
         add_projection_to_input: bool = True,
@@ -343,6 +346,7 @@ def build_model_denoise_resnet(
     :param add_skip_with_input: if true skip with input
     :param add_sparsity: if true add sparsity layer
     :param add_gates: if true add gate layer
+    :param add_var: if true add variance for each block
     :param add_intermediate_results: if true output results before projection
     :param add_learnable_multiplier:
     :param add_projection_to_input: if true project to input tensor channel number
@@ -432,9 +436,14 @@ def build_model_denoise_resnet(
         kernel_initializer=kernel_initializer
     )
 
+    var_params = None
+    if add_var:
+        var_params = {}
+
     resnet_params = dict(
         no_layers=no_layers,
         bn_params=bn_params,
+        var_params=var_params,
         stop_gradient=stop_gradient,
         first_conv_params=first_conv_params,
         second_conv_params=second_conv_params,
