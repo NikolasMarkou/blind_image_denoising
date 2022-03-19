@@ -3,7 +3,7 @@
     "filters": 16,
     "no_layers": 5,
     "min_value": 0,
-    "add_var": false,
+    "add_var": true,
     "max_value": 255,
     "kernel_size": 3,
     "type": "gatenet",
