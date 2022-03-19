@@ -619,9 +619,10 @@ def resnet_blocks(
     x = input_layer
 
     if use_var:
+        x_stop_grad = keras.backend.stop_gradient(x)
         _, x_var = \
             mean_variance_local(
-                input_layer=x,
+                input_layer=x_stop_grad,
                 kernel_size=(5, 5))
     g_layer = x
 
