@@ -645,7 +645,12 @@ def resnet_blocks(
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
         if use_var:
-            x = keras.layers.Concatenate(axis=-1)([x, x_var])
+            x_var_tmp = \
+                learnable_multiplier_layer(
+                    input_layer=x_var,
+                    trainable=True,
+                    multiplier=1.0)
+            x = keras.layers.Concatenate(axis=-1)([x, x_var_tmp])
         x = keras.layers.Conv2D(**first_conv_params)(x)
         # 2nd conv
         if use_bn:
@@ -666,8 +671,7 @@ def resnet_blocks(
                 learnable_multiplier_layer(
                     input_layer=y,
                     trainable=True,
-                    multiplier=1.0,
-                    activation="linear")
+                    multiplier=1.0)
             # activation per pixel
             y = keras.layers.Conv2D(**gate_params)(y)
             y = 1.0 - keras.activations.sigmoid(3.0 * y - 4.0)
