@@ -436,19 +436,6 @@ def build_model_denoise_resnet(
         kernel_initializer=kernel_initializer
     )
 
-    var_params = None
-    if add_var:
-        var_params = dict(
-            kernel_size=1,
-            filters=filters,
-            strides=(1, 1),
-            padding="same",
-            use_bias=use_bias,
-            activation=activation,
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer
-        )
-
     resnet_params = dict(
         no_layers=no_layers,
         bn_params=bn_params,
@@ -479,12 +466,11 @@ def build_model_denoise_resnet(
     # if use_bn:
     #     x = keras.layers.BatchNormalization(**bn_params)(x)
 
-    if var_params is not None:
+    if add_var:
         _, x_var = \
             mean_variance_local(
                 input_layer=x,
                 kernel_size=(5, 5))
-        x_var = keras.layers.Conv2D(**var_params)(x_var)
         x = keras.layers.Concatenate()([x, x_var])
 
     # add base layer
