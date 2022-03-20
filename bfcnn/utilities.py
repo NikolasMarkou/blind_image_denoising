@@ -185,6 +185,7 @@ def learnable_multiplier_layer(
         multiplier: float = 1.0,
         activation: str = "linear",
         use_bias: bool = False,
+        use_random: bool = True,
         kernel_regularizer: str = None,
         trainable: bool = True):
     """
@@ -194,6 +195,7 @@ def learnable_multiplier_layer(
     :param multiplier: multiplication constant
     :param activation: activation after the filter (linear by default)
     :param use_bias: use offset bias (false by default)
+    :param use_random: if True add a small random offset to break symmetry
     :param kernel_regularizer: regularize kernel weights (None by default)
     :param trainable: whether this layer is trainable or not
     :return: multiplied input_layer
@@ -201,11 +203,13 @@ def learnable_multiplier_layer(
     # --- initialise to set kernel to required value
     def kernel_init(shape, dtype):
         kernel = np.zeros(shape)
-        for i in range(shape[2]):
-            kernel[:, :, i, 0] = multiplier
+        if use_random:
+            for i in range(shape[2]):
+                kernel[:, :, i, 0] = \
+                    np.random.normal(loc=0.0, scale=DEFAULT_EPSILON)
         return kernel
 
-    return \
+    return (
         keras.layers.DepthwiseConv2D(
             kernel_size=1,
             padding="same",
@@ -215,8 +219,9 @@ def learnable_multiplier_layer(
             trainable=trainable,
             activation=activation,
             kernel_initializer=kernel_init,
-            kernel_regularizer=kernel_regularizer,
-            depthwise_initializer=kernel_init)(input_layer)
+            depthwise_initializer=kernel_init,
+            kernel_regularizer=kernel_regularizer)(input_layer) +
+        input_layer * multiplier)
 
 # ---------------------------------------------------------------------
 
