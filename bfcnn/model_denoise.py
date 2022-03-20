@@ -479,6 +479,14 @@ def build_model_denoise_resnet(
     # if use_bn:
     #     x = keras.layers.BatchNormalization(**bn_params)(x)
 
+    if var_params is not None:
+        _, x_var = \
+            mean_variance_local(
+                input_layer=x,
+                kernel_size=(5, 5))
+        x_var = keras.layers.Conv2D(**var_params)(x_var)
+        x = keras.layers.Concatenate()([x, x_var])
+
     # add base layer
     x = keras.layers.Conv2D(**conv_params)(x)
 

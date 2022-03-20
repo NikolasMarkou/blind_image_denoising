@@ -597,8 +597,7 @@ def resnet_blocks(
         third_conv_params: Dict,
         stop_gradient: bool = False,
         bn_params: Dict = None,
-        gate_params: Dict = None,
-        var_params: Dict = None):
+        gate_params: Dict = None):
     """
     Create a series of residual network blocks
 
@@ -610,7 +609,6 @@ def resnet_blocks(
     :param stop_gradient: if true stop gradient at each resnet block
     :param bn_params: batch normalization parameters
     :param gate_params: gate optional parameters
-    :param var_params: variance optional parameters
 
     :return: filtered input_layer
     """
@@ -621,19 +619,9 @@ def resnet_blocks(
         raise ValueError("no_layers must be >= 0")
     use_bn = bn_params is not None
     use_gate = gate_params is not None
-    use_var = var_params is not None
 
     # --- setup resnet
     x = input_layer
-
-    if use_var:
-        _, x_var = \
-            mean_variance_local(
-                input_layer=x,
-                kernel_size=(5, 5))
-        x_var = keras.layers.Conv2D(**var_params)(x_var)
-        if use_bn:
-            x_var = keras.layers.BatchNormalization(**bn_params)(x_var)
     g_layer = x
 
     # --- create several number of residual blocks
@@ -644,13 +632,6 @@ def resnet_blocks(
         # 1st conv
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
-        if use_var:
-            x_var_tmp = \
-                learnable_multiplier_layer(
-                    input_layer=x_var,
-                    trainable=True,
-                    multiplier=1.0)
-            x = keras.layers.Concatenate(axis=-1)([x, x_var_tmp])
         x = keras.layers.Conv2D(**first_conv_params)(x)
         # 2nd conv
         if use_bn:
