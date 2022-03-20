@@ -185,7 +185,7 @@ def learnable_multiplier_layer(
         multiplier: float = 1.0,
         activation: str = "linear",
         use_bias: bool = False,
-        use_random: bool = True,
+        use_random: bool = False,
         kernel_regularizer: str = None,
         trainable: bool = True):
     """
@@ -209,7 +209,7 @@ def learnable_multiplier_layer(
                     np.random.normal(loc=0.0, scale=DEFAULT_EPSILON)
         return kernel
 
-    return (
+    x = \
         keras.layers.DepthwiseConv2D(
             kernel_size=1,
             padding="same",
@@ -220,8 +220,11 @@ def learnable_multiplier_layer(
             activation=activation,
             kernel_initializer=kernel_init,
             depthwise_initializer=kernel_init,
-            kernel_regularizer=kernel_regularizer)(input_layer) +
-        input_layer * multiplier)
+            kernel_regularizer=kernel_regularizer)(input_layer)
+
+    if multiplier == 1.0:
+        return x + input_layer
+    return x + input_layer * multiplier
 
 # ---------------------------------------------------------------------
 
