@@ -248,11 +248,6 @@ def mean_variance_local(
     if not isinstance(kernel_size, tuple):
         raise ValueError("kernel_size must be a tuple")
 
-    # --- define functions
-    def func_diff_2(args):
-        x, y = args
-        return tf.square(x - y)
-
     # ---
     local_mean = \
         keras.layers.AveragePooling2D(
