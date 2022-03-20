@@ -237,7 +237,6 @@ def mean_variance_local(
 
     :param input_layer: the layer to operate on
     :param kernel_size: size of the kernel (window)
-    :param epsilon: small number for robust sigma calculation
     :return: mean, variance tensors
     """
     # --- argument checking
@@ -255,22 +254,22 @@ def mean_variance_local(
         return tf.square(x - y)
 
     # ---
-    mean = \
+    local_mean = \
         keras.layers.AveragePooling2D(
             strides=(1, 1),
             padding="same",
             pool_size=kernel_size)(input_layer)
-    diff_2 = \
-        keras.layers.Lambda(
-            function=func_diff_2,
-            trainable=False)([input_layer, mean])
-    variance = \
+    local_diff = \
+        keras.layers.Subtract()(
+            [input_layer, local_mean])
+    local_diff = keras.backend.square(local_diff)
+    local_variance = \
         keras.layers.AveragePooling2D(
             strides=(1, 1),
             padding="same",
-            pool_size=kernel_size)(diff_2)
+            pool_size=kernel_size)(local_diff)
 
-    return mean, variance
+    return local_mean, local_variance
 
 # ---------------------------------------------------------------------
 
