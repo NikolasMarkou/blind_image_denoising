@@ -452,7 +452,7 @@ def build_model_denoise_resnet(
     resnet_params = dict(
         no_layers=no_layers,
         bn_params=bn_params,
-        var_params=var_params,
+        gate_params=gate_params,
         stop_gradient=stop_gradient,
         first_conv_params=first_conv_params,
         second_conv_params=second_conv_params,
