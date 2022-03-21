@@ -17,6 +17,10 @@ from typing import Dict, Tuple, Union, List
 
 # ---------------------------------------------------------------------
 
+from .utilities import learnable_multiplier_layer
+
+# ---------------------------------------------------------------------
+
 DEFAULT_XY_MAX = (2.0, 2.0)
 DEFAULT_KERNEL_SIZE = (5, 5)
 DEFAULT_UPSCALE_XY_MAX = (1.0, 1.0)
@@ -250,7 +254,7 @@ class PyramidType(Enum):
     NONE = 1
     GAUSSIAN = 2
     LAPLACIAN = 3
-    GAUSSIAN_CONCAT = 4
+    GAUSSIAN_LEARNABLE = 4
 
     @staticmethod
     def from_string(type_str: str) -> "PyramidType":
@@ -368,7 +372,7 @@ def build_inverse_gaussian_pyramid_model(
             upscale_2x2_block(
                 input_layer=output_layer,
                 xy_max=xy_max,
-                trainable=trainable,
+                trainable=False,
                 kernel_size=kernel_size)
         output_layer = \
             keras.layers.Add()([
@@ -387,24 +391,24 @@ def build_inverse_gaussian_pyramid_model(
 # ---------------------------------------------------------------------
 
 
-def build_inverse_concat_gaussian_pyramid_model(
+def build_inverse_gaussian_learnable_pyramid_model(
         input_dims: Union[Tuple, List],
         levels: int,
         kernel_size: Tuple[int, int] = DEFAULT_KERNEL_SIZE,
         xy_max: Tuple[float, float] = DEFAULT_XY_MAX,
         trainable: bool = True,
-        name: str = "inverse_concat_gaussian_pyramid") -> keras.Model:
+        name: str = "inverse_gaussian_pyramid") -> keras.Model:
     """
-    Build a trainable gaussian pyramid model
+    Build a gaussian pyramid model
 
     :param input_dims: input dimensions
     :param levels: how many levels to go down the pyramid
     :param kernel_size: kernel size tuple
     :param xy_max: how far the gaussian are we going
         (symmetrically) on the 2 axis
-    :param trainable: is the pyramid trainable (default False)
+    :param trainable: is the pyramid trainable (default True)
     :param name: name of the model
-    :return: inverse concat gaussian pyramid keras model
+    :return: inverse gaussian pyramid keras model
     """
     # --- prepare input
     input_layers = [
@@ -412,21 +416,17 @@ def build_inverse_concat_gaussian_pyramid_model(
         for i in range(0, levels)
     ]
 
-    output_channels = input_dims[-1]
-
-    conv_params = dict(
-        strides=(1, 1),
-        kernel_size=3,
-        padding="same",
-        use_bias=False,
-        activation="tanh",
-        filters=output_channels,
-        kernel_regularizer="l1",
-        kernel_initializer="glorot_normal",
-    )
-
     # --- merge different levels (from smallest to biggest)
-    output_layer = input_layers[-1]
+    learnable_input_layers = [
+        learnable_multiplier_layer(
+            input_layer=input_layer,
+            multiplier=1.0 / levels,
+            trainable=True)
+        for input_layer in input_layers
+    ]
+
+    output_layer = \
+        learnable_input_layers[-1]
 
     for i in range(levels-2, -1, -1):
         level_up_x = \
@@ -436,13 +436,9 @@ def build_inverse_concat_gaussian_pyramid_model(
                 trainable=False,
                 kernel_size=kernel_size)
         output_layer = \
-            keras.layers.Concatenate()([
+            keras.layers.Add()([
                 level_up_x,
-                input_layers[i]])
-
-    # --- project to output
-    output_layer = \
-        keras.layers.Conv2D(**conv_params)(output_layer)
+                learnable_input_layers[i]])
     output_layer = \
         keras.layers.Layer(name="output_tensor")(output_layer)
 
@@ -628,14 +624,6 @@ def build_inverse_pyramid_model(
                 xy_max=xy_max,
                 mix_type=mix_type,
                 kernel_size=kernel_size)
-    elif pyramid_type == PyramidType.GAUSSIAN_CONCAT:
-        no_levels = config["levels"]
-        pyramid_model = \
-            build_inverse_concat_gaussian_pyramid_model(
-                input_dims=input_dims,
-                levels=no_levels,
-                xy_max=xy_max,
-                kernel_size=kernel_size)
     elif pyramid_type == PyramidType.LAPLACIAN:
         no_levels = config["levels"]
         pyramid_model = \
@@ -643,6 +631,15 @@ def build_inverse_pyramid_model(
                 input_dims=input_dims,
                 levels=no_levels,
                 xy_max=xy_max,
+                kernel_size=kernel_size)
+    elif pyramid_type == PyramidType.GAUSSIAN_LEARNABLE:
+        no_levels = config["levels"]
+        pyramid_model = \
+            build_inverse_gaussian_learnable_pyramid_model(
+                input_dims=input_dims,
+                levels=no_levels,
+                xy_max=xy_max,
+                mix_type=mix_type,
                 kernel_size=kernel_size)
     elif pyramid_type == PyramidType.NONE:
         raise NotImplementedError()
