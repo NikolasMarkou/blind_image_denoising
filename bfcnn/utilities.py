@@ -20,7 +20,6 @@ from typing import List, Tuple, Union, Dict, Iterable
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .pyramid import upscale_2x2_block, downsample_2x2_block
 
 # ---------------------------------------------------------------------
 
