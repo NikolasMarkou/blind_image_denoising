@@ -15,7 +15,10 @@ from tensorflow import keras
 
 from .utilities import *
 from .custom_logger import logger
-from .pyramid import build_pyramid_model, build_inverse_pyramid_model
+from .pyramid import \
+    upscale_2x2_block, \
+    build_pyramid_model, \
+    build_inverse_pyramid_model
 
 
 # ---------------------------------------------------------------------
