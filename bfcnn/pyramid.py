@@ -639,7 +639,6 @@ def build_inverse_pyramid_model(
                 input_dims=input_dims,
                 levels=no_levels,
                 xy_max=xy_max,
-                mix_type=mix_type,
                 kernel_size=kernel_size)
     elif pyramid_type == PyramidType.NONE:
         raise NotImplementedError()
