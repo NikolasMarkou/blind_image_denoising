@@ -22,9 +22,9 @@ from typing import Union, Dict
 
 from .pruning import *
 from .constants import *
-from .utilities import *
 from .visualize import visualize
 from .custom_logger import logger
+from .utilities import load_config
 from .dataset import dataset_builder
 from .loss import loss_function_builder
 from .optimizer import optimizer_builder
