@@ -219,38 +219,20 @@ def model_builder(
     # speeds up training a lot, and better results
     if add_residual_between_models:
         # basic mixer
-        # tmp_level = None
-        # for i, x_level in reversed(list(enumerate(x_levels))):
-        #     if tmp_level is None:
-        #         tmp_level = resnet_models[i](x_level)
-        #     else:
-        #         tmp_level = \
-        #             upscale_2x2_block(
-        #                 input_layer=tmp_level)
-        #         tmp_level = \
-        #             keras.layers.Add(
-        #                 name="level_{0}_to_{1}".format(i+1, i))(
-        #                 [tmp_level, x_level]) * 0.5
-        #         tmp_level = resnet_models[i](tmp_level)
-        #     x_levels[i] = tmp_level
-        # better mixer
         tmp_level = None
         for i, x_level in reversed(list(enumerate(x_levels))):
             if tmp_level is None:
                 tmp_level = resnet_models[i](x_level)
-                x_levels[i] = tmp_level
             else:
-                tmp_level_2 = \
+                tmp_level = \
                     upscale_2x2_block(
                         input_layer=tmp_level)
-                level_new_to_previous = \
+                tmp_level = \
                     keras.layers.Add(
                         name="level_{0}_to_{1}".format(i+1, i))(
-                        [tmp_level_2, x_level]) * 0.5
-                current_level = \
-                    resnet_models[i](level_new_to_previous)
-                tmp_level = (tmp_level_2 + current_level) * 0.5
-                x_levels[i] = current_level
+                        [tmp_level, x_level]) * 0.5
+                tmp_level = resnet_models[i](tmp_level)
+            x_levels[i] = tmp_level
     else:
         for i, x_level in enumerate(x_levels):
             x_levels[i] = resnet_models[i](x_level)
