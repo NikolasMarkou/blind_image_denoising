@@ -13,14 +13,13 @@ import itertools
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
-from typing import List, Tuple, Union, Dict
+from typing import List, Tuple, Union, Dict, Iterable
 
 # ---------------------------------------------------------------------
 # local imports
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .pyramid import upscale_2x2_block, downsample_2x2_block
 
 # ---------------------------------------------------------------------
 
@@ -50,6 +49,18 @@ def load_config(
         with open(str(config), "r") as f:
             return json.load(f)
     raise ValueError("don't know how to handle config [{0}]".format(config))
+
+# ---------------------------------------------------------------------
+
+
+def input_shape_fixer(
+        input_shape: Iterable):
+    for i, shape in enumerate(input_shape):
+        if shape == "?" or \
+                shape == "" or \
+                shape == "-1":
+            input_shape[i] = None
+    return input_shape
 
 # ---------------------------------------------------------------------
 
@@ -162,7 +173,8 @@ def step_function(
     x = input_layer
     if offset != 0.0:
         x = x - offset
-    return (tf.math.tanh(x * multiplier) + 1.0) / 2.0
+    return (tf.math.tanh(x * multiplier) + 1.0) * 0.5
+
 
 # ---------------------------------------------------------------------
 
@@ -172,6 +184,7 @@ def learnable_multiplier_layer(
         multiplier: float = 1.0,
         activation: str = "linear",
         use_bias: bool = False,
+        use_random: bool = False,
         kernel_regularizer: str = None,
         trainable: bool = True):
     """
@@ -181,6 +194,7 @@ def learnable_multiplier_layer(
     :param multiplier: multiplication constant
     :param activation: activation after the filter (linear by default)
     :param use_bias: use offset bias (false by default)
+    :param use_random: if True add a small random offset to break symmetry
     :param kernel_regularizer: regularize kernel weights (None by default)
     :param trainable: whether this layer is trainable or not
     :return: multiplied input_layer
@@ -188,11 +202,13 @@ def learnable_multiplier_layer(
     # --- initialise to set kernel to required value
     def kernel_init(shape, dtype):
         kernel = np.zeros(shape)
-        for i in range(shape[2]):
-            kernel[:, :, i, 0] = multiplier
+        if use_random:
+            for i in range(shape[2]):
+                kernel[:, :, i, 0] = \
+                    np.random.normal(loc=0.0, scale=DEFAULT_EPSILON)
         return kernel
 
-    return \
+    x = \
         keras.layers.DepthwiseConv2D(
             kernel_size=1,
             padding="same",
@@ -202,8 +218,52 @@ def learnable_multiplier_layer(
             trainable=trainable,
             activation=activation,
             kernel_initializer=kernel_init,
-            kernel_regularizer=kernel_regularizer,
-            depthwise_initializer=kernel_init)(input_layer)
+            depthwise_initializer=kernel_init,
+            kernel_regularizer=kernel_regularizer)(input_layer)
+
+    if multiplier == 1.0:
+        return x + input_layer
+    return x + input_layer * multiplier
+
+# ---------------------------------------------------------------------
+
+
+def mean_variance_local(
+        input_layer,
+        kernel_size: Tuple[int, int] = (5, 5)):
+    """
+    calculate window mean per channel and window variance per channel
+
+    :param input_layer: the layer to operate on
+    :param kernel_size: size of the kernel (window)
+    :return: mean, variance tensors
+    """
+    # --- argument checking
+    if input_layer is None:
+        raise ValueError("input_layer cannot be empty")
+    shape = keras.backend.int_shape(input_layer)
+    if len(shape) != 4:
+        raise ValueError("input_layer must be a 4d tensor")
+    if not isinstance(kernel_size, tuple):
+        raise ValueError("kernel_size must be a tuple")
+
+    # ---
+    local_mean = \
+        keras.layers.AveragePooling2D(
+            strides=(1, 1),
+            padding="same",
+            pool_size=kernel_size)(input_layer)
+    local_diff = \
+        keras.layers.Subtract()(
+            [input_layer, local_mean])
+    local_diff = keras.backend.square(local_diff)
+    local_variance = \
+        keras.layers.AveragePooling2D(
+            strides=(1, 1),
+            padding="same",
+            pool_size=kernel_size)(local_diff)
+
+    return local_mean, local_variance
 
 # ---------------------------------------------------------------------
 
@@ -220,19 +280,11 @@ def mean_sigma_local(
     :param epsilon: small number for robust sigma calculation
     :return: mean, sigma tensors
     """
-    # --- argument checking
-    if input_layer is None:
-        raise ValueError("input_layer cannot be empty")
-    shape = keras.backend.int_shape(input_layer)
-    if len(shape) != 4:
-        raise ValueError("input_layer must be a 4d tensor")
-    if not isinstance(kernel_size, tuple):
-        raise ValueError("kernel_size must be a tuple")
-
-    # --- define functions
-    def func_diff_2(args):
-        x, y = args
-        return tf.square(x - y)
+    mean, variance = \
+        mean_variance_local(
+            input_layer=input_layer,
+            kernel_size=kernel_size,
+            epsilon=epsilon)
 
     def func_sqrt_robust(args):
         x = args
@@ -241,21 +293,6 @@ def mean_sigma_local(
         x = x * (float(n) / float(n - 1))
         return tf.sqrt(tf.abs(x) + epsilon)
 
-    # ---
-    mean = \
-        keras.layers.AveragePooling2D(
-            strides=(1, 1),
-            padding="same",
-            pool_size=kernel_size)(input_layer)
-    diff_2 = \
-        keras.layers.Lambda(
-            function=func_diff_2,
-            trainable=False)([input_layer, mean])
-    variance = \
-        keras.layers.AveragePooling2D(
-            strides=(1, 1),
-            padding="same",
-            pool_size=kernel_size)(diff_2)
     sigma = \
         keras.layers.Lambda(
             function=func_sqrt_robust,
@@ -548,8 +585,10 @@ def build_denormalize_model(
 def resnet_blocks(
         input_layer,
         no_layers: int,
-        depth_conv_params: Dict,
-        intermediate_conv_params: Dict,
+        first_conv_params: Dict,
+        second_conv_params: Dict,
+        third_conv_params: Dict,
+        stop_gradient: bool = False,
         bn_params: Dict = None,
         gate_params: Dict = None):
     """
@@ -557,8 +596,10 @@ def resnet_blocks(
 
     :param input_layer: the input layer to perform on
     :param no_layers: how many residual network blocks to add
-    :param depth_conv_params: the parameters of the middle conv
-    :param intermediate_conv_params: the parameters of the start and end conv
+    :param first_conv_params: the parameters of the first conv
+    :param second_conv_params: the parameters of the middle conv
+    :param third_conv_params: the parameters of the third conv
+    :param stop_gradient: if true stop gradient at each resnet block
     :param bn_params: batch normalization parameters
     :param gate_params: gate optional parameters
 
@@ -574,229 +615,45 @@ def resnet_blocks(
 
     # --- setup resnet
     x = input_layer
+    g_layer = x
 
     # --- create several number of residual blocks
     for i in range(no_layers):
         previous_layer = x
+        if stop_gradient:
+            x = keras.backend.stop_gradient(x)
         # 1st conv
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
-        x = keras.layers.Conv2D(**intermediate_conv_params)(x)
+        x = keras.layers.Conv2D(**first_conv_params)(x)
         # 2nd conv
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
-        g_layer = x
-        x = keras.layers.Conv2D(**depth_conv_params)(x)
+        x = keras.layers.Conv2D(**second_conv_params)(x)
         # 3rd conv
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
         # output results
-        x = keras.layers.Conv2D(**intermediate_conv_params)(x)
+        x = keras.layers.Conv2D(**third_conv_params)(x)
         # compute activation per channel
         if use_gate:
-            g_layer = \
-                keras.layers.Conv2D(**gate_params)(g_layer)
-            g_layer = \
-                keras.layers.GlobalAvgPool2D()(g_layer)
-            g_layer = \
-                (keras.layers.Activation("tanh")(g_layer * 2.0) + 1.0) / 2.0
-            x = keras.layers.Multiply()([x, g_layer])
+            g_layer = keras.layers.Add()([x, g_layer])
+            y = g_layer
+            if use_bn:
+                y = keras.layers.BatchNormalization(**bn_params)(y)
+            y = \
+                learnable_multiplier_layer(
+                    input_layer=y,
+                    trainable=True,
+                    multiplier=1.0)
+            # activation per pixel
+            y = keras.layers.Conv2D(**gate_params)(y)
+            y = 1.0 - keras.activations.sigmoid(3.0 * y - 4.0)
+            x = keras.layers.Multiply()([x, y])
         # skip connection
-        x = keras.layers.Add()([previous_layer, x])
+        x = keras.layers.Add()([x, previous_layer])
 
     return x
 
 # ---------------------------------------------------------------------
 
-
-def build_resnet_model(
-        input_dims,
-        no_layers: int,
-        kernel_size: int,
-        filters: int,
-        activation: str = "relu",
-        final_activation: str = "linear",
-        use_bn: bool = True,
-        use_bias: bool = False,
-        kernel_regularizer="l1",
-        kernel_initializer="glorot_normal",
-        channel_index: int = 2,
-        add_sparsity: bool = False,
-        add_gates: bool = False,
-        add_sigma: bool = False,
-        add_intermediate_results: bool = False,
-        add_learnable_multiplier: bool = True,
-        name="resnet") -> keras.Model:
-    """
-    builds a resnet model
-
-    :param input_dims: Models input dimensions
-    :param no_layers: Number of resnet layers
-    :param kernel_size: kernel size of the conv layers
-    :param filters: number of filters per convolutional layer
-    :param activation: intermediate activation
-    :param final_activation: activation of the final layer
-    :param channel_index: Index of the channel in dimensions
-    :param use_bn: Use Batch Normalization
-    :param use_bias: use bias
-    :param kernel_regularizer: Kernel weight regularizer
-    :param kernel_initializer: Kernel weight initializer
-    :param add_sparsity: if true add sparsity layer
-    :param add_gates: if true add gate layer
-    :param add_sigma: if true add sigma
-    :param add_intermediate_results: if true output results before projection
-    :param add_learnable_multiplier:
-    :param name: name of the model
-    :return: resnet model
-    """
-    # --- setup parameters
-    bn_params = dict(
-        center=use_bias,
-        scale=True,
-        momentum=0.999,
-        epsilon=1e-4
-    )
-
-    # this make it 68% sparse
-    sparse_params = dict(
-        symmetric=True,
-        max_value=3.0,
-        threshold_sigma=1.0,
-        per_channel_sparsity=False
-    )
-
-    conv_params = dict(
-        filters=filters,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation=activation,
-        kernel_size=kernel_size,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
-    gate_params = dict(
-        filters=filters,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation="linear",
-        kernel_size=1,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
-    depth_conv_params = dict(
-        kernel_size=3,
-        filters=filters * 2,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation=activation,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
-    intermediate_conv_params = dict(
-        kernel_size=1,
-        filters=filters,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation=activation,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
-    final_conv_params = dict(
-        kernel_size=1,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation=final_activation,
-        filters=input_dims[channel_index],
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
-    resnet_params = dict(
-        no_layers=no_layers,
-        bn_params=bn_params,
-        depth_conv_params=depth_conv_params,
-        intermediate_conv_params=intermediate_conv_params
-    )
-
-    # make it linear so it gets sparse afterwards
-    if add_sparsity:
-        conv_params["activation"] = "linear"
-
-    if add_gates:
-        resnet_params["gate_params"] = gate_params
-
-    # --- build model
-    # set input
-    input_layer = \
-        keras.Input(
-            name="input_tensor",
-            shape=input_dims)
-    x = input_layer
-    y = input_layer
-
-    # optional batch norm
-    if use_bn:
-        x = keras.layers.BatchNormalization(**bn_params)(x)
-
-    # add base layer
-    x = keras.layers.Conv2D(**conv_params)(x)
-
-    if add_sparsity:
-        x = \
-            sparse_block(
-                input_layer=x,
-                bn_params=None,
-                **sparse_params)
-
-    # add resnet blocks
-    x = \
-        resnet_blocks(
-            input_layer=x,
-            **resnet_params)
-
-    # optional batch norm
-    if use_bn:
-        x = keras.layers.BatchNormalization(**bn_params)(x)
-
-    # learnable multiplier
-    if add_learnable_multiplier:
-        x = \
-            learnable_multiplier_layer(
-                input_layer=x,
-                trainable=True,
-                multiplier=1.0,
-                activation="linear")
-
-    # output to original channels / projection
-    output_layer = \
-        keras.layers.Conv2D(**final_conv_params)(x)
-
-    # skip layer
-    output_layer = \
-        keras.layers.Add()([output_layer, y])
-    output_layer = \
-        keras.layers.Layer(name="output_tensor")(output_layer)
-
-    # return intermediate results if flag is turned on
-    output_layers = [output_layer]
-    if add_intermediate_results:
-        output_layers.append(
-            keras.layers.Layer(name="intermediate_tensor")(x))
-
-    return \
-        keras.Model(
-            name=name,
-            trainable=True,
-            inputs=input_layer,
-            outputs=output_layers)
-
-# ---------------------------------------------------------------------

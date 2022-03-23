@@ -14,6 +14,7 @@ from typing import List
 # local imports
 # ---------------------------------------------------------------------
 
+from .constants import *
 from .custom_logger import logger
 
 # ---------------------------------------------------------------------
@@ -131,7 +132,7 @@ def delta_xy_magnitude(
         kernel_size: int = 3,
         alpha: float = 1.0,
         beta: float = 1.0,
-        eps: float = 0.0001):
+        eps: float = EPSILON_DEFAULT):
     """
     Computes the delta loss of a layer
     (alpha * (dI/dx)^2 + beta * (dI/dy)^2) ^ 0.5
@@ -163,7 +164,7 @@ def delta_loss(
         kernel_size: int = 3,
         alpha: float = 1.0,
         beta: float = 1.0,
-        eps: float = 0.0001,
+        eps: float = EPSILON_DEFAULT,
         axis: List[int] = [1, 2, 3]):
     """
     Computes the delta loss of a layer
