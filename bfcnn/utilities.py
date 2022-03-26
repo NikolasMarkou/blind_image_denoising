@@ -283,17 +283,9 @@ def mean_sigma_local(
     mean, variance = \
         mean_variance_local(
             input_layer=input_layer,
-            kernel_size=kernel_size,
-            epsilon=epsilon)
+            kernel_size=kernel_size)
 
-    def func_sqrt_robust(args):
-        x = args
-        return tf.sqrt(tf.abs(x) + epsilon)
-
-    sigma = \
-        keras.layers.Lambda(
-            function=func_sqrt_robust,
-            trainable=False)(variance)
+    sigma = tf.sqrt(tf.abs(variance) + epsilon)
 
     return mean, sigma
 
