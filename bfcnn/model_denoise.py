@@ -477,6 +477,8 @@ def build_model_denoise_resnet(
             mean_variance_local(
                 input_layer=x,
                 kernel_size=(5, 5))
+        # variance does not need to propagate gradients
+        x_var = keras.backend.stop_gradient(x)
         x = keras.layers.Concatenate()([x, x_var])
 
     # add base layer

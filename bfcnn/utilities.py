@@ -588,7 +588,6 @@ def resnet_blocks(
         first_conv_params: Dict,
         second_conv_params: Dict,
         third_conv_params: Dict,
-        stop_gradient: bool = False,
         bn_params: Dict = None,
         gate_params: Dict = None):
     """
@@ -599,7 +598,6 @@ def resnet_blocks(
     :param first_conv_params: the parameters of the first conv
     :param second_conv_params: the parameters of the middle conv
     :param third_conv_params: the parameters of the third conv
-    :param stop_gradient: if true stop gradient at each resnet block
     :param bn_params: batch normalization parameters
     :param gate_params: gate optional parameters
 
@@ -620,8 +618,6 @@ def resnet_blocks(
     # --- create several number of residual blocks
     for i in range(no_layers):
         previous_layer = x
-        if stop_gradient:
-            x = keras.backend.stop_gradient(x)
         # 1st conv
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
@@ -648,7 +644,13 @@ def resnet_blocks(
                     multiplier=1.0)
             # activation per pixel
             y = keras.layers.Conv2D(**gate_params)(y)
-            y = 1.0 - keras.activations.sigmoid(3.0 * y - 4.0)
+            # use sigmoid
+            y = keras.activations.sigmoid(4.0 - y * 3.0)
+            # TODO use hard_sigmoid
+            # if x < -2.5: return 0
+            # if x > 2.5: return 1
+            # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
+            # y = 1.0 - keras.activations.hard_sigmoid(y * 3.0 - 2.0)
             x = keras.layers.Multiply()([x, y])
         # skip connection
         x = keras.layers.Add()([x, previous_layer])
