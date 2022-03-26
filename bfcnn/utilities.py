@@ -589,7 +589,8 @@ def resnet_blocks(
         second_conv_params: Dict,
         third_conv_params: Dict,
         bn_params: Dict = None,
-        gate_params: Dict = None):
+        gate_params: Dict = None,
+        stop_gradient: bool = False):
     """
     Create a series of residual network blocks
 
@@ -600,7 +601,7 @@ def resnet_blocks(
     :param third_conv_params: the parameters of the third conv
     :param bn_params: batch normalization parameters
     :param gate_params: gate optional parameters
-
+    :param stop_gradient: if True (removed for now)
     :return: filtered input_layer
     """
     # --- argument check
