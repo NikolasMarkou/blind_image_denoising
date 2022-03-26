@@ -288,9 +288,6 @@ def mean_sigma_local(
 
     def func_sqrt_robust(args):
         x = args
-        # fix variance
-        n = (kernel_size[0] * kernel_size[1])
-        x = x * (float(n) / float(n - 1))
         return tf.sqrt(tf.abs(x) + epsilon)
 
     sigma = \

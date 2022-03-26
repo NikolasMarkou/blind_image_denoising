@@ -474,7 +474,7 @@ def build_model_denoise_resnet(
 
     if add_var:
         _, x_var = \
-            mean_variance_local(
+            mean_sigma_local(
                 input_layer=x,
                 kernel_size=(5, 5))
         # variance does not need to propagate gradients
