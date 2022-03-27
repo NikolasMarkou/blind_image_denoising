@@ -108,7 +108,8 @@ def model_builder(
     )
 
     if model_type == "resnet":
-        pass
+        model_params["add_gates"] = False
+        model_params["add_sparsity"] = False
     elif model_type == "sparse_resnet":
         model_params["add_sparsity"] = True
     elif model_type == "gatenet":
@@ -445,7 +446,6 @@ def build_model_denoise_resnet(
     resnet_params = dict(
         no_layers=no_layers,
         bn_params=bn_params,
-        gate_params=gate_params,
         stop_gradient=stop_gradient,
         first_conv_params=first_conv_params,
         second_conv_params=second_conv_params,
