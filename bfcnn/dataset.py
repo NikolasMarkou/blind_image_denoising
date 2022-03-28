@@ -55,7 +55,7 @@ def dataset_builder(
     random_left_right = config.get("random_left_right", False)
     additional_noise = config.get("additional_noise", [])
     multiplicative_noise = config.get("multiplicative_noise", [])
-    interpolation = config.get("interpolation", "bilinear")
+    interpolation = config.get("interpolation", "area")
 
     # build noise options
     noise_choices = []
@@ -138,6 +138,53 @@ def dataset_builder(
 
     # --- define augmentation function
     def augmentation(input_batch):
+        # input_batch = \
+        #     tf.image.random_crop(
+        #         value=input_batch,
+        #         seed=0,
+        #         size=(
+        #             tf.shape(input_batch)[0],
+        #             input_shape[0],
+        #             input_shape[1],
+        #             tf.shape(input_batch)[3])
+        #     )
+        #
+        # # --- flip left right
+        # if random_left_right:
+        #     if np.random.choice([True, False]):
+        #         input_batch = \
+        #             tf.image.flip_left_right(input_batch)
+        #
+        # # --- flip up down
+        # if random_up_down:
+        #     if np.random.choice([True, False]):
+        #         input_batch = \
+        #             tf.image.flip_up_down(input_batch)
+        #
+        # # --- randomly rotate input
+        # if random_rotate > 0.0:
+        #     if np.random.choice([True, False]):
+        #         tmp_batch_size = \
+        #             K.int_shape(input_batch)[0]
+        #         angles = \
+        #             tf.random.uniform(
+        #                 seed=0,
+        #                 dtype=tf.float32,
+        #                 minval=-random_rotate,
+        #                 maxval=random_rotate,
+        #                 shape=(tmp_batch_size,))
+        #         input_batch = \
+        #             tfa.image.rotate(
+        #                 angles=angles,
+        #                 images=input_batch,
+        #                 fill_mode="reflect",
+        #                 interpolation="bilinear")
+        #
+        # # --- random invert colors
+        # if random_invert:
+        #     if np.random.choice([True, False]):
+        #         input_batch = max_value - (input_batch - min_value)
+
         # --- random select noise type
         noisy_batch = tf.identity(input_batch)
         noise_type = np.random.choice(noise_choices)
