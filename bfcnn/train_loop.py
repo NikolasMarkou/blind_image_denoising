@@ -79,7 +79,12 @@ def train_loop(
     optimizer, lr_schedule = \
         optimizer_builder(config=config["train"]["optimizer"])
 
-
+    # --- create the help variables
+    global_step = tf.Variable(
+        0, trainable=False, dtype=tf.dtypes.int64, name="global_step")
+    global_epoch = tf.Variable(
+        0, trainable=False, dtype=tf.dtypes.int64, name="global_epoch")
+    summary_writer = tf.summary.create_file_writer(model_dir)
 
     # --- get the train configuration
     train_config = config["train"]
@@ -115,18 +120,6 @@ def train_loop(
     prune_function = prune_function_builder(prune_config)
     use_discriminator = MODEL_DISCRIMINATE_STR in config
     model_discriminate = None
-
-    # --- enable debugging
-    if train_config.get("debugging", False):
-        tf.debugging.experimental.enable_dump_debug_info(
-            str(model_dir), tensor_debug_mode="FULL_HEALTH")
-
-    # --- create the help variables
-    global_step = tf.Variable(
-        0, trainable=False, dtype=tf.dtypes.int64, name="global_step")
-    global_epoch = tf.Variable(
-        0, trainable=False, dtype=tf.dtypes.int64, name="global_epoch")
-    summary_writer = tf.summary.create_file_writer(model_dir)
 
     # --- build the denoise model
     tf.summary.trace_on(graph=True, profiler=False)

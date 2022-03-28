@@ -35,7 +35,6 @@
   },
   "train": {
     "epochs": 100,
-    "debugging": true,
     "total_steps": -1,
     "checkpoints_to_keep": 3,
     "checkpoint_every": 10000,
