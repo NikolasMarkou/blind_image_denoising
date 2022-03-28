@@ -182,6 +182,7 @@ def step_function(
 def learnable_multiplier_layer(
         input_layer,
         multiplier: float = 1.0,
+        sensitivity: float = 10.0,
         activation: str = "linear",
         use_bias: bool = False,
         use_random: bool = False,
@@ -192,6 +193,7 @@ def learnable_multiplier_layer(
 
     :param input_layer: input layer to be multiplied
     :param multiplier: multiplication constant
+    :param sensitivity: multiplies input so weights keep small
     :param activation: activation after the filter (linear by default)
     :param use_bias: use offset bias (false by default)
     :param use_random: if True add a small random offset to break symmetry
@@ -219,8 +221,10 @@ def learnable_multiplier_layer(
             activation=activation,
             kernel_initializer=kernel_init,
             depthwise_initializer=kernel_init,
-            kernel_regularizer=kernel_regularizer)(input_layer)
+            kernel_regularizer=kernel_regularizer)(input_layer * sensitivity)
 
+    if multiplier == 0.0:
+        return x
     if multiplier == 1.0:
         return x + input_layer
     return x + input_layer * multiplier
