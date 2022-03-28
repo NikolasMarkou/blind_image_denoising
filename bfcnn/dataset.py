@@ -117,7 +117,6 @@ def dataset_builder(
                     K.int_shape(input_batch)[0]
                 angles = \
                     tf.random.uniform(
-                        seed=0,
                         dtype=tf.float32,
                         minval=-random_rotate,
                         maxval=random_rotate,
@@ -152,7 +151,6 @@ def dataset_builder(
                 noisy_batch = \
                     noisy_batch + \
                     tf.random.truncated_normal(
-                        seed=0,
                         mean=0,
                         stddev=noise_std,
                         shape=tf.shape(input_batch))
@@ -160,7 +158,6 @@ def dataset_builder(
                 # channel dependent noise
                 tmp_noisy_batch = \
                     tf.random.truncated_normal(
-                        seed=0,
                         mean=0,
                         stddev=noise_std,
                         shape=(tf.shape(input_batch)[0], input_shape[0], input_shape[1], 1))
