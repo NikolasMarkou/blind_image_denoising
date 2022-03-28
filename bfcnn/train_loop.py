@@ -79,8 +79,6 @@ def train_loop(
     optimizer, lr_schedule = \
         optimizer_builder(config=config["train"]["optimizer"])
 
-
-
     # --- get the train configuration
     train_config = config["train"]
     epochs = train_config["epochs"]
@@ -119,7 +117,8 @@ def train_loop(
     # --- enable debugging
     if train_config.get("debugging", False):
         tf.debugging.experimental.enable_dump_debug_info(
-            str(model_dir), tensor_debug_mode="FULL_HEALTH")
+            str(model_dir),
+            tensor_debug_mode="NO_TENSOR")
 
     # --- create the help variables
     global_step = tf.Variable(
