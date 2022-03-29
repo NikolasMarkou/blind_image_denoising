@@ -24,11 +24,11 @@
       "levels": 4,
       "type": "gaussian",
       "xy_max": [1.0, 1.0],
-      "kernel_size": [3, 3]
+      "kernel_size": [5, 5]
     },
     "inverse_pyramid": {
       "levels": 4,
-      "type": "gaussian_learnable",
+      "type": "gaussian",
       "xy_max": [1.0, 1.0],
       "kernel_size": [5, 5]
     }
