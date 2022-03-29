@@ -10,8 +10,6 @@ __license__ = "MIT"
 
 import os
 import time
-
-import keras.backend
 import tensorflow as tf
 from pathlib import Path
 from typing import Union, Dict
@@ -20,7 +18,6 @@ from typing import Union, Dict
 # local imports
 # ---------------------------------------------------------------------
 
-from .pruning import *
 from .constants import *
 from .visualize import visualize
 from .custom_logger import logger
@@ -29,6 +26,7 @@ from .dataset import dataset_builder
 from .loss import loss_function_builder
 from .optimizer import optimizer_builder
 from .model_denoise import model_builder as model_denoise_builder
+from .pruning import prune_function_builder, PruneStrategy, get_conv2d_weights
 
 
 # ---------------------------------------------------------------------
