@@ -258,7 +258,7 @@ def train_loop(
                     grads = \
                         tape.gradient(
                             target=loss_map[MEAN_TOTAL_LOSS_STR],
-                            sources=model_denoise.trainable_weights)
+                            sources=model_denoise_weights)
 
                     # Run one step of gradient descent by updating
                     # the value of the variables to minimize the loss.
