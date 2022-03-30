@@ -1,7 +1,7 @@
 {
   "model_denoise": {
     "filters": 16,
-    "no_layers": 5,
+    "no_layers": 10,
     "min_value": 0,
     "add_var": false,
     "max_value": 255,
@@ -9,7 +9,7 @@
     "type": "resnet",
     "batchnorm": true,
     "activation": "elu",
-    "clip_values": true,
+    "clip_values": false,
     "shared_model": true,
     "stop_gradient": false,
     "output_multiplier": 1.0,
@@ -24,11 +24,11 @@
       "levels": 4,
       "type": "gaussian",
       "xy_max": [1.0, 1.0],
-      "kernel_size": [5, 5]
+      "kernel_size": [3, 3]
     },
     "inverse_pyramid": {
       "levels": 4,
-      "type": "gaussian",
+      "type": "gaussian_learnable",
       "xy_max": [1.0, 1.0],
       "kernel_size": [5, 5]
     }
