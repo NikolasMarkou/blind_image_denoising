@@ -69,8 +69,7 @@ def mae_weighted(
 
     # --- calculate hinged absolute diff
     d = tf.abs(original - prediction)
-    if hinge != 0.0:
-        d = keras.layers.ReLU(threshold=hinge)(d)
+    d = keras.layers.ReLU(threshold=hinge)(d)
 
     # --- multiply diff and weight
     d = keras.layers.Multiply()([d, d_weight])
@@ -90,7 +89,7 @@ def mae_weighted(
 def mae_weighted_delta(
         original,
         prediction,
-        hinge: float = 0):
+        hinge: float = 0.0):
     """
     Mean Absolute Error (mean over channels and batches) with weights
 
@@ -110,8 +109,7 @@ def mae_weighted_delta(
 
     # --- calculate hinged absolute diff
     d = tf.abs(original - prediction)
-    if hinge != 0.0:
-        d = keras.layers.ReLU(threshold=hinge)(d)
+    d = keras.layers.ReLU(threshold=hinge)(d)
 
     # --- multiply diff and weight
     d = keras.layers.Multiply()([d, d_weight])
@@ -140,8 +138,7 @@ def mae(
     :param hinge: hinge value
     """
     d = tf.abs(original - prediction)
-    if hinge != 0.0:
-        d = keras.layers.ReLU(threshold=hinge)(d)
+    d = keras.layers.ReLU(threshold=hinge)(d)
     # sum over all dims
     d = tf.reduce_mean(d, axis=[1, 2, 3])
     # mean over batch
@@ -165,8 +162,7 @@ def nae(
     :param hinge: hinge value
     """
     d = tf.abs(original - prediction)
-    if hinge != 0.0:
-        d = keras.layers.ReLU(threshold=hinge)(d)
+    d = keras.layers.ReLU(threshold=hinge)(d)
     # sum over all dims
     d = tf.reduce_sum(d, axis=[1, 2, 3])
     d_x = tf.reduce_sum(original, axis=[1, 2, 3])

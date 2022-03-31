@@ -9,6 +9,7 @@ __license__ = "MIT"
 import keras
 import numpy as np
 from typing import List
+import tensorflow as tf
 
 # ---------------------------------------------------------------------
 # local imports
@@ -146,14 +147,11 @@ def delta_xy_magnitude(
     """
     dx = delta_x(input_layer, kernel_size=kernel_size)
     dy = delta_y(input_layer, kernel_size=kernel_size)
-    dx = keras.backend.square(dx)
-    dy = keras.backend.square(dy)
-    if alpha != 1.0:
-        dx = dx * alpha
-    if beta != 1.0:
-        dy = dy * beta
-    dd = keras.backend.sqrt(keras.backend.abs(dx + dy) + eps)
-    return dd
+    dx = tf.square(dx)
+    dy = tf.square(dy)
+    dx = dx * alpha
+    dy = dy * beta
+    return tf.sqrt(tf.abs(dx + dy) + eps)
 
 # ---------------------------------------------------------------------
 
