@@ -59,7 +59,7 @@ def dataset_builder(
     # whether to crop or not
     random_crop = dataset_shape[0:2] != input_shape[0:2]
     random_crop = tf.constant(random_crop)
-    
+
     # build noise options
     noise_choices = []
     if len(additional_noise) > 0:
@@ -72,6 +72,8 @@ def dataset_builder(
         multiplicative_noise = [1.0]
     if subsample_size > 0:
         noise_choices.append(2)
+    else:
+        subsample_size = 2
     noise_choices = tf.constant(noise_choices)
     additional_noise = tf.constant(additional_noise, dtype=tf.float32)
     multiplicative_noise = tf.constant(multiplicative_noise, dtype=tf.float32)
