@@ -37,8 +37,8 @@ def dataset_builder(
     # resolution of the files loaded (reshape)
     dataset_shape = config.get("dataset_shape", [256, 256])
     # --- clip values to min max
-    min_value = tf.constant(config.get("min_value", 0))
-    max_value = tf.constant(config.get("max_value", 255))
+    min_value = config.get("min_value", 0)
+    max_value = config.get("max_value", 255)
     clip_value = tf.constant(config.get("clip_value", True))
     # --- if true round values
     round_values = tf.constant(config.get("round_values", True))
