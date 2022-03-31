@@ -37,6 +37,60 @@ DELTA_KERNELS = {
         [+2.0, +1.0, +0.0, -1.0, -2.0]]
 }
 
+
+# ---------------------------------------------------------------------
+
+
+def delta_layer(
+        kernel_size: int = 3,
+        transpose: bool = False,
+        trainable: bool = False):
+    """
+    create a delta layer
+
+    :param kernel_size: 2,3,4,5
+    :param transpose: whether to transpose x-y in kernel
+    :param trainable: whether this layer is trainable or not
+    :return: DepthwiseConv2D layer
+    """
+    # --- argument checking
+    if kernel_size not in DELTA_KERNELS:
+        raise ValueError("kernel_size [{0}] not found".format(kernel_size))
+
+    # --- initialise to set kernel to required value
+    def kernel_init(shape, dtype):
+        kernel = np.zeros(shape)
+        delta_kernel = DELTA_KERNELS[kernel_size]
+        for i in range(shape[2]):
+            kernel[:, :, i, 0] = delta_kernel
+        if transpose:
+            kernel = np.transpose(kernel, axes=[1, 0, 2, 3])
+        return kernel
+
+    return \
+        keras.layers.DepthwiseConv2D(
+            strides=(1, 1),
+            padding="same",
+            use_bias=False,
+            depth_multiplier=1,
+            activation="linear",
+            trainable=trainable,
+            kernel_initializer=kernel_init,
+            depthwise_initializer=kernel_init,
+            kernel_size=(kernel_size, kernel_size))
+
+
+DELTA_X_LAYERS = {
+    k: delta_layer(k, transpose=False, trainable=False)
+    for k in DELTA_KERNELS.keys()
+}
+
+DELTA_Y_LAYERS = {
+    k: delta_layer(k, transpose=True, trainable=False)
+    for k in DELTA_KERNELS.keys()
+}
+
+
 # ---------------------------------------------------------------------
 
 
@@ -80,27 +134,21 @@ def delta(
             depthwise_initializer=kernel_init,
             kernel_size=(kernel_size, kernel_size))(input_layer)
 
+
 # ---------------------------------------------------------------------
 
 
 def delta_x(
         input_layer,
-        kernel_size: int = 3,
-        trainable: bool = False):
+        kernel_size: int = 3):
     """
     Compute delta x for each channel layer
 
     :param input_layer: input layer to be filtered
     :param kernel_size: 2,3,4,5
-    :param trainable: whether this layer is trainable or not
     :return: filtered input_layer
     """
-    return \
-        delta(
-            input_layer=input_layer,
-            kernel_size=kernel_size,
-            trainable=trainable,
-            transpose=False)
+    return DELTA_X_LAYERS[kernel_size](input_layer)
 
 
 # ---------------------------------------------------------------------
@@ -108,22 +156,15 @@ def delta_x(
 
 def delta_y(
         input_layer,
-        kernel_size: int = 3,
-        trainable: bool = False):
+        kernel_size: int = 3):
     """
     Compute delta y for each channel layer
 
     :param input_layer: input layer to be filtered
     :param kernel_size: 2,3,4,5
-    :param trainable: whether this layer is trainable or not
     :return: filtered input_layer
     """
-    return \
-        delta(
-            input_layer=input_layer,
-            kernel_size=kernel_size,
-            trainable=trainable,
-            transpose=True)
+    return DELTA_Y_LAYERS[kernel_size](input_layer)
 
 
 # ---------------------------------------------------------------------
@@ -152,6 +193,7 @@ def delta_xy_magnitude(
     dx = dx * alpha
     dy = dy * beta
     return tf.sqrt(tf.abs(dx + dy) + eps)
+
 
 # ---------------------------------------------------------------------
 
