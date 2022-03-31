@@ -192,83 +192,78 @@ def loss_function_builder(
 
     # controls how we discount each level
     hinge = config.get("hinge", 0.0)
-    nae_multiplier = config.get("nae_multiplier", 0.0)
-    mae_multiplier = config.get("mae_multiplier", 1.0)
-    mae_delta_enabled = config.get("mae_delta", False)
+    nae_multiplier = tf.constant(config.get("nae_multiplier", 0.0))
+    mae_multiplier = tf.constant(config.get("mae_multiplier", 1.0))
+    mae_delta_enabled = tf.constant(config.get("mae_delta", False))
     model_pyramid_config = config.get("pyramid", None)
     input_shape = config.get("input_shape", (None, None, 3))
     regularization_multiplier = config.get("regularization", 1.0)
-    discriminate_multiplier = config.get("discriminate_multiplier", 1.0)
     input_shape = input_shape_fixer(input_shape)
 
     # prepare pyramid model
     if model_pyramid_config is None:
         model_pyramid = None
+        use_pyramid = tf.constant(False)
     else:
         model_pyramid = \
             build_pyramid_model(
                 input_dims=input_shape,
                 config=model_pyramid_config)
+        use_pyramid = tf.constant(True)
 
     def loss_function(
             input_batch,
             prediction_batch,
-            noisy_batch=None,
-            model_losses=None,
-            discriminate_batch=None,
-            discriminate_ground_truth=None,
-            difficulty: float = -1.0) -> Dict:
+            noisy_batch,
+            model_losses) -> Dict:
         """
         The loss function of the depth prediction model
 
-        :param: input_batch: ground truth
-        :param: prediction_batch: prediction
-        :param: model_losses: weight/regularization losses
-        :param: difficulty:
-            if >= 0 then it is an indication how corrupted the noisy batch is
+        :param input_batch: ground truth
+        :param prediction_batch: prediction
+        :param noisy_batch: noisy batch
+        :param model_losses: weight/regularization losses
         :return: dictionary of losses
         """
 
         # --- mean absolute error from prediction
         mae_prediction_loss = 0.0
         mae_weighted_delta_loss = 0.0
-        if input_batch is not None and \
-                prediction_batch is not None:
-            if model_pyramid is not None:
-                pyramid_input_batch = \
-                    model_pyramid(input_batch, training=False)
-                pyramid_prediction_batch = \
-                    model_pyramid(prediction_batch, training=False)
-                levels = 0
-                for i, _ in enumerate(pyramid_input_batch):
-                    tmp_input_batch = pyramid_input_batch[i]
-                    tmp_prediction_batch = pyramid_prediction_batch[i]
-                    mae_prediction_loss += \
-                        mae(
+        if use_pyramid:
+            pyramid_input_batch = \
+                model_pyramid(input_batch, training=False)
+            pyramid_prediction_batch = \
+                model_pyramid(prediction_batch, training=False)
+            levels = 0
+            for i, _ in enumerate(pyramid_input_batch):
+                tmp_input_batch = pyramid_input_batch[i]
+                tmp_prediction_batch = pyramid_prediction_batch[i]
+                mae_prediction_loss += \
+                    mae(
+                        original=tmp_input_batch,
+                        prediction=tmp_prediction_batch,
+                        hinge=hinge)
+                if mae_delta_enabled:
+                    mae_weighted_delta_loss += \
+                        mae_weighted_delta(
                             original=tmp_input_batch,
                             prediction=tmp_prediction_batch,
                             hinge=hinge)
-                    if mae_delta_enabled:
-                        mae_weighted_delta_loss += \
-                            mae_weighted_delta(
-                                original=tmp_input_batch,
-                                prediction=tmp_prediction_batch,
-                                hinge=hinge)
-                    levels += 1
-                mae_prediction_loss = mae_prediction_loss / levels
-                mae_weighted_delta_loss = mae_weighted_delta_loss / levels
-            else:
-                mae_prediction_loss = \
-                    mae(
+                levels += 1
+            mae_prediction_loss = mae_prediction_loss / levels
+            mae_weighted_delta_loss = mae_weighted_delta_loss / levels
+        else:
+            mae_prediction_loss = \
+                mae(
+                    original=input_batch,
+                    prediction=prediction_batch,
+                    hinge=hinge)
+            if mae_delta_enabled:
+                mae_weighted_delta_loss = \
+                    mae_weighted_delta(
                         original=input_batch,
                         prediction=prediction_batch,
                         hinge=hinge)
-                if mae_delta_enabled:
-                    mae_weighted_delta_loss = \
-                        mae_weighted_delta(
-                            original=input_batch,
-                            prediction=prediction_batch,
-                            hinge=hinge)
 
         mae_actual = \
             mae(
@@ -284,51 +279,19 @@ def loss_function_builder(
 
         nae_improvement = nae_noise - nae_prediction
 
-        # --- discrimination loss
-        discriminate_loss = 0.0
-        if discriminate_batch is not None and \
-                discriminate_ground_truth is not None:
-            discriminate_loss = \
-                keras.losses.sparse_categorical_crossentropy(
-                    y_true=discriminate_ground_truth,
-                    y_pred=discriminate_batch,
-                    axis=-1)
-            discriminate_loss = \
-                keras.layers.ReLU(
-                    max_value=1.0,
-                    trainable=False)(discriminate_loss)
-            discriminate_loss = \
-                tf.reduce_mean(
-                    input_tensor=discriminate_loss,
-                    axis=[1, 2],
-                    keepdims=False)
-            discriminate_loss = \
-                tf.reduce_mean(
-                    input_tensor=discriminate_loss,
-                    axis=[0],
-                    keepdims=False)
-
         # --- regularization error
-        regularization_loss = 0.0
-        if model_losses is not None:
-            regularization_loss = tf.add_n(model_losses)
+        regularization_loss = tf.add_n(model_losses)
 
         # --- snr
         signal_to_noise_ratio = \
             snr(input_batch, prediction_batch)
-
-        # --- difficulty computation
-        if difficulty >= 0:
-            # TODO
-            pass
 
         # --- add up loss
         mean_total_loss = \
             nae_prediction * nae_multiplier + \
             (mae_prediction_loss +
              mae_weighted_delta_loss) * mae_multiplier + \
-            regularization_loss * regularization_multiplier + \
-            discriminate_loss * discriminate_multiplier
+            regularization_loss * regularization_multiplier
 
         return {
             "nae_noise": nae_noise,
@@ -337,12 +300,7 @@ def loss_function_builder(
             "nae_prediction": nae_prediction,
             MEAN_TOTAL_LOSS_STR: mean_total_loss,
             "nae_improvement": nae_improvement,
-            DISCRIMINATE_LOSS_STR: discriminate_loss,
             REGULARIZATION_LOSS_STR: regularization_loss,
-            "discriminate_loss_0": discriminate_loss * discriminate_multiplier,
-            "denoise_loss_0": (mae_prediction_loss +
-                               mae_weighted_delta_loss) * mae_multiplier +
-                              (1.0 - discriminate_loss) * discriminate_multiplier,
         }
 
     return loss_function

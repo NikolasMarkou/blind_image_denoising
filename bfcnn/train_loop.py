@@ -70,7 +70,7 @@ def train_loop(
     augmentation_fn = tf.function(dataset_res["augmentation"])
 
     # --- build loss function
-    loss_fn = loss_function_builder(config=config["loss"])
+    loss_fn = tf.function(loss_function_builder(config=config["loss"]))
 
     # --- build optimizer
     optimizer, lr_schedule = \
@@ -246,7 +246,6 @@ def train_loop(
 
                     # compute the loss value for this mini-batch
                     loss_map = loss_fn(
-                        difficulty=0,
                         input_batch=input_batch,
                         noisy_batch=noisy_batch,
                         model_losses=model_denoise.losses,
