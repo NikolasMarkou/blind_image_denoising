@@ -583,7 +583,7 @@ def resnet_blocks(
         third_conv_params: Dict,
         bn_params: Dict = None,
         gate_params: Dict = None,
-        stop_gradient: bool = False):
+        dropout_params: Dict = None):
     """
     Create a series of residual network blocks
 
@@ -594,7 +594,7 @@ def resnet_blocks(
     :param third_conv_params: the parameters of the third conv
     :param bn_params: batch normalization parameters
     :param gate_params: gate optional parameters
-    :param stop_gradient: if True (removed for now)
+    :param dropout_params: dropout optional parameters
     :return: filtered input_layer
     """
     # --- argument check
@@ -604,6 +604,7 @@ def resnet_blocks(
         raise ValueError("no_layers must be >= 0")
     use_bn = bn_params is not None
     use_gate = gate_params is not None
+    use_dropout = dropout_params is not None
 
     # --- setup resnet
     x = input_layer
@@ -612,6 +613,8 @@ def resnet_blocks(
     # --- create several number of residual blocks
     for i in range(no_layers):
         previous_layer = x
+        if use_dropout:
+            x = keras.layers.SpatialDropout2D(**dropout_params)(x)
         # 1st conv
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
@@ -648,7 +651,6 @@ def resnet_blocks(
             x = keras.layers.Multiply()([x, y])
         # skip connection
         x = keras.layers.Add()([x, previous_layer])
-
     return x
 
 # ---------------------------------------------------------------------
