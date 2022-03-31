@@ -227,8 +227,8 @@ def loss_function_builder(
         """
 
         # --- mean absolute error from prediction
-        mae_prediction_loss = 0.0
-        mae_weighted_delta_loss = 0.0
+        mae_prediction_loss = tf.constant(0.0)
+        mae_weighted_delta_loss = tf.constant(0.0)
         if use_pyramid:
             pyramid_input_batch = \
                 model_pyramid(input_batch, training=False)
