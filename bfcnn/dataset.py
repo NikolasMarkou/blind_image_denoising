@@ -37,22 +37,22 @@ def dataset_builder(
     # resolution of the files loaded (reshape)
     dataset_shape = config.get("dataset_shape", [256, 256])
     # --- clip values to min max
-    min_value = config.get("min_value", 0)
-    max_value = config.get("max_value", 255)
-    clip_value = config.get("clip_value", True)
+    min_value = tf.constant(config.get("min_value", 0))
+    max_value = tf.constant(config.get("max_value", 255))
+    clip_value = tf.constant(config.get("clip_value", True))
     # --- if true round values
-    round_values = config.get("round_values", True)
+    round_values = tf.constant(config.get("round_values", True))
     # --- dataset augmentation
-    random_blur = config.get("random_blur", False)
+    random_blur = tf.constant(config.get("random_blur", False))
     subsample_size = config.get("subsample_size", -1)
     # in radians
-    random_rotate = config.get("random_rotate", 0.0)
+    random_rotate = tf.constant(config.get("random_rotate", 0.0))
     # if true randomly invert
-    random_invert = config.get("random_invert", False)
+    random_invert = tf.constant(config.get("random_invert", False))
     # if true randomly invert upside down image
-    random_up_down = config.get("random_up_down", False)
+    random_up_down = tf.constant(config.get("random_up_down", False))
     # if true randomly invert left right image
-    random_left_right = config.get("random_left_right", False)
+    random_left_right = tf.constant(config.get("random_left_right", False))
     additional_noise = config.get("additional_noise", [])
     multiplicative_noise = config.get("multiplicative_noise", [])
     interpolation = config.get("interpolation", "area")
