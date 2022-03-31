@@ -56,6 +56,8 @@ def dataset_builder(
     additional_noise = config.get("additional_noise", [])
     multiplicative_noise = config.get("multiplicative_noise", [])
     interpolation = config.get("interpolation", "area")
+    # whether to crop or not
+    random_crop = dataset_shape[0:2] != input_shape[0:2]
 
     # build noise options
     noise_choices = []
@@ -86,41 +88,44 @@ def dataset_builder(
 
     # --- define augmentation function
     def augmentation(input_batch):
-        input_batch = \
-            tf.image.random_crop(
-                value=input_batch,
-                seed=0,
-                size=(
-                    tf.shape(input_batch)[0],
-                    input_shape[0],
-                    input_shape[1],
-                    tf.shape(input_batch)[3])
-            )
+        input_shape_inference = tf.shape(input_batch)
+
+        # --- crop randomly
+        if random_crop:
+            input_batch = \
+                tf.image.random_crop(
+                    value=input_batch,
+                    seed=0,
+                    size=(
+                        input_shape_inference[0],
+                        input_shape[0],
+                        input_shape[1],
+                        input_shape_inference[3])
+                )
+            input_shape_inference = tf.shape(input_batch)
 
         # --- flip left right
         if random_left_right:
-            if np.random.choice([True, False]):
+            if tf.random.uniform(()) > 0.5:
                 input_batch = \
                     tf.image.flip_left_right(input_batch)
 
         # --- flip up down
         if random_up_down:
-            if np.random.choice([True, False]):
+            if tf.random.uniform(()) > 0.5:
                 input_batch = \
                     tf.image.flip_up_down(input_batch)
 
         # --- randomly rotate input
         if random_rotate > 0.0:
-            if np.random.choice([True, False]):
-                tmp_batch_size = \
-                    K.int_shape(input_batch)[0]
+            if tf.random.uniform(()) > 0.5:
                 angles = \
                     tf.random.uniform(
                         seed=0,
                         dtype=tf.float32,
                         minval=-random_rotate,
                         maxval=random_rotate,
-                        shape=(tmp_batch_size,))
+                        shape=(input_shape_inference[0],))
                 input_batch = \
                     tfa.image.rotate(
                         angles=angles,
@@ -130,7 +135,7 @@ def dataset_builder(
 
         # --- random invert colors
         if random_invert:
-            if np.random.choice([True, False]):
+            if tf.random.uniform(()) > 0.5:
                 input_batch = max_value - (input_batch - min_value)
 
         # --- random select noise type
@@ -142,7 +147,7 @@ def dataset_builder(
         if noise_type == "additional":
             # additional noise
             noise_std = np.random.choice(additional_noise)
-            if np.random.choice([True, False]):
+            if tf.random.uniform(()) > 0.5:
                 # channel independent noise
                 noisy_batch = \
                     noisy_batch + \
@@ -150,7 +155,7 @@ def dataset_builder(
                         seed=0,
                         mean=0,
                         stddev=noise_std,
-                        shape=tf.shape(input_batch))
+                        shape=input_shape_inference)
             else:
                 # channel dependent noise
                 tmp_noisy_batch = \
@@ -158,17 +163,17 @@ def dataset_builder(
                         seed=0,
                         mean=0,
                         stddev=noise_std,
-                        shape=(tf.shape(input_batch)[0], input_shape[0], input_shape[1], 1))
+                        shape=(input_shape_inference[0], input_shape[0], input_shape[1], 1))
                 tmp_noisy_batch = \
                     tf.repeat(
                         tmp_noisy_batch,
                         axis=3,
-                        repeats=[tf.shape(input_batch)[3]])
+                        repeats=[input_shape_inference[3]])
                 noisy_batch = tmp_noisy_batch + noisy_batch
         elif noise_type == "multiplicative":
             # multiplicative noise
             noise_std = np.random.choice(multiplicative_noise)
-            if np.random.choice([True, False]):
+            if tf.random.uniform(()) > 0.5:
                 # channel independent noise
                 noisy_batch = \
                     noisy_batch * \
@@ -176,7 +181,7 @@ def dataset_builder(
                         seed=0,
                         mean=1,
                         stddev=noise_std,
-                        shape=tf.shape(input_batch))
+                        shape=input_shape_inference)
             else:
                 # channel dependent noise
                 tmp_noisy_batch = \
@@ -184,17 +189,17 @@ def dataset_builder(
                         seed=0,
                         mean=1,
                         stddev=noise_std,
-                        shape=(tf.shape(input_batch)[0], input_shape[0], input_shape[1], 1))
+                        shape=(input_shape_inference[0], input_shape[0], input_shape[1], 1))
                 tmp_noisy_batch = \
                     tf.repeat(
                         tmp_noisy_batch,
                         axis=3,
-                        repeats=[tf.shape(input_batch)[3]])
+                        repeats=[input_shape_inference[3]])
                 noisy_batch = tmp_noisy_batch * noisy_batch
 
             # blur to embed noise
             if random_blur:
-                if np.random.choice([True, False]):
+                if tf.random.uniform(()) > 0.5:
                     noisy_batch = \
                         tfa.image.gaussian_filter2d(
                             image=noisy_batch,
