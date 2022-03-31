@@ -178,51 +178,51 @@ def dataset_builder(
                         axis=3,
                         repeats=[input_shape_inference[3]])
                 noisy_batch = tmp_noisy_batch + noisy_batch
-        elif noise_type[0] == 1:
-            # multiplicative noise
-            noise_std = random_choice(multiplicative_noise, size=1)[0]
-            if tf.random.uniform(()) > 0.5:
-                # channel independent noise
-                noisy_batch = \
-                    noisy_batch * \
-                    tf.random.truncated_normal(
-                        seed=0,
-                        mean=1,
-                        stddev=noise_std,
-                        shape=input_shape_inference)
-            else:
-                # channel dependent noise
-                tmp_noisy_batch = \
-                    tf.random.truncated_normal(
-                        seed=0,
-                        mean=1,
-                        stddev=noise_std,
-                        shape=(input_shape_inference[0], input_shape[0], input_shape[1], 1))
-                tmp_noisy_batch = \
-                    tf.repeat(
-                        tmp_noisy_batch,
-                        axis=3,
-                        repeats=[input_shape_inference[3]])
-                noisy_batch = tmp_noisy_batch * noisy_batch
-
-            # blur to embed noise
-            if random_blur:
-                if tf.random.uniform(()) > 0.5:
-                    noisy_batch = \
-                        tfa.image.gaussian_filter2d(
-                            image=noisy_batch,
-                            sigma=1,
-                            filter_shape=(3, 3))
-        elif noise_type[0] == 2:
-            # subsample
-            stride = (subsample_size, subsample_size)
-            noisy_batch = \
-                keras.layers.MaxPool2D(
-                    pool_size=(1, 1),
-                    strides=stride)(noisy_batch)
-            noisy_batch = \
-                keras.layers.UpSampling2D(
-                    size=stride)(noisy_batch)
+        # elif noise_type[0] == 1:
+        #     # multiplicative noise
+        #     noise_std = random_choice(multiplicative_noise, size=1)[0]
+        #     if tf.random.uniform(()) > 0.5:
+        #         # channel independent noise
+        #         noisy_batch = \
+        #             noisy_batch * \
+        #             tf.random.truncated_normal(
+        #                 seed=0,
+        #                 mean=1,
+        #                 stddev=noise_std,
+        #                 shape=input_shape_inference)
+        #     else:
+        #         # channel dependent noise
+        #         tmp_noisy_batch = \
+        #             tf.random.truncated_normal(
+        #                 seed=0,
+        #                 mean=1,
+        #                 stddev=noise_std,
+        #                 shape=(input_shape_inference[0], input_shape[0], input_shape[1], 1))
+        #         tmp_noisy_batch = \
+        #             tf.repeat(
+        #                 tmp_noisy_batch,
+        #                 axis=3,
+        #                 repeats=[input_shape_inference[3]])
+        #         noisy_batch = tmp_noisy_batch * noisy_batch
+        #
+        #     # blur to embed noise
+        #     if random_blur:
+        #         if tf.random.uniform(()) > 0.5:
+        #             noisy_batch = \
+        #                 tfa.image.gaussian_filter2d(
+        #                     image=noisy_batch,
+        #                     sigma=1,
+        #                     filter_shape=(3, 3))
+        # elif noise_type[0] == 2:
+        #     # subsample
+        #     stride = (subsample_size, subsample_size)
+        #     noisy_batch = \
+        #         keras.layers.MaxPool2D(
+        #             pool_size=(1, 1),
+        #             strides=stride)(noisy_batch)
+        #     noisy_batch = \
+        #         keras.layers.UpSampling2D(
+        #             size=stride)(noisy_batch)
         else:
             logger.info(
                 "don't know how to handle noise_type [{0}]".format(
