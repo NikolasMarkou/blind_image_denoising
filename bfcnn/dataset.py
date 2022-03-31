@@ -68,6 +68,8 @@ def dataset_builder(
     if subsample_size > 0:
         noise_choices.append(2)
     noise_choices = tf.constant(noise_choices)
+    additional_noise = tf.constant(additional_noise, dtype=tf.float32)
+    multiplicative_noise = tf.constant(multiplicative_noise, dtype=tf.float32)
 
     # --- define generator function from directory
     if directory is not None:
@@ -92,7 +94,7 @@ def dataset_builder(
         indices = tf.range(0, dim_x, dtype=tf.int64)
         sample_index = tf.random.shuffle(indices)[:size]
         sample = tf.gather(x, sample_index, axis=axis)
-        return sample, sample_index
+        return sample
 
     # --- define augmentation function
     def augmentation(input_batch):
@@ -148,11 +150,11 @@ def dataset_builder(
 
         # --- random select noise type
         noisy_batch = tf.identity(input_batch)
-        noise_type, _ = random_choice(noise_choices, size=1)
+        noise_type = random_choice(noise_choices, size=1)
 
         if noise_type[0] == 0:
             # additional noise
-            noise_std = np.random.choice(additional_noise)
+            noise_std = random_choice(additional_noise, size=1)[0]
             if tf.random.uniform(()) > 0.5:
                 # channel independent noise
                 noisy_batch = \
@@ -178,7 +180,7 @@ def dataset_builder(
                 noisy_batch = tmp_noisy_batch + noisy_batch
         elif noise_type[0] == 1:
             # multiplicative noise
-            noise_std = np.random.choice(multiplicative_noise)
+            noise_std = random_choice(multiplicative_noise, size=1)[0]
             if tf.random.uniform(()) > 0.5:
                 # channel independent noise
                 noisy_batch = \
