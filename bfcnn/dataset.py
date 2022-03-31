@@ -93,8 +93,6 @@ def dataset_builder(
     else:
         raise ValueError("don't know how to handle non directory datasets")
 
-    tf.random.set_seed(0)
-
     def random_choice(x, size, axis=0):
         dim_x = tf.cast(tf.shape(x)[axis], tf.int64)
         indices = tf.range(0, dim_x, dtype=tf.int64)
@@ -137,7 +135,6 @@ def dataset_builder(
             if tf.random.uniform(()) > 0.5:
                 angles = \
                     tf.random.uniform(
-                        seed=0,
                         dtype=tf.float32,
                         minval=-random_rotate,
                         maxval=random_rotate,
@@ -155,7 +152,6 @@ def dataset_builder(
                 input_batch = max_value - (input_batch - min_value)
 
         # --- random select noise type
-        noisy_batch = tf.identity(input_batch)
         noise_type = random_choice(noise_choices, size=1)
 
         if noise_type[0] == 0:
@@ -164,7 +160,7 @@ def dataset_builder(
             if tf.random.uniform(()) > 0.5:
                 # channel independent noise
                 noisy_batch = \
-                    noisy_batch + \
+                    input_batch + \
                     tf.random.truncated_normal(
                         seed=0,
                         mean=0,
@@ -177,20 +173,23 @@ def dataset_builder(
                         seed=0,
                         mean=0,
                         stddev=noise_std,
-                        shape=(input_shape_inference[0], input_shape[0], input_shape[1], 1))
+                        shape=(input_shape_inference[0],
+                               input_shape[0],
+                               input_shape[1],
+                               1))
                 tmp_noisy_batch = \
                     tf.repeat(
                         tmp_noisy_batch,
                         axis=3,
                         repeats=[input_shape_inference[3]])
-                noisy_batch = tmp_noisy_batch + noisy_batch
+                noisy_batch = input_batch + tmp_noisy_batch
         elif noise_type[0] == 1:
             # multiplicative noise
             noise_std = random_choice(multiplicative_noise, size=1)[0]
             if tf.random.uniform(()) > 0.5:
                 # channel independent noise
                 noisy_batch = \
-                    noisy_batch * \
+                    input_batch * \
                     tf.random.truncated_normal(
                         seed=0,
                         mean=1,
@@ -209,7 +208,7 @@ def dataset_builder(
                         tmp_noisy_batch,
                         axis=3,
                         repeats=[input_shape_inference[3]])
-                noisy_batch = tmp_noisy_batch * noisy_batch
+                noisy_batch = input_batch * tmp_noisy_batch
 
             # blur to embed noise
             if random_blur:
@@ -225,14 +224,15 @@ def dataset_builder(
             noisy_batch = \
                 keras.layers.MaxPool2D(
                     pool_size=(1, 1),
-                    strides=stride)(noisy_batch)
+                    strides=stride)(input_batch)
             noisy_batch = \
                 keras.layers.UpSampling2D(
                     size=stride)(noisy_batch)
         else:
             logger.info(
                 "don't know how to handle noise_type [{0}]".format(
-                    noise_type))
+                    noise_type[0]))
+            noisy_batch = tf.identity(input_batch)
 
         # --- clip values within boundaries
         if clip_value:
