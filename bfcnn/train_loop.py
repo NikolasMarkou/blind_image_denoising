@@ -67,7 +67,7 @@ def train_loop(
     # --- build dataset
     dataset_res = dataset_builder(config=config["dataset"])
     dataset = dataset_res["dataset"]
-    augmentation_fn = dataset_res["augmentation"]
+    augmentation_fn = tf.function(dataset_res["augmentation"])
 
     # --- build loss function
     loss_fn = loss_function_builder(config=config["loss"])
@@ -221,7 +221,7 @@ def train_loop(
                 start_time = time.time()
 
                 # augment data
-                input_batch, noisy_batch, noise_std = \
+                input_batch, noisy_batch = \
                     augmentation_fn(input_batch)
 
                 normalized_noisy_batch = \
@@ -246,7 +246,7 @@ def train_loop(
 
                     # compute the loss value for this mini-batch
                     loss_map = loss_fn(
-                        difficulty=noise_std,
+                        difficulty=0,
                         input_batch=input_batch,
                         noisy_batch=noisy_batch,
                         model_losses=model_denoise.losses,

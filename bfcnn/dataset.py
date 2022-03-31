@@ -150,9 +150,6 @@ def dataset_builder(
         noisy_batch = tf.identity(input_batch)
         noise_type, _ = random_choice(noise_choices, size=1)
 
-        # TODO assign a difficulty
-        difficulty = 0
-
         if noise_type[0] == 0:
             # additional noise
             noise_std = np.random.choice(additional_noise)
@@ -247,7 +244,7 @@ def dataset_builder(
             input_batch = tf.round(input_batch)
             noisy_batch = tf.round(noisy_batch)
 
-        return input_batch, noisy_batch, difficulty
+        return input_batch, noisy_batch
 
     # --- create the dataset
     return {
