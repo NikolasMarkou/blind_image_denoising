@@ -62,11 +62,12 @@ def dataset_builder(
     # build noise options
     noise_choices = []
     if len(additional_noise) > 0:
-        noise_choices.append("additional")
+        noise_choices.append(0)
     if len(multiplicative_noise) > 0:
-        noise_choices.append("multiplicative")
+        noise_choices.append(1)
     if subsample_size > 0:
-        noise_choices.append("subsample_size")
+        noise_choices.append(2)
+    noise_choices = tf.constant(noise_choices)
 
     # --- define generator function from directory
     if directory is not None:
@@ -85,6 +86,13 @@ def dataset_builder(
 
     tf.random.set_seed(0)
     np.random.seed(0)
+
+    def random_choice(x, size, axis=0):
+        dim_x = tf.cast(tf.shape(x)[axis], tf.int64)
+        indices = tf.range(0, dim_x, dtype=tf.int64)
+        sample_index = tf.random.shuffle(indices)[:size]
+        sample = tf.gather(x, sample_index, axis=axis)
+        return sample, sample_index
 
     # --- define augmentation function
     def augmentation(input_batch):
@@ -140,11 +148,12 @@ def dataset_builder(
 
         # --- random select noise type
         noisy_batch = tf.identity(input_batch)
-        noise_type = np.random.choice(noise_choices)
+        noise_type, _ = random_choice(noise_choices, size=1)
+
         # TODO assign a difficulty
         difficulty = 0
 
-        if noise_type == "additional":
+        if noise_type[0] == 0:
             # additional noise
             noise_std = np.random.choice(additional_noise)
             if tf.random.uniform(()) > 0.5:
@@ -170,7 +179,7 @@ def dataset_builder(
                         axis=3,
                         repeats=[input_shape_inference[3]])
                 noisy_batch = tmp_noisy_batch + noisy_batch
-        elif noise_type == "multiplicative":
+        elif noise_type[0] == 1:
             # multiplicative noise
             noise_std = np.random.choice(multiplicative_noise)
             if tf.random.uniform(()) > 0.5:
@@ -205,7 +214,7 @@ def dataset_builder(
                             image=noisy_batch,
                             sigma=1,
                             filter_shape=(3, 3))
-        elif noise_type == "subsample":
+        elif noise_type[0] == 2:
             # subsample
             stride = (subsample_size, subsample_size)
             noisy_batch = \
