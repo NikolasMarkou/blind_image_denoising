@@ -67,10 +67,10 @@ def train_loop(
     # --- build dataset
     dataset_res = dataset_builder(config=config["dataset"])
     dataset = dataset_res["dataset"]
-    augmentation_fn = tf.function(dataset_res["augmentation"])
+    augmentation_fn = tf.function(dataset_res["augmentation"], autograph=False)
 
     # --- build loss function
-    loss_fn = tf.function(loss_function_builder(config=config["loss"]))
+    loss_fn = tf.function(loss_function_builder(config=config["loss"]), autograph=True)
 
     # --- build optimizer
     optimizer, lr_schedule = \
@@ -145,7 +145,7 @@ def train_loop(
             model_denoise_builder(config=config[MODEL_DENOISE_STR])
 
         # The function to be traced.
-        @tf.function()
+        @tf.function(autograph=False)
         def optimized_model(x_input):
             return model_denoise(x_input, training=False)
         x = \
@@ -180,16 +180,16 @@ def train_loop(
             shape=random_batch_size,
             name="x_random")
 
-    @tf.function(jit_compile=True)
+    @tf.function(autograph=False)
     def normalize(x_input):
         return model_normalize(x_input, training=False)
 
-    @tf.function(jit_compile=True)
+    @tf.function(autograph=False)
     def denormalize(x_input):
         return model_denormalize(x_input, training=False)
 
     # --- create random image and iterate through the model
-    @tf.function(jit_compile=True)
+    @tf.function(autograph=False)
     def create_random_batch():
         x_iteration.assign(0)
         x_random.assign(
