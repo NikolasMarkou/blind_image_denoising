@@ -505,6 +505,8 @@ def build_model_denoise_resnet(
                 learnable_per_channel_multiplier_layer(
                     input_layer=output_layer,
                     trainable=True,
+                    kernel_regularizer="l1",
+                    activation="linear",
                     multiplier=1.0)
 
     # --- skip with input layer
