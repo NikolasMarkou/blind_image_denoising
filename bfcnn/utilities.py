@@ -647,6 +647,7 @@ def resnet_blocks(
                     multiplier=1.0,
                     regularizer="l1",
                     trainable=True)(y)
+            # on by default, requires effort to turn off
             # if x < -2.5: return 0
             # if x > 2.5: return 1
             # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
