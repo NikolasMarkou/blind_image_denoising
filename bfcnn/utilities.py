@@ -20,6 +20,7 @@ from typing import List, Tuple, Union, Dict, Iterable
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
+from .custom_layers import TrainableMultiplier
 
 # ---------------------------------------------------------------------
 
@@ -639,20 +640,17 @@ def resnet_blocks(
             y = g_layer
             if use_bn:
                 y = keras.layers.BatchNormalization(**bn_params)(y)
-            y = \
-                learnable_per_channel_multiplier_layer(
-                    input_layer=y,
-                    trainable=True,
-                    multiplier=1.0)
             # activation per pixel
             y = keras.layers.Conv2D(**gate_params)(y)
-            # use sigmoid
-            y = keras.activations.sigmoid(4.0 - y * 3.0)
-            # TODO use hard_sigmoid
+            y = \
+                TrainableMultiplier(
+                    multiplier=1.0,
+                    regularizer="l1",
+                    trainable=True)(y)
             # if x < -2.5: return 0
             # if x > 2.5: return 1
             # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
-            # y = 1.0 - keras.activations.hard_sigmoid(y * 3.0 - 2.0)
+            y = keras.activations.hard_sigmoid(2.5 - y)
             x = keras.layers.Multiply()([x, y])
         # skip connection
         x = keras.layers.Add()([x, previous_layer])

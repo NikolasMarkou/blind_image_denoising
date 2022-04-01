@@ -259,8 +259,12 @@ def train_loop(
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
-                    denoised_batch = model_denoise(normalized_noisy_batch, training=True)
-                    denormalized_denoised_batch = denormalize(denoised_batch)
+                    denoised_batch = \
+                        model_denoise(
+                            normalized_noisy_batch,
+                            training=True)
+                    denormalized_denoised_batch = \
+                        denormalize(denoised_batch)
 
                     # compute the loss value for this mini-batch
                     loss_map = loss_fn(
