@@ -145,7 +145,7 @@ def train_loop(
         # The function to be traced.
         @tf.function()
         def optimized_model(x_input):
-            return model_denoise(x_input, trainable=False)
+            return model_denoise(x_input, training=False)
 
         x = \
             tf.random.truncated_normal(
