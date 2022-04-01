@@ -197,7 +197,7 @@ def learnable_per_channel_multiplier_layer(
         sensitivity: float = 10.0,
         activation: str = "linear",
         use_bias: bool = False,
-        kernel_regularizer: str = None,
+        kernel_regularizer: str = "l1",
         trainable: bool = True):
     """
     Constant learnable multiplier layer
@@ -235,27 +235,6 @@ def learnable_per_channel_multiplier_layer(
         return keras.layers.Add()([x, input_layer])
     return keras.layers.Add()([x, input_layer * multiplier])
 
-# ---------------------------------------------------------------------
-
-
-def learnable_multiplier_layer(
-        input_layer,
-        multiplier: float = 1.0,
-        trainable: bool = True):
-    """
-    Constant learnable multiplier layer
-
-    :param input_layer: input layer to be multiplied
-    :param multiplier: multiplication constant
-    :param trainable: whether this layer is trainable or not
-    :return: multiplied input_layer
-    """
-    multiplier_var = \
-        tf.Variable(
-            initial_value=multiplier,
-            trainable=trainable,
-            dtype=tf.dtypes.float32)
-    return input_layer * multiplier_var
 
 # ---------------------------------------------------------------------
 
