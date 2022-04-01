@@ -14,7 +14,9 @@ import tensorflow as tf
 
 class TrainableMultiplier(tf.keras.layers.Layer):
 
-    def __init__(self, multiplier: float, **kwargs):
+    def __init__(self,
+                 multiplier: float,
+                 **kwargs):
         super(TrainableMultiplier, self).__init__(**kwargs)
 
         def init_fn(shape, dtype):
@@ -29,5 +31,8 @@ class TrainableMultiplier(tf.keras.layers.Layer):
 
     def call(self, inputs):
         return inputs * self.w1
+
+    def get_config(self):
+        return {"multiplier": self.w1}
 
 # ---------------------------------------------------------------------
