@@ -18,7 +18,6 @@ from typing import Dict, Tuple, Union, List
 # ---------------------------------------------------------------------
 
 from .utilities import \
-    learnable_multiplier_layer, \
     learnable_per_channel_multiplier_layer
 
 # ---------------------------------------------------------------------
