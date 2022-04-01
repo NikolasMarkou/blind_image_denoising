@@ -67,10 +67,10 @@ def train_loop(
     # --- build dataset
     dataset_res = dataset_builder(config=config["dataset"])
     dataset = dataset_res["dataset"]
-    augmentation_fn = tf.function(dataset_res["augmentation"])
+    augmentation_fn = tf.function(dataset_res["augmentation"], jit_compile=True)
 
     # --- build loss function
-    loss_fn = tf.function(loss_function_builder(config=config["loss"]))
+    loss_fn = tf.function(loss_function_builder(config=config["loss"]), jit_compile=True)
 
     # --- build optimizer
     optimizer, lr_schedule = \
@@ -180,16 +180,16 @@ def train_loop(
             shape=random_batch_size,
             name="x_random")
 
-    @tf.function
+    @tf.function(jit_compile=True)
     def normalize(x_input):
         return model_normalize(x_input, training=False)
 
-    @tf.function
+    @tf.function(jit_compile=True)
     def denormalize(x_input):
         return model_denormalize(x_input, training=False)
 
     # --- create random image and iterate through the model
-    @tf.function
+    @tf.function(jit_compile=True)
     def create_random_batch():
         x_iteration.assign(0)
         x_random.assign(
@@ -276,10 +276,10 @@ def train_loop(
                             target=loss_map[MEAN_TOTAL_LOSS_STR],
                             sources=model_denoise_weights)
 
-                    # run one step of gradient descent by updating
-                    # the value of the variables to minimize the loss.
-                    optimizer.apply_gradients(
-                        grads_and_vars=zip(grads, model_denoise_weights))
+                # run one step of gradient descent by updating
+                # the value of the variables to minimize the loss.
+                optimizer.apply_gradients(
+                    grads_and_vars=zip(grads, model_denoise_weights))
 
                 # --- add loss summaries for tensorboard
                 for name, key in [
