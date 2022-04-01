@@ -499,6 +499,7 @@ def build_model_denoise_resnet(
         output_layer = \
             TrainableMultiplier(
                 multiplier=1.0,
+                regularizer="l1",
                 trainable=True)(output_layer)
 
     # --- output to original channels / projection

@@ -19,6 +19,7 @@ from typing import Dict, Tuple, Union, List
 
 from .utilities import \
     learnable_per_channel_multiplier_layer
+from .custom_layers import TrainableMultiplier
 
 # ---------------------------------------------------------------------
 
@@ -419,10 +420,10 @@ def build_inverse_gaussian_learnable_pyramid_model(
 
     # --- merge different levels (from smallest to biggest)
     learnable_input_layers = [
-        learnable_per_channel_multiplier_layer(
-            input_layer=input_layer,
+        TrainableMultiplier(
             multiplier=1.0 / levels,
-            trainable=True)
+            regularizer="l1",
+            trainable=True)(input_layer)
         for input_layer in input_layers
     ]
 

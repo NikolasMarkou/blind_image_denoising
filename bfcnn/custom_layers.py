@@ -15,7 +15,6 @@ from tensorflow.keras import regularizers
 
 
 class TrainableMultiplier(tf.keras.layers.Layer):
-
     def __init__(self,
                  multiplier: float = 1.0,
                  regularizer=None,
