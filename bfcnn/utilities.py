@@ -194,7 +194,6 @@ def step_function(
 def learnable_per_channel_multiplier_layer(
         input_layer,
         multiplier: float = 1.0,
-        sensitivity: float = 10.0,
         activation: str = "linear",
         use_bias: bool = False,
         kernel_regularizer: str = "l1",
@@ -204,7 +203,6 @@ def learnable_per_channel_multiplier_layer(
 
     :param input_layer: input layer to be multiplied
     :param multiplier: multiplication constant
-    :param sensitivity: large constant so weights are small
     :param activation: activation after the filter (linear by default)
     :param use_bias: use offset bias (false by default)
     :param kernel_regularizer: regularize kernel weights (None by default)
