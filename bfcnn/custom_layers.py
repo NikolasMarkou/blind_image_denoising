@@ -25,23 +25,30 @@ class TrainableMultiplier(tf.keras.layers.Layer):
             trainable=trainable,
             name=name,
             **kwargs)
+        self._w1 = None
+        self._multiplier = multiplier
         self._weight_regularizer = regularizers.get(regularizer)
 
+    def build(self, input_shape):
         def init_fn(shape, dtype):
-            return np.ones(shape, dtype=np.float32) * multiplier
-
+            return np.ones(shape, dtype=np.float32) * self._multiplier
         self._w1 = \
             self.add_weight(
-                name="trainable_multiplier",
+                name="multiplier",
                 shape=[1],
                 regularizer=self._weight_regularizer,
                 initializer=init_fn,
-                trainable=True)
+                trainable=self.trainable)
+        super(TrainableMultiplier, self).build(input_shape)
 
     def call(self, inputs):
         return inputs * self._w1
 
     def get_config(self):
-        return {"multiplier": self._w1.numpy()}
+        return {
+            "multiplier": self._w1.numpy()
+        }
 
+    def compute_output_shape(self, input_shape):
+        return input_shape
 # ---------------------------------------------------------------------

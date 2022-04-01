@@ -164,7 +164,8 @@ def train_loop(
     model_denoise.summary(print_fn=logger.info)
     # save model so we can visualize it easier
     model_denoise.save(
-        os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR))
+        filepath=os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR),
+        include_optimizer=False)
 
     x_iteration = \
         tf.Variable(
