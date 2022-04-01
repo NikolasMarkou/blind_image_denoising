@@ -35,7 +35,7 @@ class TrainableMultiplier(tf.keras.layers.Layer):
             self.add_weight(
                 name="trainable_multiplier",
                 shape=[1],
-                regularizer=_weight_regularizer,
+                regularizer=self._weight_regularizer,
                 initializer=init_fn,
                 trainable=True)
 
