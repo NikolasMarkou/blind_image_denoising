@@ -191,7 +191,7 @@ def step_function(
 # ---------------------------------------------------------------------
 
 
-def learnable_multiplier_layer(
+def learnable_per_channel_multiplier_layer(
         input_layer,
         multiplier: float = 1.0,
         sensitivity: float = 10.0,
@@ -647,7 +647,7 @@ def resnet_blocks(
             if use_bn:
                 y = keras.layers.BatchNormalization(**bn_params)(y)
             y = \
-                learnable_multiplier_layer(
+                learnable_per_channel_multiplier_layer(
                     input_layer=y,
                     trainable=True,
                     multiplier=1.0)
