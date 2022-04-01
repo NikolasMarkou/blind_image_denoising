@@ -421,10 +421,11 @@ def build_inverse_gaussian_learnable_pyramid_model(
     # --- merge different levels (from smallest to biggest)
     learnable_input_layers = [
         TrainableMultiplier(
+            name=f"mixer_multiplier_{index}",
             multiplier=1.0 / levels,
             regularizer="l1",
             trainable=True)(input_layer)
-        for input_layer in input_layers
+        for index, input_layer in enumerate(input_layers)
     ]
 
     output_layer = \
