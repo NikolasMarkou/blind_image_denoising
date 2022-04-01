@@ -250,8 +250,12 @@ def learnable_multiplier_layer(
     :param trainable: whether this layer is trainable or not
     :return: multiplied input_layer
     """
-    v = tf.Variable(initial_value=multiplier, trainable=trainable, dtype=tf.dtypes.float32)
-    return keras.layers.Multiply()([input_layer, v])
+    multiplier_var = \
+        tf.Variable(
+            initial_value=multiplier,
+            trainable=trainable,
+            dtype=tf.dtypes.float32)
+    return input_layer * multiplier_var
 
 # ---------------------------------------------------------------------
 
