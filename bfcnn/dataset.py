@@ -153,9 +153,9 @@ def dataset_builder(
         input_batch = tf.cast(input_batch, dtype=tf.dtypes.float32)
 
         # --- random select noise type
-        noise_type = random_choice(noise_choices, size=1)
+        noise_type = random_choice(noise_choices, size=1)[0]
 
-        if noise_type[0] == 0:
+        if noise_type == 0:
             # additional noise
             noise_std = random_choice(additional_noise, size=1)[0]
             if tf.random.uniform(()) > 0.5:
@@ -184,7 +184,7 @@ def dataset_builder(
                         axis=3,
                         repeats=[input_shape_inference[3]])
                 noisy_batch = input_batch + tmp_noisy_batch
-        elif noise_type[0] == 1:
+        elif noise_type == 1:
             # multiplicative noise
             noise_std = random_choice(multiplicative_noise, size=1)[0]
             if tf.random.uniform(()) > 0.5:
@@ -222,7 +222,7 @@ def dataset_builder(
                             image=noisy_batch,
                             sigma=1,
                             filter_shape=(3, 3))
-        elif noise_type[0] == 2:
+        elif noise_type == 2:
             # subsample
             stride = (subsample_size, subsample_size)
             noisy_batch = \
@@ -235,7 +235,7 @@ def dataset_builder(
         else:
             logger.info(
                 "don't know how to handle noise_type [{0}]".format(
-                    noise_type[0]))
+                    noise_type))
             noisy_batch = tf.identity(input_batch)
 
         # --- clip values within boundaries
