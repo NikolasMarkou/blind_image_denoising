@@ -19,7 +19,7 @@ from .pyramid import \
     upscale_2x2_block, \
     build_pyramid_model, \
     build_inverse_pyramid_model
-
+from .custom_layers import TrainableMultiplier
 
 # ---------------------------------------------------------------------
 
@@ -497,10 +497,9 @@ def build_model_denoise_resnet(
     # learnable multiplier
     if add_learnable_multiplier:
         output_layer = \
-            learnable_per_channel_multiplier_layer(
-                input_layer=output_layer,
-                trainable=True,
-                multiplier=1.0)
+            TrainableMultiplier(
+                multiplier=1.0,
+                trainable=True)(output_layer)
 
     # --- output to original channels / projection
     if add_projection_to_input:
