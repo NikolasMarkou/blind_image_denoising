@@ -196,7 +196,7 @@ def train_loop(
                     training=False)
             x_random.assign(
                 tf.clip_by_value(
-                    x_random_denoised[0],
+                    x_random_denoised,
                     clip_value_min=-0.5,
                     clip_value_max=+0.5))
             x_iteration.assign_add(1)
