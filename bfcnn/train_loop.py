@@ -167,13 +167,13 @@ def train_loop(
 
     x_iteration = \
         tf.Variable(
-            0,
+            initial_value=None,
             trainable=False,
             dtype=tf.dtypes.int64,
             name="x_iteration")
     x_random = \
         tf.Variable(
-            0.0,
+            initial_value=None,
             trainable=False,
             dtype=tf.dtypes.float32,
             shape=random_batch_size,
