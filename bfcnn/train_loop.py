@@ -86,9 +86,15 @@ def train_loop(
     # --- get the train configuration
     train_config = config["train"]
     epochs = train_config["epochs"]
+    global_total_epochs = tf.Variable(
+        epochs, trainable=False, dtype=tf.dtypes.int64, name="global_total_epochs")
     trace_every = train_config.get("trace_every", 100)
     weight_buckets = train_config.get("weight_buckets", 100)
-    total_steps = train_config.get("total_steps", -1)
+    total_steps = \
+        tf.constant(
+            train_config.get("total_steps", -1),
+            dtype=tf.dtypes.int64,
+            name="total_steps")
     # how many checkpoints to keep
     checkpoints_to_keep = train_config.get("checkpoints_to_keep", 3)
     # checkpoint every so many steps
@@ -98,12 +104,17 @@ def train_loop(
     # how many visualizations to show
     visualization_number = train_config.get("visualization_number", 5)
     # how many times the random batch will be iterated
-    random_batch_iterations = train_config.get("random_batch_iterations", 1)
+    random_batch_iterations = \
+        tf.constant(
+            train_config.get("random_batch_iterations", 1),
+            name="random_batch_iterations",
+            dtype=tf.int64)
     # min allowed difference
     random_batch_min_difference = \
-        train_config.get(
-            "random_batch_min_difference",
-            0.1)
+        tf.constant(
+            train_config.get("random_batch_min_difference", 0.1),
+            name="random_batch_min_difference",
+            dtype=tf.dtypes.float32)
     # size of the random batch
     random_batch_size = \
         [visualization_number] + \
@@ -113,7 +124,12 @@ def train_loop(
         train_config.get("prune", {"strategy": "none"})
     use_prune = \
         PruneStrategy.from_string(prune_config["strategy"]) != PruneStrategy.NONE
-    prune_start_epoch = prune_config.get("start_epoch", 0)
+    use_prune = tf.constant(use_prune)
+    prune_start_epoch = \
+        tf.constant(
+            prune_config.get("start_epoch", 0),
+            dtype=tf.dtypes.int64,
+            name="prune_start_epoch")
     prune_function = prune_function_builder(prune_config)
 
     # --- build the denoise model
@@ -129,7 +145,7 @@ def train_loop(
         # The function to be traced.
         @tf.function()
         def optimized_model(x_input):
-            return model_denoise(x_input)
+            return model_denoise(x_input, trainable=False)
 
         x = \
             tf.random.truncated_normal(
@@ -150,10 +166,21 @@ def train_loop(
         os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR))
 
     # --- create random image and iterate through the model
+    @tf.function
     def create_random_batch():
-        x_iteration = 0
-        x_diff = 1
-        x = \
+        x_iteration = \
+            tf.Variable(
+                0,
+                trainable=False,
+                dtype=tf.dtypes.int64,
+                name="x_iteration")
+        x_diff = \
+            tf.Variable(
+                0.0,
+                trainable=False,
+                dtype=tf.dtypes.float32,
+                name="x_diff")
+        x_random = \
             tf.random.truncated_normal(
                 seed=0,
                 mean=0.0,
@@ -163,14 +190,14 @@ def train_loop(
                 x_diff > random_batch_min_difference:
             x_tmp = \
                 model_denoise(
-                    x,
+                    x_random,
                     training=False)
             x_tmp = \
                 tf.clip_by_value(
                     x_tmp,
                     clip_value_min=-0.5,
                     clip_value_max=+0.5)
-            x_diff = tf.abs(x - x_tmp)
+            x_diff = tf.abs(x_random - x_tmp)
             x_diff = \
                 tf.reduce_mean(
                     x_diff,
@@ -180,11 +207,11 @@ def train_loop(
                 tf.reduce_sum(
                     x_diff,
                     axis=[0])
-            x = x_tmp
-            x_iteration += 1
+            x_random = x_tmp
+            x_iteration.assign_add(1)
         return \
             model_denormalize(
-                x,
+                x_random,
                 training=False)
 
     # --- train the model
@@ -205,11 +232,12 @@ def train_loop(
         status = \
             checkpoint.restore(manager.latest_checkpoint).expect_partial()
 
-        for epoch in range(int(global_epoch), int(epochs), 1):
-            logger.info("epoch: {0}, step: {1}".format(epoch, int(global_step)))
+        while global_epoch < global_total_epochs:
+            logger.info("epoch: {0}, step: {1}".format(
+                int(global_total_epochs), int(global_step)))
 
             # --- pruning strategy
-            if use_prune and epoch >= prune_start_epoch:
+            if use_prune and global_total_epochs >= prune_start_epoch:
                 logger.info("pruning weights")
                 model_denoise = \
                     prune_function(model=model_denoise)
@@ -335,7 +363,7 @@ def train_loop(
                 if total_steps > 0:
                     if total_steps <= global_step:
                         logger.info("total_steps reached [{0}]".format(
-                            total_steps))
+                            int(total_steps)))
                         break
 
             # --- end of the epoch
