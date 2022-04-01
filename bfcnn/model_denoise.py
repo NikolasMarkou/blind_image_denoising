@@ -501,13 +501,10 @@ def build_model_denoise_resnet(
 
         # learnable multiplier
         if add_learnable_multiplier:
-            output_layer = \
-                learnable_per_channel_multiplier_layer(
-                    input_layer=output_layer,
-                    trainable=True,
-                    kernel_regularizer="l1",
-                    activation="linear",
-                    multiplier=1.0)
+            output_layer = TrainableMultiplier(
+                multiplier=1.0,
+                regularizer="l1",
+                trainable=True)(output_layer)
 
         # cap it off to limit values
         output_layer = \
