@@ -9,7 +9,7 @@ __license__ = "MIT"
 import keras.layers
 import tensorflow as tf
 import tensorflow_addons as tfa
-from utilities import random_choice
+
 from typing import Dict, Callable, Iterator
 
 # ---------------------------------------------------------------------
@@ -17,6 +17,7 @@ from typing import Dict, Callable, Iterator
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
+from .utilities import random_choice
 
 # ---------------------------------------------------------------------
 
