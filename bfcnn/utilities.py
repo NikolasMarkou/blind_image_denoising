@@ -214,6 +214,8 @@ def learnable_per_channel_multiplier_layer(
     # --- initialise to set kernel to required value
     def kernel_init(shape, dtype):
         kernel = np.zeros(shape)
+        for i in range(shape[2]):
+            kernel[:, :, i, 0] = multiplier
         return kernel
 
     x = \
@@ -227,13 +229,9 @@ def learnable_per_channel_multiplier_layer(
             activation=activation,
             kernel_initializer=kernel_init,
             depthwise_initializer=kernel_init,
-            kernel_regularizer=kernel_regularizer)(input_layer * sensitivity)
+            kernel_regularizer=kernel_regularizer)(input_layer)
 
-    if multiplier == 0.0:
-        return x
-    if multiplier == 1.0:
-        return keras.layers.Add()([x, input_layer])
-    return keras.layers.Add()([x, input_layer * multiplier])
+    return x
 
 
 # ---------------------------------------------------------------------
