@@ -34,6 +34,6 @@ class TrainableMultiplier(tf.keras.layers.Layer):
         return inputs * self.w1
 
     def get_config(self):
-        return {"multiplier": self.w1}
+        return {"multiplier": self.w1.numpy()}
 
 # ---------------------------------------------------------------------
