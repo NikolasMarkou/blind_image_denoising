@@ -101,11 +101,13 @@ def train_loop(
     checkpoint_every = \
         tf.constant(
             train_config.get("checkpoint_every", -1),
+            dtype=tf.dtypes.int64,
             name="checkpoint_every")
     # how many steps to make a visualization
     visualization_every = \
         tf.constant(
             train_config["visualization_every"],
+            dtype=tf.dtypes.int64,
             name="visualization_every")
     # how many visualizations to show
     visualization_number = train_config.get("visualization_number", 5)
@@ -113,8 +115,8 @@ def train_loop(
     random_batch_iterations = \
         tf.constant(
             train_config.get("random_batch_iterations", 1),
-            name="random_batch_iterations",
-            dtype=tf.int64)
+            dtype=tf.dtypes.int64,
+            name="random_batch_iterations")
     # size of the random batch
     random_batch_size = \
         [visualization_number] + \
