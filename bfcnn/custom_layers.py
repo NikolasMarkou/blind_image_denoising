@@ -9,31 +9,40 @@ __license__ = "MIT"
 import numpy as np
 import tensorflow as tf
 from typing import Any
+from tensorflow.keras import regularizers
+
 # ---------------------------------------------------------------------
 
 
 class TrainableMultiplier(tf.keras.layers.Layer):
 
     def __init__(self,
-                 multiplier: float,
-                 regularizer: Any = tf.keras.regularizers.l1(0.01),
+                 multiplier: float = 1.0,
+                 regularizer=None,
+                 trainable: bool = True,
+                 name=None,
                  **kwargs):
-        super(TrainableMultiplier, self).__init__(**kwargs)
+        super(TrainableMultiplier, self).__init__(
+            trainable=trainable,
+            name=name,
+            **kwargs)
+        self._weight_regularizer = regularizers.get(regularizer)
 
         def init_fn(shape, dtype):
             return np.ones(shape, dtype=np.float32) * multiplier
 
-        self.w1 = \
+        self._w1 = \
             self.add_weight(
+                name="trainable_multiplier",
                 shape=[1],
-                regularizer=regularizer,
+                regularizer=_weight_regularizer,
                 initializer=init_fn,
                 trainable=True)
 
     def call(self, inputs):
-        return inputs * self.w1
+        return inputs * self._w1
 
     def get_config(self):
-        return {"multiplier": self.w1.numpy()}
+        return {"multiplier": self._w1.numpy()}
 
 # ---------------------------------------------------------------------
