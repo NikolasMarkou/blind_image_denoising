@@ -135,7 +135,7 @@ def dataset_builder(
                         angles=angles,
                         images=input_batch,
                         fill_mode="reflect",
-                        interpolation="nearest")
+                        interpolation="bilinear")
 
         # --- random invert colors
         if random_invert:
