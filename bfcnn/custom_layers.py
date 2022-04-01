@@ -8,7 +8,6 @@ __license__ = "MIT"
 
 import numpy as np
 import tensorflow as tf
-from typing import Any
 from tensorflow.keras import regularizers
 
 # ---------------------------------------------------------------------

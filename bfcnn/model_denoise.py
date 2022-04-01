@@ -497,10 +497,10 @@ def build_model_denoise_resnet(
     # learnable multiplier
     if add_learnable_multiplier:
         output_layer = \
-            TrainableMultiplier(
-                multiplier=1.0,
-                regularizer="l1",
-                trainable=True)(output_layer)
+            learnable_per_channel_multiplier_layer(
+                input_layer=output_layer,
+                trainable=True,
+                multiplier=1.0)
 
     # --- output to original channels / projection
     if add_projection_to_input:
