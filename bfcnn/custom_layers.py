@@ -8,7 +8,7 @@ __license__ = "MIT"
 
 import numpy as np
 import tensorflow as tf
-
+from typing import Any
 # ---------------------------------------------------------------------
 
 
@@ -16,6 +16,7 @@ class TrainableMultiplier(tf.keras.layers.Layer):
 
     def __init__(self,
                  multiplier: float,
+                 regularizer: Any = tf.keras.regularizers.l1(0.01),
                  **kwargs):
         super(TrainableMultiplier, self).__init__(**kwargs)
 
@@ -25,7 +26,7 @@ class TrainableMultiplier(tf.keras.layers.Layer):
         self.w1 = \
             self.add_weight(
                 shape=[1],
-                constraint=None,
+                regularizer=regularizer,
                 initializer=init_fn,
                 trainable=True)
 
