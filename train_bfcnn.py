@@ -39,6 +39,15 @@ def main(args):
     config = CONFIGS[model]
     config_basename = os.path.basename(config).split(".")[0]
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
+    os.environ["CUDA_CACHE_DISABLE"] = "0"
+    os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+    os.environ["TF_AUTOTUNE_THRESHOLD"] = "1"
+    os.environ["TF_GPU_THREAD_MODE"] = "gpu_private"
+    os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
+    os.environ["TF_ENABLE_CUDNN_TENSOR_OP_MATH_FP32"] = "1"
+    os.environ["TF_ENABLE_CUBLAS_TENSOR_OP_MATH_FP32"] = "1"
+    os.environ["TF_ENABLE_CUDNN_RNN_TENSOR_OP_MATH_FP32"] = "1"
+
     return \
         subprocess.check_call([
             sys.executable,

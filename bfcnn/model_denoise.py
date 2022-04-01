@@ -463,10 +463,6 @@ def build_model_denoise_resnet(
     x = input_layer
     y = input_layer
 
-    # optional batch norm
-    if use_bn:
-        x = keras.layers.BatchNormalization(**bn_params)(x)
-
     if add_var:
         _, x_var = \
             mean_sigma_local(
