@@ -165,21 +165,24 @@ def train_loop(
     model_denoise.save(
         os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR))
 
+    x_iteration = \
+        tf.Variable(
+            0,
+            trainable=False,
+            dtype=tf.dtypes.int64,
+            name="x_iteration")
+    x_diff = \
+        tf.Variable(
+            0.0,
+            trainable=False,
+            dtype=tf.dtypes.float32,
+            name="x_diff")
+
     # --- create random image and iterate through the model
     @tf.function
     def create_random_batch():
-        x_iteration = \
-            tf.Variable(
-                0,
-                trainable=False,
-                dtype=tf.dtypes.int64,
-                name="x_iteration")
-        x_diff = \
-            tf.Variable(
-                0.0,
-                trainable=False,
-                dtype=tf.dtypes.float32,
-                name="x_diff")
+        x_diff.assign(0.0)
+        x_iteration.assign(0)
         x_random = \
             tf.random.truncated_normal(
                 seed=0,
