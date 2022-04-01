@@ -67,10 +67,10 @@ def train_loop(
     # --- build dataset
     dataset_res = dataset_builder(config=config["dataset"])
     dataset = dataset_res["dataset"]
-    augmentation_fn = tf.function(dataset_res["augmentation"], jit_compile=True)
+    augmentation_fn = tf.function(dataset_res["augmentation"])
 
     # --- build loss function
-    loss_fn = tf.function(loss_function_builder(config=config["loss"]), jit_compile=True)
+    loss_fn = tf.function(loss_function_builder(config=config["loss"]))
 
     # --- build optimizer
     optimizer, lr_schedule = \
