@@ -6,13 +6,10 @@ __license__ = "MIT"
 
 # ---------------------------------------------------------------------
 
-import os
-
 import keras.layers
-import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
-import tensorflow.keras.backend as K
+from utilities import random_choice
 from typing import Dict, Callable, Iterator
 
 # ---------------------------------------------------------------------
@@ -92,13 +89,6 @@ def dataset_builder(
                 interpolation=interpolation)
     else:
         raise ValueError("don't know how to handle non directory datasets")
-
-    def random_choice(x, size, axis=0):
-        dim_x = tf.cast(tf.shape(x)[axis], tf.int64)
-        indices = tf.range(0, dim_x, dtype=tf.int64)
-        sample_index = tf.random.shuffle(indices)[:size]
-        sample = tf.gather(x, sample_index, axis=axis)
-        return sample
 
     # --- define augmentation function
     def augmentation(input_batch):
@@ -202,7 +192,10 @@ def dataset_builder(
                         seed=0,
                         mean=1,
                         stddev=noise_std,
-                        shape=(input_shape_inference[0], input_shape[0], input_shape[1], 1))
+                        shape=(input_shape_inference[0],
+                               input_shape[0],
+                               input_shape[1],
+                               1))
                 tmp_noisy_batch = \
                     tf.repeat(
                         tmp_noisy_batch,
