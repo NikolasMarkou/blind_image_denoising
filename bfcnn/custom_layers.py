@@ -18,11 +18,12 @@ class TrainableMultiplier(tf.keras.layers.Layer):
         super(TrainableMultiplier, self).__init__(**kwargs)
 
         def init_fn(shape, dtype):
-            return np.ones(shape, dtype=dtype) * multiplier
+            return np.ones(shape, dtype=np.float32) * multiplier
 
         self.w1 = \
             self.add_weight(
                 shape=[1],
+                constraint=None,
                 initializer=init_fn,
                 trainable=True)
 
