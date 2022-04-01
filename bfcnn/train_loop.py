@@ -98,9 +98,15 @@ def train_loop(
     # how many checkpoints to keep
     checkpoints_to_keep = train_config.get("checkpoints_to_keep", 3)
     # checkpoint every so many steps
-    checkpoint_every = train_config.get("checkpoint_every", -1)
+    checkpoint_every = \
+        tf.constant(
+            train_config.get("checkpoint_every", -1),
+            name="checkpoint_every")
     # how many steps to make a visualization
-    visualization_every = train_config["visualization_every"]
+    visualization_every = \
+        tf.constant(
+            train_config["visualization_every"],
+            name="visualization_every")
     # how many visualizations to show
     visualization_number = train_config.get("visualization_number", 5)
     # how many times the random batch will be iterated
@@ -109,12 +115,6 @@ def train_loop(
             train_config.get("random_batch_iterations", 1),
             name="random_batch_iterations",
             dtype=tf.int64)
-    # min allowed difference
-    random_batch_min_difference = \
-        tf.constant(
-            train_config.get("random_batch_min_difference", 0.1),
-            name="random_batch_min_difference",
-            dtype=tf.dtypes.float32)
     # size of the random batch
     random_batch_size = \
         [visualization_number] + \
@@ -146,7 +146,6 @@ def train_loop(
         @tf.function()
         def optimized_model(x_input):
             return model_denoise(x_input, training=False)
-
         x = \
             tf.random.truncated_normal(
                 seed=0,
@@ -179,6 +178,14 @@ def train_loop(
             shape=random_batch_size,
             name="x_random")
 
+    @tf.function
+    def normalize(x_input):
+        return model_normalize(x_input, trainable=False)
+
+    @tf.function
+    def denormalize(x_input):
+        return model_denormalize(x_input, trainable=False)
+
     # --- create random image and iterate through the model
     @tf.function
     def create_random_batch():
@@ -191,9 +198,7 @@ def train_loop(
                 shape=random_batch_size))
         while x_iteration < random_batch_iterations:
             x_random_denoised = \
-                model_denoise(
-                    x_random,
-                    training=False)
+                model_denoise(x_random, training=False)
             x_random.assign(
                 tf.clip_by_value(
                     x_random_denoised,
@@ -238,30 +243,21 @@ def train_loop(
             # --- iterate over the batches of the dataset
             for input_batch in dataset:
                 start_time = time.time()
-
                 # augment data
-                input_batch, noisy_batch = \
-                    augmentation_fn(input_batch)
-
-                normalized_noisy_batch = \
-                    model_normalize(noisy_batch, training=False)
+                input_batch, noisy_batch = augmentation_fn(input_batch)
+                # normalize noisy batch
+                normalized_noisy_batch = normalize(noisy_batch)
 
                 # Open a GradientTape to record the operations run
                 # during the forward pass,
                 # which enables auto-differentiation.
                 with tf.GradientTape() as tape:
-                    # Run the forward pass of the layer.
+                    # run the forward pass of the layer.
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
-                    denoised_batch = \
-                        model_denoise(
-                            normalized_noisy_batch,
-                            training=True)
-                    denormalized_denoised_batch = \
-                        model_denormalize(
-                            denoised_batch,
-                            training=False)
+                    denoised_batch = model_denoise(normalized_noisy_batch, training=False)
+                    denormalized_denoised_batch = denormalize(denoised_batch)
 
                     # compute the loss value for this mini-batch
                     loss_map = loss_fn(
@@ -270,7 +266,7 @@ def train_loop(
                         model_losses=model_denoise.losses,
                         prediction_batch=denormalized_denoised_batch)
 
-                    # Use the gradient tape to automatically retrieve
+                    # use the gradient tape to automatically retrieve
                     # the gradients of the trainable variables
                     # with respect to the loss.
                     grads = \
@@ -278,28 +274,27 @@ def train_loop(
                             target=loss_map[MEAN_TOTAL_LOSS_STR],
                             sources=model_denoise_weights)
 
-                    # Run one step of gradient descent by updating
+                    # run one step of gradient descent by updating
                     # the value of the variables to minimize the loss.
                     optimizer.apply_gradients(
                         grads_and_vars=zip(grads, model_denoise_weights))
 
                 # --- add loss summaries for tensorboard
-                if loss_map is not None:
-                    for name, key in [
-                        ("loss/mae", MAE_LOSS_STR),
-                        ("loss/nae", "nae_prediction"),
-                        ("loss/total", MEAN_TOTAL_LOSS_STR),
-                        ("quality/nae_noise", "nae_noise"),
-                        ("quality/signal_to_noise_ratio", "snr"),
-                        ("quality/nae_improvement", "nae_improvement"),
-                        ("loss/regularization", REGULARIZATION_LOSS_STR)
-                    ]:
-                        if key not in loss_map:
-                            continue
-                        tf.summary.scalar(
-                            name=name,
-                            data=loss_map[key],
-                            step=global_step)
+                for name, key in [
+                    ("loss/mae", MAE_LOSS_STR),
+                    ("loss/nae", "nae_prediction"),
+                    ("loss/total", MEAN_TOTAL_LOSS_STR),
+                    ("quality/nae_noise", "nae_noise"),
+                    ("quality/signal_to_noise_ratio", "snr"),
+                    ("quality/nae_improvement", "nae_improvement"),
+                    ("loss/regularization", REGULARIZATION_LOSS_STR)
+                ]:
+                    if key not in loss_map:
+                        continue
+                    tf.summary.scalar(
+                        name=name,
+                        data=loss_map[key],
+                        step=global_step)
 
                 # --- add image prediction for tensorboard
                 if global_step % visualization_every == 0:
