@@ -53,7 +53,7 @@ def dataset_builder(
     random_left_right = tf.constant(config.get("random_left_right", False))
     additional_noise = config.get("additional_noise", [])
     multiplicative_noise = config.get("multiplicative_noise", [])
-    interpolation = config.get("interpolation", "area")
+    interpolation = config.get("interpolation", "nearest")
     # whether to crop or not
     random_crop = dataset_shape[0:2] != input_shape[0:2]
     random_crop = tf.constant(random_crop)
@@ -78,6 +78,7 @@ def dataset_builder(
 
     # --- define generator function from directory
     if directory is not None:
+        # interpolation must be nearest to be uint8
         dataset = \
             tf.keras.preprocessing.image_dataset_from_directory(
                 seed=0,
@@ -87,7 +88,8 @@ def dataset_builder(
                 batch_size=batch_size,
                 color_mode=color_mode,
                 image_size=dataset_shape,
-                interpolation=interpolation)
+                interpolation="nearest")
+
     else:
         raise ValueError("don't know how to handle non directory datasets")
 
@@ -141,6 +143,9 @@ def dataset_builder(
         if random_invert:
             if tf.random.uniform(()) > 0.5:
                 input_batch = max_value - (input_batch - min_value)
+
+        # --- convert to float32
+        input_batch = tf.cast(input_batch, dtype=tf.dtypes.float32)
 
         # --- random select noise type
         noise_type = random_choice(noise_choices, size=1)
