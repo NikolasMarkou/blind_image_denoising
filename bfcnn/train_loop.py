@@ -171,28 +171,34 @@ def train_loop(
             trainable=False,
             dtype=tf.dtypes.int64,
             name="x_iteration")
+    x_random = \
+        tf.Variable(
+            tf.initializers.zeros,
+            trainable=False,
+            dtype=tf.dtypes.float32,
+            shape=random_batch_size,
+            name="x_random")
 
     # --- create random image and iterate through the model
     @tf.function
     def create_random_batch():
         x_iteration.assign(0)
-        x_random = \
+        x_random.assign(
             tf.random.truncated_normal(
                 seed=0,
                 mean=0.0,
                 stddev=0.25,
-                shape=random_batch_size)
+                shape=random_batch_size))
         while x_iteration < random_batch_iterations:
-            x_tmp = \
+            x_random_denoised = \
                 model_denoise(
                     x_random,
                     training=False)
-            x_tmp = \
+            x_random.assign(
                 tf.clip_by_value(
-                    x_tmp,
+                    x_random_denoised[0],
                     clip_value_min=-0.5,
-                    clip_value_max=+0.5)
-            x_random = x_tmp
+                    clip_value_max=+0.5))
             x_iteration.assign_add(1)
         return \
             model_denormalize(
@@ -219,7 +225,7 @@ def train_loop(
 
         while global_epoch < global_total_epochs:
             logger.info("epoch: {0}, step: {1}".format(
-                int(global_total_epochs), int(global_step)))
+                int(global_epoch), int(global_step)))
 
             # --- pruning strategy
             if use_prune and global_total_epochs >= prune_start_epoch:
