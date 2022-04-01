@@ -235,7 +235,7 @@ def train_loop(
                 int(global_epoch), int(global_step)))
 
             # --- pruning strategy
-            if use_prune and global_total_epochs >= prune_start_epoch:
+            if use_prune and global_epoch >= prune_start_epoch:
                 logger.info("pruning weights")
                 model_denoise = \
                     prune_function(model=model_denoise)
@@ -284,12 +284,12 @@ def train_loop(
                 # --- add loss summaries for tensorboard
                 for name, key in [
                     ("loss/mae", MAE_LOSS_STR),
-                    ("loss/nae", "nae_prediction"),
                     ("loss/total", MEAN_TOTAL_LOSS_STR),
+                    ("loss/nae", NAE_PREDICTION_LOSS_STR),
                     ("quality/nae_noise", "nae_noise"),
                     ("quality/signal_to_noise_ratio", "snr"),
-                    ("quality/nae_improvement", "nae_improvement"),
-                    ("loss/regularization", REGULARIZATION_LOSS_STR)
+                    ("loss/regularization", REGULARIZATION_LOSS_STR),
+                    ("quality/nae_improvement", NAE_IMPROVEMENT_QUALITY_STR)
                 ]:
                     if key not in loss_map:
                         continue

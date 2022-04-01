@@ -197,7 +197,6 @@ def learnable_per_channel_multiplier_layer(
         sensitivity: float = 10.0,
         activation: str = "linear",
         use_bias: bool = False,
-        use_random: bool = False,
         kernel_regularizer: str = None,
         trainable: bool = True):
     """
@@ -208,7 +207,6 @@ def learnable_per_channel_multiplier_layer(
     :param sensitivity: large constant so weights are small
     :param activation: activation after the filter (linear by default)
     :param use_bias: use offset bias (false by default)
-    :param use_random: if True add a small random offset to break symmetry
     :param kernel_regularizer: regularize kernel weights (None by default)
     :param trainable: whether this layer is trainable or not
     :return: multiplied input_layer
@@ -216,10 +214,6 @@ def learnable_per_channel_multiplier_layer(
     # --- initialise to set kernel to required value
     def kernel_init(shape, dtype):
         kernel = np.zeros(shape)
-        if use_random:
-            for i in range(shape[2]):
-                kernel[:, :, i, 0] = \
-                    np.random.normal(loc=0.0, scale=DEFAULT_EPSILON)
         return kernel
 
     x = \
@@ -238,8 +232,26 @@ def learnable_per_channel_multiplier_layer(
     if multiplier == 0.0:
         return x
     if multiplier == 1.0:
-        return x + input_layer
-    return x + input_layer * multiplier
+        return keras.layers.Add()([x, input_layer])
+    return keras.layers.Add()([x, input_layer * multiplier])
+
+# ---------------------------------------------------------------------
+
+
+def learnable_multiplier_layer(
+        input_layer,
+        multiplier: float = 1.0,
+        trainable: bool = True):
+    """
+    Constant learnable multiplier layer
+
+    :param input_layer: input layer to be multiplied
+    :param multiplier: multiplication constant
+    :param trainable: whether this layer is trainable or not
+    :return: multiplied input_layer
+    """
+    v = tf.Variable(initial_value=multiplier, trainable=trainable, shape=(1,))
+    return keras.layers.Multiply()([input_layer, v])
 
 # ---------------------------------------------------------------------
 

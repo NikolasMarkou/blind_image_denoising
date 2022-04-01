@@ -143,59 +143,11 @@ def dataset_builder(
                 input_batch = max_value - (input_batch - min_value)
 
         # --- convert to float32
-        input_batch = tf.cast(input_batch, dtype=tf.dtypes.float32)
-        return input_batch
+        return tf.cast(input_batch, dtype=tf.dtypes.float32)
 
     # --- define augmentation function
     def augmentation(input_batch):
         input_shape_inference = tf.shape(input_batch)
-
-        # # --- crop randomly
-        # if random_crop:
-        #     input_batch = \
-        #         tf.image.random_crop(
-        #             value=input_batch,
-        #             seed=0,
-        #             size=(
-        #                 input_shape_inference[0],
-        #                 input_shape[0],
-        #                 input_shape[1],
-        #                 input_shape_inference[3])
-        #         )
-        #     input_shape_inference = tf.shape(input_batch)
-        #
-        # # --- flip left right
-        # if random_left_right:
-        #     if tf.random.uniform(()) > 0.5:
-        #         input_batch = \
-        #             tf.image.flip_left_right(input_batch)
-        #
-        # # --- flip up down
-        # if random_up_down:
-        #     if tf.random.uniform(()) > 0.5:
-        #         input_batch = \
-        #             tf.image.flip_up_down(input_batch)
-        #
-        # # --- randomly rotate input
-        # if random_rotate > 0.0:
-        #     if tf.random.uniform(()) > 0.5:
-        #         angles = \
-        #             tf.random.uniform(
-        #                 dtype=tf.float32,
-        #                 minval=-random_rotate,
-        #                 maxval=random_rotate,
-        #                 shape=(input_shape_inference[0],))
-        #         input_batch = \
-        #             tfa.image.rotate(
-        #                 angles=angles,
-        #                 images=input_batch,
-        #                 fill_mode="reflect",
-        #                 interpolation="nearest")
-        #
-        # # --- random invert colors
-        # if random_invert:
-        #     if tf.random.uniform(()) > 0.5:
-        #         input_batch = max_value - (input_batch - min_value)
 
         # --- convert to float32
         input_batch = tf.cast(input_batch, dtype=tf.dtypes.float32)
@@ -308,9 +260,10 @@ def dataset_builder(
 
     # --- create the dataset
     return {
-        "dataset": dataset.map(
-            map_func=input_batch_augmentations,
-            num_parallel_calls=tf.data.AUTOTUNE).prefetch(tf.data.AUTOTUNE),
+        "dataset":
+            dataset.map(
+                map_func=input_batch_augmentations,
+                num_parallel_calls=tf.data.AUTOTUNE).prefetch(tf.data.AUTOTUNE),
         "augmentation": augmentation
     }
 
