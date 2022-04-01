@@ -171,17 +171,10 @@ def train_loop(
             trainable=False,
             dtype=tf.dtypes.int64,
             name="x_iteration")
-    x_diff = \
-        tf.Variable(
-            0.0,
-            trainable=False,
-            dtype=tf.dtypes.float32,
-            name="x_diff")
 
     # --- create random image and iterate through the model
     @tf.function
     def create_random_batch():
-        x_diff.assign(0.0)
         x_iteration.assign(0)
         x_random = \
             tf.random.truncated_normal(
@@ -189,8 +182,7 @@ def train_loop(
                 mean=0.0,
                 stddev=0.25,
                 shape=random_batch_size)
-        while x_iteration < random_batch_iterations and \
-                x_diff > random_batch_min_difference:
+        while x_iteration < random_batch_iterations:
             x_tmp = \
                 model_denoise(
                     x_random,
@@ -200,16 +192,6 @@ def train_loop(
                     x_tmp,
                     clip_value_min=-0.5,
                     clip_value_max=+0.5)
-            x_diff = tf.abs(x_random - x_tmp)
-            x_diff = \
-                tf.reduce_mean(
-                    x_diff,
-                    axis=[1, 2, 3])
-
-            x_diff = \
-                tf.reduce_sum(
-                    x_diff,
-                    axis=[0])
             x_random = x_tmp
             x_iteration.assign_add(1)
         return \
