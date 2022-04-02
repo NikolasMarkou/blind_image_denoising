@@ -29,6 +29,7 @@ class TrainableMultiplier(tf.keras.layers.Layer):
             **kwargs)
         self._w0 = None
         self._activation = activation
+        self._multiplier = multiplier
         self._regularizer = regularizers.get(regularizer)
 
     def build(self, input_shape):
