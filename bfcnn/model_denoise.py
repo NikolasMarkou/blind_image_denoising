@@ -496,9 +496,9 @@ def build_model_denoise_resnet(
             input_layer=x,
             **resnet_params)
 
-    # optional batch norm
-    if use_bn:
-        x = keras.layers.BatchNormalization(**bn_params)(x)
+    # # optional batch norm
+    # if use_bn:
+    #     x = keras.layers.BatchNormalization(**bn_params)(x)
 
     # --- output layer branches here,
     # to allow space for intermediate results
