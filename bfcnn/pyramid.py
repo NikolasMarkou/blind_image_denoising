@@ -353,18 +353,19 @@ def build_gaussian_learnable_pyramid_model(
             name="input_tensor",
             shape=input_dims)
 
-    # --- initialize first level
-    level_x = \
-        keras.layers.Layer(name="level_0")(input_layer)
+    level_x = input_layer
 
-    multiscale_layers = [
+    # --- initialize first level
+    level_0 = \
         TrainableMultiplier(
-                name=f"mixer_multiplier_0",
-                multiplier=1.0,
-                trainable=True,
-                activation="linear",
-                regularizer="l1")(level_x)
-    ]
+            name=f"mixer_multiplier_0",
+            multiplier=1.0,
+            trainable=True,
+            activation="linear",
+            regularizer="l1")(level_x)
+    level_0 = \
+        keras.layers.Layer(name=f"level_0")(level_0)
+    multiscale_layers = [level_0]
 
     # --- split input in levels
     for level in range(1, levels):

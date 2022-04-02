@@ -64,9 +64,9 @@ class TrainableMultiplier(tf.keras.layers.Layer):
 
     def get_config(self):
         return {
-            "activation": self._activation,
             "constant": self._w0.numpy(),
-            "multiplier": self._w1.numpy()
+            "multiplier": self._w1.numpy(),
+            "activation": self._activation
         }
 
     def compute_output_shape(self, input_shape):
