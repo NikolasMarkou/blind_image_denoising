@@ -55,12 +55,12 @@ class TrainableMultiplier(tf.keras.layers.Layer):
                 regularizer=self._weight_regularizer,
                 initializer=init_w1_fn,
                 trainable=self.trainable)
-        self._activation_w1 = keras.layers.Activation(self._activation)
+        self._activation = keras.layers.Activation(self._activation)
         super(TrainableMultiplier, self).build(input_shape)
 
     def call(self, inputs):
-        output = (self._w0 * (1.0 + keras.activations.tanh(self._w1))) * inputs
-        return output
+        return self._activation(
+            (self._w0 * (1.0 + self._w1)) * inputs)
 
     def get_config(self):
         return {
