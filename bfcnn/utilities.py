@@ -589,7 +589,8 @@ def resnet_blocks(
         third_conv_params: Dict,
         bn_params: Dict = None,
         gate_params: Dict = None,
-        dropout_params: Dict = None):
+        dropout_params: Dict = None,
+        multiplier_params: Dict = None):
     """
     Create a series of residual network blocks
 
@@ -601,6 +602,8 @@ def resnet_blocks(
     :param bn_params: batch normalization parameters
     :param gate_params: gate optional parameters
     :param dropout_params: dropout optional parameters
+    :param multiplier_params: learnable optional parameters
+
     :return: filtered input_layer
     """
     # --- argument check
@@ -611,6 +614,7 @@ def resnet_blocks(
     use_bn = bn_params is not None
     use_gate = gate_params is not None
     use_dropout = dropout_params is not None
+    use_multiplier = multiplier_params is not None
 
     # --- setup resnet
     x = input_layer
@@ -653,6 +657,9 @@ def resnet_blocks(
             # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
             y = keras.activations.hard_sigmoid(2.5 - y)
             x = keras.layers.Multiply()([x, y])
+        # optional multiplier
+        if use_multiplier:
+            x = TrainableMultiplier(**multiplier_params)(x)
         # skip connection
         x = keras.layers.Add()([x, previous_layer])
     return x

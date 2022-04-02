@@ -439,6 +439,13 @@ def build_model_denoise_resnet(
         kernel_initializer=kernel_initializer
     )
 
+    multiplier_params = dict(
+        multiplier=1.0,
+        trainable=True,
+        regularizer="l1",
+        activation="linear"
+    )
+
     resnet_params = dict(
         no_layers=no_layers,
         bn_params=bn_params,
@@ -453,6 +460,9 @@ def build_model_denoise_resnet(
 
     if add_gates:
         resnet_params["gate_params"] = gate_params
+
+    if add_learnable_multiplier:
+        resnet_params["multiplier_params"] = multiplier_params
 
     # --- build model
     # set input
@@ -503,10 +513,7 @@ def build_model_denoise_resnet(
         # learnable multiplier
         if add_learnable_multiplier:
             output_layer = \
-                TrainableMultiplier(
-                    multiplier=1.0,
-                    regularizer="l1",
-                    trainable=True)(output_layer)
+                TrainableMultiplier(**multiplier_params)(output_layer)
 
         # cap it off to limit values
         output_layer = \
