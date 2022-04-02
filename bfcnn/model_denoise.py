@@ -395,19 +395,20 @@ def build_model_denoise_resnet(
     )
 
     first_conv_params = dict(
-        kernel_size=1,
-        filters=filters,
+        kernel_size=3,
+        depth_multiplier=1,
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
         activation=activation,
         kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
+        kernel_initializer=kernel_initializer,
+        depthwise_initializer=kernel_initializer,
     )
 
     second_conv_params = dict(
-        kernel_size=3,
-        filters=filters * 2,
+        kernel_size=1,
+        filters=filters * 4,
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
@@ -418,7 +419,7 @@ def build_model_denoise_resnet(
 
     third_conv_params = dict(
         kernel_size=1,
-        groups=2,
+        groups=4,
         filters=filters,
         strides=(1, 1),
         padding="same",
