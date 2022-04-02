@@ -333,7 +333,7 @@ def build_gaussian_learnable_pyramid_model(
         levels: int,
         kernel_size: Tuple[int, int] = DEFAULT_KERNEL_SIZE,
         xy_max: Tuple[float, float] = DEFAULT_XY_MAX,
-        trainable: bool = False,
+        trainable: bool = True,
         name: str = "gaussian_pyramid") -> keras.Model:
     """
     Build a gaussian learnable pyramid model
@@ -373,7 +373,7 @@ def build_gaussian_learnable_pyramid_model(
             downsample_2x2_block(
                 input_layer=level_x,
                 xy_max=xy_max,
-                trainable=trainable,
+                trainable=False,
                 kernel_size=kernel_size)
         level_x = \
             TrainableMultiplier(
