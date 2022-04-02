@@ -3,10 +3,10 @@
     "filters": 16,
     "no_layers": 5,
     "min_value": 0,
-    "add_var": false,
+    "add_var": true,
     "max_value": 255,
     "kernel_size": 3,
-    "type": "resnet",
+    "type": "gatenet",
     "batchnorm": true,
     "activation": "elu",
     "clip_values": false,
@@ -28,7 +28,7 @@
     },
     "inverse_pyramid": {
       "levels": 4,
-      "type": "gaussian",
+      "type": "gaussian_learnable",
       "xy_max": [1.0, 1.0],
       "kernel_size": [5, 5]
     }
