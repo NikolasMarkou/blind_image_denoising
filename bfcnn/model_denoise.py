@@ -497,18 +497,21 @@ def build_model_denoise_resnet(
     # --- output to original channels / projection
     if add_projection_to_input:
         output_layer = \
-            keras.layers.Conv2D(**final_conv_params)(output_layer)
+            keras.layers.Conv2D(
+                **final_conv_params)(output_layer)
 
         # learnable multiplier
         if add_learnable_multiplier:
-            output_layer = TrainableMultiplier(
-                multiplier=1.0,
-                regularizer="l1",
-                trainable=True)(output_layer)
+            output_layer = \
+                TrainableMultiplier(
+                    multiplier=1.0,
+                    regularizer="l1",
+                    trainable=True)(output_layer)
 
         # cap it off to limit values
         output_layer = \
-            keras.layers.Activation(final_activation)(output_layer)
+            keras.layers.Activation(
+                activation=final_activation)(output_layer)
 
     # --- skip with input layer
     if add_skip_with_input:

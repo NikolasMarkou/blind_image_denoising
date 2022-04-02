@@ -353,10 +353,20 @@ def build_gaussian_learnable_pyramid_model(
             name="input_tensor",
             shape=input_dims)
 
-    # --- split input in levels
+    # --- initialize first level
     level_x = \
         keras.layers.Layer(name="level_0")(input_layer)
-    multiscale_layers = [level_x]
+
+    multiscale_layers = [
+        TrainableMultiplier(
+                name=f"mixer_multiplier_0",
+                multiplier=1.0,
+                trainable=True,
+                activation="linear",
+                regularizer="l1")(level_x)
+    ]
+
+    # --- split input in levels
     for level in range(1, levels):
         level_x = \
             downsample_2x2_block(
