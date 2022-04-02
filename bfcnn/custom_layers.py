@@ -28,8 +28,9 @@ class TrainableMultiplier(tf.keras.layers.Layer):
             name=name,
             **kwargs)
         self._w0 = None
-        self._activation = activation
+        self._activation = None
         self._multiplier = multiplier
+        self._activation_type = activation
         self._regularizer = regularizers.get(regularizer)
 
     def build(self, input_shape):
@@ -42,7 +43,7 @@ class TrainableMultiplier(tf.keras.layers.Layer):
                 name="multiplier",
                 initializer=init_w0_fn,
                 regularizer=self._regularizer)
-        self._activation = keras.layers.Activation(self._activation)
+        self._activation = keras.layers.Activation(self._activation_type)
         super(TrainableMultiplier, self).build(input_shape)
 
     def call(self, inputs):
@@ -51,7 +52,7 @@ class TrainableMultiplier(tf.keras.layers.Layer):
     def get_config(self):
         return {
             "multiplier": self._w0.numpy(),
-            "activation": self._activation
+            "activation": self._activation_type
         }
 
     def compute_output_shape(self, input_shape):
