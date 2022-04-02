@@ -328,6 +328,63 @@ def build_gaussian_pyramid_model(
 # ---------------------------------------------------------------------
 
 
+def build_gaussian_learnable_pyramid_model(
+        input_dims: Union[Tuple, List],
+        levels: int,
+        kernel_size: Tuple[int, int] = DEFAULT_KERNEL_SIZE,
+        xy_max: Tuple[float, float] = DEFAULT_XY_MAX,
+        trainable: bool = False,
+        name: str = "gaussian_pyramid") -> keras.Model:
+    """
+    Build a gaussian learnable pyramid model
+
+    :param input_dims: input dimensions
+    :param levels: how many levels to go down the pyramid (level 0 is the original input)
+    :param kernel_size: kernel size tuple
+    :param xy_max: how far the gaussian are we going
+        (symmetrically) on the 2 axis
+    :param trainable: is the pyramid trainable (default False)
+    :param name: name of the model
+    :return: gaussian pyramid keras model
+    """
+    # --- prepare input
+    input_layer = \
+        keras.Input(
+            name="input_tensor",
+            shape=input_dims)
+
+    # --- split input in levels
+    level_x = \
+        keras.layers.Layer(name="level_0")(input_layer)
+    multiscale_layers = [level_x]
+    for level in range(1, levels):
+        level_x = \
+            downsample_2x2_block(
+                input_layer=level_x,
+                xy_max=xy_max,
+                trainable=trainable,
+                kernel_size=kernel_size)
+        level_x = \
+            TrainableMultiplier(
+                name=f"mixer_multiplier_{level}",
+                multiplier=1.0,
+                trainable=True,
+                activation="linear",
+                regularizer="l1")(level_x)
+        level_x = \
+            keras.layers.Layer(name=f"level_{level}")(level_x)
+        multiscale_layers.append(level_x)
+
+    return \
+        keras.Model(
+            name=name,
+            trainable=trainable,
+            inputs=input_layer,
+            outputs=multiscale_layers)
+
+# ---------------------------------------------------------------------
+
+
 def build_inverse_gaussian_pyramid_model(
         input_dims: Union[Tuple, List],
         levels: int,
@@ -587,6 +644,14 @@ def build_pyramid_model(
         no_levels = config["levels"]
         pyramid_model = \
             build_laplacian_pyramid_model(
+                input_dims=input_dims,
+                levels=no_levels,
+                xy_max=xy_max,
+                kernel_size=kernel_size)
+    elif pyramid_type == PyramidType.GAUSSIAN_LEARNABLE:
+        no_levels = config["levels"]
+        pyramid_model = \
+            build_gaussian_learnable_pyramid_model(
                 input_dims=input_dims,
                 levels=no_levels,
                 xy_max=xy_max,

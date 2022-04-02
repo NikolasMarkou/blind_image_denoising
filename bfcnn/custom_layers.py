@@ -7,7 +7,9 @@ __license__ = "MIT"
 # ---------------------------------------------------------------------
 
 import numpy as np
+from typing import Any
 import tensorflow as tf
+from tensorflow import keras
 from tensorflow.keras import regularizers
 
 # ---------------------------------------------------------------------
@@ -18,6 +20,7 @@ class TrainableMultiplier(tf.keras.layers.Layer):
                  multiplier: float = 1.0,
                  regularizer=None,
                  trainable: bool = True,
+                 activation: Any = "linear",
                  name=None,
                  **kwargs):
         super(TrainableMultiplier, self).__init__(
@@ -25,7 +28,9 @@ class TrainableMultiplier(tf.keras.layers.Layer):
             name=name,
             **kwargs)
         self._w1 = None
+        self._activation_w1 = None
         self._multiplier = multiplier
+        self._activation = activation
         self._weight_regularizer = regularizers.get(regularizer)
 
     def build(self, input_shape):
@@ -38,16 +43,21 @@ class TrainableMultiplier(tf.keras.layers.Layer):
                 regularizer=self._weight_regularizer,
                 initializer=init_fn,
                 trainable=self.trainable)
+        self._activation_w1 = keras.layers.Activation(self._activation)
         super(TrainableMultiplier, self).build(input_shape)
 
     def call(self, inputs):
-        return inputs * self._w1
+        output = inputs * self._w1
+        output = self._activation_w1(output)
+        return output
 
     def get_config(self):
         return {
+            "activation": self._activation,
             "multiplier": self._w1.numpy()
         }
 
     def compute_output_shape(self, input_shape):
         return input_shape
+
 # ---------------------------------------------------------------------
