@@ -628,7 +628,7 @@ def resnet_blocks(
         # 1st conv
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
-        x = keras.layers.DepthwiseConv2D(**first_conv_params)(x)
+        x = keras.layers.Conv2D(**first_conv_params)(x)
         # 2nd conv
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
