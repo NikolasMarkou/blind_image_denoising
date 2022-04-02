@@ -419,6 +419,7 @@ def build_model_denoise_resnet(
 
     third_conv_params = dict(
         kernel_size=1,
+        groups=4,
         filters=filters,
         strides=(1, 1),
         padding="same",

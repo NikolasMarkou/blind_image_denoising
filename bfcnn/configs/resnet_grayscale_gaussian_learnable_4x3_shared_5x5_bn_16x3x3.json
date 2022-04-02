@@ -8,7 +8,7 @@
     "kernel_size": 3,
     "type": "resnet",
     "batchnorm": true,
-    "activation": "elu",
+    "activation": "relu",
     "clip_values": false,
     "shared_model": true,
     "stop_gradient": false,
