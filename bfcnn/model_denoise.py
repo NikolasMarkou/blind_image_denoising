@@ -59,6 +59,7 @@ def model_builder(
     add_skip_with_input = config.get("add_skip_with_input", True)
     add_intermediate_results = config.get("intermediate_results", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
+    add_learnable_multiplier = config.get("add_learnable_multiplier", False)
     add_residual_between_models = config.get("add_residual_between_models", False)
     use_local_normalization = local_normalization > 0
     use_global_normalization = local_normalization == 0
@@ -102,7 +103,8 @@ def model_builder(
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
         add_skip_with_input=add_skip_with_input,
-        add_intermediate_results=add_intermediate_results
+        add_intermediate_results=add_intermediate_results,
+        add_learnable_multiplier=add_learnable_multiplier
     )
 
     if model_type == "resnet":
@@ -132,8 +134,9 @@ def model_builder(
             name="input_tensor")
     x = input_layer
 
-    logger.info("building model with multiscale pyramid")
     # build pyramid
+    logger.info("building model with multiscale pyramid")
+
     model_pyramid = \
         build_pyramid_model(
             input_dims=input_shape,
@@ -329,7 +332,7 @@ def build_model_denoise_resnet(
         add_gates: bool = False,
         add_var: bool = False,
         add_intermediate_results: bool = False,
-        add_learnable_multiplier: bool = True,
+        add_learnable_multiplier: bool = False,
         add_projection_to_input: bool = True,
         name="resnet") -> keras.Model:
     """
