@@ -634,14 +634,11 @@ def resnet_blocks(
         if use_dropout:
             x = keras.layers.SpatialDropout2D(**dropout_params)(x)
         # 1st conv
-        if use_bn:
-            x = keras.layers.BatchNormalization(**bn_params)(x)
         x = keras.layers.Conv2D(**first_conv_params)(x)
-        # 2nd conv
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
+        # 2nd conv
         x = keras.layers.Conv2D(**second_conv_params)(x)
-        # 3rd conv
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
         # output results

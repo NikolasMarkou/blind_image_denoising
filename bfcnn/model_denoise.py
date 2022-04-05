@@ -375,13 +375,13 @@ def build_model_denoise_resnet(
         per_channel_sparsity=False
     )
 
-    conv_params = dict(
+    base_conv_params = dict(
         filters=filters,
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
         activation=activation,
-        kernel_size=kernel_size,
+        kernel_size=(5, 5),
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -459,7 +459,7 @@ def build_model_denoise_resnet(
 
     # make it linear so it gets sparse afterwards
     if add_sparsity:
-        conv_params["activation"] = "linear"
+        base_conv_params["activation"] = "linear"
 
     if add_gates:
         resnet_params["gate_params"] = gate_params
@@ -484,7 +484,10 @@ def build_model_denoise_resnet(
         x = keras.layers.Concatenate()([x, x_var])
 
     # add base layer
-    x = keras.layers.Conv2D(**conv_params)(x)
+    x = keras.layers.Conv2D(**base_conv_params)(x)
+
+    if use_bn:
+        x = keras.layers.BatchNormalization(**bn_params)(x)
 
     if add_sparsity:
         x = \
@@ -500,8 +503,8 @@ def build_model_denoise_resnet(
             **resnet_params)
 
     # optional batch norm
-    if use_bn:
-        x = keras.layers.BatchNormalization(**bn_params)(x)
+    # if use_bn:
+    #     x = keras.layers.BatchNormalization(**bn_params)(x)
 
     # --- output layer branches here,
     # to allow space for intermediate results
