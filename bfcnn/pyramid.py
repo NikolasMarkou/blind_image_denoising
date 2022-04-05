@@ -639,12 +639,12 @@ def build_pyramid_model(
     :param config: pyramid configuration
     :return: pyramid model
     """
-    pyramid_type = PyramidType.from_string(config["type"])
+    pyramid_type = PyramidType.from_string(config.get("type", "NONE"))
+    no_levels = config.get("levels", 1)
     xy_max = config.get("xy_max", DEFAULT_XY_MAX)
     kernel_size = config.get("kernel_size", DEFAULT_KERNEL_SIZE)
 
     if pyramid_type == PyramidType.GAUSSIAN:
-        no_levels = config["levels"]
         pyramid_model = \
             build_gaussian_pyramid_model(
                 input_dims=input_dims,
@@ -652,7 +652,6 @@ def build_pyramid_model(
                 xy_max=xy_max,
                 kernel_size=kernel_size)
     elif pyramid_type == PyramidType.LAPLACIAN:
-        no_levels = config["levels"]
         pyramid_model = \
             build_laplacian_pyramid_model(
                 input_dims=input_dims,
@@ -660,7 +659,6 @@ def build_pyramid_model(
                 xy_max=xy_max,
                 kernel_size=kernel_size)
     elif pyramid_type == PyramidType.GAUSSIAN_LEARNABLE:
-        no_levels = config["levels"]
         pyramid_model = \
             build_gaussian_learnable_pyramid_model(
                 input_dims=input_dims,
@@ -668,7 +666,12 @@ def build_pyramid_model(
                 xy_max=xy_max,
                 kernel_size=kernel_size)
     elif pyramid_type == PyramidType.NONE:
-        raise NotImplementedError()
+        pyramid_model = \
+            build_gaussian_pyramid_model(
+                input_dims=input_dims,
+                levels=no_levels,
+                xy_max=xy_max,
+                kernel_size=kernel_size)
     else:
         raise ValueError(
             "don't know how to build pyramid type [{0}]".format(pyramid_type))
@@ -688,6 +691,7 @@ def build_inverse_pyramid_model(
     :return: inverse pyramid model
     """
     pyramid_type = PyramidType.from_string(config["type"])
+    no_levels = config.get("levels",1)
     xy_max = config.get("xy_max", DEFAULT_XY_MAX)
     kernel_size = config.get("kernel_size", DEFAULT_KERNEL_SIZE)
     mix_type = \
@@ -695,7 +699,6 @@ def build_inverse_pyramid_model(
             config.get("mix_type", MixType.EQUAL.to_string()))
 
     if pyramid_type == PyramidType.GAUSSIAN:
-        no_levels = config["levels"]
         pyramid_model = \
             build_inverse_gaussian_pyramid_model(
                 input_dims=input_dims,
@@ -704,7 +707,6 @@ def build_inverse_pyramid_model(
                 mix_type=mix_type,
                 kernel_size=kernel_size)
     elif pyramid_type == PyramidType.LAPLACIAN:
-        no_levels = config["levels"]
         pyramid_model = \
             build_inverse_laplacian_pyramid_model(
                 input_dims=input_dims,
@@ -712,7 +714,6 @@ def build_inverse_pyramid_model(
                 xy_max=xy_max,
                 kernel_size=kernel_size)
     elif pyramid_type == PyramidType.GAUSSIAN_LEARNABLE:
-        no_levels = config["levels"]
         pyramid_model = \
             build_inverse_gaussian_learnable_pyramid_model(
                 input_dims=input_dims,
@@ -720,7 +721,13 @@ def build_inverse_pyramid_model(
                 xy_max=xy_max,
                 kernel_size=kernel_size)
     elif pyramid_type == PyramidType.NONE:
-        raise NotImplementedError()
+        pyramid_model = \
+            build_inverse_gaussian_pyramid_model(
+                input_dims=input_dims,
+                levels=no_levels,
+                xy_max=xy_max,
+                mix_type=mix_type,
+                kernel_size=kernel_size)
     else:
         raise ValueError(
             "don't know how to build pyramid type [{0}]".format(pyramid_type))
