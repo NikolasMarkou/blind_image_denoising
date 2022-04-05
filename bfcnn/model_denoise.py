@@ -405,7 +405,7 @@ def build_model_denoise_resnet(
         use_bias=use_bias,
         activation=activation,
         kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
+        kernel_initializer=kernel_initializer,
     )
 
     second_conv_params = dict(
@@ -426,7 +426,7 @@ def build_model_denoise_resnet(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation=activation,
+        activation="linear",
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )

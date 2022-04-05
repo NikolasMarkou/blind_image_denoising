@@ -388,6 +388,14 @@ def differentiable_relu(
 # ---------------------------------------------------------------------
 
 
+def gelu_block(input_layer):
+    x = input_layer
+    x_sigmoid = keras.activations.sigmoid(x * 1.702)
+    return keras.layers.Multiply()([x, x_sigmoid])
+
+# ---------------------------------------------------------------------
+
+
 def sparse_block(
         input_layer,
         bn_params: Dict = None,
@@ -664,5 +672,86 @@ def resnet_blocks(
         x = keras.layers.Add()([x, previous_layer])
     return x
 
+# ---------------------------------------------------------------------
+
+
+def conv_next_blocks(
+        input_layer,
+        no_layers: int,
+        first_conv_params: Dict,
+        second_conv_params: Dict,
+        third_conv_params: Dict,
+        bn_params: Dict = None,
+        gate_params: Dict = None,
+        dropout_params: Dict = None,
+        multiplier_params: Dict = None):
+    """
+    Create a series of residual network blocks
+
+    :param input_layer: the input layer to perform on
+    :param no_layers: how many residual network blocks to add
+    :param first_conv_params: the parameters of the first conv
+    :param second_conv_params: the parameters of the middle conv
+    :param third_conv_params: the parameters of the third conv
+    :param bn_params: batch normalization parameters
+    :param gate_params: gate optional parameters
+    :param dropout_params: dropout optional parameters
+    :param multiplier_params: learnable optional parameters
+
+    :return: filtered input_layer
+    """
+    # --- argument check
+    if input_layer is None:
+        raise ValueError("input_layer must be none")
+    if no_layers < 0:
+        raise ValueError("no_layers must be >= 0")
+    use_bn = bn_params is not None
+    use_gate = gate_params is not None
+    use_dropout = dropout_params is not None
+    use_multiplier = multiplier_params is not None
+
+    # --- setup resnet
+    x = input_layer
+    g_layer = x
+
+    # --- create several number of residual blocks
+    for i in range(no_layers):
+        previous_layer = x
+        if use_dropout:
+            x = keras.layers.SpatialDropout2D(**dropout_params)(x)
+        # 1st conv
+        x = keras.layers.DepthwiseConv2D(**first_conv_params)(x)
+        if use_bn:
+            x = keras.layers.LayerNormalization(**bn_params)(x)
+        # 2nd conv
+        x = keras.layers.Conv2D(**second_conv_params)(x)
+        x = gelu_block(x)
+        # output results
+        x = keras.layers.Conv2D(**third_conv_params)(x)
+        # compute activation per channel
+        if use_gate:
+            g_layer = keras.layers.Add()([x, g_layer])
+            y = g_layer
+            if use_bn:
+                y = keras.layers.BatchNormalization(**bn_params)(y)
+            # activation per pixel
+            y = keras.layers.Conv2D(**gate_params)(y)
+            y = \
+                TrainableMultiplier(
+                    multiplier=1.0,
+                    regularizer="l1",
+                    trainable=True)(y)
+            # on by default, requires effort to turn off
+            # if x < -2.5: return 0
+            # if x > 2.5: return 1
+            # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
+            y = keras.activations.hard_sigmoid(2.5 - y)
+            x = keras.layers.Multiply()([x, y])
+        # optional multiplier
+        if use_multiplier:
+            x = TrainableMultiplier(**multiplier_params)(x)
+        # skip connection
+        x = keras.layers.Add()([x, previous_layer])
+    return x
 # ---------------------------------------------------------------------
 
