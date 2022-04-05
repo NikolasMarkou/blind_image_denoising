@@ -88,7 +88,7 @@ def dataset_builder(
                 batch_size=batch_size,
                 color_mode=color_mode,
                 image_size=dataset_shape,
-                interpolation="nearest")
+                interpolation="bilinear")
 
     else:
         raise ValueError("don't know how to handle non directory datasets")
