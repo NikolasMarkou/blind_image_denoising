@@ -8,7 +8,7 @@
     "kernel_size": 3,
     "type": "gatenet",
     "batchnorm": true,
-    "activation": "elu",
+    "activation": "relu",
     "clip_values": false,
     "shared_model": true,
     "stop_gradient": false,
@@ -24,11 +24,11 @@
       "levels": 4,
       "type": "gaussian",
       "xy_max": [1.0, 1.0],
-      "kernel_size": [3, 3]
+      "kernel_size": [5, 5]
     },
     "inverse_pyramid": {
       "levels": 4,
-      "type": "gaussian_learnable",
+      "type": "gaussian",
       "xy_max": [1.0, 1.0],
       "kernel_size": [5, 5]
     }
@@ -67,7 +67,7 @@
       "levels": 4,
       "type": "gaussian",
       "xy_max": [1.0, 1.0],
-      "kernel_size": [3, 3]
+      "kernel_size": [5, 5]
     }
   },
   "dataset": {
