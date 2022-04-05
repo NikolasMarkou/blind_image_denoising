@@ -672,7 +672,7 @@ def resnet_blocks(
 # ---------------------------------------------------------------------
 
 
-def conv_next_blocks(
+def convnext_blocks(
         input_layer,
         no_layers: int,
         first_conv_params: Dict,
@@ -705,7 +705,6 @@ def conv_next_blocks(
     use_bn = bn_params is not None
     use_gate = gate_params is not None
     use_dropout = dropout_params is not None
-    use_multiplier = multiplier_params is not None
 
     # --- setup resnet
     x = input_layer
@@ -730,7 +729,7 @@ def conv_next_blocks(
             g_layer = keras.layers.Add()([x, g_layer])
             y = g_layer
             if use_bn:
-                y = keras.layers.BatchNormalization(**bn_params)(y)
+                y = keras.layers.LayerNormalization(**bn_params)(y)
             # activation per pixel
             y = keras.layers.Conv2D(**gate_params)(y)
             y = \
@@ -744,9 +743,6 @@ def conv_next_blocks(
             # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
             y = keras.activations.hard_sigmoid(2.5 - y)
             x = keras.layers.Multiply()([x, y])
-        # optional multiplier
-        if use_multiplier:
-            x = TrainableMultiplier(**multiplier_params)(x)
         # skip connection
         x = keras.layers.Add()([x, previous_layer])
     return x
