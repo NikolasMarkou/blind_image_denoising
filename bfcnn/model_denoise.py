@@ -503,8 +503,8 @@ def build_model_denoise_resnet(
             **resnet_params)
 
     # optional batch norm
-    # if use_bn:
-    #     x = keras.layers.BatchNormalization(**bn_params)(x)
+    if use_bn:
+        x = keras.layers.BatchNormalization(**bn_params)(x)
 
     # --- output layer branches here,
     # to allow space for intermediate results
