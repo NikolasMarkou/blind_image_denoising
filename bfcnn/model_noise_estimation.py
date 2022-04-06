@@ -61,7 +61,7 @@ def model_builder(
         add_learnable_multiplier=False
     )
 
-    final_conv_parms = dict(
+    final_conv_params = dict(
         kernel_size=1,
         strides=(1, 1),
         padding="same",
@@ -79,21 +79,18 @@ def model_builder(
             shape=input_shape,
             name="input_tensor")
     x = input_layer
-
-    resnet_model = \
+    x = \
         build_model_resnet(
             name="resnet_noise_estimation",
-            **model_params)
-
-    x = resnet_model(x)
-
-    x = keras.layers.Conv2D(**final_conv_parms)(x)
+            **model_params)(x)
+    x = keras.layers.Conv2D(**final_conv_params)(x)
     x = keras.layers.GlobalAveragePooling2D()(x)
     x = keras.layers.Flatten()(x)
 
     output_layer = \
         keras.layers.Dense(
             units=1,
+            use_bias=False,
             activation=final_activation)(x)
 
     # --- wrap and name model

@@ -29,6 +29,7 @@
       "batchnorm": true,
       "activation": "relu",
       "kernel_regularizer": "l1",
+      "final_activation": "sigmoid",
       "kernel_initializer": "glorot_normal"
     },
     "pyramid": {
