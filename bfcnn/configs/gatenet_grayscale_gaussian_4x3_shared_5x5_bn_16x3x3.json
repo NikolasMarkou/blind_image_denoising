@@ -5,7 +5,7 @@
     "min_value": 0,
     "add_var": false,
     "max_value": 255,
-    "kernel_size": 3,
+    "kernel_size": 5,
     "type": "gatenet",
     "batchnorm": true,
     "activation": "relu",

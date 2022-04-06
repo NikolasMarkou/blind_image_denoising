@@ -110,6 +110,8 @@ def model_builder(
     if model_type == "resnet":
         model_params["add_gates"] = False
         model_params["add_sparsity"] = False
+    elif model_type == "convnext":
+        model_params["use_convnext"] = True
     elif model_type == "sparse_resnet":
         model_params["add_sparsity"] = True
     elif model_type == "gatenet":
@@ -324,17 +326,19 @@ def build_model_denoise_resnet(
         final_activation: str = "linear",
         use_bn: bool = True,
         use_bias: bool = False,
+        use_convnext: bool = False,
         kernel_regularizer="l1",
         kernel_initializer="glorot_normal",
         channel_index: int = 2,
-        add_skip_with_input: bool = True,
-        add_sparsity: bool = False,
-        add_gates: bool = False,
         add_var: bool = False,
+        add_gates: bool = False,
+        add_sparsity: bool = False,
+        add_skip_with_input: bool = True,
         add_intermediate_results: bool = False,
         add_learnable_multiplier: bool = False,
         add_projection_to_input: bool = True,
-        name="resnet") -> keras.Model:
+        name="resnet",
+        **kwargs) -> keras.Model:
     """
     builds a resnet model
 
@@ -381,7 +385,7 @@ def build_model_denoise_resnet(
         padding="same",
         use_bias=use_bias,
         activation=activation,
-        kernel_size=(5, 5),
+        kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -397,27 +401,53 @@ def build_model_denoise_resnet(
         kernel_initializer=kernel_initializer
     )
 
-    first_conv_params = dict(
-        kernel_size=1,
-        filters=filters,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation=activation,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer,
-    )
+    if use_convnext:
+        first_conv_params = dict(
+            kernel_size=7,
+            filters=filters,
+            strides=(1, 1),
+            padding="same",
+            use_bias=use_bias,
+            depth_multiplier=1,
+            activation=activation,
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer,
+            depthwise_initializer=kernel_initializer,
+        )
+    else:
+        first_conv_params = dict(
+            kernel_size=1,
+            filters=filters,
+            strides=(1, 1),
+            padding="same",
+            use_bias=use_bias,
+            activation=activation,
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer,
+        )
 
-    second_conv_params = dict(
-        kernel_size=3,
-        filters=filters * 2,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation=activation,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
+    if use_convnext:
+        second_conv_params = dict(
+            kernel_size=1,
+            filters=filters * 4,
+            strides=(1, 1),
+            padding="same",
+            use_bias=use_bias,
+            activation=activation,
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer
+        )
+    else:
+        second_conv_params = dict(
+            kernel_size=3,
+            filters=filters * 2,
+            strides=(1, 1),
+            padding="same",
+            use_bias=use_bias,
+            activation=activation,
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer
+        )
 
     third_conv_params = dict(
         groups=2,
@@ -428,8 +458,10 @@ def build_model_denoise_resnet(
         use_bias=use_bias,
         activation="linear",
         kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
+        kernel_initializer=kernel_initializer)
+
+    if use_convnext:
+        third_conv_params["groups"] = 1
 
     final_conv_params = dict(
         kernel_size=1,
@@ -439,23 +471,20 @@ def build_model_denoise_resnet(
         activation="linear",
         filters=input_dims[channel_index],
         kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
+        kernel_initializer=kernel_initializer)
 
     multiplier_params = dict(
         multiplier=1.0,
         trainable=True,
         regularizer="l1",
-        activation="linear"
-    )
+        activation="linear")
 
     resnet_params = dict(
         no_layers=no_layers,
         bn_params=bn_params,
         first_conv_params=first_conv_params,
         second_conv_params=second_conv_params,
-        third_conv_params=third_conv_params,
-    )
+        third_conv_params=third_conv_params)
 
     # make it linear so it gets sparse afterwards
     if add_sparsity:
@@ -497,10 +526,16 @@ def build_model_denoise_resnet(
                 **sparse_params)
 
     # add resnet blocks
-    x = \
-        resnet_blocks(
-            input_layer=x,
-            **resnet_params)
+    if use_convnext:
+        x = \
+            convnext_blocks(
+                input_layer=x,
+                **resnet_params)
+    else:
+        x = \
+            resnet_blocks(
+                input_layer=x,
+                **resnet_params)
 
     # optional batch norm
     if use_bn:

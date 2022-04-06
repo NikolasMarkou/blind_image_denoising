@@ -598,7 +598,8 @@ def resnet_blocks(
         bn_params: Dict = None,
         gate_params: Dict = None,
         dropout_params: Dict = None,
-        multiplier_params: Dict = None):
+        multiplier_params: Dict = None,
+        **kwargs):
     """
     Create a series of residual network blocks
 
@@ -681,7 +682,7 @@ def convnext_blocks(
         bn_params: Dict = None,
         gate_params: Dict = None,
         dropout_params: Dict = None,
-        multiplier_params: Dict = None):
+        **kwargs):
     """
     Create a series of residual network blocks
 
@@ -693,7 +694,6 @@ def convnext_blocks(
     :param bn_params: batch normalization parameters
     :param gate_params: gate optional parameters
     :param dropout_params: dropout optional parameters
-    :param multiplier_params: learnable optional parameters
 
     :return: filtered input_layer
     """
