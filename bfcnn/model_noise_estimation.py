@@ -103,13 +103,13 @@ def noise_estimation_mixer(
         x1_input_layer):
     x0_noise = model_noise_estimation(x0_input_layer)
     x1_noise = model_noise_estimation(x1_input_layer)
-    x = keras.layers.Concatenate(axis=1)([x0_noise, x1_noise])
-    x = keras.layers.Softmax(axis=1)(x)
+    x = keras.layers.Concatenate(axis=-1)([x0_noise, x1_noise])
+    x = keras.layers.Softmax(axis=-1)(x)
     x_coeffs = tf.unstack(x, axis=1)
     x0_coeff = tf.reshape(x_coeffs[0], shape=(-1, 1, 1, 1))
     x1_coeff = tf.reshape(x_coeffs[1], shape=(-1, 1, 1, 1))
-    x0_result_mix = keras.layers.Multiply()([x0_input_layer, x0_coeff])
-    x1_result_mix = keras.layers.Multiply()([x1_input_layer, x1_coeff])
+    x0_result_mix = keras.layers.Multiply()([x0_input_layer, 1])
+    x1_result_mix = keras.layers.Multiply()([x1_input_layer, 1])
     return keras.layers.Add()([x0_result_mix, x1_result_mix])
     #return (x1_input_layer + x0_input_layer) * 0.5
 
