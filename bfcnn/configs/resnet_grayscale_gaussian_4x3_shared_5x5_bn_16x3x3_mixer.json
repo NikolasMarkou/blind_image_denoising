@@ -26,7 +26,7 @@
       "no_layers": 3,
       "kernel_size": 3,
       "type": "resnet",
-      "batchnorm": true,
+      "batchnorm": false,
       "activation": "relu",
       "kernel_regularizer": "l1",
       "kernel_initializer": "glorot_normal"
