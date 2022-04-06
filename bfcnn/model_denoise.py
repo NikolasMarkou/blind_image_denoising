@@ -244,11 +244,11 @@ def model_builder(
                         input_layer=tmp_level)
                 #
                 if use_noise_estimation_mixer:
-                    # tmp_level = \
-                    #     noise_estimation_mixer(
-                    #         model_noise_estimation=model_noise_estimation,
-                    #         x0_input_layer=tmp_level,
-                    #         x1_input_layer=x_level)
+                    tmp_level = \
+                        noise_estimation_mixer(
+                            model_noise_estimation=model_noise_estimation,
+                            x0_input_layer=tmp_level,
+                            x1_input_layer=x_level)
                     tmp_level = \
                         keras.layers.Add(
                             name="level_{0}_to_{1}".format(i+1, i))(

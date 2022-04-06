@@ -100,12 +100,13 @@ def model_builder(
 def noise_estimation_mixer(
         model_noise_estimation: keras.Model,
         x0_input_layer,
-        x1_input_layer):
+        x1_input_layer,
+        training: bool = True):
     x0_noise = model_noise_estimation(x0_input_layer)
     x1_noise = model_noise_estimation(x1_input_layer)
     x = keras.layers.Concatenate(axis=1)([x0_noise, x1_noise])
     x = keras.layers.Softmax(axis=1)(x)
-    x0_coeff, x1_coeff = tf.unstack(x, axis=-1)
+    x0_coeff, x1_coeff = tf.unstack(x, axis=1)
     x0_coeff = tf.expand_dims(x0_coeff, axis=1)
     x1_coeff = tf.expand_dims(x1_coeff, axis=1)
     x0_result_mix = keras.layers.Multiply()([x0_input_layer, x0_coeff])
