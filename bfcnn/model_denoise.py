@@ -63,7 +63,7 @@ def model_builder(
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     add_learnable_multiplier = config.get("add_learnable_multiplier", False)
     add_residual_between_models = config.get("add_residual_between_models", False)
-    noise_estimation_mixer_config = config.get("noise_estimation", None)
+    noise_estimation_mixer_config = config.get("noise_estimation_mixer", None)
 
     use_local_normalization = local_normalization > 0
     use_global_normalization = local_normalization == 0
@@ -96,7 +96,8 @@ def model_builder(
 
     if use_noise_estimation_mixer:
         model_noise_estimation = \
-            model_noise_estimation_builder(noise_estimation_mixer_config)
+            model_noise_estimation_builder(
+                noise_estimation_mixer_config)
     else:
         model_noise_estimation = None
 
@@ -245,9 +246,9 @@ def model_builder(
                 if use_noise_estimation_mixer:
                     tmp_level = \
                         noise_estimation_mixer(
-                            model_noise_estimation,
-                            tmp_level,
-                            x_level)
+                            model_noise_estimation=model_noise_estimation,
+                            x0_input_layer=tmp_level,
+                            x1_input_layer=x_level)
                 else:
                     tmp_level = \
                         keras.layers.Add(
