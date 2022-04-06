@@ -36,10 +36,10 @@ def model_builder(
     batchnorm = config.get("batchnorm", True)
     kernel_size = config.get("kernel_size", 3)
     activation = config.get("activation", "relu")
-    input_shape = config.get("input_shape", (None, None, 3))
     final_activation = config.get("final_activation", "linear")
     kernel_regularizer = config.get("kernel_regularizer", "l1")
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
+    input_shape = input_shape_fixer(config.get("input_shape", (None, None, 3)))
 
     # --- build denoise model
     model_params = dict(
