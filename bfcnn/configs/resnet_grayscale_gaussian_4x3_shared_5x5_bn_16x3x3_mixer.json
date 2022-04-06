@@ -27,7 +27,7 @@
       "kernel_size": 5,
       "type": "resnet",
       "batchnorm": true,
-      "activation": "elu",
+      "activation": "relu",
       "kernel_regularizer": "l1",
       "kernel_initializer": "glorot_normal"
     },
