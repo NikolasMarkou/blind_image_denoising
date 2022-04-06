@@ -200,11 +200,10 @@ def train_loop(
                 stddev=0.25,
                 shape=random_batch_size))
         while x_iteration < random_batch_iterations:
-            x_random.assign(
-                model_denoise(x_random, training=False))
+            x_tmp = model_denoise(x_random, training=False)
             x_random.assign(
                 tf.clip_by_value(
-                    x_random,
+                    x_tmp,
                     clip_value_min=-0.5,
                     clip_value_max=+0.5))
             x_iteration.assign_add(1)
