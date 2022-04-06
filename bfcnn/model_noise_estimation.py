@@ -106,9 +106,9 @@ def noise_estimation_mixer(
     x = keras.layers.Concatenate(axis=-1)([x0_noise, x1_noise])
     x = keras.layers.Softmax(axis=-1)(x)
     x0_result, x1_result = tf.unstack(x, axis=-1)
-    return keras.layers.Add()([
-        x0_result * x0_input_layer,
-        x1_result * x1_input_layer])
+    x0_result = keras.layers.Multiply()([x0_input_layer, x0_result])
+    x1_result = keras.layers.Multiply()([x1_input_layer, x1_result])
+    return keras.layers.Add()([x0_result, x1_result])
 
 # ---------------------------------------------------------------------
 
