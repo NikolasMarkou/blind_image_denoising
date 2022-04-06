@@ -91,7 +91,9 @@ def model_builder(
         keras.layers.Dense(
             units=1,
             use_bias=False,
-            activation=final_activation)(x)
+            activation=final_activation,
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer)(x)
 
     # --- wrap and name model
     model_noise_estimation = \
