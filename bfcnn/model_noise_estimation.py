@@ -61,6 +61,17 @@ def model_builder(
         add_learnable_multiplier=False
     )
 
+    final_conv_parms = dict(
+        kernel_size=1,
+        strides=(1, 1),
+        padding="same",
+        use_bias=False,
+        filters=filters,
+        activation=activation,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
     # --- connect the parts of the model
     # setup input
     input_layer = \
@@ -76,8 +87,8 @@ def model_builder(
 
     x = resnet_model(x)
 
+    x = keras.layers.Conv2D(**final_conv_parms)(x)
     x = keras.layers.GlobalAveragePooling2D()(x)
-
     x = keras.layers.Flatten()(x)
 
     output_layer = \
@@ -111,7 +122,6 @@ def noise_estimation_mixer(
     x0_result_mix = x0_input_layer * x0_coeff
     x1_result_mix = x1_input_layer * x1_coeff
     return x0_result_mix + x1_result_mix
-    #return (x1_input_layer + x0_input_layer) * 0.5
 
 # ---------------------------------------------------------------------
 
