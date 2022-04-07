@@ -639,10 +639,10 @@ def build_pyramid_model(
     :param config: pyramid configuration
     :return: pyramid model
     """
-    pyramid_type = PyramidType.from_string(config.get("type", "NONE"))
     no_levels = config.get("levels", 1)
     xy_max = config.get("xy_max", DEFAULT_XY_MAX)
     kernel_size = config.get("kernel_size", DEFAULT_KERNEL_SIZE)
+    pyramid_type = PyramidType.from_string(config.get("type", "NONE"))
 
     if pyramid_type == PyramidType.GAUSSIAN:
         pyramid_model = \
@@ -690,13 +690,11 @@ def build_inverse_pyramid_model(
     :param config: pyramid configuration
     :return: inverse pyramid model
     """
-    pyramid_type = PyramidType.from_string(config["type"])
-    no_levels = config.get("levels",1)
+    no_levels = config.get("levels", 1)
     xy_max = config.get("xy_max", DEFAULT_XY_MAX)
     kernel_size = config.get("kernel_size", DEFAULT_KERNEL_SIZE)
-    mix_type = \
-        MixType.from_string(
-            config.get("mix_type", MixType.EQUAL.to_string()))
+    pyramid_type = PyramidType.from_string(config.get("type", "NONE"))
+    mix_type = MixType.from_string(config.get("mix_type", MixType.EQUAL.to_string()))
 
     if pyramid_type == PyramidType.GAUSSIAN:
         pyramid_model = \
