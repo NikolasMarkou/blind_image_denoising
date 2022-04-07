@@ -646,7 +646,6 @@ def resnet_blocks(
         x = keras.layers.Conv2D(**third_conv_params)(x)
         # compute activation per channel
         if use_gate:
-            final_filters = third_conv_params["filters"]
             g_layer = keras.layers.Add()([x, g_layer])
             y = g_layer
             if use_bn:
@@ -661,11 +660,11 @@ def resnet_blocks(
             #         trainable=True)(y)
             y = keras.layers.Dense(
                 use_bias=False,
-                units=final_filters,
-                activation="linear",
+                activation="relu",
+                units=third_conv_params["filters"],
                 kernel_regularizer=third_conv_params.get("kernel_regularizer", None),
                 kernel_initializer=third_conv_params.get("kernel_initializer", None))(y)
-            y = tf.reshape(y, shape=(-1, 1, 1, final_filters))
+            y = tf.reshape(y, shape=(-1, 1, 1, third_conv_params["filters"]))
             # --- on by default, requires effort to turn off
             # if x < -2.5: return 0
             # if x > 2.5: return 1
