@@ -666,11 +666,11 @@ def resnet_blocks(
                 kernel_regularizer=third_conv_params.get("kernel_regularizer", None),
                 kernel_initializer=third_conv_params.get("kernel_initializer", None))(y)
             y = tf.reshape(y, shape=(-1, 1, 1, final_filters))
-            # on by default, requires effort to turn off
+            # --- on by default, requires effort to turn off
             # if x < -2.5: return 0
             # if x > 2.5: return 1
             # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
-            y = keras.activations.hard_sigmoid(y)
+            y = keras.activations.hard_sigmoid(2.5 - y)
             x = keras.layers.Multiply()([x, y])
         # optional multiplier
         if use_multiplier:
