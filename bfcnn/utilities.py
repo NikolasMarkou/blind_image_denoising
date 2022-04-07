@@ -646,22 +646,31 @@ def resnet_blocks(
         x = keras.layers.Conv2D(**third_conv_params)(x)
         # compute activation per channel
         if use_gate:
+            final_filters = third_conv_params["filters"]
             g_layer = keras.layers.Add()([x, g_layer])
             y = g_layer
             if use_bn:
                 y = keras.layers.BatchNormalization(**bn_params)(y)
             # activation per pixel
             y = keras.layers.Conv2D(**gate_params)(y)
-            y = \
-                TrainableMultiplier(
-                    multiplier=1.0,
-                    regularizer="l1",
-                    trainable=True)(y)
+            y = keras.layers.GlobalAveragePooling2D()(y)
+            # y = \
+            #     TrainableMultiplier(
+            #         multiplier=1.0,
+            #         regularizer="l1",
+            #         trainable=True)(y)
+            y = keras.layers.Dense(
+                use_bias=False,
+                units=final_filters,
+                activation="linear",
+                kernel_regularizer=third_conv_params.get("kernel_regularizer", None),
+                kernel_initializer=third_conv_params.get("kernel_initializer", None))(y)
+            y = tf.reshape(y, shape=(-1, 1, 1, final_filters))
             # on by default, requires effort to turn off
             # if x < -2.5: return 0
             # if x > 2.5: return 1
             # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
-            y = keras.activations.hard_sigmoid(2.5 - y)
+            y = keras.activations.hard_sigmoid(y)
             x = keras.layers.Multiply()([x, y])
         # optional multiplier
         if use_multiplier:
@@ -724,7 +733,7 @@ def convnext_blocks(
         x = gelu_block(x)
         # output results
         x = keras.layers.Conv2D(**third_conv_params)(x)
-        # compute activation per channel
+        # compute activation per channel (squeeze and excite)
         if use_gate:
             g_layer = keras.layers.Add()([x, g_layer])
             y = g_layer
@@ -732,11 +741,16 @@ def convnext_blocks(
                 y = keras.layers.LayerNormalization(**bn_params)(y)
             # activation per pixel
             y = keras.layers.Conv2D(**gate_params)(y)
-            y = \
-                TrainableMultiplier(
-                    multiplier=1.0,
-                    regularizer="l1",
-                    trainable=True)(y)
+            y = keras.layers.GlobalAveragePooling2D()(y)
+            # y = \
+            #     TrainableMultiplier(
+            #         multiplier=1.0,
+            #         regularizer="l1",
+            #         trainable=True)(y)
+            y = keras.layers.Dense(
+                units=third_conv_params["filters"],
+                activation="linear")(y)
+            y = tf.reshape(y, shape=(-1, 1, 1, third_conv_params["filters"]))
             # on by default, requires effort to turn off
             # if x < -2.5: return 0
             # if x > 2.5: return 1
@@ -827,7 +841,7 @@ def build_model_resnet(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation=activation,
+        activation="linear",
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )

@@ -6,7 +6,7 @@
     "add_var": false,
     "max_value": 255,
     "kernel_size": 5,
-    "type": "resnet",
+    "type": "gatenet",
     "batchnorm": true,
     "activation": "relu",
     "clip_values": false,
