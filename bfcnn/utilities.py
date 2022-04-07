@@ -634,15 +634,17 @@ def resnet_blocks(
         previous_layer = x
         if use_dropout:
             x = keras.layers.SpatialDropout2D(**dropout_params)(x)
+        if use_bn:
+            x = keras.layers.BatchNormalization(**bn_params)(x)
         # 1st conv
         x = keras.layers.Conv2D(**first_conv_params)(x)
-        if use_bn:
-            x = keras.layers.BatchNormalization(**bn_params)(x)
         # 2nd conv
-        x = keras.layers.Conv2D(**second_conv_params)(x)
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
+        x = keras.layers.Conv2D(**second_conv_params)(x)
         # output results
+        if use_bn:
+            x = keras.layers.BatchNormalization(**bn_params)(x)
         x = keras.layers.Conv2D(**third_conv_params)(x)
         # compute activation per channel
         if use_gate:
@@ -653,11 +655,6 @@ def resnet_blocks(
             # activation per pixel
             y = keras.layers.Conv2D(**gate_params)(y)
             y = keras.layers.GlobalAveragePooling2D()(y)
-            # y = \
-            #     TrainableMultiplier(
-            #         multiplier=1.0,
-            #         regularizer="l1",
-            #         trainable=True)(y)
             y = keras.layers.Dense(
                 use_bias=False,
                 activation="relu",
@@ -840,7 +837,7 @@ def build_model_resnet(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation="linear",
+        activation=activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -934,8 +931,8 @@ def build_model_resnet(
     # add base layer
     x = keras.layers.Conv2D(**base_conv_params)(x)
 
-    if use_bn:
-        x = keras.layers.BatchNormalization(**bn_params)(x)
+    # if use_bn:
+    #     x = keras.layers.BatchNormalization(**bn_params)(x)
 
     if add_sparsity:
         x = \
