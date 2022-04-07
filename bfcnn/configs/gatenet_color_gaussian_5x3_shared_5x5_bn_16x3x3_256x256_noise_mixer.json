@@ -74,7 +74,7 @@
     "mae_multiplier": 1.0,
     "regularization": 0.01,
     "nae_multiplier": 10.0,
-    "input_shape": ["?", "?", 1],
+    "input_shape": ["?", "?", 3],
     "pyramid": {
       "levels": 4,
       "type": "gaussian",
