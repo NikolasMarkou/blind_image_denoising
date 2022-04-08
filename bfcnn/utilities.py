@@ -650,7 +650,6 @@ def resnet_blocks(
             y = g_layer
             if use_bn:
                 y = keras.layers.BatchNormalization(**bn_params)(y)
-            # activation per pixel
             y = keras.layers.Conv2D(**gate_params)(y)
             y = keras.layers.GlobalAveragePooling2D()(y)
             y = keras.layers.Dense(
