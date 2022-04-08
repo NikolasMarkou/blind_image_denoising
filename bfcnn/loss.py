@@ -47,45 +47,6 @@ def snr(
 # ---------------------------------------------------------------------
 
 
-def mae_weighted(
-        original,
-        noisy,
-        prediction,
-        hinge: float = 0):
-    """
-    Mean Absolute Error (mean over channels and batches) with weights
-
-    :param original:
-    :param noisy:
-    :param prediction:
-    :param hinge: hinge value
-    """
-    # --- calculate the weight per pixel based on how noisy it is
-    d_weight = tf.pow(original - noisy, 2) + EPSILON_DEFAULT
-    if hinge != 0.0:
-        d_weight = keras.layers.ReLU(threshold=hinge)(d_weight)
-    d_weight = keras.layers.Softmax(axis=[1, 2])(d_weight)
-    d_weight = 1.0 - d_weight
-
-    # --- calculate hinged absolute diff
-    d = tf.abs(original - prediction)
-    d = keras.layers.ReLU(threshold=hinge)(d)
-
-    # --- multiply diff and weight
-    d = keras.layers.Multiply()([d, d_weight])
-
-    # --- sum over all dims
-    d = tf.reduce_mean(d, axis=[1, 2, 3])
-
-    # --- mean over batch
-    loss = tf.reduce_mean(d, axis=[0])
-
-    return loss
-
-
-# ---------------------------------------------------------------------
-
-
 def mae_weighted_delta(
         original,
         prediction,
@@ -107,7 +68,10 @@ def mae_weighted_delta(
 
     d_weight = \
         original_delta / \
-        (tf.abs(tf.reduce_max(input_tensor=original_delta, axis=[1, 2], keepdims=True)) +
+        (tf.abs(tf.reduce_max(
+            input_tensor=original_delta,
+            axis=[1, 2],
+            keepdims=True)) +
          EPSILON_DEFAULT)
     d_weight = tf.abs(d_weight)
 

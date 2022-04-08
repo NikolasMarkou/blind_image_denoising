@@ -23,7 +23,7 @@ from .custom_logger import logger
 def model_builder(
         config: Dict) -> keras.Model:
     """
-    Reads a configuration and returns a model
+    reads a configuration and returns a noise estimation model
 
     :param config: configuration dictionary
     :return: noise estimation model
@@ -122,9 +122,8 @@ def noise_estimation_mixer(
     x_coeffs = tf.unstack(x, axis=1)
     x0_coeff = tf.reshape(x_coeffs[0], shape=(-1, 1, 1, 1))
     x1_coeff = tf.reshape(x_coeffs[1], shape=(-1, 1, 1, 1))
-    x0_result_mix = x0_input_layer * x0_coeff
-    x1_result_mix = x1_input_layer * x1_coeff
-    return x0_result_mix + x1_result_mix
+    return (x0_input_layer * x0_coeff) + \
+           (x1_input_layer * x1_coeff)
 
 # ---------------------------------------------------------------------
 
