@@ -670,7 +670,7 @@ def resnet_blocks(
         if use_multiplier:
             x = TrainableMultiplier(**multiplier_params)(x)
         if use_dropout:
-            x = keras.layers.RandomOnOff(**dropout_params)(x)
+            x = RandomOnOff(**dropout_params)(x)
         # skip connection
         x = keras.layers.Add()([x, previous_layer])
     return x
