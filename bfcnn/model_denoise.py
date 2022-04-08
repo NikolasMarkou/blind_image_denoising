@@ -49,6 +49,7 @@ def model_builder(
     batchnorm = config.get("batchnorm", True)
     kernel_size = config.get("kernel_size", 3)
     pyramid_config = config.get("pyramid", None)
+    dropout_rate = config.get("dropout_rate", -1)
     activation = config.get("activation", "relu")
     clip_values = config.get("clip_values", False)
     shared_model = config.get("shared_model", False)
@@ -105,6 +106,7 @@ def model_builder(
         activation=activation,
         input_dims=input_shape,
         kernel_size=kernel_size,
+        dropout_rate=dropout_rate,
         final_activation=final_activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,

@@ -63,7 +63,7 @@ class TrainableMultiplier(tf.keras.layers.Layer):
 
 class RandomOnOff(tf.keras.layers.Layer):
     def __init__(self,
-                 probability: float = 0.5,
+                 rate: float = 0.5,
                  trainable: bool = True,
                  name=None,
                  **kwargs):
@@ -73,7 +73,7 @@ class RandomOnOff(tf.keras.layers.Layer):
             **kwargs)
         self._w0 = None
         self._dropout = None
-        self._probability = probability
+        self._rate = rate
 
     def build(self, input_shape):
         def init_w0_fn(shape, dtype):
@@ -85,16 +85,17 @@ class RandomOnOff(tf.keras.layers.Layer):
                 regularizer=None,
                 name="placeholder",
                 initializer=init_w0_fn)
-        self._dropout = keras.layers.Dropout(rate=self._probability)
+        self._dropout = keras.layers.Dropout(rate=self._rate)
         super(RandomOnOff, self).build(input_shape)
 
     def call(self, inputs, training):
-        return self._dropout(self._w0) * inputs
+        return self._dropout(
+            self._w0, training=training) * inputs
 
     def get_config(self):
         return {
             "placeholder": self._w0.numpy(),
-            "probability": self._probability
+            "rate": self._rate
         }
 
     def compute_output_shape(self, input_shape):

@@ -772,6 +772,7 @@ def build_model_resnet(
         kernel_regularizer="l1",
         kernel_initializer="glorot_normal",
         channel_index: int = 2,
+        dropout_rate: float = -1,
         add_skip_with_input: bool = True,
         add_sparsity: bool = False,
         add_gates: bool = False,
@@ -790,6 +791,7 @@ def build_model_resnet(
     :param activation: intermediate activation
     :param final_activation: activation of the final layer
     :param channel_index: Index of the channel in dimensions
+    :param dropout_rate: probability of resnet block shutting off
     :param use_bn: Use Batch Normalization
     :param use_bias: use bias
     :param kernel_regularizer: Kernel weight regularizer
@@ -896,6 +898,10 @@ def build_model_resnet(
         activation="linear"
     )
 
+    dropout_params = dict(
+        rate=dropout_rate
+    )
+
     resnet_params = dict(
         no_layers=no_layers,
         bn_params=bn_params,
@@ -913,6 +919,9 @@ def build_model_resnet(
 
     if add_learnable_multiplier:
         resnet_params["multiplier_params"] = multiplier_params
+
+    if dropout_rate != -1:
+        resnet_params["dropout_params"] = dropout_params
 
     # --- build model
     # set input
