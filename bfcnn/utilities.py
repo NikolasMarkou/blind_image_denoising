@@ -825,7 +825,7 @@ def build_model_resnet(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation=activation,
+        activation="linear",
         kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
@@ -871,6 +871,7 @@ def build_model_resnet(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
+        # this must be the same as the base
         activation="linear",
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
@@ -881,6 +882,7 @@ def build_model_resnet(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
+        # this must be linear because it is capped later
         activation="linear",
         filters=input_dims[channel_index],
         kernel_regularizer=kernel_regularizer,
