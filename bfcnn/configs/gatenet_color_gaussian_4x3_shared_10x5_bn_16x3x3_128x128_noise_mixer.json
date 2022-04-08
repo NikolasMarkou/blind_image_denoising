@@ -9,7 +9,7 @@
     "type": "gatenet",
     "batchnorm": true,
     "activation": "elu",
-    "dropout_rate": 0.25,
+    "dropout_rate": -1,
     "clip_values": false,
     "shared_model": true,
     "stop_gradient": false,
