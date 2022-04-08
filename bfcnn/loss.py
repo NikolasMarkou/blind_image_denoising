@@ -93,8 +93,8 @@ def mae_weighted_delta(
     """
     Mean Absolute Error (mean over channels and batches) with weights
 
-    :param original:
-    :param prediction:
+    :param original: original image batch
+    :param prediction: denoised image batch
     :param hinge: hinge value
     """
     original_delta = \
@@ -105,7 +105,8 @@ def mae_weighted_delta(
             beta=1.0,
             eps=EPSILON_DEFAULT)
     d_weight = \
-        keras.layers.Softmax(axis=[1, 2])(original_delta)
+        original_delta * \
+        (keras.layers.MaxPool2D()(original_delta) + EPSILON_DEFAULT)
 
     # --- calculate hinged absolute diff
     d = tf.abs(original - prediction)
@@ -114,7 +115,7 @@ def mae_weighted_delta(
     # --- multiply diff and weight
     d = keras.layers.Multiply()([d, d_weight])
 
-    # --- sum over all dims
+    # --- mean over all dims
     d = tf.reduce_mean(d, axis=[1, 2, 3])
 
     # --- mean over batch
@@ -133,13 +134,35 @@ def mae(
     """
     Mean Absolute Error (mean over channels and batches)
 
-    :param original:
-    :param prediction:
+    :param original: original image batch
+    :param prediction: denoised image batch
     :param hinge: hinge value
     """
     d = tf.abs(original - prediction)
     d = keras.layers.ReLU(threshold=hinge)(d)
-    # sum over all dims
+    # mean over all dims
+    d = tf.reduce_mean(d, axis=[1, 2, 3])
+    # mean over batch
+    loss = tf.reduce_mean(d, axis=[0])
+    return loss
+
+# ---------------------------------------------------------------------
+
+
+def mse(
+        original,
+        prediction,
+        hinge: float = 0):
+    """
+    Mean Square Error (mean over channels and batches)
+
+    :param original: original image batch
+    :param prediction: denoised image batch
+    :param hinge: hinge value
+    """
+    d = tf.square(original - prediction)
+    d = keras.layers.ReLU(threshold=hinge)(d)
+    # mean over all dims
     d = tf.reduce_mean(d, axis=[1, 2, 3])
     # mean over batch
     loss = tf.reduce_mean(d, axis=[0])
@@ -157,8 +180,8 @@ def nae(
     Normalized Absolute Error
     (sum over width, height, channel and mean over batches)
 
-    :param original:
-    :param prediction:
+    :param original: original image batch
+    :param prediction: denoised image batch
     :param hinge: hinge value
     """
     d = tf.abs(original - prediction)
