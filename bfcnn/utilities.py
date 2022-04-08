@@ -20,7 +20,7 @@ from typing import List, Tuple, Union, Dict, Iterable
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .custom_layers import TrainableMultiplier
+from .custom_layers import TrainableMultiplier, RandomOnOff
 
 # ---------------------------------------------------------------------
 
@@ -632,10 +632,10 @@ def resnet_blocks(
     # --- create several number of residual blocks
     for i in range(no_layers):
         previous_layer = x
-        if use_dropout:
-            x = keras.layers.SpatialDropout2D(**dropout_params)(x)
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
+        if use_dropout:
+            x = keras.layers.RandomOnOff(**dropout_params)(x)
         # 1st conv
         x = keras.layers.Conv2D(**first_conv_params)(x)
         # 2nd conv
