@@ -188,6 +188,20 @@ def step_function(
         x = x - offset
     return (tf.math.tanh(x * multiplier) + 1.0) * 0.5
 
+# ---------------------------------------------------------------------
+
+
+def conv2d_wrapper(
+        input_layer,
+        conv_params: Dict,
+        bn_params: Dict = None):
+    use_bn = bn_params is not None
+    # ---
+    x = input_layer
+    if use_bn:
+        x = keras.layers.BatchNormalization(**bn_params)(x)
+    x = keras.layers.Conv2D(**conv_params)(x)
+    return x
 
 # ---------------------------------------------------------------------
 
@@ -620,37 +634,22 @@ def resnet_blocks(
         raise ValueError("input_layer must be none")
     if no_layers < 0:
         raise ValueError("no_layers must be >= 0")
-    use_bn = bn_params is not None
     use_gate = gate_params is not None
     use_dropout = dropout_params is not None
     use_multiplier = multiplier_params is not None
 
     # --- setup resnet
     x = input_layer
-    g_layer = x
 
     # --- create several number of residual blocks
     for i in range(no_layers):
         previous_layer = x
-        if use_bn:
-            x = keras.layers.BatchNormalization(**bn_params)(x)
-        # 1st conv
-        x = keras.layers.Conv2D(**first_conv_params)(x)
-        # 2nd conv
-        if use_bn:
-            x = keras.layers.BatchNormalization(**bn_params)(x)
-        x = keras.layers.Conv2D(**second_conv_params)(x)
-        # output results
-        if use_bn:
-            x = keras.layers.BatchNormalization(**bn_params)(x)
-        x = keras.layers.Conv2D(**third_conv_params)(x)
+        x = conv2d_wrapper(x, conv_params=first_conv_params, bn_params=bn_params)
+        x = conv2d_wrapper(x, conv_params=second_conv_params, bn_params=bn_params)
+        x = conv2d_wrapper(x, conv_params=third_conv_params, bn_params=bn_params)
         # compute activation per channel
         if use_gate:
-            g_layer = keras.layers.Add()([x, g_layer])
-            y = g_layer
-            if use_bn:
-                y = keras.layers.BatchNormalization(**bn_params)(y)
-            y = keras.layers.Conv2D(**gate_params)(y)
+            y = conv2d_wrapper(y, conv_params=gate_params, bn_params=bn_params)
             y = keras.layers.GlobalAveragePooling2D()(y)
             y = keras.layers.Dense(
                 use_bias=False,
