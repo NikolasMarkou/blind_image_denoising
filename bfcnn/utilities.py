@@ -933,10 +933,6 @@ def build_model_resnet(
     # add base layer
     x = keras.layers.Conv2D(**base_conv_params)(x)
 
-    # NOTE this batchnorm makes convergence harder
-    # if use_bn:
-    #     x = keras.layers.BatchNormalization(**bn_params)(x)
-
     if add_sparsity:
         x = \
             sparse_block(
