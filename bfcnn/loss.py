@@ -106,7 +106,7 @@ def mae_weighted_delta(
             eps=EPSILON_DEFAULT)
     d_weight = \
         original_delta * \
-        (keras.layers.MaxPool2D()(original_delta) + EPSILON_DEFAULT)
+        (keras.layers.GlobalMaxPool2D()(original_delta) + EPSILON_DEFAULT)
 
     # --- calculate hinged absolute diff
     d = tf.abs(original - prediction)
