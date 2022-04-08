@@ -634,8 +634,6 @@ def resnet_blocks(
         previous_layer = x
         if use_bn:
             x = keras.layers.BatchNormalization(**bn_params)(x)
-        if use_dropout:
-            x = keras.layers.RandomOnOff(**dropout_params)(x)
         # 1st conv
         x = keras.layers.Conv2D(**first_conv_params)(x)
         # 2nd conv
@@ -671,6 +669,8 @@ def resnet_blocks(
         # optional multiplier
         if use_multiplier:
             x = TrainableMultiplier(**multiplier_params)(x)
+        if use_dropout:
+            x = keras.layers.RandomOnOff(**dropout_params)(x)
         # skip connection
         x = keras.layers.Add()([x, previous_layer])
     return x
