@@ -94,13 +94,6 @@ def model_builder(
             min_value=min_value,
             max_value=max_value)
 
-    if use_noise_estimation_mixer:
-        model_noise_estimation = \
-            model_noise_estimation_builder(
-                noise_estimation_mixer_config)
-    else:
-        model_noise_estimation = None
-
     # --- build denoise model
     model_params = dict(
         add_gates=False,
@@ -233,7 +226,13 @@ def model_builder(
     # --- add residual between models
     # speeds up training a lot, and better results
     if add_residual_between_models:
-        # basic mixer
+        if use_noise_estimation_mixer:
+            model_noise_estimation = \
+                model_noise_estimation_builder(
+                    noise_estimation_mixer_config)
+        else:
+            model_noise_estimation = None
+
         tmp_level = None
         for i, x_level in reversed(list(enumerate(x_levels))):
             if tmp_level is None:
@@ -242,8 +241,8 @@ def model_builder(
                 tmp_level = \
                     upscale_2x2_block(
                         input_layer=tmp_level)
-                #
                 if use_noise_estimation_mixer:
+                    # learnable mixer
                     tmp_level = \
                         noise_estimation_mixer(
                             model_noise_estimation=model_noise_estimation,
@@ -254,6 +253,7 @@ def model_builder(
                             name="level_{0}_to_{1}".format(i+1, i))(
                             [tmp_level, x_level]) * 0.5
                 else:
+                    # basic mixer
                     tmp_level = \
                         keras.layers.Add(
                             name="level_{0}_to_{1}".format(i+1, i))(

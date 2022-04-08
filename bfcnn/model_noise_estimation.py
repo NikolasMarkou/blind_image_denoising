@@ -43,8 +43,9 @@ def model_builder(
 
     # --- build denoise model
     model_params = dict(
-        add_gates=False,
         add_var=False,
+        use_bias=False,
+        add_gates=False,
         filters=filters,
         use_bn=batchnorm,
         add_sparsity=False,
@@ -52,13 +53,13 @@ def model_builder(
         activation=activation,
         input_dims=input_shape,
         kernel_size=kernel_size,
-        final_activation=final_activation,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer,
         add_skip_with_input=False,
         add_projection_to_input=False,
         add_intermediate_results=False,
-        add_learnable_multiplier=False
+        add_learnable_multiplier=False,
+        final_activation=final_activation,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
     )
 
     final_conv_params = dict(
@@ -68,6 +69,14 @@ def model_builder(
         use_bias=False,
         filters=filters,
         activation=activation,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
+    final_dense_params = dict(
+        units=1,
+        use_bias=False,
+        activation=final_activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -88,12 +97,7 @@ def model_builder(
     x = keras.layers.Flatten()(x)
 
     output_layer = \
-        keras.layers.Dense(
-            units=1,
-            use_bias=False,
-            activation=final_activation,
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer)(x)
+        keras.layers.Dense(**final_dense_params)(x)
 
     # --- wrap and name model
     model_noise_estimation = \

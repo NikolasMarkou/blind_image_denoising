@@ -17,8 +17,8 @@
     "kernel_regularizer": "l1",
     "final_activation": "tanh",
     "add_skip_with_input": true,
-    "add_residual_between_models": true,
     "input_shape": ["?", "?", 3],
+    "add_residual_between_models": true,
     "kernel_initializer": "glorot_normal",
     "noise_estimation_mixer": {
       "input_shape": ["?", "?", 3],
@@ -28,18 +28,18 @@
       "type": "resnet",
       "batchnorm": true,
       "activation": "elu",
+      "final_activation": "elu",
       "kernel_regularizer": "l1",
-      "final_activation": "sigmoid",
       "kernel_initializer": "glorot_normal"
     },
     "pyramid": {
-      "levels": 5,
+      "levels": 4,
       "type": "gaussian",
       "xy_max": [1.0, 1.0],
       "kernel_size": [5, 5]
     },
     "inverse_pyramid": {
-      "levels": 5,
+      "levels": 4,
       "type": "gaussian",
       "xy_max": [1.0, 1.0],
       "kernel_size": [5, 5]
