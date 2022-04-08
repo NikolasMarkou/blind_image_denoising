@@ -640,7 +640,6 @@ def resnet_blocks(
 
     # --- setup resnet
     x = input_layer
-    g_layer = None
 
     # --- create several number of residual blocks
     for i in range(no_layers):
@@ -650,11 +649,8 @@ def resnet_blocks(
         x = conv2d_wrapper(x, conv_params=third_conv_params, bn_params=bn_params)
         # compute activation per channel
         if use_gate:
-            y = conv2d_wrapper(y, conv_params=gate_params, bn_params=bn_params)
+            y = conv2d_wrapper(x, conv_params=gate_params, bn_params=bn_params)
             y = keras.layers.GlobalAveragePooling2D()(y)
-            if g_layer is not None:
-                y = (1.0 - g_layer) * y
-            g_layer = y
             y = keras.layers.Dense(
                 use_bias=False,
                 activation="relu",
