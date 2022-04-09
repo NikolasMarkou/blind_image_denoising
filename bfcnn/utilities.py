@@ -664,7 +664,7 @@ def resnet_blocks(
             y = keras.layers.GlobalAveragePooling2D()(y)
             y = keras.layers.Dense(
                 use_bias=False,
-                activation="relu",
+                activation="linear",
                 units=third_conv_params["filters"],
                 kernel_regularizer=third_conv_params.get("kernel_regularizer", None),
                 kernel_initializer=third_conv_params.get("kernel_initializer", None))(y)
