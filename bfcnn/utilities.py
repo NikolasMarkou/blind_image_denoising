@@ -668,7 +668,7 @@ def resnet_blocks(
             # if x > 2.5: return 1
             # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
             # mask = keras.activations.hard_sigmoid(2.5 - y)
-            mask = keras.activations.sigmoid(2.5 - y)
+            mask = keras.activations.sigmoid(y)
             x = keras.layers.Multiply()([x, mask])
         # optional multiplier
         if use_multiplier:
