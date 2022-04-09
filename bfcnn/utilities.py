@@ -851,7 +851,7 @@ def build_model_resnet(
         padding="same",
         use_bias=use_bias,
         depth_multiplier=1,
-        activation=activation,
+        activation="relu",
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
         depthwise_initializer=kernel_initializer,
