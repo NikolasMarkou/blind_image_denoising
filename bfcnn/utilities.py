@@ -653,7 +653,7 @@ def resnet_blocks(
             y = conv2d_wrapper(x, conv_params=gate_params, bn_params=bn_params)
             y = tf.reduce_mean(y, axis=[1, 2], keepdims=True)
             if mask is not None:
-                y = (1 - mask) * y
+                y = (1.0 - mask * 0.9) * y
             y = keras.layers.Flatten()(y)
             y = keras.layers.Dense(
                 use_bias=False,
@@ -667,7 +667,8 @@ def resnet_blocks(
             # if x < -2.5: return 0
             # if x > 2.5: return 1
             # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
-            mask = keras.activations.hard_sigmoid(2.5 - y)
+            # mask = keras.activations.hard_sigmoid(2.5 - y)
+            mask = keras.activations.sigmoid(2.5 - y)
             x = keras.layers.Multiply()([x, mask])
         # optional multiplier
         if use_multiplier:
