@@ -660,7 +660,7 @@ def resnet_blocks(
                 input_layer=y,
                 conv_params=gate_params,
                 bn_params=bn_params,
-                depth_conv=False)
+                depth_conv=True)
             y = keras.layers.GlobalAveragePooling2D()(y)
             y = keras.layers.Dense(
                 use_bias=False,
@@ -849,8 +849,8 @@ def build_model_resnet(
         kernel_size=1,
         strides=(1, 1),
         padding="same",
-        filters=filters,
         use_bias=use_bias,
+        depth_multiplier=1,
         activation="relu",
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
