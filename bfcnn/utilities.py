@@ -200,7 +200,7 @@ def conv2d_wrapper(
     # ---
     x = input_layer
     if zero_center:
-        x = x - tf.reduce_mean(x, axis=[1, 2], keras=True)
+        x = x - tf.reduce_mean(x, axis=[1, 2], keepdims=True)
     if use_bn:
         x = keras.layers.BatchNormalization(**bn_params)(x)
     x = keras.layers.Conv2D(**conv_params)(x)
