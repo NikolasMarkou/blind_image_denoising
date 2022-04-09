@@ -655,8 +655,9 @@ def resnet_blocks(
         x = conv2d_wrapper(x, conv_params=third_conv_params, bn_params=bn_params)
         # compute activation per channel
         if use_gate:
+            y = keras.backend.stop_gradient(x)
             y = conv2d_wrapper(
-                input_layer=x,
+                input_layer=y,
                 conv_params=gate_params,
                 bn_params=bn_params,
                 depth_conv=True)
@@ -669,14 +670,14 @@ def resnet_blocks(
                 kernel_initializer=third_conv_params.get("kernel_initializer", None))(y)
             y = tf.expand_dims(y, axis=1)
             y = tf.expand_dims(y, axis=1)
-            if mask is not None:
-                y = (1.0 - mask * mask_discount) * y
-            # --- on by default, requires effort to turn off
+            # --- TODO explore residual
+            # if mask is not None:
+            #     y = (1.0 - mask * mask_discount) * y
+            # --- on by default requires effort to turn off
             # if x < -2.5: return 0
             # if x > 2.5: return 1
             # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
-            # mask = keras.activations.hard_sigmoid(2.5 - y)
-            mask = keras.activations.hard_sigmoid(5*y)
+            mask = keras.activations.hard_sigmoid(2.5 - y)
             x = keras.layers.Multiply()([x, mask])
             # --- keep all masks
             masks.append(tf.squeeze(mask, [1, 2]))
