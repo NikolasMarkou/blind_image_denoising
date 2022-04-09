@@ -631,7 +631,7 @@ def resnet_blocks(
     :param dropout_params: dropout optional parameters
     :param multiplier_params: learnable optional parameters
 
-    :return: filtered input_layer
+    :return: filtered input_layer, masks
     """
     # --- argument check
     if input_layer is None:
@@ -646,7 +646,7 @@ def resnet_blocks(
     # --- setup resnet
     x = input_layer
     mask = None
-
+    masks = []
     # --- create several number of residual blocks
     for i in range(no_layers):
         previous_layer = x
@@ -676,16 +676,20 @@ def resnet_blocks(
             # if x > 2.5: return 1
             # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
             # mask = keras.activations.hard_sigmoid(2.5 - y)
-            mask = keras.activations.sigmoid(10*y)
+            mask = keras.activations.hard_sigmoid(5*y)
             x = keras.layers.Multiply()([x, mask])
-        # optional multiplier
+            # --- keep all masks
+            masks.append(tf.squeeze(mask, [1, 2]))
+        # --- optional multiplier
         if use_multiplier:
             x = TrainableMultiplier(**multiplier_params)(x)
+        # --- optional random on/off of the whole block
         if use_dropout:
             x = RandomOnOff(**dropout_params)(x)
-        # skip connection
+        # --- skip connection
         x = keras.layers.Add()([x, previous_layer])
-    return x
+    masks = tf.stack(masks)
+    return x, masks
 
 # ---------------------------------------------------------------------
 
@@ -750,11 +754,6 @@ def convnext_blocks(
             # activation per pixel
             y = keras.layers.Conv2D(**gate_params)(y)
             y = keras.layers.GlobalAveragePooling2D()(y)
-            # y = \
-            #     TrainableMultiplier(
-            #         multiplier=1.0,
-            #         regularizer="l1",
-            #         trainable=True)(y)
             y = keras.layers.Dense(
                 units=third_conv_params["filters"],
                 activation="linear")(y)
@@ -963,7 +962,7 @@ def build_model_resnet(
                 **sparse_params)
 
     # add resnet blocks
-    x = \
+    x, _ = \
         resnet_blocks(
             input_layer=x,
             **resnet_params)
