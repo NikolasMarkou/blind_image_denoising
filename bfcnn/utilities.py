@@ -194,10 +194,13 @@ def step_function(
 def conv2d_wrapper(
         input_layer,
         conv_params: Dict,
-        bn_params: Dict = None):
+        bn_params: Dict = None,
+        zero_center: bool = False):
     use_bn = bn_params is not None
     # ---
     x = input_layer
+    if zero_center:
+        x = x - tf.reduce_mean(x, axis=[1, 2], keras=True)
     if use_bn:
         x = keras.layers.BatchNormalization(**bn_params)(x)
     x = keras.layers.Conv2D(**conv_params)(x)
@@ -650,13 +653,11 @@ def resnet_blocks(
         x = conv2d_wrapper(x, conv_params=third_conv_params, bn_params=bn_params)
         # compute activation per channel
         if use_gate:
-            y = keras.backend.stop_gradient(x)
-            y = conv2d_wrapper(y, conv_params=gate_params, bn_params=bn_params)
-            y = keras.layers.GlobalAveragePooling2D()(y)
-            y = keras.layers.BatchNormalization(axis=-1, center=False)(y)
+            y = conv2d_wrapper(x, conv_params=third_conv_params, bn_params=bn_params, zero_center=True)
+            y = tf.reduce_mean(y, axis=[1, 2], keepdims=True)
             # if mask is not None:
             #     y = (1.0 - mask * 0.9) * y
-            # y = keras.layers.Flatten()(y)
+            y = keras.layers.Flatten()(y)
             y = keras.layers.Dense(
                 use_bias=False,
                 activation="linear",
@@ -665,13 +666,11 @@ def resnet_blocks(
                 kernel_initializer=third_conv_params.get("kernel_initializer", None))(y)
             y = tf.expand_dims(y, axis=1)
             y = tf.expand_dims(y, axis=1)
-            # --- on by default, requires effort to turn off
             # if x < -2.5: return 0
             # if x > 2.5: return 1
             # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
-            # mask = keras.activations.hard_sigmoid(2.5 - y)
-            y = keras.activations.hard_sigmoid(5 * y)
-            x = keras.layers.Multiply()([x, y])
+            mask = keras.activations.hard_sigmoid(5 * y)
+            x = keras.layers.Multiply()([x, mask])
         # optional multiplier
         if use_multiplier:
             x = TrainableMultiplier(**multiplier_params)(x)
