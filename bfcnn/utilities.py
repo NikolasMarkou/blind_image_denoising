@@ -650,11 +650,12 @@ def resnet_blocks(
         x = conv2d_wrapper(x, conv_params=third_conv_params, bn_params=bn_params)
         # compute activation per channel
         if use_gate:
-            y = conv2d_wrapper(x, conv_params=gate_params, bn_params=bn_params)
-            y = tf.reduce_mean(y, axis=[1, 2], keepdims=True)
-            if mask is not None:
-                y = (1.0 - mask * 0.9) * y
-            y = keras.layers.Flatten()(y)
+            y = keras.backend.stop_gradient(x)
+            y = conv2d_wrapper(y, conv_params=gate_params, bn_params=bn_params)
+            y = tf.reduce_mean(y, axis=[1, 2], keepdims=False)
+            # if mask is not None:
+            #     y = (1.0 - mask * 0.9) * y
+            # y = keras.layers.Flatten()(y)
             y = keras.layers.Dense(
                 use_bias=False,
                 activation="relu",
