@@ -195,11 +195,14 @@ def conv2d_wrapper(
         input_layer,
         conv_params: Dict,
         bn_params: Dict = None,
-        zero_center: bool = False):
+        zero_center_total: bool = False,
+        zero_center_channel: bool = False):
     use_bn = bn_params is not None
     # ---
     x = input_layer
-    if zero_center:
+    if zero_center_total:
+        x = x - tf.reduce_mean(x, axis=[1, 2, 3], keepdims=True)
+    if zero_center_channel:
         x = x - tf.reduce_mean(x, axis=[1, 2], keepdims=True)
     if use_bn:
         x = keras.layers.BatchNormalization(**bn_params)(x)
@@ -653,10 +656,15 @@ def resnet_blocks(
         x = conv2d_wrapper(x, conv_params=third_conv_params, bn_params=bn_params)
         # compute activation per channel
         if use_gate:
-            y = conv2d_wrapper(x, conv_params=third_conv_params, bn_params=bn_params, zero_center=True)
+            y = \
+                conv2d_wrapper(
+                    input_layer=x,
+                    conv_params=third_conv_params,
+                    bn_params=bn_params,
+                    zero_center_total=True)
             y = tf.reduce_mean(y, axis=[1, 2], keepdims=True)
-            # if mask is not None:
-            #     y = (1.0 - mask * 0.9) * y
+            if mask is not None:
+                y = (1.0 - mask * 0.9) * y
             y = keras.layers.Flatten()(y)
             y = keras.layers.Dense(
                 use_bias=False,
