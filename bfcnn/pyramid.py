@@ -639,10 +639,16 @@ def build_pyramid_model(
     :param config: pyramid configuration
     :return: pyramid model
     """
-    no_levels = config.get("levels", 1)
-    xy_max = config.get("xy_max", DEFAULT_XY_MAX)
-    kernel_size = config.get("kernel_size", DEFAULT_KERNEL_SIZE)
-    pyramid_type = PyramidType.from_string(config.get("type", "NONE"))
+    if config is None:
+        no_levels = 1
+        xy_max = DEFAULT_XY_MAX
+        kernel_size = DEFAULT_KERNEL_SIZE
+        pyramid_type = PyramidType.from_string("NONE")
+    else:
+        no_levels = config.get("levels", 1)
+        xy_max = config.get("xy_max", DEFAULT_XY_MAX)
+        kernel_size = config.get("kernel_size", DEFAULT_KERNEL_SIZE)
+        pyramid_type = PyramidType.from_string(config.get("type", "NONE"))
 
     if pyramid_type == PyramidType.GAUSSIAN:
         pyramid_model = \
@@ -690,12 +696,19 @@ def build_inverse_pyramid_model(
     :param config: pyramid configuration
     :return: inverse pyramid model
     """
-    no_levels = config.get("levels", 1)
-    xy_max = config.get("xy_max", DEFAULT_XY_MAX)
-    kernel_size = config.get("kernel_size", DEFAULT_KERNEL_SIZE)
-    pyramid_type = PyramidType.from_string(config.get("type", "NONE"))
-    mix_type = MixType.from_string(config.get("mix_type", MixType.EQUAL.to_string()))
-
+    if config is None:
+        no_levels = 1
+        xy_max = DEFAULT_XY_MAX
+        kernel_size = DEFAULT_KERNEL_SIZE
+        pyramid_type = PyramidType.from_string("NONE")
+        mix_type = MixType.from_string(MixType.EQUAL.to_string())
+    else:
+        no_levels = config.get("levels", 1)
+        xy_max = config.get("xy_max", DEFAULT_XY_MAX)
+        kernel_size = config.get("kernel_size", DEFAULT_KERNEL_SIZE)
+        pyramid_type = PyramidType.from_string(config.get("type", "NONE"))
+        mix_type = MixType.from_string(config.get("mix_type", MixType.EQUAL.to_string()))
+    
     if pyramid_type == PyramidType.GAUSSIAN:
         pyramid_model = \
             build_inverse_gaussian_pyramid_model(
