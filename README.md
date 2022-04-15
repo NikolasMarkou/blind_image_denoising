@@ -55,8 +55,9 @@ have a big enough ERF (effective receptive field) for the task at hand.
 In order to train such a model we corrupt an input image using 
 several types of noise and then try to recover the original image
 
-* normally distributed additive noise
-* normally distributed multiplicative noise
+* subsampling noise
+* normally distributed additive noise (same per channel / different same per channel)
+* normally distributed multiplicative noise (same per channel / different same per channel)
 
 ## Image examples
 
