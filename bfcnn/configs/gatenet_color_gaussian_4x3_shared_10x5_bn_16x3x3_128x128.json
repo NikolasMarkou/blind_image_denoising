@@ -1,29 +1,31 @@
 {
   "model_denoise": {
     "filters": 16,
-    "no_layers": 5,
+    "no_layers": 10,
     "min_value": 0,
+    "add_var": false,
     "max_value": 255,
-    "kernel_size": 3,
+    "kernel_size": 5,
     "type": "gatenet",
     "batchnorm": true,
     "activation": "elu",
+    "dropout_rate": -1,
     "clip_values": false,
-    "shared_model": false,
+    "shared_model": true,
     "stop_gradient": false,
     "output_multiplier": 1.0,
     "local_normalization": -1,
     "kernel_regularizer": "l1",
     "final_activation": "tanh",
     "add_skip_with_input": true,
+    "input_shape": ["?", "?", 3],
     "add_residual_between_models": true,
-    "input_shape": ["?", "?", 1],
     "kernel_initializer": "glorot_normal",
     "pyramid": {
       "levels": 4,
       "type": "gaussian",
       "xy_max": [1.0, 1.0],
-      "kernel_size": [3, 3]
+      "kernel_size": [5, 5]
     },
     "inverse_pyramid": {
       "levels": 4,
@@ -33,14 +35,14 @@
     }
   },
   "train": {
-    "epochs": 50,
+    "epochs": 100,
     "total_steps": -1,
     "checkpoints_to_keep": 3,
     "checkpoint_every": 10000,
     "visualization_number": 4,
     "visualization_every": 100,
     "random_batch_iterations": 10,
-    "random_batch_size": [256, 256, 1],
+    "random_batch_size": [128, 128, 3],
     "random_batch_min_difference": 0.1,
     "optimizer": {
       "decay_rate": 0.9,
@@ -61,12 +63,12 @@
     "mae_multiplier": 1.0,
     "regularization": 0.01,
     "nae_multiplier": 10.0,
-    "input_shape": ["?", "?", 1],
+    "input_shape": ["?", "?", 3],
     "pyramid": {
       "levels": 4,
       "type": "gaussian",
       "xy_max": [1.0, 1.0],
-      "kernel_size": [3, 3]
+      "kernel_size": [5, 5]
     }
   },
   "dataset": {
@@ -80,12 +82,12 @@
     "random_invert": false,
     "random_rotate": 0.314,
     "random_up_down": true,
-    "color_mode": "grayscale",
+    "color_mode": "rgb",
     "random_left_right": true,
     "dataset_shape": [256, 768],
-    "input_shape": [128, 128, 1],
+    "input_shape": [128, 128, 3],
     "multiplicative_noise": [],
-    "additional_noise": [5, 10, 20, 40],
+    "additional_noise": [1, 5, 10, 20, 40],
     "directory": "/media/data1_4tb/datasets/KITTI/data/depth/raw_image_values/"
   }
 }

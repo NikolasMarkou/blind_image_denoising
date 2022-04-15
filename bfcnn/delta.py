@@ -9,6 +9,7 @@ __license__ = "MIT"
 import keras
 import numpy as np
 from typing import List
+import tensorflow as tf
 
 # ---------------------------------------------------------------------
 # local imports
@@ -36,22 +37,21 @@ DELTA_KERNELS = {
         [+2.0, +1.0, +0.0, -1.0, -2.0]]
 }
 
+
 # ---------------------------------------------------------------------
 
 
-def delta(
-        input_layer,
+def delta_layer(
         kernel_size: int = 3,
         transpose: bool = False,
         trainable: bool = False):
     """
-    Compute delta x for each channel layer
+    create a delta layer
 
-    :param input_layer: input layer to be filtered
     :param kernel_size: 2,3,4,5
     :param transpose: whether to transpose x-y in kernel
     :param trainable: whether this layer is trainable or not
-    :return: filtered input_layer
+    :return: DepthwiseConv2D layer
     """
     # --- argument checking
     if kernel_size not in DELTA_KERNELS:
@@ -77,29 +77,58 @@ def delta(
             trainable=trainable,
             kernel_initializer=kernel_init,
             depthwise_initializer=kernel_init,
-            kernel_size=(kernel_size, kernel_size))(input_layer)
+            kernel_size=(kernel_size, kernel_size))
+
+# ---------------------------------------------------------------------
+# initialize like this so we can wrap them in tf.function later on
+# ---------------------------------------------------------------------
+
+
+DELTA_X_LAYERS = {
+    k: delta_layer(k, transpose=False, trainable=False)
+    for k in DELTA_KERNELS.keys()
+}
+
+DELTA_Y_LAYERS = {
+    k: delta_layer(k, transpose=True, trainable=False)
+    for k in DELTA_KERNELS.keys()
+}
+
+
+# ---------------------------------------------------------------------
+
+
+def delta(
+        input_layer,
+        kernel_size: int = 3,
+        transpose: bool = False):
+    """
+    Compute delta x for each channel layer
+
+    :param input_layer: input layer to be filtered
+    :param kernel_size: 2,3,4,5
+    :param transpose: whether to transpose x-y in kernel
+    :return: filtered input_layer
+    """
+    if transpose:
+        return DELTA_Y_LAYERS[kernel_size](input_layer)
+    return DELTA_X_LAYERS[kernel_size](input_layer)
+
 
 # ---------------------------------------------------------------------
 
 
 def delta_x(
         input_layer,
-        kernel_size: int = 3,
-        trainable: bool = False):
+        kernel_size: int = 3):
     """
     Compute delta x for each channel layer
 
     :param input_layer: input layer to be filtered
     :param kernel_size: 2,3,4,5
-    :param trainable: whether this layer is trainable or not
     :return: filtered input_layer
     """
-    return \
-        delta(
-            input_layer=input_layer,
-            kernel_size=kernel_size,
-            trainable=trainable,
-            transpose=False)
+    return DELTA_X_LAYERS[kernel_size](input_layer)
 
 
 # ---------------------------------------------------------------------
@@ -107,22 +136,15 @@ def delta_x(
 
 def delta_y(
         input_layer,
-        kernel_size: int = 3,
-        trainable: bool = False):
+        kernel_size: int = 3):
     """
     Compute delta y for each channel layer
 
     :param input_layer: input layer to be filtered
     :param kernel_size: 2,3,4,5
-    :param trainable: whether this layer is trainable or not
     :return: filtered input_layer
     """
-    return \
-        delta(
-            input_layer=input_layer,
-            kernel_size=kernel_size,
-            trainable=trainable,
-            transpose=True)
+    return DELTA_Y_LAYERS[kernel_size](input_layer)
 
 
 # ---------------------------------------------------------------------
@@ -146,14 +168,12 @@ def delta_xy_magnitude(
     """
     dx = delta_x(input_layer, kernel_size=kernel_size)
     dy = delta_y(input_layer, kernel_size=kernel_size)
-    dx = keras.backend.square(dx)
-    dy = keras.backend.square(dy)
-    if alpha != 1.0:
-        dx = dx * alpha
-    if beta != 1.0:
-        dy = dy * beta
-    dd = keras.backend.sqrt(keras.backend.abs(dx + dy) + eps)
-    return dd
+    dx = tf.square(dx)
+    dy = tf.square(dy)
+    dx = dx * alpha
+    dy = dy * beta
+    return tf.sqrt(tf.abs(dx + dy) + eps)
+
 
 # ---------------------------------------------------------------------
 

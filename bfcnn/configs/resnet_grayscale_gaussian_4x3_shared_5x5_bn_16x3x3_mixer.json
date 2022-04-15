@@ -3,11 +3,12 @@
     "filters": 16,
     "no_layers": 5,
     "min_value": 0,
+    "add_var": false,
     "max_value": 255,
-    "kernel_size": 3,
+    "kernel_size": 5,
     "type": "resnet",
     "batchnorm": true,
-    "activation": "elu",
+    "activation": "relu",
     "clip_values": false,
     "shared_model": true,
     "stop_gradient": false,
@@ -19,11 +20,23 @@
     "add_residual_between_models": true,
     "input_shape": ["?", "?", 1],
     "kernel_initializer": "glorot_normal",
+    "noise_estimation_mixer": {
+      "input_shape": ["?", "?", 1],
+      "filters": 16,
+      "no_layers": 3,
+      "kernel_size": 5,
+      "type": "resnet",
+      "batchnorm": true,
+      "activation": "relu",
+      "kernel_regularizer": "l1",
+      "final_activation": "sigmoid",
+      "kernel_initializer": "glorot_normal"
+    },
     "pyramid": {
       "levels": 4,
       "type": "gaussian",
       "xy_max": [1.0, 1.0],
-      "kernel_size": [3, 3]
+      "kernel_size": [5, 5]
     },
     "inverse_pyramid": {
       "levels": 4,
@@ -33,7 +46,7 @@
     }
   },
   "train": {
-    "epochs": 50,
+    "epochs": 100,
     "total_steps": -1,
     "checkpoints_to_keep": 3,
     "checkpoint_every": 10000,
@@ -66,7 +79,7 @@
       "levels": 4,
       "type": "gaussian",
       "xy_max": [1.0, 1.0],
-      "kernel_size": [3, 3]
+      "kernel_size": [5, 5]
     }
   },
   "dataset": {
@@ -85,7 +98,7 @@
     "dataset_shape": [256, 768],
     "input_shape": [128, 128, 1],
     "multiplicative_noise": [],
-    "additional_noise": [5, 10, 20, 40],
+    "additional_noise": [1, 5, 10, 20, 40],
     "directory": "/media/data1_4tb/datasets/KITTI/data/depth/raw_image_values/"
   }
 }
