@@ -197,8 +197,26 @@ def conv2d_wrapper(
         bn_params: Dict = None,
         zero_center_total: bool = False,
         zero_center_channel: bool = False):
+    """
+    wraps a conv2d with a preceding normalizer
+
+    :param input_layer: the layer to operate on
+    :param conv_params: conv2d parameters
+    :param bn_params: batchnorm parameters, None to disable bn
+    :param zero_center_total: if True center the batch to zero mean
+    :param zero_center_channel: if True center each channel to zero mean
+    :return:
+    """
+    # --- argument checking
+    if input_layer is None:
+        raise ValueError("input_layer cannot be None")
+    if conv_params is None:
+        raise ValueError("conv_params cannot be None")
+
+    # --- prepare arguments
     use_bn = bn_params is not None
-    # ---
+
+    # --- perform the transformations
     x = input_layer
     if zero_center_total:
         x = x - tf.reduce_mean(x, axis=[1, 2, 3], keepdims=True)
