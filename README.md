@@ -147,6 +147,10 @@ that expands the effective receptive field without the need to add many more lay
 Our addition (not in the paper) is the gaussian multi-scale pyramid
 that expands the effective receptive field without the need to add many more layers (keeping it cheap computationally).
 
+#### Noise estimation model Multi-Scale mixer
+Our addition (not in the paper) is a noise estimation model that
+decides the contribution of each layer when mixing them back in.
+
 #### Normalization layer
 Our addition (not in the paper) is a (non-channel wise and non-learnable) normalization layer (not BatchNorm) 
 after the DepthWise operations. This is to enforce sparsity with the differentiable relu below.
