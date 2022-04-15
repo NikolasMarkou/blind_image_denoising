@@ -139,17 +139,20 @@ We have used traditional (bias free) architectures.
 * all the above models with multi-scale processing
 
 ### Additions
-#### Multi-Scale Laplacian Pyramid
+#### ![Multi-Scale Laplacian Pyramid](bfcnn/pyramid.py)
 Our addition (not in the paper) is the laplacian multi-scale pyramid
 that expands the effective receptive field without the need to add many more layers (keeping it cheap computationally).
 
-#### Multi-Scale Gaussian Pyramid
+#### ![Multi-Scale Gaussian Pyramid](bfcnn/pyramid.py)
 Our addition (not in the paper) is the gaussian multi-scale pyramid
 that expands the effective receptive field without the need to add many more layers (keeping it cheap computationally).
 
-#### Noise estimation model Multi-Scale mixer
+#### ![Noise estimation model Multi-Scale mixer](bfcnn/model_noise_estimation.py)
 Our addition (not in the paper) is a noise estimation model that
 decides the contribution of each layer when mixing them back in.
+
+#### ![Squeeze and Excite with residual](bfcnn/utilities.py)
+Every resnet block has the option to include a residual squeeze and excite element (not in the paper) to it.
 
 #### Normalization layer
 Our addition (not in the paper) is a (non-channel wise and non-learnable) normalization layer (not BatchNorm) 
