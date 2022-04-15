@@ -66,11 +66,12 @@ def model_builder(
     add_residual_between_models = config.get("add_residual_between_models", False)
     noise_estimation_mixer_config = config.get("noise_estimation_mixer", None)
 
+    use_pyramid = pyramid_config is not None
+    use_inverse_pyramid = inverse_pyramid_config is not None
     use_local_normalization = local_normalization > 0
     use_global_normalization = local_normalization == 0
     use_normalization = use_local_normalization or use_global_normalization
     use_noise_estimation_mixer = noise_estimation_mixer_config is not None
-
     local_normalization_kernel = [local_normalization, local_normalization]
     input_shape = input_shape_fixer(input_shape)
 
@@ -134,6 +135,26 @@ def model_builder(
         y, mean_y, sigma_y = args
         return (y * sigma_y) + mean_y
 
+    # build pyramid
+    if use_pyramid:
+        logger.info(f"building pyramid: [{pyramid_config}]")
+        model_pyramid = \
+            build_pyramid_model(
+                input_dims=input_shape,
+                config=pyramid_config)
+    else:
+        model_pyramid = None
+
+    # build inverse pyramid
+    if use_inverse_pyramid:
+        logger.info(f"building inverse pyramid: [{inverse_pyramid_config}]")
+        model_inverse_pyramid = \
+            build_inverse_pyramid_model(
+                input_dims=input_shape,
+                config=inverse_pyramid_config)
+    else:
+        model_inverse_pyramid = None
+
     # --- connect the parts of the model
     # setup input
     input_layer = \
@@ -142,23 +163,6 @@ def model_builder(
             name="input_tensor")
     x = input_layer
 
-    #
-    logger.info("building model with multiscale pyramid")
-
-    # build pyramid
-    logger.info(f"building pyramid: [{pyramid_config}]")
-    model_pyramid = \
-        build_pyramid_model(
-            input_dims=input_shape,
-            config=pyramid_config)
-
-    # build inverse pyramid
-    logger.info(f"building inverse pyramid: [{inverse_pyramid_config}]")
-    model_inverse_pyramid = \
-        build_inverse_pyramid_model(
-            input_dims=input_shape,
-            config=inverse_pyramid_config)
-    
     # define normalization/denormalization layers
     local_normalization_layer = \
         keras.layers.Lambda(
@@ -182,7 +186,10 @@ def model_builder(
             trainable=False)
 
     # --- run inference
-    x_levels = model_pyramid(x)
+    if use_pyramid:
+        x_levels = model_pyramid(x)
+    else:
+        x_levels = [x]
 
     means = []
     sigmas = []
@@ -312,8 +319,11 @@ def model_builder(
                     clip_value_max=+0.5)
 
     # --- merge levels together
-    x_result = \
-        model_inverse_pyramid(x_levels)
+    if use_inverse_pyramid:
+        x_result = \
+            model_inverse_pyramid(x_levels)
+    else:
+        x_result = x_levels[0]
 
     # name output
     output_layer = \
