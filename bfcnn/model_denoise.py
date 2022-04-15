@@ -142,18 +142,23 @@ def model_builder(
             name="input_tensor")
     x = input_layer
 
-    # build pyramid
+    #
     logger.info("building model with multiscale pyramid")
 
+    # build pyramid
+    logger.info(f"building pyramid: [{pyramid_config}]")
     model_pyramid = \
         build_pyramid_model(
             input_dims=input_shape,
             config=pyramid_config)
+
     # build inverse pyramid
+    logger.info(f"building inverse pyramid: [{inverse_pyramid_config}]")
     model_inverse_pyramid = \
         build_inverse_pyramid_model(
             input_dims=input_shape,
             config=inverse_pyramid_config)
+    
     # define normalization/denormalization layers
     local_normalization_layer = \
         keras.layers.Lambda(

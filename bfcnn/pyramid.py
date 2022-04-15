@@ -708,7 +708,7 @@ def build_inverse_pyramid_model(
         kernel_size = config.get("kernel_size", DEFAULT_KERNEL_SIZE)
         pyramid_type = PyramidType.from_string(config.get("type", "NONE"))
         mix_type = MixType.from_string(config.get("mix_type", MixType.EQUAL.to_string()))
-    
+
     if pyramid_type == PyramidType.GAUSSIAN:
         pyramid_model = \
             build_inverse_gaussian_pyramid_model(
