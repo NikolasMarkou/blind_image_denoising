@@ -142,6 +142,8 @@ def prune_conv2d_weights(
                     pruned_weights.append(x)
             elif strategy == PruneStrategy.PCA_PROJECTION:
                 for x in layer_weights:
+                    if minimum_threshold != -1:
+                        x[np.abs(x) < minimum_threshold] = 0.0
                     # reshape x which is 4d to 2d
                     x_transpose = np.transpose(x, axes=(3, 0, 1, 2))
                     x_transpose_shape = x_transpose.shape
