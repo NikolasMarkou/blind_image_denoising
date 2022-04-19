@@ -142,15 +142,32 @@ def prune_conv2d_weights(
                     pruned_weights.append(x)
             elif strategy == PruneStrategy.PCA_PROJECTION:
                 for x in layer_weights:
+                    # reshape x which is 4d to 2d
+                    x_transpose = np.transpose(x, axes=(3, 0, 1, 2))
+                    x_transpose_shape = x_transpose.shape
+                    x_reshaped = \
+                        np.reshape(
+                            x_transpose,
+                            newshape=(
+                                x_transpose_shape[0],
+                                np.prod(x_transpose_shape[1:])))
                     scaler = MinMaxScaler()
-                    x_rescaled = scaler.fit_transform(x)
+                    x_rescaled = scaler.fit_transform(x_reshaped)
                     pca = PCA(n_components=variance)
                     pca.fit(x_rescaled)
                     x_reduced = pca.transform(x_rescaled)
                     x_reduced = scaler.inverse_transform(x_reduced)
+                    x_reshaped = \
+                        np.reshape(
+                            x_reduced,
+                            newshape=x_transpose_shape)
+                    x_reshaped = \
+                        np.transpose(
+                            x_reshaped,
+                            axes=(1, 2, 3, 0))
                     if minimum_threshold != -1:
-                        x_reduced[np.abs(x_reduced) < minimum_threshold] = 0.0
-                    pruned_weights.append(x_reduced)
+                        x_reshaped[np.abs(x_reshaped) < minimum_threshold] = 0.0
+                    pruned_weights.append(x_reshaped)
             else:
                 raise NotImplementedError("not implemented strategy")
             layer_internal.set_weights(pruned_weights)
