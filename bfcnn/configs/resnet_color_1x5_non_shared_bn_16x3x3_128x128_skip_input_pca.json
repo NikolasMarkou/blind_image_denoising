@@ -37,11 +37,11 @@
       "gradient_clipping_by_norm": 1.0
     },
     "prune": {
-      "start_epoch": 1,
+      "start_epoch": 0,
       "strategy": "pca_projection",
       "config": {
-        "variance": 0.9,
-        "minimum_threshold": 0.000005
+        "variance": 0.99,
+        "minimum_threshold": 0.000001
       }
     }
   },

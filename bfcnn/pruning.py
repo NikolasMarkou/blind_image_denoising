@@ -153,13 +153,20 @@ def prune_conv2d_weights(
                             newshape=(
                                 x_transpose_shape[0],
                                 np.prod(x_transpose_shape[1:])))
-                    scaler = MinMaxScaler()
-                    x_reshaped = scaler.fit_transform(x_reshaped)
+                    mms = MinMaxScaler()
+                    x_reshaped = mms.fit_transform(x_reshaped)
                     pca = PCA(n_components=variance)
                     pca.fit(x_reshaped)
+                    # number of components missing
+                    diff_components = x_reshaped.shape[1] - pca.n_components_
                     x_reshaped = pca.transform(x_reshaped)
-                    x_reshaped = pca.inverse_transform(x_reshaped)
-                    x_reshaped = scaler.inverse_transform(x_reshaped)
+                    # fill in zeros
+                    if diff_components > 0:
+                        x_reshaped = \
+                            np.concatenate(
+                                [x_reshaped, np.zeros(shape=(x_reshaped.shape[0], diff_components))],
+                                axis=1)
+                    x_reshaped = mms.inverse_transform(x_reshaped)
                     x_reshaped = \
                         np.reshape(
                             x_reshaped,
@@ -168,8 +175,6 @@ def prune_conv2d_weights(
                         np.transpose(
                             x_reshaped,
                             axes=(1, 2, 3, 0))
-                    if minimum_threshold != -1:
-                        x_reshaped[np.abs(x_reshaped) < minimum_threshold] = 0.0
                     pruned_weights.append(x_reshaped)
             else:
                 raise NotImplementedError("not implemented strategy")
