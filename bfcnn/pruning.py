@@ -151,15 +151,15 @@ def prune_conv2d_weights(
                             newshape=(
                                 x_transpose_shape[0],
                                 np.prod(x_transpose_shape[1:])))
-                    scaler = MinMaxScaler()
-                    x_rescaled = scaler.fit_transform(x_reshaped)
+                    # scaler = MinMaxScaler()
+                    # x_rescaled = scaler.fit_transform(x_reshaped)
                     pca = PCA(n_components=variance)
-                    pca.fit(x_rescaled)
-                    x_reduced = pca.transform(x_rescaled)
-                    x_reduced = scaler.inverse_transform(x_reduced)
+                    pca.fit(x_reshaped)
+                    x_reshaped = pca.transform(x_reshaped)
+                    #x_reshaped = scaler.inverse_transform(x_reshaped)
                     x_reshaped = \
                         np.reshape(
-                            x_reduced,
+                            x_reshaped,
                             newshape=x_transpose_shape)
                     x_reshaped = \
                         np.transpose(
