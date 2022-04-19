@@ -156,6 +156,7 @@ def prune_conv2d_weights(
                     pca = PCA(n_components=variance)
                     pca.fit(x_reshaped)
                     x_reshaped = pca.transform(x_reshaped)
+                    x_reshaped = pca.inverse_transform(x_reshaped)
                     #x_reshaped = scaler.inverse_transform(x_reshaped)
                     x_reshaped = \
                         np.reshape(
