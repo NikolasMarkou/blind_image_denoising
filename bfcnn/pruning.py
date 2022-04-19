@@ -168,7 +168,7 @@ def prune_function_builder(
     """
     strategy = PruneStrategy.from_string(config["strategy"])
     strategy_config = config["config"]
-    
+
     def prune(model: keras.Model) -> keras.Model:
         return \
             prune_conv2d_weights(

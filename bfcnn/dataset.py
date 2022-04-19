@@ -51,8 +51,6 @@ def dataset_builder(
     random_up_down = tf.constant(config.get("random_up_down", False))
     # if true randomly invert left right image
     random_left_right = tf.constant(config.get("random_left_right", False))
-    # if true randomly add encoding jpeg noise
-    random_jpeg_noise = tf.constant(config.get("random_jpeg_noise", False))
     additional_noise = config.get("additional_noise", [])
     multiplicative_noise = config.get("multiplicative_noise", [])
     # whether to crop or not
@@ -75,9 +73,6 @@ def dataset_builder(
         noise_choices.append(2)
     else:
         subsample_size = 2
-
-    if random_jpeg_noise:
-        noise_choices.append(3)
 
     noise_choices = tf.constant(noise_choices)
     additional_noise = tf.constant(additional_noise, dtype=tf.float32)
@@ -239,14 +234,6 @@ def dataset_builder(
             noisy_batch = \
                 keras.layers.UpSampling2D(
                     size=stride)(noisy_batch)
-        elif noise_type == 3:
-            # randomly changes jpeg encoding quality for inducing jpeg noise
-            noisy_batch = \
-                tf.image.random_jpeg_quality(
-                    input_batch,
-                    min_jpeg_quality=75,
-                    max_jpeg_quality=95
-                )
         else:
             logger.info(
                 "don't know how to handle noise_type [{0}]".format(
