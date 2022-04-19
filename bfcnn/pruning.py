@@ -171,8 +171,6 @@ def prune_conv2d_weights(
                         np.transpose(
                             x_reshaped,
                             axes=(1, 2, 3, 0))
-                    if minimum_threshold != -1:
-                        x_reshaped[np.abs(x_reshaped) < minimum_threshold] = 0.0
                     pruned_weights.append(x_reshaped)
             else:
                 raise NotImplementedError("not implemented strategy")
