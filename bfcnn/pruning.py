@@ -12,6 +12,8 @@ import keras
 import numpy as np
 from enum import Enum
 from typing import Dict, Callable, List
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import MinMaxScaler
 
 # ---------------------------------------------------------------------
 # local imports
@@ -43,6 +45,11 @@ class PruneStrategy(Enum):
     """
     MINIMUM_THRESHOLD_SHRINKAGE = 3
 
+    """
+    project weights and keep percentage of the the variance
+    """
+    PCA_PROJECTION = 4
+
     @staticmethod
     def from_string(type_str: str) -> "PruneStrategy":
         # --- argument checking
@@ -64,16 +71,31 @@ class PruneStrategy(Enum):
 
 def prune_conv2d_weights(
         model: keras.Model,
-        config: Dict,
-        strategy: PruneStrategy = PruneStrategy.MINIMUM_THRESHOLD) -> keras.Model:
+        strategy: PruneStrategy,
+        **kwargs) -> keras.Model:
     """
     go through the model and prune its weights given the config and strategy
 
     :param model: model to be pruned
-    :param config: pruning configuration
     :param strategy: pruning strategy
     :return: pruned model
     """
+    if strategy == PruneStrategy.MINIMUM_THRESHOLD:
+        minimum_weight_threshold = kwargs["minimum_threshold"]
+    elif strategy == PruneStrategy.MINIMUM_THRESHOLD_BIFURCATE:
+        minimum_weight_threshold = kwargs["minimum_threshold"]
+    elif strategy == PruneStrategy.MINIMUM_THRESHOLD_SHRINKAGE:
+        shrinkage = kwargs["shrinkage"]
+        minimum_threshold = kwargs["minimum_threshold"]
+        shrinkage_threshold = kwargs["shrinkage_threshold"]
+    elif strategy == PruneStrategy.PCA_PROJECTION:
+        # required variance
+        variance = kwargs["variance"]
+        # optional minimum threshold
+        minimum_threshold = kwargs.get("minimum_threshold", -1)
+    else:
+        pass
+
     for layer in model.layers:
         layer_config = layer.get_config()
         if "layers" not in layer_config:
@@ -98,12 +120,10 @@ def prune_conv2d_weights(
             if strategy == PruneStrategy.NONE:
                 pruned_weights = layer_weights
             elif strategy == PruneStrategy.MINIMUM_THRESHOLD:
-                minimum_weight_threshold = config["minimum_threshold"]
                 for x in layer_weights:
                     x[np.abs(x) < minimum_weight_threshold] = 0.0
                     pruned_weights.append(x)
             elif strategy == PruneStrategy.MINIMUM_THRESHOLD_BIFURCATE:
-                minimum_weight_threshold = config["minimum_threshold"]
                 for x in layer_weights:
                     mask = np.abs(x) < minimum_weight_threshold
                     rand = \
@@ -115,14 +135,22 @@ def prune_conv2d_weights(
                     x[np.abs(x) < minimum_weight_threshold] = 0.0
                     pruned_weights.append(x)
             elif strategy == PruneStrategy.MINIMUM_THRESHOLD_SHRINKAGE:
-                shrinkage = config["shrinkage"]
-                minimum_threshold = config["minimum_threshold"]
-                shrinkage_threshold = config["shrinkage_threshold"]
                 for x in layer_weights:
                     mask = np.abs(x) < shrinkage_threshold
                     x[mask] = x[mask] * shrinkage
                     x[np.abs(x) < minimum_threshold] = 0.0
                     pruned_weights.append(x)
+            elif strategy == PruneStrategy.PCA_PROJECTION:
+                for x in layer_weights:
+                    scaler = MinMaxScaler()
+                    x_rescaled = scaler.fit_transform(x)
+                    pca = PCA(n_components=variance)
+                    pca.fit(x_rescaled)
+                    x_reduced = pca.transform(x_rescaled)
+                    x_reduced = scaler.inverse_transform(x_reduced)
+                    if minimum_threshold != -1:
+                        x_reduced[np.abs(x_reduced) < minimum_threshold] = 0.0
+                    pruned_weights.append(x_reduced)
             else:
                 raise NotImplementedError("not implemented strategy")
             layer_internal.set_weights(pruned_weights)
@@ -139,13 +167,14 @@ def prune_function_builder(
     :return: pruning function
     """
     strategy = PruneStrategy.from_string(config["strategy"])
-
+    strategy_config = config["config"]
+    
     def prune(model: keras.Model) -> keras.Model:
         return \
             prune_conv2d_weights(
                 model=model,
-                config=config,
-                strategy=strategy)
+                strategy=strategy,
+                **strategy_config)
 
     return prune
 
