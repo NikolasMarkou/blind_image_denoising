@@ -13,7 +13,7 @@ import numpy as np
 from enum import Enum
 from typing import Dict, Callable, List
 from sklearn.decomposition import PCA
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 
 # ---------------------------------------------------------------------
 # local imports
@@ -81,9 +81,9 @@ def prune_conv2d_weights(
     :return: pruned model
     """
     if strategy == PruneStrategy.MINIMUM_THRESHOLD:
-        minimum_weight_threshold = kwargs["minimum_threshold"]
+        minimum_threshold = kwargs["minimum_threshold"]
     elif strategy == PruneStrategy.MINIMUM_THRESHOLD_BIFURCATE:
-        minimum_weight_threshold = kwargs["minimum_threshold"]
+        minimum_threshold = kwargs["minimum_threshold"]
     elif strategy == PruneStrategy.MINIMUM_THRESHOLD_SHRINKAGE:
         shrinkage = kwargs["shrinkage"]
         minimum_threshold = kwargs["minimum_threshold"]
@@ -121,18 +121,18 @@ def prune_conv2d_weights(
                 pruned_weights = layer_weights
             elif strategy == PruneStrategy.MINIMUM_THRESHOLD:
                 for x in layer_weights:
-                    x[np.abs(x) < minimum_weight_threshold] = 0.0
+                    x[np.abs(x) < minimum_threshold] = 0.0
                     pruned_weights.append(x)
             elif strategy == PruneStrategy.MINIMUM_THRESHOLD_BIFURCATE:
                 for x in layer_weights:
-                    mask = np.abs(x) < minimum_weight_threshold
+                    mask = np.abs(x) < minimum_threshold
                     rand = \
                         np.random.uniform(
-                            -minimum_weight_threshold * 2.0,
-                            +minimum_weight_threshold * 2.0,
+                            -minimum_threshold * 2.0,
+                            +minimum_threshold * 2.0,
                             size=mask.shape)
                     x[mask] = rand[mask]
-                    x[np.abs(x) < minimum_weight_threshold] = 0.0
+                    x[np.abs(x) < minimum_threshold] = 0.0
                     pruned_weights.append(x)
             elif strategy == PruneStrategy.MINIMUM_THRESHOLD_SHRINKAGE:
                 for x in layer_weights:
@@ -142,6 +142,9 @@ def prune_conv2d_weights(
                     pruned_weights.append(x)
             elif strategy == PruneStrategy.PCA_PROJECTION:
                 for x in layer_weights:
+                    # threshold again to zero very small values
+                    if minimum_threshold != -1:
+                        x[np.abs(x) < minimum_threshold] = 0.0
                     # reshape x which is 4d to 2d
                     x_transpose = np.transpose(x, axes=(3, 0, 1, 2))
                     x_transpose_shape = x_transpose.shape
@@ -151,20 +154,19 @@ def prune_conv2d_weights(
                             newshape=(
                                 x_transpose_shape[0],
                                 np.prod(x_transpose_shape[1:])))
-                    mms = MinMaxScaler()
-                    mms.fit(x_reshaped)
-                    x_reshaped = mms.transform(x_reshaped)
+                    #x_reshaped = np.transpose(x_reshaped, axes=(1, 0))
+                    scaler = StandardScaler()
+                    scaler.fit(x_reshaped)
+                    x_reshaped = scaler.transform(x_reshaped)
                     pca = PCA(n_components=variance)
                     pca.fit(x_reshaped)
                     # forward pass
                     x_reshaped = pca.transform(x_reshaped)
                     # inverse pass
                     x_reshaped = pca.inverse_transform(x_reshaped)
-                    # threshold again to zero very small values
-                    if minimum_threshold != -1:
-                        x_reshaped[np.abs(x_reshaped) < minimum_threshold] = 0.0
                     # convert back to scale
-                    x_reshaped = mms.inverse_transform(x_reshaped)
+                    x_reshaped = scaler.inverse_transform(x_reshaped)
+                    #x_reshaped = np.transpose(x_reshaped, axes=(1, 0))
                     # reshape and transpose back to original shape
                     x_reshaped = \
                         np.reshape(
