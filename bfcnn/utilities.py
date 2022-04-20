@@ -995,8 +995,9 @@ def build_model_resnet(
     # optional concat and mix with input
     if add_concat_input:
         y_tmp = y
+        if use_bn:
+            y_tmp = keras.layers.BatchNormalization(**bn_params)(y_tmp)
         x = keras.layers.Concatenate()([x, y_tmp])
-        x = keras.layers.Conv2D(**base_conv_params)(x)
 
     # --- output layer branches here,
     # to allow space for intermediate results
