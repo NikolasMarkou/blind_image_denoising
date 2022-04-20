@@ -15,6 +15,7 @@
     "local_normalization": -1,
     "kernel_regularizer": "l1",
     "final_activation": "tanh",
+    "add_concat_input": true,
     "add_skip_with_input": true,
     "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
