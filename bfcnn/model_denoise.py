@@ -53,6 +53,7 @@ def model_builder(
     activation = config.get("activation", "relu")
     clip_values = config.get("clip_values", False)
     shared_model = config.get("shared_model", False)
+    add_concat_input = config.get("add_concat_input", False)
     input_shape = config.get("input_shape", (None, None, 3))
     output_multiplier = config.get("output_multiplier", 1.0)
     local_normalization = config.get("local_normalization", -1)
@@ -63,8 +64,8 @@ def model_builder(
     add_intermediate_results = config.get("intermediate_results", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     add_learnable_multiplier = config.get("add_learnable_multiplier", False)
-    add_residual_between_models = config.get("add_residual_between_models", False)
     noise_estimation_mixer_config = config.get("noise_estimation_mixer", None)
+    add_residual_between_models = config.get("add_residual_between_models", False)
 
     use_pyramid = pyramid_config is not None
     use_inverse_pyramid = inverse_pyramid_config is not None
@@ -108,12 +109,13 @@ def model_builder(
         input_dims=input_shape,
         kernel_size=kernel_size,
         dropout_rate=dropout_rate,
+        add_concat_input=add_concat_input,
         final_activation=final_activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
         add_skip_with_input=add_skip_with_input,
         add_intermediate_results=add_intermediate_results,
-        add_learnable_multiplier=add_learnable_multiplier
+        add_learnable_multiplier=add_learnable_multiplier,
     )
 
     if model_type == "resnet":

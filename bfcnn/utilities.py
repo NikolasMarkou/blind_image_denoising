@@ -811,6 +811,7 @@ def build_model_resnet(
         add_intermediate_results: bool = False,
         add_learnable_multiplier: bool = False,
         add_projection_to_input: bool = True,
+        add_concat_input: bool = False,
         name="resnet") -> keras.Model:
     """
     builds a resnet model
@@ -834,6 +835,7 @@ def build_model_resnet(
     :param add_intermediate_results: if true output results before projection
     :param add_learnable_multiplier:
     :param add_projection_to_input: if true project to input tensor channel number
+    :param add_concat_input: if true concat input to intermediate before projecting
     :param name: name of the model
     :return: resnet model
     """
@@ -989,6 +991,12 @@ def build_model_resnet(
     # optional batch norm
     if use_bn:
         x = keras.layers.BatchNormalization(**bn_params)(x)
+
+    # optional concat and mix with input
+    if add_concat_input:
+        y_tmp = y
+        x = keras.layers.Concatenate()([x, y_tmp])
+        x = keras.layers.Conv2D(**base_conv_params)(x)
 
     # --- output layer branches here,
     # to allow space for intermediate results
