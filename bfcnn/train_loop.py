@@ -319,8 +319,7 @@ def train_loop(
                         visualization_number=visualization_number)
                     weights = \
                         get_conv2d_weights(
-                            model=model_denoise,
-                            verbose=False)
+                            model=model_denoise)
                     tf.summary.histogram(
                         data=weights,
                         step=global_step,
