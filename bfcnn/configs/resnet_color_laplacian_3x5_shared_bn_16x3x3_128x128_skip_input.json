@@ -9,7 +9,7 @@
     "type": "resnet",
     "batchnorm": true,
     "activation": "elu",
-    "clip_values": false,
+    "clip_values": true,
     "shared_model": false,
     "output_multiplier": 1.0,
     "local_normalization": -1,
