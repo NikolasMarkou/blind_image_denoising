@@ -239,13 +239,11 @@ def prune_function_builder(
 
 
 def get_conv2d_weights(
-        model: keras.Model,
-        verbose: bool = False) -> np.ndarray:
+        model: keras.Model) -> np.ndarray:
     """
     Get the conv2d weights from the model concatenated
 
     :param model: model to get the weights
-    :param verbose: if true show more messages
     :return: list of weights
     """
     weights = []
@@ -253,30 +251,27 @@ def get_conv2d_weights(
         layer_config = layer.get_config()
         if "layers" not in layer_config:
             continue
-        # get weights of the outer layer
-        layer_weights = layer.get_weights()
-        # --- iterate layer and get the weights internally
-        for i, layer_internal in enumerate(layer_config["layers"]):
-            layer_internal_name = layer_internal["name"]
-            layer_internal_class = layer_internal["class_name"]
-            # make sure to prune only convolutions
-            if not layer_internal_class == "DepthwiseConv2D" and \
-                    not layer_internal_class == "Conv2D":
+        if not layer.trainable:
+            continue
+        for layer_internal in layer.layers:
+            # --- make sure to prune only convolutions
+            if not isinstance(layer_internal, keras.layers.Conv2D) and \
+                    not isinstance(layer_internal, keras.layers.DepthwiseConv2D):
+                # skipping because not convolution
                 continue
-            layer_internal_config = layer_internal["config"]
-            # make sure to prune only trainable
-            layer_trainable = layer_internal_config.get("trainable", False)
-            if not layer_trainable:
+            layer_internal_config = layer_internal.get_config()
+            # --- skipping because not trainable
+            if not layer_internal_config["trainable"]:
                 continue
-            if verbose:
-                logger.info("pruning layer: {0}".format(layer_internal_name))
-            if i >= len(layer_weights):
-                continue
-            for w in layer_weights[i]:
-                w_flat = w.flatten()
-                weights.append(w_flat)
+            # --- get layer weights
+            layer_weights = [
+                x.flatten()
+                for x in layer_internal.get_weights()
+            ]
+            weights.append(np.concatenate(layer_weights))
     if len(weights) == 0:
         return np.ndarray([])
     return np.concatenate(weights)
+
 
 # ---------------------------------------------------------------------
