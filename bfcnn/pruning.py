@@ -161,7 +161,8 @@ def prune_strategy_helper(
 
         def fn(x: np.ndarray) -> np.ndarray:
             x_sorted = np.sort(np.abs(x), axis=None)
-            x_threshold = x_sorted[np.round(len(x_sorted) * percentage)]
+            x_threshold_index = int(np.round(len(x_sorted) * percentage))
+            x_threshold = x_sorted[x_threshold_index]
             x[np.abs(x) < x_threshold] = 0.0
             return x
     elif strategy == PruneStrategy.NONE:
