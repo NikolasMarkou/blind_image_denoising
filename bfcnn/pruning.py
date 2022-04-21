@@ -54,7 +54,7 @@ class PruneStrategy(Enum):
     """
     sorts the weights by absolute value and zeros out the bottom X percent
     """
-    DROP_BOTTOM_X_PERCENT = 5
+    DROP_BOTTOM = 5
 
     @staticmethod
     def from_string(type_str: str) -> "PruneStrategy":
@@ -81,7 +81,7 @@ def prune_strategy_helper(
         **kwargs) -> Callable:
     """
     builds the pruning function to be called
-    
+
     :param strategy:
     :param kwargs:
     :return:
@@ -156,7 +156,7 @@ def prune_strategy_helper(
                     x_reshaped,
                     axes=(1, 2, 3, 0))
             return x
-    elif strategy == PruneStrategy.DROP_BOTTOM_X_PERCENT:
+    elif strategy == PruneStrategy.DROP_BOTTOM:
         percentage = kwargs["percentage"]
 
         def fn(x: np.ndarray) -> np.ndarray:
@@ -192,7 +192,7 @@ def prune_conv2d_weights(
         if not layer.trainable:
             continue
         for layer_internal in layer.layers:
-            # ---- make sure to prune only convolutions
+            # --- make sure to prune only convolutions
             if not isinstance(layer_internal, keras.layers.Conv2D) and \
                     not isinstance(layer_internal, keras.layers.DepthwiseConv2D):
                 # skipping because not convolution
@@ -201,14 +201,12 @@ def prune_conv2d_weights(
             # --- skipping because not trainable
             if not layer_internal_config["trainable"]:
                 continue
-            # ---
-            pruned_weights = []
-            # get layer weights
-            layer_weights = layer_internal.get_weights()
-            #  prune layer weights with the pruning strategy
-            for x in layer_weights:
-                pruned_weights.append(prune_fn(x))
-            # ---
+            # --- get layer weights, prune layer weights with the pruning strategy
+            pruned_weights = [
+                prune_fn(x)
+                for x in layer_internal.get_weights()
+            ]
+            # --- set weights back to update the model
             layer_internal.set_weights(pruned_weights)
     return model
 

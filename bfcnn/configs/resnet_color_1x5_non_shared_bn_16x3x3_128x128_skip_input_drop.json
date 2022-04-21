@@ -38,10 +38,9 @@
     },
     "prune": {
       "start_epoch": 0,
-      "strategy": "pca_projection",
+      "strategy": "drop_bottom",
       "config": {
-        "variance": 0.9,
-        "minimum_threshold": 0.000001
+        "percentage": 0.5
       }
     }
   },
