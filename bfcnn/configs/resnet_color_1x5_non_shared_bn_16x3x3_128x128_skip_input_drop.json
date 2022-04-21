@@ -38,6 +38,7 @@
     },
     "prune": {
       "start_epoch": 0,
+      "steps": 1000,
       "strategy": "drop_bottom",
       "config": {
         "percentage": 0.5

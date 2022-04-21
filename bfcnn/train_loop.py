@@ -132,6 +132,11 @@ def train_loop(
             prune_config.get("start_epoch", 0),
             dtype=tf.dtypes.int64,
             name="prune_start_epoch")
+    prune_steps = \
+        tf.constant(
+            prune_config.get("steps", -1),
+            dtype=tf.dtypes.int64,
+            name="prune_steps")
     prune_function = prune_function_builder(prune_config)
 
     # --- build the denoise model
@@ -236,7 +241,7 @@ def train_loop(
 
             # --- pruning strategy
             if use_prune and global_epoch >= prune_start_epoch:
-                logger.info("pruning weights")
+                logger.info(f"pruning weights at step [{int(global_step)}]")
                 model_denoise = \
                     prune_function(model=model_denoise)
 
@@ -321,6 +326,12 @@ def train_loop(
                         step=global_step,
                         buckets=weight_buckets,
                         name="training/weights")
+
+                if use_prune and global_epoch >= prune_start_epoch and \
+                        int(prune_steps) != -1 and global_step % prune_steps == 0:
+                    logger.info(f"pruning weights at step [{int(global_step)}]")
+                    model_denoise = \
+                        prune_function(model=model_denoise)
 
                 # --- check if it is time to save a checkpoint
                 if checkpoint_every > 0:
