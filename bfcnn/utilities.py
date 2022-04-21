@@ -18,7 +18,6 @@ from typing import List, Tuple, Union, Dict, Iterable
 # ---------------------------------------------------------------------
 # local imports
 # ---------------------------------------------------------------------
-from scipy.stats import yulesimon_gen
 
 from .custom_logger import logger
 from .custom_layers import TrainableMultiplier, RandomOnOff
