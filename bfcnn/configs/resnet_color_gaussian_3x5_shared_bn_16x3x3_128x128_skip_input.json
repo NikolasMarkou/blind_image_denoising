@@ -21,13 +21,13 @@
     "kernel_initializer": "glorot_normal",
     "pyramid": {
       "levels": 3,
-      "type": "laplacian",
+      "type": "gaussian",
       "xy_max": [1.0, 1.0],
       "kernel_size": [5, 5]
     },
     "inverse_pyramid": {
       "levels": 3,
-      "type": "laplacian",
+      "type": "gaussian",
       "xy_max": [1.0, 1.0],
       "kernel_size": [5, 5]
     }
