@@ -180,6 +180,7 @@ def loss_function_builder(
     hinge = config.get("hinge", 0.0)
     nae_multiplier = tf.constant(config.get("nae_multiplier", 0.0))
     mae_multiplier = tf.constant(config.get("mae_multiplier", 1.0))
+    mae_decomposition_multiplier = tf.constant(config.get("mae_decomposition_multiplier", 1.0))
     mae_delta_enabled = tf.constant(config.get("mae_delta", False))
     model_pyramid_config = config.get("pyramid", None)
     input_shape = config.get("input_shape", (None, None, 3))
@@ -201,7 +202,9 @@ def loss_function_builder(
             input_batch,
             prediction_batch,
             noisy_batch,
-            model_losses) -> Dict:
+            model_losses,
+            input_batch_decomposition = [],
+            prediction_batch_decomposition = []) -> Dict:
         """
         The loss function of the depth prediction model
 
@@ -256,6 +259,16 @@ def loss_function_builder(
                 original=input_batch,
                 prediction=prediction_batch,
                 hinge=0)
+
+        # --- loss prediction on decomposition
+        mae_decomposition_loss = tf.constant(0.0)
+        for i in range(len(prediction_batch_decomposition)):
+            mae_level_i = \
+                mae(
+                    original=input_batch_decomposition[i],
+                    prediction=prediction_batch_decomposition[i])
+            mae_decomposition_loss += mae_level_i
+
         # ---
         nae_prediction = \
             nae(input_batch, prediction_batch, hinge)
@@ -275,6 +288,7 @@ def loss_function_builder(
         # --- add up loss
         mean_total_loss = \
             nae_prediction * nae_multiplier + \
+            mae_decomposition_loss * mae_decomposition_multiplier + \
             (mae_prediction_loss + mae_weighted_delta_loss) * mae_multiplier + \
             regularization_loss * regularization_multiplier
 
@@ -286,6 +300,7 @@ def loss_function_builder(
             MEAN_TOTAL_LOSS_STR: mean_total_loss,
             "nae_improvement": nae_improvement,
             REGULARIZATION_LOSS_STR: regularization_loss,
+            "mae_decomposition_loss": mae_decomposition_loss,
         }
 
     return loss_function

@@ -323,6 +323,13 @@ def model_builder(
                     clip_value_min=-0.5,
                     clip_value_max=+0.5)
 
+    # --- keep model before merging (this is for better training)
+    model_denoise_decomposition = \
+        keras.Model(
+            inputs=input_layer,
+            outputs=x_levels,
+            name=f"{model_type}_denoiser_decomposition")
+
     # --- merge levels together
     if use_inverse_pyramid:
         x_result = \
@@ -354,6 +361,7 @@ def model_builder(
 
     return \
         model_denoise, \
+        model_denoise_decomposition, \
         model_normalize, \
         model_denormalize, \
         model_pyramid, \
