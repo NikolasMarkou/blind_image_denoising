@@ -60,16 +60,10 @@
   },
   "loss": {
     "hinge": 2.5,
-    "mae_multiplier": 1.0,
+    "mae_multiplier": 0.1,
     "regularization": 0.01,
     "nae_multiplier": 10.0,
-    "input_shape": ["?", "?", 3],
-    "pyramid": {
-      "levels": 4,
-      "type": "gaussian",
-      "xy_max": [1.0, 1.0],
-      "kernel_size": [5, 5]
-    }
+    "mae_decomposition_multiplier": 255.0
   },
   "dataset": {
     "batch_size": 16,

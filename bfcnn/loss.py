@@ -182,21 +182,7 @@ def loss_function_builder(
     mae_multiplier = tf.constant(config.get("mae_multiplier", 1.0))
     mae_decomposition_multiplier = tf.constant(config.get("mae_decomposition_multiplier", 1.0))
     mae_delta_enabled = tf.constant(config.get("mae_delta", False))
-    model_pyramid_config = config.get("pyramid", None)
-    input_shape = config.get("input_shape", (None, None, 3))
     regularization_multiplier = config.get("regularization", 1.0)
-    input_shape = input_shape_fixer(input_shape)
-
-    # prepare pyramid model
-    if model_pyramid_config is None:
-        model_pyramid = None
-        use_pyramid = tf.constant(False)
-    else:
-        model_pyramid = \
-            build_pyramid_model(
-                input_dims=input_shape,
-                config=model_pyramid_config)
-        use_pyramid = tf.constant(True)
 
     def loss_function(
             input_batch,
@@ -218,41 +204,18 @@ def loss_function_builder(
         # --- mean absolute error from prediction
         mae_prediction_loss = tf.constant(0.0)
         mae_weighted_delta_loss = tf.constant(0.0)
-        if use_pyramid:
-            pyramid_input_batch = \
-                model_pyramid(input_batch, training=False)
-            pyramid_prediction_batch = \
-                model_pyramid(prediction_batch, training=False)
-            levels = 0
-            for i, _ in enumerate(pyramid_input_batch):
-                tmp_input_batch = pyramid_input_batch[i]
-                tmp_prediction_batch = pyramid_prediction_batch[i]
-                mae_prediction_loss += \
-                    mae(
-                        original=tmp_input_batch,
-                        prediction=tmp_prediction_batch,
-                        hinge=hinge)
-                if mae_delta_enabled:
-                    mae_weighted_delta_loss += \
-                        mae_weighted_delta(
-                            original=tmp_input_batch,
-                            prediction=tmp_prediction_batch,
-                            hinge=hinge)
-                levels += 1
-            mae_prediction_loss = mae_prediction_loss / levels
-            mae_weighted_delta_loss = mae_weighted_delta_loss / levels
-        else:
-            mae_prediction_loss = \
-                mae(
+
+        mae_prediction_loss += \
+            mae(
+                original=input_batch,
+                prediction=prediction_batch,
+                hinge=hinge)
+        if mae_delta_enabled:
+            mae_weighted_delta_loss += \
+                mae_weighted_delta(
                     original=input_batch,
                     prediction=prediction_batch,
                     hinge=hinge)
-            if mae_delta_enabled:
-                mae_weighted_delta_loss = \
-                    mae_weighted_delta(
-                        original=input_batch,
-                        prediction=prediction_batch,
-                        hinge=hinge)
 
         mae_actual = \
             mae(
