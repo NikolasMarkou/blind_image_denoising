@@ -300,7 +300,7 @@ def loss_function_builder(
             MEAN_TOTAL_LOSS_STR: mean_total_loss,
             "nae_improvement": nae_improvement,
             REGULARIZATION_LOSS_STR: regularization_loss,
-            "mae_decomposition_loss": mae_decomposition_loss,
+            MAE_DECOMPOSITION_LOSS_STR: mae_decomposition_loss,
         }
 
     return loss_function
