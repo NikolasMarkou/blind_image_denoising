@@ -310,7 +310,7 @@ def train_loop(
                     ("loss/total", MEAN_TOTAL_LOSS_STR),
                     ("loss/nae", NAE_PREDICTION_LOSS_STR),
                     ("loss/regularization", REGULARIZATION_LOSS_STR),
-                    ("loss/mae_decomposition", NAE_DECOMPOSITION_LOSS_STR),
+                    ("loss/mae_decomposition", MAE_DECOMPOSITION_LOSS_STR),
                     ("quality/nae_noise", "nae_noise"),
                     ("quality/signal_to_noise_ratio", "snr"),
                     ("quality/nae_improvement", NAE_IMPROVEMENT_QUALITY_STR)
