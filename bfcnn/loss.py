@@ -176,15 +176,10 @@ def loss_function_builder(
 
     # controls how we discount each level
     hinge = config.get("hinge", 0.0)
+    regularization_multiplier = config.get("regularization", 1.0)
     nae_multiplier = tf.constant(config.get("nae_multiplier", 0.0))
     mae_multiplier = tf.constant(config.get("mae_multiplier", 1.0))
-    mae_decomposition_multiplier = tf.constant(config.get("mae_decomposition_multiplier", 1.0))
     mae_delta_enabled = tf.constant(config.get("mae_delta", False))
-    regularization_multiplier = config.get("regularization", 1.0)
-    levels_bn = [
-        keras.layers.BatchNormalization()
-        for _ in range(10)
-    ]
 
     def loss_function(
             input_batch,
@@ -228,12 +223,10 @@ def loss_function_builder(
         # --- loss prediction on decomposition
         mae_decomposition_loss = tf.constant(0.0)
         for i in range(len(prediction_batch_decomposition)):
-            input_x_i = levels_bn[i](input_batch_decomposition[i])
-            prediction_x_i = levels_bn[i](prediction_batch_decomposition[i])
             mae_decomposition_loss += \
                 mae(
-                    original=input_x_i,
-                    prediction=prediction_x_i,
+                    original=input_batch_decomposition[i],
+                    prediction=prediction_batch_decomposition[i],
                     hinge=0)
 
         # ---
