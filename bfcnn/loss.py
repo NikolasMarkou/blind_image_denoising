@@ -180,9 +180,9 @@ def loss_function_builder(
     hinge = config.get("hinge", 0.0)
     nae_multiplier = tf.constant(config.get("nae_multiplier", 0.0))
     mae_multiplier = tf.constant(config.get("mae_multiplier", 1.0))
-    mae_decomposition_multiplier = tf.constant(config.get("mae_decomposition_multiplier", 1.0))
     mae_delta_enabled = tf.constant(config.get("mae_delta", False))
     regularization_multiplier = config.get("regularization", 1.0)
+    nae_decomposition_multiplier = tf.constant(config.get("nae_decomposition_multiplier", 1.0))
 
     def loss_function(
             input_batch,
@@ -224,13 +224,12 @@ def loss_function_builder(
                 hinge=0)
 
         # --- loss prediction on decomposition
-        mae_decomposition_loss = tf.constant(0.0)
+        nae_decomposition_loss = tf.constant(0.0)
         for i in range(len(prediction_batch_decomposition)):
-            mae_level_i = \
-                mae(
+            nae_decomposition_loss += \
+                nae(
                     original=input_batch_decomposition[i],
                     prediction=prediction_batch_decomposition[i])
-            mae_decomposition_loss += mae_level_i
 
         # ---
         nae_prediction = \
@@ -251,7 +250,7 @@ def loss_function_builder(
         # --- add up loss
         mean_total_loss = \
             nae_prediction * nae_multiplier + \
-            mae_decomposition_loss * mae_decomposition_multiplier + \
+            nae_decomposition_loss * nae_decomposition_multiplier + \
             (mae_prediction_loss + mae_weighted_delta_loss) * mae_multiplier + \
             regularization_loss * regularization_multiplier
 
@@ -263,7 +262,7 @@ def loss_function_builder(
             MEAN_TOTAL_LOSS_STR: mean_total_loss,
             "nae_improvement": nae_improvement,
             REGULARIZATION_LOSS_STR: regularization_loss,
-            MAE_DECOMPOSITION_LOSS_STR: mae_decomposition_loss,
+            NAE_DECOMPOSITION_LOSS_STR: nae_decomposition_loss,
         }
 
     return loss_function
