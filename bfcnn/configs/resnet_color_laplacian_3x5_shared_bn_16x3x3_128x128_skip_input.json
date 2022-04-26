@@ -63,7 +63,7 @@
     "mae_multiplier": 0.1,
     "regularization": 0.01,
     "nae_multiplier": 10.0,
-    "mae_decomposition_multiplier": 255.0
+    "mae_decomposition_multiplier": 50.0
   },
   "dataset": {
     "batch_size": 16,
