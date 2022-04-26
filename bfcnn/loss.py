@@ -227,7 +227,7 @@ def loss_function_builder(
                 mae(
                     original=input_batch_decomposition[i],
                     prediction=prediction_batch_decomposition[i],
-                    hinge=0)
+                    hinge=0) * (255.0 / (len(prediction_batch_decomposition) + EPSILON_DEFAULT))
 
         # ---
         nae_prediction = \
