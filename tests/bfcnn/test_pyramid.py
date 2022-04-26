@@ -6,6 +6,7 @@ import keras
 import numpy as np
 import tensorflow as tf
 
+from .constants import *
 sys.path.append(os.getcwd() + "/../")
 
 # ---------------------------------------------------------------------
@@ -13,7 +14,6 @@ sys.path.append(os.getcwd() + "/../")
 # ---------------------------------------------------------------------
 
 import bfcnn
-from .constants import *
 
 # ---------------------------------------------------------------------
 

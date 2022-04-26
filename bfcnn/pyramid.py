@@ -323,8 +323,6 @@ def build_gaussian_pyramid_model(
 def build_inverse_gaussian_pyramid_model(
         input_dims: Union[Tuple, List],
         levels: int,
-        kernel_size: Tuple[int, int] = DEFAULT_KERNEL_SIZE,
-        xy_max: Tuple[float, float] = DEFAULT_XY_MAX,
         trainable: bool = False,
         mix_type: MixType = MixType.EQUAL,
         name: str = "inverse_gaussian_pyramid") -> keras.Model:
@@ -363,11 +361,9 @@ def build_inverse_gaussian_pyramid_model(
 
     for i in range(levels - 2, -1, -1):
         level_up_x = \
-            upscale_2x2_block(
-                input_layer=output_layer,
-                xy_max=xy_max,
-                trainable=False,
-                kernel_size=kernel_size)
+            keras.layers.UpSampling2D(
+                size=(2, 2),
+                interpolation="bilinear")(output_layer)
         output_layer = \
             keras.layers.Add()([
                 level_up_x,
@@ -552,14 +548,10 @@ def build_inverse_pyramid_model(
     """
     if config is None:
         no_levels = 1
-        xy_max = DEFAULT_XY_MAX
-        kernel_size = DEFAULT_KERNEL_SIZE
         pyramid_type = PyramidType.from_string("NONE")
         mix_type = MixType.from_string(MixType.EQUAL.to_string())
     else:
         no_levels = config.get("levels", 1)
-        xy_max = config.get("xy_max", DEFAULT_XY_MAX)
-        kernel_size = config.get("kernel_size", DEFAULT_KERNEL_SIZE)
         pyramid_type = PyramidType.from_string(config.get("type", "NONE"))
         mix_type = MixType.from_string(config.get("mix_type", MixType.EQUAL.to_string()))
 
@@ -568,9 +560,7 @@ def build_inverse_pyramid_model(
             build_inverse_gaussian_pyramid_model(
                 input_dims=input_dims,
                 levels=no_levels,
-                xy_max=xy_max,
-                mix_type=mix_type,
-                kernel_size=kernel_size)
+                mix_type=mix_type)
     elif pyramid_type == PyramidType.LAPLACIAN:
         pyramid_model = \
             build_inverse_laplacian_pyramid_model(
@@ -581,9 +571,7 @@ def build_inverse_pyramid_model(
             build_inverse_gaussian_pyramid_model(
                 input_dims=input_dims,
                 levels=no_levels,
-                xy_max=xy_max,
-                mix_type=mix_type,
-                kernel_size=kernel_size)
+                mix_type=mix_type)
     else:
         raise ValueError(
             "don't know how to build pyramid type [{0}]".format(pyramid_type))
