@@ -60,10 +60,9 @@
   },
   "loss": {
     "hinge": 2.5,
-    "mae_multiplier": 0.1,
+    "mae_multiplier": 1.0,
     "regularization": 0.01,
-    "nae_multiplier": 10.0,
-    "mae_decomposition_multiplier": 50.0
+    "nae_multiplier": 10.0
   },
   "dataset": {
     "batch_size": 16,

@@ -255,9 +255,8 @@ def loss_function_builder(
         # --- add up loss
         mean_total_loss = \
             nae_prediction * nae_multiplier + \
-            mae_decomposition_loss * mae_decomposition_multiplier + \
-            (mae_prediction_loss + mae_weighted_delta_loss) * mae_multiplier + \
-            regularization_loss * regularization_multiplier
+            regularization_loss * regularization_multiplier + \
+            (mae_prediction_loss + mae_weighted_delta_loss + mae_decomposition_loss) * mae_multiplier
 
         return {
             "nae_noise": nae_noise,
