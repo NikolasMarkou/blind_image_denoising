@@ -115,27 +115,6 @@ def mae(
 # ---------------------------------------------------------------------
 
 
-def msae(
-        original,
-        prediction,
-        hinge: float = 0.0):
-    """
-    Mean Sum Absolute Error (mean over channels and batches)
-
-    :param original: original image batch
-    :param prediction: denoised image batch
-    :param hinge: hinge value
-    """
-    d = tf.abs(original - prediction)
-    d = keras.layers.ReLU(threshold=hinge)(d)
-    # mean over all dims
-    d = tf.reduce_sum(d, axis=[1, 2, 3])
-    # mean over batch
-    return tf.reduce_mean(d, axis=[0])
-
-# ---------------------------------------------------------------------
-
-
 def mse(
         original,
         prediction,
@@ -202,6 +181,10 @@ def loss_function_builder(
     mae_decomposition_multiplier = tf.constant(config.get("mae_decomposition_multiplier", 1.0))
     mae_delta_enabled = tf.constant(config.get("mae_delta", False))
     regularization_multiplier = config.get("regularization", 1.0)
+    levels_bn = [
+        keras.layers.BatchNormalization()
+        for _ in range(10)
+    ]
 
     def loss_function(
             input_batch,
@@ -245,11 +228,13 @@ def loss_function_builder(
         # --- loss prediction on decomposition
         mae_decomposition_loss = tf.constant(0.0)
         for i in range(len(prediction_batch_decomposition)):
-            mae_level_i = \
-                msae(
-                    original=input_batch_decomposition[i],
-                    prediction=prediction_batch_decomposition[i])
-            mae_decomposition_loss += mae_level_i
+            input_x_i = levels_bn[i](input_batch_decomposition[i])
+            prediction_x_i = levels_bn[i](prediction_batch_decomposition[i])
+            mae_decomposition_loss += \
+                mae(
+                    original=input_x_i,
+                    prediction=prediction_x_i,
+                    hinge=0)
 
         # ---
         nae_prediction = \
