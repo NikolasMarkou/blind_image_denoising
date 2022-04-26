@@ -390,7 +390,6 @@ def build_laplacian_pyramid_model(
         input_dims: Union[Tuple, List],
         levels: int,
         kernel_size: Tuple[int, int] = DEFAULT_KERNEL_SIZE,
-        xy_max: Tuple[float, float] = DEFAULT_XY_MAX,
         trainable: bool = False,
         name: str = "laplacian_pyramid") -> keras.Model:
     """
@@ -399,8 +398,6 @@ def build_laplacian_pyramid_model(
     :param input_dims: input dimensions
     :param levels: how many levels to go down the pyramid
     :param kernel_size: kernel size tuple
-    :param xy_max: how far the gaussian are we going
-        (symmetrically) on the 2 axis
     :param trainable: is the pyramid trainable (default False)
     :param name: name of the model
     :return: laplacian pyramid keras model
@@ -420,13 +417,10 @@ def build_laplacian_pyramid_model(
 
     for level in range(0, levels - 1):
         level_x_down = \
-            gaussian_filter_block(
-                input_layer=level_x,
-                xy_max=xy_max,
-                padding="same",
+            keras.layers.AveragePooling2D(
+                pool_size=kernel_size,
                 strides=(2, 2),
-                trainable=trainable,
-                kernel_size=kernel_size)
+                padding="same")(level_x)
         level_x_smoothed = \
             keras.layers.UpSampling2D(
                 size=(2, 2),
@@ -452,8 +446,6 @@ def build_laplacian_pyramid_model(
 def build_inverse_laplacian_pyramid_model(
         input_dims: Union[Tuple, List],
         levels: int,
-        kernel_size: Tuple[int, int] = DEFAULT_KERNEL_SIZE,
-        xy_max: Tuple[float, float] = DEFAULT_XY_MAX,
         trainable: bool = False,
         name: str = "inverse_laplacian_pyramid") -> keras.Model:
     """
@@ -461,9 +453,6 @@ def build_inverse_laplacian_pyramid_model(
 
     :param input_dims: input dimensions
     :param levels: how many levels to go down the pyramid
-    :param kernel_size: kernel size tuple
-    :param xy_max: how far the gaussian are we going
-        (symmetrically) on the 2 axis
     :param trainable: is the pyramid trainable (default False)
     :param name: name of the model
     :return: inverse laplacian pyramid keras model
@@ -534,7 +523,6 @@ def build_pyramid_model(
             build_laplacian_pyramid_model(
                 input_dims=input_dims,
                 levels=no_levels,
-                xy_max=xy_max,
                 kernel_size=kernel_size)
     elif pyramid_type == PyramidType.NONE:
         pyramid_model = \
@@ -587,9 +575,7 @@ def build_inverse_pyramid_model(
         pyramid_model = \
             build_inverse_laplacian_pyramid_model(
                 input_dims=input_dims,
-                levels=no_levels,
-                xy_max=xy_max,
-                kernel_size=kernel_size)
+                levels=no_levels)
     elif pyramid_type == PyramidType.NONE:
         pyramid_model = \
             build_inverse_gaussian_pyramid_model(
