@@ -2,11 +2,10 @@ import pytest
 
 import os
 import sys
-import keras
 import numpy as np
-import tensorflow as tf
 
 from .constants import *
+
 sys.path.append(os.getcwd() + "/../")
 
 # ---------------------------------------------------------------------
@@ -15,10 +14,92 @@ sys.path.append(os.getcwd() + "/../")
 
 import bfcnn
 
+
+# ---------------------------------------------------------------------
+# none
+# ---------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "target_size", [(64, 64), (128, 128), (256, 256), (512, 512), (1024, 1024)])
+def test_none_grayscale_1_level(target_size):
+    input_shape = (None, None, 1)
+
+    laplacian_config = None
+
+    levels = 1
+
+    laplacian_pyramid_model = \
+        bfcnn.build_pyramid_model(
+            input_dims=input_shape,
+            config=laplacian_config)
+
+    inverse_laplacian_pyramid_model = \
+        bfcnn.build_inverse_pyramid_model(
+            input_dims=input_shape,
+            config=laplacian_config)
+
+    x = \
+        bfcnn.load_image(
+            path=LENA_IMAGE_PATH,
+            color_mode="grayscale",
+            target_size=target_size,
+            normalize=True)
+
+    x_pyramid = laplacian_pyramid_model.predict(x)
+    assert len(x_pyramid) == levels
+
+    x_recovered = inverse_laplacian_pyramid_model.predict(x_pyramid)
+    assert len(x_recovered) == 1
+
+    x_error = np.abs(x_recovered - x)
+    assert np.mean(x_error) < 1e-7
+
 # ---------------------------------------------------------------------
 
 
-def test_laplacian_grayscale_1_level_resnet():
+@pytest.mark.parametrize(
+    "target_size", [(64, 64), (128, 128), (256, 256), (512, 512), (1024, 1024)])
+def test_none_color_1_level(target_size):
+    input_shape = (None, None, 3)
+
+    laplacian_config = None
+
+    levels = 1
+
+    laplacian_pyramid_model = \
+        bfcnn.build_pyramid_model(
+            input_dims=input_shape,
+            config=laplacian_config)
+
+    inverse_laplacian_pyramid_model = \
+        bfcnn.build_inverse_pyramid_model(
+            input_dims=input_shape,
+            config=laplacian_config)
+
+    x = \
+        bfcnn.load_image(
+            path=LENA_IMAGE_PATH,
+            color_mode="rgb",
+            target_size=target_size,
+            normalize=True)
+
+    x_pyramid = laplacian_pyramid_model.predict(x)
+    assert len(x_pyramid) == levels
+
+    x_recovered = inverse_laplacian_pyramid_model.predict(x_pyramid)
+    assert len(x_recovered) == 1
+
+    x_error = np.abs(x_recovered - x)
+    assert np.mean(x_error) < 1e-7
+
+# ---------------------------------------------------------------------
+# laplacian
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "target_size", [(64, 64), (128, 128), (256, 256), (512, 512), (1024, 1024)])
+def test_laplacian_grayscale_1_level(target_size):
     input_shape = (None, None, 1)
 
     laplacian_config = {
@@ -44,7 +125,7 @@ def test_laplacian_grayscale_1_level_resnet():
         bfcnn.load_image(
             path=LENA_IMAGE_PATH,
             color_mode="grayscale",
-            target_size=(256, 256),
+            target_size=target_size,
             normalize=True)
 
     x_pyramid = laplacian_pyramid_model.predict(x)
@@ -56,10 +137,13 @@ def test_laplacian_grayscale_1_level_resnet():
     x_error = np.abs(x_recovered - x)
     assert np.mean(x_error) < 1e-7
 
+
 # ---------------------------------------------------------------------
 
 
-def test_laplacian_grayscale_3_level_resnet():
+@pytest.mark.parametrize(
+    "target_size", [(64, 64), (128, 128), (256, 256), (512, 512), (1024, 1024)])
+def test_laplacian_grayscale_3_level(target_size):
     input_shape = (None, None, 1)
 
     laplacian_config = {
@@ -85,7 +169,7 @@ def test_laplacian_grayscale_3_level_resnet():
         bfcnn.load_image(
             path=LENA_IMAGE_PATH,
             color_mode="grayscale",
-            target_size=(256, 256),
+            target_size=target_size,
             normalize=True)
 
     x_pyramid = laplacian_pyramid_model.predict(x)
@@ -97,10 +181,12 @@ def test_laplacian_grayscale_3_level_resnet():
     x_error = np.abs(x_recovered - x)
     assert np.mean(x_error) < 1e-7
 
+
 # ---------------------------------------------------------------------
 
-
-def test_laplacian_color_1_level_resnet():
+@pytest.mark.parametrize(
+    "target_size", [(64, 64), (128, 128), (256, 256), (512, 512), (1024, 1024)])
+def test_laplacian_color_1_level(target_size):
     input_shape = (None, None, 3)
 
     laplacian_config = {
@@ -126,7 +212,7 @@ def test_laplacian_color_1_level_resnet():
         bfcnn.load_image(
             path=LENA_IMAGE_PATH,
             color_mode="rgb",
-            target_size=(256, 256),
+            target_size=target_size,
             normalize=True)
 
     x_pyramid = laplacian_pyramid_model.predict(x)
@@ -138,10 +224,12 @@ def test_laplacian_color_1_level_resnet():
     x_error = np.abs(x_recovered - x)
     assert np.mean(x_error) < 1e-7
 
+
 # ---------------------------------------------------------------------
 
-
-def test_laplacian_color_3_level_resnet():
+@pytest.mark.parametrize(
+    "target_size", [(64, 64), (128, 128), (256, 256), (512, 512), (1024, 1024)])
+def test_laplacian_color_3_level(target_size):
     input_shape = (None, None, 3)
 
     laplacian_config = {
@@ -167,7 +255,7 @@ def test_laplacian_color_3_level_resnet():
         bfcnn.load_image(
             path=LENA_IMAGE_PATH,
             color_mode="rgb",
-            target_size=(256, 256),
+            target_size=target_size,
             normalize=True)
 
     x_pyramid = laplacian_pyramid_model.predict(x)
@@ -180,7 +268,3 @@ def test_laplacian_color_3_level_resnet():
     assert np.mean(x_error) < 1e-7
 
 # ---------------------------------------------------------------------
-
-
-
-
