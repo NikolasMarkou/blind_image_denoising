@@ -14,7 +14,7 @@ KITTI_DIR = \
 
 # all the kitti test images
 KITTI_IMAGES = \
-    [img for img in KITTI_DIR.glob("*.png")]
+    [img for img in (KITTI_DIR / "files").glob("*.png")]
 
 # ---------------------------------------------------------------------
 
@@ -24,7 +24,7 @@ MEGADEPTH_DIR = \
 
 # all the megadepth test images
 MEGADEPTH_IMAGES = \
-    [img for img in MEGADEPTH_DIR.glob("*.jpg")]
+    [img for img in (MEGADEPTH_DIR / "files").glob("*.jpg")]
 
 # ---------------------------------------------------------------------
 

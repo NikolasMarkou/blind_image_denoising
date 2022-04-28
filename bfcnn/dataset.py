@@ -21,6 +21,11 @@ from .utilities import random_choice
 
 # ---------------------------------------------------------------------
 
+DATASET_FN_STR = "dataset"
+AUGMENTATION_FN_STR = "augmentation"
+
+# ---------------------------------------------------------------------
+
 
 def dataset_builder(
         config: Dict):
@@ -79,7 +84,7 @@ def dataset_builder(
     multiplicative_noise = tf.constant(multiplicative_noise, dtype=tf.float32)
 
     # --- define generator function from directory
-    if directory is not None:
+    if directory:
         # interpolation must be nearest to be uint8
         dataset = \
             tf.keras.preprocessing.image_dataset_from_directory(
@@ -262,11 +267,11 @@ def dataset_builder(
 
     # --- create the dataset
     return {
-        "dataset":
+        AUGMENTATION_FN_STR: augmentation,
+        DATASET_FN_STR:
             dataset.map(
                 map_func=input_batch_augmentations,
-                num_parallel_calls=tf.data.AUTOTUNE).prefetch(tf.data.AUTOTUNE),
-        "augmentation": augmentation
+                num_parallel_calls=tf.data.AUTOTUNE).prefetch(tf.data.AUTOTUNE)
     }
 
 # ---------------------------------------------------------------------
