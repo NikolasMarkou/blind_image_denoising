@@ -12,7 +12,7 @@ import tensorflow as tf
 from .train_loop import train_loop
 from .export_model import export_model
 from .model_denoise import model_builder
-from .utilities import logger, load_config
+from .utilities import logger, load_config, load_image
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
@@ -70,6 +70,7 @@ def load_model(model_path: str):
 __all__ = [
     train_loop,
     load_model,
+    load_image,
     export_model,
     model_builder,
     pretrained_models,

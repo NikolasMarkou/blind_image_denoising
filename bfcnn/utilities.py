@@ -29,6 +29,35 @@ DEFAULT_EPSILON = 0.001
 # ---------------------------------------------------------------------
 
 
+def load_image(
+        path: Union[str, Path],
+        color_mode: str = "rgb",
+        target_size: Tuple[int, int] = None,
+        normalize: bool = True) -> np.ndarray:
+    """
+    load image from file
+
+    :param path:
+    :param color_mode: grayscale or rgb
+    :param target_size: size or None
+    :param normalize: if true normalize to (-1,+1)
+    :return: loaded normalized image
+    """
+    x = \
+        tf.keras.preprocessing.image.load_img(
+            path=path,
+            color_mode=color_mode,
+            target_size=target_size)
+
+    x = tf.keras.preprocessing.image.img_to_array(x)
+    x = np.array([x])
+    if normalize:
+        x = ((x / 255.0) * 2.0) - 1.0
+    return x
+
+# ---------------------------------------------------------------------
+
+
 def load_config(
         config: Union[str, Dict, Path]) -> Dict:
     """
