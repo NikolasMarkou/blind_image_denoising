@@ -1,3 +1,4 @@
+import keras
 import pytest
 
 import os
@@ -70,5 +71,31 @@ def test_megadepth_load_images(target_size):
                 target_size=target_size,
                 normalize=True)
         assert x.shape == (1,) + target_size + (3,)
+
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "input_dims", [(64, 64, 1), (256, 256, 1), (1024, 1024, 1),
+                   (64, 64, 3), (256, 256, 3), (1024, 1024, 3)])
+def test_build_normalize_model(input_dims):
+    model = \
+        bfcnn.utilities.build_normalize_model(
+            input_dims=input_dims)
+    assert model is not None
+    assert isinstance(model, keras.Model)
+
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "input_dims", [(64, 64, 1), (256, 256, 1), (1024, 1024, 1),
+                   (64, 64, 3), (256, 256, 3), (1024, 1024, 3)])
+def test_build_denormalize_model(input_dims):
+    model = \
+        bfcnn.utilities.build_denormalize_model(
+            input_dims=input_dims)
+    assert model is not None
+    assert isinstance(model, keras.Model)
 
 # ---------------------------------------------------------------------

@@ -44,6 +44,7 @@
         "minimum_threshold": 0.000005,
         "shrinkage_threshold": 0.00001
       }
+    }
   },
   "loss": {
     "hinge": 2.5,

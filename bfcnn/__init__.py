@@ -19,8 +19,18 @@ from .pyramid import \
 
 # ---------------------------------------------------------------------
 
-pretrained_models = {}
 current_dir = pathlib.Path(__file__).parent.resolve()
+
+configs_dir = current_dir / "configs"
+
+configs = [
+    load_config(str(c))
+    for c in configs_dir.glob("*.json")
+]
+
+# ---------------------------------------------------------------------
+
+pretrained_models = {}
 pretrained_dir = os.path.join(str(current_dir), "pretrained")
 
 # --- populate pretrained_models
@@ -68,6 +78,7 @@ def load_model(model_path: str):
 
 
 __all__ = [
+    configs,
     train_loop,
     load_model,
     load_image,

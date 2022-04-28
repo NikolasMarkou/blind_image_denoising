@@ -66,19 +66,23 @@ def load_config(
     :param config: dict configuration or path to json configuration
     :return: dictionary configuration
     """
-    if config is None:
-        raise ValueError("config should not be empty")
-    if isinstance(config, Dict):
-        return config
-    if isinstance(config, str) or isinstance(config, Path):
-        if not os.path.isfile(str(config)):
-            return ValueError(
-                "configuration path [{0}] is not valid".format(
-                    str(config)
-                ))
-        with open(str(config), "r") as f:
-            return json.load(f)
-    raise ValueError("don't know how to handle config [{0}]".format(config))
+    try:
+        if config is None:
+            raise ValueError("config should not be empty")
+        if isinstance(config, Dict):
+            return config
+        if isinstance(config, str) or isinstance(config, Path):
+            if not os.path.isfile(str(config)):
+                return ValueError(
+                    "configuration path [{0}] is not valid".format(
+                        str(config)
+                    ))
+            with open(str(config), "r") as f:
+                return json.load(f)
+        raise ValueError("don't know how to handle config [{0}]".format(config))
+    except Exception as e:
+        logger.error(e)
+        raise ValueError(f"failed to load [{config}]")
 
 # ---------------------------------------------------------------------
 
