@@ -11,10 +11,10 @@ install:
 	python setup.py install
 
 clean:
+	rm -rf *egg-info
 	rm -rf build dist
 	rm -rf __pycache__
 	rm -rf .pytest_cache
-	rm -rf *egg-info
 
 test: clean
 	pytest -sv --show-capture all
