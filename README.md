@@ -135,13 +135,15 @@ denoised_tensor = denoiser_model(input_tensor)
 We have used traditional (bias free) architectures.
 * resnet
 * resnet with sparse constraint
-* resnet with on/off gates 
+* resnet with on/off per resnet block gates 
 * all the above models with multi-scale processing
 
 ### Additions
 #### Multi-Scale Laplacian Pyramid
 Our addition (not in the paper) is the laplacian multi-scale pyramid
 that expands the effective receptive field without the need to add many more layers (keeping it cheap computationally).
+![](images/readme/laplacian_model.png "Laplacian model")
+![](images/readme/laplacian_decomposition_lena.png "Laplacian Decomposition Lena")
 
 #### Multi-Scale Gaussian Pyramid
 Our addition (not in the paper) is the gaussian multi-scale pyramid
