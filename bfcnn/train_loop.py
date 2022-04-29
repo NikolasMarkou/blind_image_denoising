@@ -154,6 +154,7 @@ def train_loop(
         @tf.function
         def optimized_model(x_input):
             return model_denoise(x_input, training=False)
+
         x = \
             tf.random.truncated_normal(
                 seed=0,
@@ -252,11 +253,14 @@ def train_loop(
             # --- iterate over the batches of the dataset
             for input_batch in dataset:
                 start_time = time.time()
+
                 # augment data
-                input_batch, noisy_batch = augmentation_fn(input_batch)
+                noisy_batch = augmentation_fn(input_batch)
+
                 # normalize input and noisy batch
                 normalized_input_batch = normalize(input_batch)
                 normalized_noisy_batch = normalize(noisy_batch)
+
                 # split input image into pyramid levels
                 normalized_input_batch_decomposition = \
                     model_pyramid(

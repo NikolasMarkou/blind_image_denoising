@@ -150,7 +150,22 @@ def dataset_builder(
                 input_batch = max_value - (input_batch - min_value)
 
         # --- convert to float32
-        return tf.cast(input_batch, dtype=tf.dtypes.float32)
+        input_batch = tf.cast(input_batch, dtype=tf.dtypes.float32)
+
+        # --- clip values within boundaries
+        if clip_value:
+            input_batch = \
+                tf.clip_by_value(
+                    input_batch,
+                    clip_value_min=min_value,
+                    clip_value_max=max_value)
+
+        # --- round values to nearest integer
+        if round_values:
+            input_batch = tf.round(input_batch)
+
+        # --- convert to float32
+        return input_batch
 
     # --- define augmentation function
     def augmentation(input_batch):
@@ -247,11 +262,6 @@ def dataset_builder(
 
         # --- clip values within boundaries
         if clip_value:
-            input_batch = \
-                tf.clip_by_value(
-                    input_batch,
-                    clip_value_min=min_value,
-                    clip_value_max=max_value)
             noisy_batch = \
                 tf.clip_by_value(
                     noisy_batch,
@@ -260,14 +270,15 @@ def dataset_builder(
 
         # --- round values to nearest integer
         if round_values:
-            input_batch = tf.round(input_batch)
             noisy_batch = tf.round(noisy_batch)
 
-        return input_batch, noisy_batch
+        return noisy_batch
 
     # --- create the dataset
     return {
+        # augmentation function distorts the input batch and produces and noisy batch
         AUGMENTATION_FN_STR: augmentation,
+        # dataset produces the dataset with basic geometric distortions
         DATASET_FN_STR:
             dataset.map(
                 map_func=input_batch_augmentations,
