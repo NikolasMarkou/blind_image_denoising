@@ -23,6 +23,7 @@ from .utilities import random_choice
 
 DATASET_FN_STR = "dataset"
 AUGMENTATION_FN_STR = "augmentation"
+DATASET_TESTING_FN_STR = "dataset_testing"
 
 # ---------------------------------------------------------------------
 
@@ -36,6 +37,7 @@ def dataset_builder(
     # crop image from dataset
     input_shape = config["input_shape"]
     directory = config.get("directory", None)
+    directory_testing = config.get("directory_testing", directory)
     color_mode = config.get("color_mode", "rgb")
     # resolution of the files loaded (reshape)
     dataset_shape = config.get("dataset_shape", [256, 256])
@@ -85,7 +87,6 @@ def dataset_builder(
 
     # --- define generator function from directory
     if directory:
-        # interpolation must be nearest to be uint8
         dataset = \
             tf.keras.preprocessing.image_dataset_from_directory(
                 seed=0,
@@ -99,6 +100,37 @@ def dataset_builder(
 
     else:
         raise ValueError("don't know how to handle non directory datasets")
+
+    if directory_testing:
+        dataset_testing = \
+            tf.keras.preprocessing.image_dataset_from_directory(
+                seed=0,
+                shuffle=True,
+                label_mode=None,
+                batch_size=batch_size,
+                color_mode=color_mode,
+                image_size=dataset_shape,
+                interpolation="bilinear",
+                directory=directory_testing)
+
+    def input_batch_test_preparation(input_batch):
+        # --- convert to float32
+        input_batch = tf.cast(input_batch, dtype=tf.dtypes.float32)
+
+        # --- clip values within boundaries
+        if clip_value:
+            input_batch = \
+                tf.clip_by_value(
+                    input_batch,
+                    clip_value_min=min_value,
+                    clip_value_max=max_value)
+
+        # --- round values to nearest integer
+        if round_values:
+            input_batch = tf.round(input_batch)
+
+        # --- convert to float32
+        return input_batch
 
     def input_batch_augmentations(input_batch):
         input_shape_inference = tf.shape(input_batch)
@@ -275,14 +307,22 @@ def dataset_builder(
         return noisy_batch
 
     # --- create the dataset
-    return {
+    result = {
         # augmentation function distorts the input batch and produces and noisy batch
         AUGMENTATION_FN_STR: augmentation,
         # dataset produces the dataset with basic geometric distortions
         DATASET_FN_STR:
             dataset.map(
                 map_func=input_batch_augmentations,
-                num_parallel_calls=tf.data.AUTOTUNE).prefetch(tf.data.AUTOTUNE)
+                num_parallel_calls=tf.data.AUTOTUNE).prefetch(tf.data.AUTOTUNE),
     }
+
+    if dataset_testing is not None:
+        result[DATASET_TESTING_FN_STR] = \
+            dataset_testing.map(
+                map_func=input_batch_test_preparation,
+                num_parallel_calls=tf.data.AUTOTUNE).prefetch(tf.data.AUTOTUNE),
+
+    return result
 
 # ---------------------------------------------------------------------

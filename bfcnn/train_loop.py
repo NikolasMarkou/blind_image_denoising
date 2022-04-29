@@ -22,11 +22,15 @@ from .constants import *
 from .visualize import visualize
 from .custom_logger import logger
 from .utilities import load_config
-from .dataset import dataset_builder
 from .loss import loss_function_builder
 from .optimizer import optimizer_builder
 from .model_denoise import model_builder as model_denoise_builder
 from .pruning import prune_function_builder, PruneStrategy, get_conv2d_weights
+from .dataset import \
+    dataset_builder, \
+    DATASET_TESTING_FN_STR, \
+    DATASET_FN_STR, \
+    AUGMENTATION_FN_STR
 
 
 # ---------------------------------------------------------------------
@@ -66,8 +70,9 @@ def train_loop(
 
     # --- build dataset
     dataset_res = dataset_builder(config=config["dataset"])
-    dataset = dataset_res["dataset"]
-    augmentation_fn = tf.function(dataset_res["augmentation"])
+    dataset = dataset_res[DATASET_FN_STR]
+    dataset_testing = dataset_res[DATASET_TESTING_FN_STR]
+    augmentation_fn = tf.function(dataset_res[AUGMENTATION_FN_STR])
 
     # --- build loss function
     loss_fn = tf.function(loss_function_builder(config=config["loss"]))
@@ -219,6 +224,19 @@ def train_loop(
                 x_random,
                 training=False)
 
+    # --- create test image
+    dataset_test_iterator = iter(dataset_testing)
+    dataset_test_batch = next(dataset_test_iterator)
+    dataset_test_batch = augmentation_fn(dataset_test_batch)
+
+    @tf.function
+    def create_test_batch():
+        x_test_batch = tf.identity(dataset_test_batch)
+        x_test_batch = model_normalize(x_test_batch, training=False)
+        x_test_batch = model_denoise(x_test_batch, training=False)
+        x_test_batch = model_denormalize(x_test_batch, training=False)
+        return x_test_batch
+
     # --- train the model
     with summary_writer.as_default():
         checkpoint = \
@@ -328,14 +346,17 @@ def train_loop(
 
                 # --- add image prediction for tensorboard
                 if global_step % visualization_every == 0:
+                    test_batch = create_test_batch()
                     random_batch = create_random_batch()
                     visualize(
                         global_step=global_step,
                         input_batch=input_batch,
                         noisy_batch=noisy_batch,
                         random_batch=random_batch,
+                        test_batch=test_batch,
                         prediction_batch=denormalized_denoised_batch,
                         visualization_number=visualization_number)
+                    # add weight visualization
                     weights = \
                         get_conv2d_weights(
                             model=model_denoise)
