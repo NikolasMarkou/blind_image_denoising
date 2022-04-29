@@ -1,50 +1,25 @@
 {
   "model_denoise": {
     "filters": 16,
-    "no_layers": 10,
+    "no_layers": 5,
     "min_value": 0,
     "add_var": false,
     "max_value": 255,
     "kernel_size": 5,
-    "type": "gatenet",
+    "type": "resnet",
     "batchnorm": true,
     "activation": "elu",
-    "dropout_rate": -1,
     "clip_values": false,
-    "shared_model": true,
-    "stop_gradient": false,
+    "shared_model": false,
     "output_multiplier": 1.0,
     "local_normalization": -1,
     "kernel_regularizer": "l1",
     "final_activation": "tanh",
+    "add_concat_input": true,
     "add_skip_with_input": true,
+    "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
-    "add_residual_between_models": true,
-    "kernel_initializer": "glorot_normal",
-    "noise_estimation_mixer": {
-      "input_shape": ["?", "?", 3],
-      "filters": 16,
-      "no_layers": 3,
-      "kernel_size": 5,
-      "type": "resnet",
-      "batchnorm": true,
-      "activation": "elu",
-      "final_activation": "elu",
-      "kernel_regularizer": "l1",
-      "kernel_initializer": "glorot_normal"
-    },
-    "pyramid": {
-      "levels": 4,
-      "type": "gaussian",
-      "xy_max": [1.0, 1.0],
-      "kernel_size": [5, 5]
-    },
-    "inverse_pyramid": {
-      "levels": 4,
-      "type": "gaussian",
-      "xy_max": [1.0, 1.0],
-      "kernel_size": [5, 5]
-    }
+    "kernel_initializer": "glorot_normal"
   },
   "train": {
     "epochs": 100,
@@ -54,7 +29,7 @@
     "visualization_number": 4,
     "visualization_every": 100,
     "random_batch_iterations": 10,
-    "random_batch_size": [128, 128, 3],
+    "random_batch_size": [256, 256, 3],
     "random_batch_min_difference": 0.1,
     "optimizer": {
       "decay_rate": 0.9,
@@ -63,11 +38,12 @@
       "gradient_clipping_by_norm": 1.0
     },
     "prune": {
-      "start_epoch": 1,
-      "shrinkage": 0.75,
-      "minimum_threshold": 0.000005,
-      "shrinkage_threshold": 0.00001,
-      "strategy": "minimum_threshold_shrinkage"
+      "start_epoch": 0,
+      "strategy": "pca_projection",
+      "config": {
+        "variance": 0.95,
+        "minimum_threshold": 0.000001
+      }
     }
   },
   "loss": {

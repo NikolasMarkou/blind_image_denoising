@@ -1,18 +1,20 @@
 init:
 	pip install -r requirements.txt
 
-build:
-	python setup.py build
-	python setup.py sdist bdist_wheel
+build: clean
+	python3 setup.py build
+
+wheel: clean
+	python3 setup.py bdist_wheel
 
 install:
 	python setup.py install
 
-test:
-	pytest -sv
-
 clean:
+	rm -rf *egg-info
 	rm -rf build dist
 	rm -rf __pycache__
 	rm -rf .pytest_cache
-	rm -rf bfcnn.egg-info
+
+test: clean
+	pytest -sv --show-capture all

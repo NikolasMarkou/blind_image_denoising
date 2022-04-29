@@ -53,6 +53,7 @@ def model_builder(
     activation = config.get("activation", "relu")
     clip_values = config.get("clip_values", False)
     shared_model = config.get("shared_model", False)
+    add_concat_input = config.get("add_concat_input", False)
     input_shape = config.get("input_shape", (None, None, 3))
     output_multiplier = config.get("output_multiplier", 1.0)
     local_normalization = config.get("local_normalization", -1)
@@ -63,14 +64,15 @@ def model_builder(
     add_intermediate_results = config.get("intermediate_results", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     add_learnable_multiplier = config.get("add_learnable_multiplier", False)
-    add_residual_between_models = config.get("add_residual_between_models", False)
     noise_estimation_mixer_config = config.get("noise_estimation_mixer", None)
+    add_residual_between_models = config.get("add_residual_between_models", False)
 
+    use_pyramid = pyramid_config is not None
+    use_inverse_pyramid = inverse_pyramid_config is not None
     use_local_normalization = local_normalization > 0
     use_global_normalization = local_normalization == 0
     use_normalization = use_local_normalization or use_global_normalization
     use_noise_estimation_mixer = noise_estimation_mixer_config is not None
-
     local_normalization_kernel = [local_normalization, local_normalization]
     input_shape = input_shape_fixer(input_shape)
 
@@ -107,12 +109,13 @@ def model_builder(
         input_dims=input_shape,
         kernel_size=kernel_size,
         dropout_rate=dropout_rate,
+        add_concat_input=add_concat_input,
         final_activation=final_activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
         add_skip_with_input=add_skip_with_input,
         add_intermediate_results=add_intermediate_results,
-        add_learnable_multiplier=add_learnable_multiplier
+        add_learnable_multiplier=add_learnable_multiplier,
     )
 
     if model_type == "resnet":
@@ -134,6 +137,26 @@ def model_builder(
         y, mean_y, sigma_y = args
         return (y * sigma_y) + mean_y
 
+    # build pyramid
+    if use_pyramid:
+        logger.info(f"building pyramid: [{pyramid_config}]")
+        model_pyramid = \
+            build_pyramid_model(
+                input_dims=input_shape,
+                config=pyramid_config)
+    else:
+        model_pyramid = None
+
+    # build inverse pyramid
+    if use_inverse_pyramid:
+        logger.info(f"building inverse pyramid: [{inverse_pyramid_config}]")
+        model_inverse_pyramid = \
+            build_inverse_pyramid_model(
+                input_dims=input_shape,
+                config=inverse_pyramid_config)
+    else:
+        model_inverse_pyramid = None
+
     # --- connect the parts of the model
     # setup input
     input_layer = \
@@ -142,18 +165,6 @@ def model_builder(
             name="input_tensor")
     x = input_layer
 
-    # build pyramid
-    logger.info("building model with multiscale pyramid")
-
-    model_pyramid = \
-        build_pyramid_model(
-            input_dims=input_shape,
-            config=pyramid_config)
-    # build inverse pyramid
-    model_inverse_pyramid = \
-        build_inverse_pyramid_model(
-            input_dims=input_shape,
-            config=inverse_pyramid_config)
     # define normalization/denormalization layers
     local_normalization_layer = \
         keras.layers.Lambda(
@@ -177,7 +188,10 @@ def model_builder(
             trainable=False)
 
     # --- run inference
-    x_levels = model_pyramid(x)
+    if use_pyramid:
+        x_levels = model_pyramid(x)
+    else:
+        x_levels = [x]
 
     means = []
     sigmas = []
@@ -206,7 +220,10 @@ def model_builder(
             sigmas.append(sigma)
             x_levels[i] = x_level
 
-    logger.info("pyramid produces [{0}] levels".format(len(x_levels)))
+    if use_pyramid:
+        logger.info("pyramid produces [{0}] scales".format(len(x_levels)))
+    else:
+        logger.info("model produces [{0}] scale".format(len(x_levels)))
 
     # --- shared or separate models
     if shared_model:
@@ -306,9 +323,19 @@ def model_builder(
                     clip_value_min=-0.5,
                     clip_value_max=+0.5)
 
+    # --- keep model before merging (this is for better training)
+    model_denoise_decomposition = \
+        keras.Model(
+            inputs=input_layer,
+            outputs=x_levels,
+            name=f"{model_type}_denoiser_decomposition")
+
     # --- merge levels together
-    x_result = \
-        model_inverse_pyramid(x_levels)
+    if use_inverse_pyramid:
+        x_result = \
+            model_inverse_pyramid(x_levels)
+    else:
+        x_result = x_levels[0]
 
     # name output
     output_layer = \
@@ -334,6 +361,7 @@ def model_builder(
 
     return \
         model_denoise, \
+        model_denoise_decomposition, \
         model_normalize, \
         model_denormalize, \
         model_pyramid, \

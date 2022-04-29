@@ -132,12 +132,18 @@ def train_loop(
             prune_config.get("start_epoch", 0),
             dtype=tf.dtypes.int64,
             name="prune_start_epoch")
+    prune_steps = \
+        tf.constant(
+            prune_config.get("steps", -1),
+            dtype=tf.dtypes.int64,
+            name="prune_steps")
     prune_function = prune_function_builder(prune_config)
 
     # --- build the denoise model
     tf.summary.trace_on(graph=True, profiler=False)
     with summary_writer.as_default():
         model_denoise, \
+        model_denoise_decomposition, \
         model_normalize, \
         model_denormalize, \
         model_pyramid, \
@@ -221,7 +227,8 @@ def train_loop(
                 optimizer=optimizer,
                 model_denoise=model_denoise,
                 model_normalize=model_normalize,
-                model_denormalize=model_denormalize)
+                model_denormalize=model_denormalize,
+                model_denoise_decomposition=model_denoise_decomposition)
         manager = \
             tf.train.CheckpointManager(
                 checkpoint=checkpoint,
@@ -236,20 +243,25 @@ def train_loop(
 
             # --- pruning strategy
             if use_prune and global_epoch >= prune_start_epoch:
-                logger.info("pruning weights")
-                model_denoise = \
-                    prune_function(model=model_denoise)
+                logger.info(f"pruning weights at step [{int(global_step)}]")
+                model_denoise_decomposition = \
+                    prune_function(model=model_denoise_decomposition)
 
-            model_denoise_weights = model_denoise.trainable_weights
+            model_denoise_weights = model_denoise_decomposition.trainable_weights
 
             # --- iterate over the batches of the dataset
             for input_batch in dataset:
                 start_time = time.time()
                 # augment data
                 input_batch, noisy_batch = augmentation_fn(input_batch)
-                # normalize noisy batch
+                # normalize input and noisy batch
+                normalized_input_batch = normalize(input_batch)
                 normalized_noisy_batch = normalize(noisy_batch)
-
+                # split input image into pyramid levels
+                normalized_input_batch_decomposition = \
+                    model_pyramid(
+                        normalized_input_batch,
+                        training=False)
                 # Open a GradientTape to record the operations run
                 # during the forward pass,
                 # which enables auto-differentiation.
@@ -258,19 +270,26 @@ def train_loop(
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
-                    denoised_batch = \
-                        model_denoise(
+                    denoised_batch_decomposition = \
+                        model_denoise_decomposition(
                             normalized_noisy_batch,
                             training=True)
+                    denoised_batch = \
+                        model_inverse_pyramid(
+                            denoised_batch_decomposition)
                     denormalized_denoised_batch = \
                         denormalize(denoised_batch)
 
                     # compute the loss value for this mini-batch
-                    loss_map = loss_fn(
-                        input_batch=input_batch,
-                        noisy_batch=noisy_batch,
-                        model_losses=model_denoise.losses,
-                        prediction_batch=denormalized_denoised_batch)
+                    loss_map = \
+                        loss_fn(
+                            input_batch=input_batch,
+                            noisy_batch=noisy_batch,
+                            model_losses=model_denoise.losses,
+                            prediction_batch=denormalized_denoised_batch,
+                            input_batch_decomposition=normalized_input_batch_decomposition,
+                            prediction_batch_decomposition=denoised_batch_decomposition
+                        )
 
                     # use the gradient tape to automatically retrieve
                     # the gradients of the trainable variables
@@ -290,9 +309,10 @@ def train_loop(
                     ("loss/mae", MAE_LOSS_STR),
                     ("loss/total", MEAN_TOTAL_LOSS_STR),
                     ("loss/nae", NAE_PREDICTION_LOSS_STR),
+                    ("loss/regularization", REGULARIZATION_LOSS_STR),
+                    ("loss/mae_decomposition", MAE_DECOMPOSITION_LOSS_STR),
                     ("quality/nae_noise", "nae_noise"),
                     ("quality/signal_to_noise_ratio", "snr"),
-                    ("loss/regularization", REGULARIZATION_LOSS_STR),
                     ("quality/nae_improvement", NAE_IMPROVEMENT_QUALITY_STR)
                 ]:
                     if key not in loss_map:
@@ -314,13 +334,18 @@ def train_loop(
                         visualization_number=visualization_number)
                     weights = \
                         get_conv2d_weights(
-                            model=model_denoise,
-                            verbose=False)
+                            model=model_denoise)
                     tf.summary.histogram(
                         data=weights,
                         step=global_step,
                         buckets=weight_buckets,
                         name="training/weights")
+
+                if use_prune and global_epoch >= prune_start_epoch and \
+                        int(prune_steps) != -1 and global_step % prune_steps == 0:
+                    logger.info(f"pruning weights at step [{int(global_step)}]")
+                    model_denoise = \
+                        prune_function(model=model_denoise)
 
                 # --- check if it is time to save a checkpoint
                 if checkpoint_every > 0:

@@ -21,6 +21,11 @@ from .utilities import random_choice
 
 # ---------------------------------------------------------------------
 
+DATASET_FN_STR = "dataset"
+AUGMENTATION_FN_STR = "augmentation"
+
+# ---------------------------------------------------------------------
+
 
 def dataset_builder(
         config: Dict):
@@ -53,7 +58,6 @@ def dataset_builder(
     random_left_right = tf.constant(config.get("random_left_right", False))
     additional_noise = config.get("additional_noise", [])
     multiplicative_noise = config.get("multiplicative_noise", [])
-    interpolation = config.get("interpolation", "nearest")
     # whether to crop or not
     random_crop = dataset_shape[0:2] != input_shape[0:2]
     random_crop = tf.constant(random_crop)
@@ -64,20 +68,23 @@ def dataset_builder(
         noise_choices.append(0)
     else:
         additional_noise = [1.0]
+
     if len(multiplicative_noise) > 0:
         noise_choices.append(1)
     else:
         multiplicative_noise = [1.0]
+
     if subsample_size > 0:
         noise_choices.append(2)
     else:
         subsample_size = 2
+
     noise_choices = tf.constant(noise_choices)
     additional_noise = tf.constant(additional_noise, dtype=tf.float32)
     multiplicative_noise = tf.constant(multiplicative_noise, dtype=tf.float32)
 
     # --- define generator function from directory
-    if directory is not None:
+    if directory:
         # interpolation must be nearest to be uint8
         dataset = \
             tf.keras.preprocessing.image_dataset_from_directory(
@@ -260,11 +267,11 @@ def dataset_builder(
 
     # --- create the dataset
     return {
-        "dataset":
+        AUGMENTATION_FN_STR: augmentation,
+        DATASET_FN_STR:
             dataset.map(
                 map_func=input_batch_augmentations,
-                num_parallel_calls=tf.data.AUTOTUNE).prefetch(tf.data.AUTOTUNE),
-        "augmentation": augmentation
+                num_parallel_calls=tf.data.AUTOTUNE).prefetch(tf.data.AUTOTUNE)
     }
 
 # ---------------------------------------------------------------------
