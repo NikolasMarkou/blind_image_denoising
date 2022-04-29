@@ -226,11 +226,11 @@ def train_loop(
 
     # --- create test image
     dataset_test_iterator = iter(dataset_testing)
-    dataset_test_batch = next(dataset_test_iterator)
-    dataset_test_batch = augmentation_fn(dataset_test_batch)
 
     @tf.function
     def create_test_batch():
+        dataset_test_batch = next(dataset_test_iterator)
+        dataset_test_batch = augmentation_fn(dataset_test_batch)
         x_test_batch = tf.identity(dataset_test_batch)
         x_test_batch = model_normalize(x_test_batch, training=False)
         x_test_batch = model_denoise(x_test_batch, training=False)
