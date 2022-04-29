@@ -268,9 +268,8 @@ def model_builder(
                             x0_input_layer=tmp_level,
                             x1_input_layer=x_level)
                     tmp_level = \
-                        keras.layers.Add(
-                            name="level_{0}_to_{1}".format(i+1, i))(
-                            [tmp_level, x_level]) * 0.5
+                        keras.layers.Layer(
+                            name="level_{0}_to_{1}".format(i+1, i))(tmp_level)
                 else:
                     # basic mixer
                     tmp_level = \
