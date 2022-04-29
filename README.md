@@ -25,6 +25,9 @@ The target is to create a series of:
  
 models that performs denoising on an input (grayscale or colored) image. 
 
+The bias-free nature of the model allows for easy interpretation and use as prior
+for hard inverse problems.
+
 ## Interpretation 
 Interpretation comes naturally by implementing the CVPR 2020 paper : 
 
