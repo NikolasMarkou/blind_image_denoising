@@ -71,7 +71,6 @@ def train_loop(
     # --- build dataset
     dataset_res = dataset_builder(config=config["dataset"])
     dataset = dataset_res[DATASET_FN_STR]
-    dataset_testing = dataset_res[DATASET_TESTING_FN_STR]
     augmentation_fn = tf.function(dataset_res[AUGMENTATION_FN_STR])
 
     # --- build loss function
@@ -224,13 +223,9 @@ def train_loop(
                 x_random,
                 training=False)
 
-    # --- create test image
-    dataset_test_iterator = iter(dataset_testing)
-
     @tf.function
-    def create_test_batch():
-        dataset_test_batch = next(dataset_test_iterator)
-        x_test_batch = augmentation_fn(dataset_test_batch)
+    def create_test_batch(batch):
+        x_test_batch = augmentation_fn(batch)
         x_test_batch = model_normalize(x_test_batch, training=False)
         x_test_batch = model_denoise(x_test_batch, training=False)
         x_test_batch = model_denormalize(x_test_batch, training=False)
@@ -266,6 +261,7 @@ def train_loop(
                     prune_function(model=model_denoise_decomposition)
 
             model_denoise_weights = model_denoise_decomposition.trainable_weights
+            test_batch = None
 
             # --- iterate over the batches of the dataset
             for input_batch in dataset:
@@ -345,14 +341,12 @@ def train_loop(
 
                 # --- add image prediction for tensorboard
                 if global_step % visualization_every == 0:
-                    test_batch = create_test_batch()
                     random_batch = create_random_batch()
                     visualize(
                         global_step=global_step,
                         input_batch=input_batch,
                         noisy_batch=noisy_batch,
                         random_batch=random_batch,
-                        test_batch=test_batch,
                         prediction_batch=denormalized_denoised_batch,
                         visualization_number=visualization_number)
                     # add weight visualization

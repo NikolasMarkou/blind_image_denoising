@@ -112,6 +112,8 @@ def dataset_builder(
                 image_size=dataset_shape,
                 interpolation="bilinear",
                 directory=directory_testing)
+    else:
+        dataset_testing = None
 
     def input_batch_test_preparation(input_batch):
         # --- convert to float32
