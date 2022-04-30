@@ -25,8 +25,11 @@ from .custom_logger import logger
 
 
 class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
-    def __init__(self, lambda_coefficient: float = 1.0):
+    def __init__(self,
+                 lambda_coefficient: float = 1.0,
+                 l1_coefficient: float = 0.01):
         self._lambda_coefficient = lambda_coefficient
+        self._l1_coefficient = l1_coefficient
 
     def __call__(self, x):
         # --- argument checking
@@ -58,10 +61,12 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
         # frobenius norm
         return \
             self._lambda_coefficient * \
-            np.linalg.cond(wt_w - np.identity(wt_w.shape[0]), "fro")
+            np.linalg.cond(wt_w - np.identity(wt_w.shape[0]), "fro") + \
+            self._l1_coefficient * np.sum(wt_w, axis=None, keepdims=False)
 
     def get_config(self):
         return {
+            "l1_coefficient": self._l1_coefficient,
             "lambda_coefficient": self._lambda_coefficient
         }
 
