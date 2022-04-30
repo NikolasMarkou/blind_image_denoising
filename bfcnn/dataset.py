@@ -60,6 +60,8 @@ def dataset_builder(
     random_left_right = tf.constant(config.get("random_left_right", False))
     additional_noise = config.get("additional_noise", [])
     multiplicative_noise = config.get("multiplicative_noise", [])
+    # quantization value, -1 disabled, otherwise 2, 4, 8
+    quantization = tf.constant(config.get("quantization", -1))
     # whether to crop or not
     random_crop = dataset_shape[0:2] != input_shape[0:2]
     random_crop = tf.constant(random_crop)
@@ -80,6 +82,11 @@ def dataset_builder(
         noise_choices.append(2)
     else:
         subsample_size = 2
+
+    if quantization > 1:
+        noise_choices.append(3)
+    else:
+        quantization = 1
 
     noise_choices = tf.constant(noise_choices)
     additional_noise = tf.constant(additional_noise, dtype=tf.float32)
@@ -287,6 +294,11 @@ def dataset_builder(
             noisy_batch = \
                 keras.layers.UpSampling2D(
                     size=stride)(noisy_batch)
+        elif noise_type == 3:
+            # quantize values
+            noisy_batch = tf.round(noisy_batch / quantization)
+            noisy_batch = noisy_batch * quantization
+            noisy_batch = tf.round(noisy_batch)
         else:
             logger.info(
                 "don't know how to handle noise_type [{0}]".format(
