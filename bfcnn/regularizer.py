@@ -14,7 +14,7 @@ import numpy as np
 from enum import Enum
 import tensorflow as tf
 from tensorflow import keras
-from typing import Dict, Tuple, Union, List
+from typing import Dict, Tuple, Union, List, Any
 
 # ---------------------------------------------------------------------
 
@@ -51,6 +51,32 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
         return {
             "lambda_coefficient": self._lambda_coefficient
         }
+
+# ---------------------------------------------------------------------
+
+
+def builder(config: Dict) -> Any:
+    """
+    build a regularizing function
+
+    :param config:
+    :return:
+    """
+    if config is None:
+        return None
+    regularizer_type = config.get("type", None).lower()
+    regularizer_parameters = config.get("parameters", {})
+    if regularizer_type is None:
+        return None
+    if regularizer_type == "l1":
+        return keras.regularizers.L1(**regularizer_parameters)
+    if regularizer_type == "l2":
+        return keras.regularizers.L2(**regularizer_parameters)
+    if regularizer_type == "l1l2":
+        return keras.regularizers.L1L2(**regularizer_parameters)
+    if regularizer_type == "soft_orthogonal":
+        return SoftOrthogonalConstraintRegularizer(**regularizer_parameters)
+    raise ValueError(f"don't know how to handle [{regularizer_type}]")
 
 # ---------------------------------------------------------------------
 
