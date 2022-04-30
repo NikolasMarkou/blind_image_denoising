@@ -41,28 +41,22 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
             x_reshaped = x
         elif len(x.shape) == 4:
             # reshape x which is 4d to 2d
-            x_transpose = np.transpose(x, axes=(3, 0, 1, 2))
-            x_transpose_shape = x_transpose.shape
-            x_reshaped = \
-                np.reshape(
-                    x_transpose,
-                    newshape=(
-                        x_transpose_shape[0],
-                        np.prod(x_transpose_shape[1:])))
+            x_transpose = tf.transpose(x, axes=(3, 0, 1, 2))
+            x_reshaped = tf.reshape(x_transpose, shape=(tf.shape(x_transpose)[0], -1))
         else:
             logger.info(f"don't know how to handle shape [{x.shape}]")
             return 0.0
 
         # compute (Wt * W) - I
         wt_w = \
-            np.matmul(
-                np.transpose(x_reshaped, axes=(1, 0)),
+            tf.linalg.matmul(
+                tf.transpose(x_reshaped, axes=(1, 0)),
                 x_reshaped)
         # frobenius norm
         return \
             self._lambda_coefficient * \
-            np.linalg.cond(wt_w - np.identity(wt_w.shape[0]), "fro") + \
-            self._l1_coefficient * np.sum(wt_w, axis=None, keepdims=False)
+            tf.norm(wt_w - tf.eye(tf.shape(wt_w)), ord="fro", axis=(0, 1), keepdims=False) + \
+            self._l1_coefficient * tf.reduce_sum(tf.abs(wt_w), axis=None, keepdims=False)
 
     def get_config(self):
         return {
