@@ -22,6 +22,7 @@ from .pyramid import \
 from .model_noise_estimation import \
     model_builder as model_noise_estimation_builder, \
     noise_estimation_mixer
+from .regularizer import builder as regularizer_builder
 
 # ---------------------------------------------------------------------
 
@@ -87,6 +88,9 @@ def model_builder(
         raise ValueError("filters must be > 0")
     if kernel_size <= 0:
         raise ValueError("kernel_size must be > 0")
+
+    kernel_regularizer = \
+        regularizer_builder(kernel_regularizer)
 
     # --- build normalize denormalize models
     model_normalize = \
