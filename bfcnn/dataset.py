@@ -203,10 +203,9 @@ def dataset_builder(
 
     # --- define augmentation function
     def augmentation(input_batch):
-        input_shape_inference = tf.shape(input_batch)
-
-        # --- convert to float32
-        input_batch = tf.cast(input_batch, dtype=tf.dtypes.float32)
+        # --- copy input batch
+        noisy_batch = tf.identity(input_batch)
+        input_shape_inference = tf.shape(noisy_batch)
 
         # --- random select noise type
         noise_type = random_choice(noise_choices, size=1)[0]
@@ -217,7 +216,7 @@ def dataset_builder(
             if tf.random.uniform(()) > 0.5:
                 # channel independent noise
                 noisy_batch = \
-                    input_batch + \
+                    noisy_batch + \
                     tf.random.truncated_normal(
                         seed=0,
                         mean=0,
@@ -239,14 +238,14 @@ def dataset_builder(
                         tmp_noisy_batch,
                         axis=3,
                         repeats=[input_shape_inference[3]])
-                noisy_batch = input_batch + tmp_noisy_batch
+                noisy_batch = noisy_batch + tmp_noisy_batch
         elif noise_type == 1:
             # multiplicative noise
             noise_std = random_choice(multiplicative_noise, size=1)[0]
             if tf.random.uniform(()) > 0.5:
                 # channel independent noise
                 noisy_batch = \
-                    input_batch * \
+                    noisy_batch * \
                     tf.random.truncated_normal(
                         seed=0,
                         mean=1,
@@ -268,7 +267,7 @@ def dataset_builder(
                         tmp_noisy_batch,
                         axis=3,
                         repeats=[input_shape_inference[3]])
-                noisy_batch = input_batch * tmp_noisy_batch
+                noisy_batch = noisy_batch * tmp_noisy_batch
 
             # blur to embed noise
             if random_blur:
@@ -284,7 +283,7 @@ def dataset_builder(
             noisy_batch = \
                 keras.layers.MaxPool2D(
                     pool_size=(1, 1),
-                    strides=stride)(input_batch)
+                    strides=stride)(noisy_batch)
             noisy_batch = \
                 keras.layers.UpSampling2D(
                     size=stride)(noisy_batch)
@@ -292,7 +291,6 @@ def dataset_builder(
             logger.info(
                 "don't know how to handle noise_type [{0}]".format(
                     noise_type))
-            noisy_batch = tf.identity(input_batch)
 
         # --- clip values within boundaries
         if clip_value:
