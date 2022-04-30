@@ -41,7 +41,7 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
             x_reshaped = x
         elif len(x.shape) == 4:
             # reshape x which is 4d to 2d
-            x_transpose = tf.transpose(x, axes=(3, 0, 1, 2))
+            x_transpose = tf.transpose(x, perm=(3, 0, 1, 2))
             x_reshaped = tf.reshape(x_transpose, shape=(tf.shape(x_transpose)[0], -1))
         else:
             logger.info(f"don't know how to handle shape [{x.shape}]")
@@ -50,7 +50,7 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
         # compute (Wt * W) - I
         wt_w = \
             tf.linalg.matmul(
-                tf.transpose(x_reshaped, axes=(1, 0)),
+                tf.transpose(x_reshaped, perm=(1, 0)),
                 x_reshaped)
         # frobenius norm
         return \
