@@ -40,7 +40,9 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
                     np.prod(x_transpose_shape[1:])))
         # compute Wt * W - I
         Wt_W = \
-            np.transpose(x_reshaped, axes=(1, 0)) * x_reshaped
+            np.matmul(
+                np.transpose(x_reshaped, axes=(1, 0)),
+                x_reshaped)
         I = np.identity(Wt_W.shape[0])
         # frobenius norm
         return self._lambda_coefficient * np.linalg.cond(Wt_W - I, "fro")
