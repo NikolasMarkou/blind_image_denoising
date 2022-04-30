@@ -33,8 +33,12 @@ def model_builder(
     Reads a configuration and returns 5 models,
 
     :param config: configuration dictionary
-    :return: denoiser model, normalize model,
-            denormalize model, pyramid model, inverse pyramid model
+    :return:
+        denoiser model,
+        normalize model,
+        denormalize model,
+        pyramid model,
+        inverse pyramid model
     """
     logger.info("building model with config [{0}]".format(config))
 
