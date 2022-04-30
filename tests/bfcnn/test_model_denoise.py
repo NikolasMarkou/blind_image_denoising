@@ -23,7 +23,10 @@ import bfcnn
 def test_model_builder(config):
     models = bfcnn.model_builder(config=config["model_denoise"])
 
-    for m in models:
-        assert isinstance(m, keras.Model)
-
+    # denoise
+    assert isinstance(models[0], keras.Model)
+    # normalize
+    assert isinstance(models[1], keras.Model)
+    # denormalize
+    assert isinstance(models[2], keras.Model)
 # ---------------------------------------------------------------------

@@ -20,6 +20,7 @@ from typing import Dict, Tuple, Union, List, Any
 
 from .custom_logger import logger
 
+
 # ---------------------------------------------------------------------
 
 
@@ -64,22 +65,31 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
             "lambda_coefficient": self._lambda_coefficient
         }
 
+
 # ---------------------------------------------------------------------
 
 
-def builder(config: Dict) -> Any:
+def builder(
+        config: Union[str, Dict]) -> Any:
     """
     build a regularizing function
 
     :param config:
     :return:
     """
+    # --- argument checking
     if config is None:
-        return None
-    regularizer_type = config.get("type", None).lower()
-    regularizer_parameters = config.get("parameters", {})
-    if regularizer_type is None:
-        return None
+        raise ValueError("config cannot be None")
+
+    # --- prepare variables
+    if isinstance(config, str):
+        regularizer_type = config.lower()
+        regularizer_parameters = {}
+    else:
+        regularizer_type = config.get("type", None).lower()
+        regularizer_parameters = config.get("parameters", {})
+
+    # --- select correct regularizer
     if regularizer_type == "l1":
         return keras.regularizers.L1(**regularizer_parameters)
     if regularizer_type == "l2":
@@ -91,4 +101,3 @@ def builder(config: Dict) -> Any:
     raise ValueError(f"don't know how to handle [{regularizer_type}]")
 
 # ---------------------------------------------------------------------
-
