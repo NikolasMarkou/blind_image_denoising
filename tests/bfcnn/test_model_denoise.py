@@ -21,10 +21,9 @@ import bfcnn
 @pytest.mark.parametrize(
     "config", bfcnn.configs)
 def test_model_builder(config):
-    models = bfcnn.model_builder(config=config)
+    models = bfcnn.model_builder(config=config["model_denoise"])
 
     for m in models:
         assert isinstance(m, keras.Model)
-    assert isinstance(model_normalize, keras.Model)
 
 # ---------------------------------------------------------------------
