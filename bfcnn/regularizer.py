@@ -34,9 +34,9 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
             raise ValueError("input cannot be empty")
 
         # reshape to 2d matrix
-        if x.shape == 2:
+        if len(x.shape) == 2:
             x_reshaped = x
-        elif x.shape == 4:
+        elif len(x.shape) == 4:
             # reshape x which is 4d to 2d
             x_transpose = np.transpose(x, axes=(3, 0, 1, 2))
             x_transpose_shape = x_transpose.shape
