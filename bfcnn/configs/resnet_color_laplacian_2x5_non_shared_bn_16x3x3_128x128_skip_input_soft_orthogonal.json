@@ -16,8 +16,8 @@
     "kernel_regularizer": {
       "type": "soft_orthogonal",
       "parameters": {
-        "l1_coefficient": 0.01,
-        "lambda_coefficient": 0.1
+        "l1_coefficient": 0.001,
+        "lambda_coefficient": 0.9
       }
     },
     "final_activation": "tanh",
