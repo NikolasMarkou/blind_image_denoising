@@ -23,6 +23,24 @@ from .custom_logger import logger
 
 # ---------------------------------------------------------------------
 
+def reshape_to_2d(x):
+    # --- argument checking
+    if x is None:
+        raise ValueError("input cannot be empty")
+
+    # --- reshape to 2d matrix
+    if len(x.shape) == 2:
+        x_reshaped = x
+    elif len(x.shape) == 4:
+        # reshape x which is 4d to 2d
+        x_transpose = tf.transpose(x, perm=(3, 0, 1, 2))
+        x_reshaped = tf.reshape(x_transpose, shape=(tf.shape(x_transpose)[0], -1))
+    else:
+        raise ValueError(f"don't know how to handle shape [{x.shape}]")
+    return x_reshaped
+
+# ---------------------------------------------------------------------
+
 
 class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
     def __init__(self,
@@ -32,31 +50,23 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
         self._l1_coefficient = l1_coefficient
 
     def __call__(self, x):
-        # --- argument checking
-        if x is None:
-            raise ValueError("input cannot be empty")
-
-        # reshape to 2d matrix
-        if len(x.shape) == 2:
-            x_reshaped = x
-        elif len(x.shape) == 4:
-            # reshape x which is 4d to 2d
-            x_transpose = tf.transpose(x, perm=(3, 0, 1, 2))
-            x_reshaped = tf.reshape(x_transpose, shape=(tf.shape(x_transpose)[0], -1))
-        else:
-            logger.info(f"don't know how to handle shape [{x.shape}]")
-            return 0.0
-
+        # reshape
+        x = reshape_to_2d(x)
         # compute (Wt * W) - I
         wt_w = \
             tf.linalg.matmul(
-                tf.transpose(x_reshaped, perm=(1, 0)),
-                x_reshaped)
+                tf.transpose(x, perm=(1, 0)),
+                x)
         # frobenius norm
         return \
             self._lambda_coefficient * \
-            tf.square(tf.norm(wt_w - tf.eye(tf.shape(wt_w)[0]), ord="fro", axis=(0, 1), keepdims=False)) + \
-            self._l1_coefficient * tf.reduce_sum(tf.abs(wt_w), axis=None, keepdims=False)
+            tf.square(
+                tf.norm(wt_w - tf.eye(tf.shape(wt_w)[0]),
+                        ord="fro",
+                        axis=(0, 1),
+                        keepdims=False)) + \
+            self._l1_coefficient * \
+            tf.reduce_sum(tf.abs(wt_w), axis=None, keepdims=False)
 
     def get_config(self):
         return {
