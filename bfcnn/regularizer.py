@@ -55,7 +55,7 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
         # frobenius norm
         return \
             self._lambda_coefficient * \
-            tf.norm(wt_w - tf.eye(tf.shape(wt_w)[0]), ord="fro", axis=(0, 1), keepdims=False) + \
+            tf.square(tf.norm(wt_w - tf.eye(tf.shape(wt_w)[0]), ord="fro", axis=(0, 1), keepdims=False)) + \
             self._l1_coefficient * tf.reduce_sum(tf.abs(wt_w), axis=None, keepdims=False)
 
     def get_config(self):
