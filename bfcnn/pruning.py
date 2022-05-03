@@ -64,16 +64,9 @@ def reshape_to_2d_to_4d(
         raise ValueError("only 2-dimensional tensors allowed")
 
     # reshape and transpose back to original shape
-    x = \
-        np.reshape(
-            x,
-            newshape=x_t_shape)
-    x = \
-        np.transpose(
-            x,
-            axes=(1, 2, 3, 0))
-
-    return x
+    x_r = np.reshape(x, newshape=x_t_shape)
+    x_t = np.transpose(x_r, axes=(1, 2, 3, 0))
+    return x_t
 
 
 # ---------------------------------------------------------------------
@@ -140,7 +133,6 @@ def prune_strategy_helper(
     :param kwargs:
     :return:
     """
-    fn = None
     if strategy == PruneStrategy.MINIMUM_THRESHOLD:
         minimum_threshold = kwargs["minimum_threshold"]
 
@@ -179,11 +171,8 @@ def prune_strategy_helper(
         def fn(x: np.ndarray) -> np.ndarray:
             # reshape x which is 4d to 2d
             x_r, x_t_shape = reshape_to_4d_to_2d(x)
-            scaler = StandardScaler(with_mean=True, with_std=True)
-            scaler.fit(x_r)
-            x_r = scaler.transform(x_r)
             # threshold again to zero very small values
-            if minimum_threshold != -1:
+            if minimum_threshold > 0.0:
                 x_r[np.abs(x_r) < minimum_threshold] = 0.0
             pca = PCA(n_components=variance)
             pca.fit(x_r)
@@ -191,11 +180,6 @@ def prune_strategy_helper(
             x_r = pca.transform(x_r)
             # inverse pass
             x_r = pca.inverse_transform(x_r)
-            # threshold again to zero very small values
-            if minimum_threshold != -1:
-                x_r[np.abs(x_r) < minimum_threshold] = 0.0
-            # convert back to scale
-            x_r = scaler.inverse_transform(x_r)
             # reshape and transpose back to original shape
             x = reshape_to_2d_to_4d(x_r, x_t_shape=x_t_shape)
             return x

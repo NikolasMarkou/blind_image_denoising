@@ -52,7 +52,7 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
     def __call__(self, x):
         # reshape
         x = reshape_to_2d(x)
-        # compute (Wt * W) - I
+        # --- compute (Wt * W) - I
         wt_w = \
             tf.linalg.matmul(
                 tf.transpose(x, perm=(1, 0)),
