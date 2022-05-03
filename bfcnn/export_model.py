@@ -16,6 +16,7 @@ from typing import List, Union, Tuple, Dict
 # local imports
 # ---------------------------------------------------------------------
 
+from .constants import *
 from .custom_logger import logger
 from .utilities import load_config
 from .model_denoise import model_builder, module_builder
@@ -23,6 +24,7 @@ from .model_denoise import model_builder, module_builder
 # ---------------------------------------------------------------------
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+
 
 # ---------------------------------------------------------------------
 
@@ -66,9 +68,12 @@ def export_model(
     # --- load and export denoising model
     logger.info("building denoising model")
     pipeline_config = load_config(pipeline_config)
-    model_denoise, model_normalize, model_denormalize = \
+    models = \
         model_builder(
-            pipeline_config["model"])
+            pipeline_config[MODEL_DENOISE_STR])
+    model_denoise = models.denoiser
+    model_normalize = models.normalizer
+    model_denormalize = models.denormalizer
     logger.info("saving configuration pipeline")
     pipeline_config_path = \
         os.path.join(

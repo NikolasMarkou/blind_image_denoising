@@ -16,12 +16,11 @@ from typing import List, Dict, Callable
 # local imports
 # ---------------------------------------------------------------------
 
+from .constants import *
 from .custom_logger import logger
 from .delta import delta_xy_magnitude
-
-# ---------------------------------------------------------------------
-
-DEFAULT_EPSILON = 0.0001
+from .pyramid import build_pyramid_model
+from .utilities import input_shape_fixer
 
 # ---------------------------------------------------------------------
 
@@ -40,48 +39,10 @@ def snr(
     d_prediction = tf.reduce_sum(prediction, axis=[1, 2, 3])
     # mean over batch
     result = \
-        (tf.reduce_mean(d_prediction, axis=[0]) + DEFAULT_EPSILON) / \
-        (tf.reduce_mean(d_2, axis=[0]) + DEFAULT_EPSILON)
+        (tf.reduce_mean(d_prediction, axis=[0]) + EPSILON_DEFAULT) / \
+        (tf.reduce_mean(d_2, axis=[0]) + EPSILON_DEFAULT)
     return multiplier * tf.math.log(result) / tf.math.log(base)
 
-# ---------------------------------------------------------------------
-
-
-def mae_weighted(
-        original,
-        noisy,
-        prediction,
-        hinge: float = 0):
-    """
-    Mean Absolute Error (mean over channels and batches) with weights
-
-    :param original:
-    :param noisy:
-    :param prediction:
-    :param hinge: hinge value
-    """
-    # --- calculate the weight per pixel based on how noisy it is
-    d_weight = tf.pow(original - noisy, 2) + DEFAULT_EPSILON
-    if hinge != 0.0:
-        d_weight = keras.layers.ReLU(threshold=hinge)(d_weight)
-    d_weight = keras.layers.Softmax(axis=[1, 2])(d_weight)
-    d_weight = 1.0 - d_weight
-
-    # --- calculate hinged absolute diff
-    d = tf.abs(original - prediction)
-    if hinge != 0.0:
-        d = keras.layers.ReLU(threshold=hinge)(d)
-
-    # --- multiply diff and weight
-    d = keras.layers.Multiply()([d, d_weight])
-
-    # --- sum over all dims
-    d = tf.reduce_mean(d, axis=[1, 2, 3])
-
-    # --- mean over batch
-    loss = tf.reduce_mean(d, axis=[0])
-
-    return loss
 
 # ---------------------------------------------------------------------
 
@@ -89,12 +50,12 @@ def mae_weighted(
 def mae_weighted_delta(
         original,
         prediction,
-        hinge: float = 0):
+        hinge: float = 0.0):
     """
     Mean Absolute Error (mean over channels and batches) with weights
 
-    :param original:
-    :param prediction:
+    :param original: original image batch
+    :param prediction: denoised image batch
     :param hinge: hinge value
     """
     original_delta = \
@@ -103,19 +64,25 @@ def mae_weighted_delta(
             kernel_size=5,
             alpha=1.0,
             beta=1.0,
-            eps=DEFAULT_EPSILON)
+            eps=EPSILON_DEFAULT)
+
     d_weight = \
-        keras.layers.Softmax(axis=[1, 2])(original_delta)
+        original_delta / \
+        (tf.abs(tf.reduce_max(
+            input_tensor=original_delta,
+            axis=[1, 2],
+            keepdims=True)) +
+         EPSILON_DEFAULT)
+    d_weight = tf.abs(d_weight)
 
     # --- calculate hinged absolute diff
     d = tf.abs(original - prediction)
-    if hinge != 0.0:
-        d = keras.layers.ReLU(threshold=hinge)(d)
+    d = keras.layers.ReLU(threshold=hinge)(d)
 
     # --- multiply diff and weight
     d = keras.layers.Multiply()([d, d_weight])
 
-    # --- sum over all dims
+    # --- mean over all dims
     d = tf.reduce_mean(d, axis=[1, 2, 3])
 
     # --- mean over batch
@@ -123,28 +90,48 @@ def mae_weighted_delta(
 
     return loss
 
+
 # ---------------------------------------------------------------------
 
 
 def mae(
         original,
         prediction,
-        hinge: float = 0):
+        hinge: float = 0.0):
     """
     Mean Absolute Error (mean over channels and batches)
 
-    :param original:
-    :param prediction:
+    :param original: original image batch
+    :param prediction: denoised image batch
     :param hinge: hinge value
     """
     d = tf.abs(original - prediction)
-    if hinge != 0.0:
-        d = keras.layers.ReLU(threshold=hinge)(d)
-    # sum over all dims
+    d = keras.layers.ReLU(threshold=hinge)(d)
+    # mean over all dims
     d = tf.reduce_mean(d, axis=[1, 2, 3])
     # mean over batch
-    loss = tf.reduce_mean(d, axis=[0])
-    return loss
+    return tf.reduce_mean(d, axis=[0])
+
+# ---------------------------------------------------------------------
+
+
+def mse(
+        original,
+        prediction,
+        hinge: float = 0):
+    """
+    Mean Square Error (mean over channels and batches)
+
+    :param original: original image batch
+    :param prediction: denoised image batch
+    :param hinge: hinge value
+    """
+    d = tf.square(original - prediction)
+    d = keras.layers.ReLU(threshold=hinge)(d)
+    # mean over all dims
+    d = tf.reduce_mean(d, axis=[1, 2, 3])
+    # mean over batch
+    return tf.reduce_mean(d, axis=[0])
 
 
 # ---------------------------------------------------------------------
@@ -158,20 +145,19 @@ def nae(
     Normalized Absolute Error
     (sum over width, height, channel and mean over batches)
 
-    :param original:
-    :param prediction:
+    :param original: original image batch
+    :param prediction: denoised image batch
     :param hinge: hinge value
     """
     d = tf.abs(original - prediction)
-    if hinge != 0.0:
-        d = keras.layers.ReLU(threshold=hinge)(d)
+    d = keras.layers.ReLU(threshold=hinge)(d)
     # sum over all dims
     d = tf.reduce_sum(d, axis=[1, 2, 3])
     d_x = tf.reduce_sum(original, axis=[1, 2, 3])
     # mean over batch
     loss = \
         tf.reduce_mean(d, axis=[0]) / \
-        (tf.reduce_mean(d_x, axis=[0]) + DEFAULT_EPSILON)
+        (tf.reduce_mean(d_x, axis=[0]) + EPSILON_DEFAULT)
     return loss
 
 
@@ -190,50 +176,59 @@ def loss_function_builder(
 
     # controls how we discount each level
     hinge = config.get("hinge", 0.0)
-    nae_multiplier = config.get("nae_multiplier", 0.0)
-    mae_multiplier = config.get("mae_multiplier", 1.0)
-    mae_delta_enabled = config.get("mae_delta", False)
-    mae_weighted_enabled = config.get("mae_weighted", False)
     regularization_multiplier = config.get("regularization", 1.0)
+    nae_multiplier = tf.constant(config.get("nae_multiplier", 0.0))
+    mae_multiplier = tf.constant(config.get("mae_multiplier", 1.0))
+    mae_delta_enabled = tf.constant(config.get("mae_delta", False))
 
     def loss_function(
             input_batch,
             prediction_batch,
-            noisy_batch=None,
-            model_losses=None,
-            difficulty: float = -1.0) -> Dict:
+            noisy_batch,
+            model_losses,
+            input_batch_decomposition = [],
+            prediction_batch_decomposition = []) -> Dict:
         """
         The loss function of the depth prediction model
 
-        :param: input_batch: ground truth
-        :param: prediction_batch: prediction
-        :param: model_losses: weight/regularization losses
-        :param: difficulty:
-            if >= 0 then it is an indication how corrupted the noisy batch is
-        :return loss
+        :param input_batch: ground truth
+        :param prediction_batch: prediction
+        :param noisy_batch: noisy batch
+        :param model_losses: weight/regularization losses
+        :return: dictionary of losses
         """
 
         # --- mean absolute error from prediction
-        mae_weighted_delta_loss = 0.0
-        mae_weighted_prediction_loss = 0.0
-        mae_prediction_loss = \
+        mae_prediction_loss = tf.constant(0.0)
+        mae_weighted_delta_loss = tf.constant(0.0)
+
+        mae_prediction_loss += \
             mae(
                 original=input_batch,
                 prediction=prediction_batch,
                 hinge=hinge)
         if mae_delta_enabled:
-            mae_weighted_delta_loss = \
+            mae_weighted_delta_loss += \
                 mae_weighted_delta(
                     original=input_batch,
                     prediction=prediction_batch,
                     hinge=hinge)
-        if mae_weighted_enabled:
-            mae_weighted_prediction_loss = \
-                mae_weighted(
-                    original=input_batch,
-                    noisy=noisy_batch,
-                    prediction=prediction_batch,
-                    hinge=hinge)
+
+        mae_actual = \
+            mae(
+                original=input_batch,
+                prediction=prediction_batch,
+                hinge=0)
+
+        # --- loss prediction on decomposition
+        mae_decomposition_loss = tf.constant(0.0)
+        for i in range(len(prediction_batch_decomposition)):
+            mae_decomposition_loss += \
+                mae(
+                    original=input_batch_decomposition[i],
+                    prediction=prediction_batch_decomposition[i],
+                    hinge=0) * (255.0 / (len(prediction_batch_decomposition) + EPSILON_DEFAULT))
+
         # ---
         nae_prediction = \
             nae(input_batch, prediction_batch, hinge)
@@ -244,35 +239,27 @@ def loss_function_builder(
         nae_improvement = nae_noise - nae_prediction
 
         # --- regularization error
-        regularization_loss = 0.0
-        if model_losses is not None:
-            regularization_loss = tf.add_n(model_losses)
+        regularization_loss = tf.add_n(model_losses)
 
         # --- snr
         signal_to_noise_ratio = \
             snr(input_batch, prediction_batch)
 
-        # --- difficulty computation
-        if difficulty >= 0:
-            # TODO
-            pass
-
         # --- add up loss
         mean_total_loss = \
             nae_prediction * nae_multiplier + \
-            (mae_prediction_loss +
-             mae_weighted_delta_loss +
-             mae_weighted_prediction_loss) * mae_multiplier + \
-            regularization_loss * regularization_multiplier
+            regularization_loss * regularization_multiplier + \
+            (mae_prediction_loss + mae_weighted_delta_loss + mae_decomposition_loss) * mae_multiplier
 
         return {
             "nae_noise": nae_noise,
+            MAE_LOSS_STR: mae_actual,
             "snr": signal_to_noise_ratio,
-            "mae_loss": mae_prediction_loss,
             "nae_prediction": nae_prediction,
-            "mean_total_loss": mean_total_loss,
+            MEAN_TOTAL_LOSS_STR: mean_total_loss,
             "nae_improvement": nae_improvement,
-            "regularization_loss": regularization_loss
+            REGULARIZATION_LOSS_STR: regularization_loss,
+            MAE_DECOMPOSITION_LOSS_STR: mae_decomposition_loss,
         }
 
     return loss_function
