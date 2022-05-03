@@ -11,7 +11,7 @@ __license__ = "MIT"
 import keras
 import numpy as np
 from enum import Enum
-from typing import Dict, Callable, List
+from typing import Dict, Callable, List, Tuple
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
@@ -20,6 +20,60 @@ from sklearn.preprocessing import StandardScaler
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
+
+
+# ---------------------------------------------------------------------
+
+
+def reshape_to_4d_to_2d(
+        x: np.ndarray) -> Tuple[np.ndarray, Tuple]:
+    """
+    Reshapes tensor from 4d to 2d
+
+    :param x:
+    :return: reshaped array and transposed shape
+    """
+    # --- argument checking
+    if x is None:
+        raise ValueError("input cannot be empty")
+    if len(x.shape) != 4:
+        raise ValueError("only 4-dimensional tensors allowed")
+
+    # --- reshape to 2d matrix
+    x_t = np.transpose(x, axes=(3, 0, 1, 2))
+    x_r = np.reshape(x_t, newshape=(x_t.shape[0], -1))
+    return x_r, x_t.shape
+
+# ---------------------------------------------------------------------
+
+
+def reshape_to_2d_to_4d(
+        x: np.ndarray,
+        x_t_shape: Tuple) -> np.ndarray:
+    """
+    Reshaped tensor from 2d to 4d
+
+    :param x:
+    :param x_t_shape:
+    :return:
+    """
+    # --- argument checking
+    if x is None:
+        raise ValueError("input cannot be empty")
+    if len(x.shape) != 2:
+        raise ValueError("only 2-dimensional tensors allowed")
+
+    # reshape and transpose back to original shape
+    x = \
+        np.reshape(
+            x,
+            newshape=x_t_shape)
+    x = \
+        np.transpose(
+            x,
+            axes=(1, 2, 3, 0))
+
+    return x
 
 
 # ---------------------------------------------------------------------
@@ -123,38 +177,27 @@ def prune_strategy_helper(
         minimum_threshold = kwargs.get("minimum_threshold", -1)
 
         def fn(x: np.ndarray) -> np.ndarray:
+            # reshape x which is 4d to 2d
+            x_r, x_t_shape = reshape_to_4d_to_2d(x)
+            scaler = StandardScaler(with_mean=True, with_std=True)
+            scaler.fit(x_r)
+            x_r = scaler.transform(x_r)
             # threshold again to zero very small values
             if minimum_threshold != -1:
-                x[np.abs(x) < minimum_threshold] = 0.0
-            # reshape x which is 4d to 2d
-            x_transpose = np.transpose(x, axes=(3, 0, 1, 2))
-            x_transpose_shape = x_transpose.shape
-            x_reshaped = \
-                np.reshape(
-                    x_transpose,
-                    newshape=(
-                        x_transpose_shape[0],
-                        np.prod(x_transpose_shape[1:])))
-            scaler = StandardScaler()
-            scaler.fit(x_reshaped)
-            x_reshaped = scaler.transform(x_reshaped)
+                x_r[np.abs(x_r) < minimum_threshold] = 0.0
             pca = PCA(n_components=variance)
-            pca.fit(x_reshaped)
+            pca.fit(x_r)
             # forward pass
-            x_reshaped = pca.transform(x_reshaped)
+            x_r = pca.transform(x_r)
             # inverse pass
-            x_reshaped = pca.inverse_transform(x_reshaped)
+            x_r = pca.inverse_transform(x_r)
+            # threshold again to zero very small values
+            if minimum_threshold != -1:
+                x_r[np.abs(x_r) < minimum_threshold] = 0.0
             # convert back to scale
-            x_reshaped = scaler.inverse_transform(x_reshaped)
+            x_r = scaler.inverse_transform(x_r)
             # reshape and transpose back to original shape
-            x_reshaped = \
-                np.reshape(
-                    x_reshaped,
-                    newshape=x_transpose_shape)
-            x = \
-                np.transpose(
-                    x_reshaped,
-                    axes=(1, 2, 3, 0))
+            x = reshape_to_2d_to_4d(x_r, x_t_shape=x_t_shape)
             return x
     elif strategy == PruneStrategy.DROP_BOTTOM:
         percentage = kwargs["percentage"]
@@ -272,6 +315,5 @@ def get_conv2d_weights(
     if len(weights) == 0:
         return np.ndarray([])
     return np.concatenate(weights)
-
 
 # ---------------------------------------------------------------------

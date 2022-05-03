@@ -8,6 +8,7 @@ __license__ = "MIT"
 
 import abc
 from tensorflow import keras
+from collections import namedtuple
 
 # ---------------------------------------------------------------------
 # local imports
@@ -26,10 +27,22 @@ from .regularizer import builder as regularizer_builder
 
 # ---------------------------------------------------------------------
 
+BuilderResults = namedtuple(
+    "BuilderResults",
+    {
+        "denoiser",
+        "denoiser_decomposition",
+        "normalizer",
+        "denormalizer",
+        "pyramid",
+        "inverse_pyramid"
+     })
+
+# ---------------------------------------------------------------------
+
 
 def model_builder(
-        config: Dict) -> Tuple[keras.Model, keras.Model,
-                               keras.Model, keras.Model, keras.Model]:
+        config: Dict) -> BuilderResults:
     """
     Reads a configuration and returns 5 models,
 
@@ -366,13 +379,13 @@ def model_builder(
             outputs=output_layers,
             name=f"{model_type}_denoiser")
 
-    return \
-        model_denoise, \
-        model_denoise_decomposition, \
-        model_normalize, \
-        model_denormalize, \
-        model_pyramid, \
-        model_inverse_pyramid
+    return BuilderResults(
+        denoiser=model_denoise,
+        denoiser_decomposition=model_denoise_decomposition,
+        normalizer=model_normalize,
+        denormalizer=model_denormalize,
+        pyramid=model_pyramid,
+        inverse_pyramid=model_inverse_pyramid)
 
 # ---------------------------------------------------------------------
 
