@@ -208,6 +208,9 @@ def model_builder(
     means = []
     sigmas = []
 
+    if not use_pyramid:
+        x_levels = [x_levels]
+
     # local/global normalization cap
     if use_normalization:
         for i, x_level in enumerate(x_levels):
