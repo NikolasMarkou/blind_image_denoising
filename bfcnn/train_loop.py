@@ -310,6 +310,8 @@ def train_loop(
                             denoiser(
                                 normalized_noisy_batch,
                                 training=True)
+                        denormalized_denoised_batch = \
+                            denormalize(denormalized_denoised_batch)
                         denoised_batch_decomposition = None
 
                     # compute the loss value for this mini-batch
