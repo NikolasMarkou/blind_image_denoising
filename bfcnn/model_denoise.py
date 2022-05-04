@@ -203,10 +203,7 @@ def model_builder(
             trainable=False)
 
     # --- run inference
-    if use_pyramid:
-        x_levels = model_pyramid(x)
-    else:
-        x_levels = [x]
+    x_levels = model_pyramid(x)
 
     means = []
     sigmas = []
@@ -345,11 +342,8 @@ def model_builder(
             name=f"{model_type}_denoiser_decomposition")
 
     # --- merge levels together
-    if use_inverse_pyramid:
-        x_result = \
-            model_inverse_pyramid(x_levels)
-    else:
-        x_result = x_levels[0]
+    x_result = \
+        model_inverse_pyramid(x_levels)
 
     # name output
     output_layer = \
