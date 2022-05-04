@@ -264,8 +264,8 @@ def train_loop(
                 denoiser_decomposition = \
                     prune_function(model=denoiser_decomposition)
 
-            model_denoise_weights = denoiser_decomposition.trainable_weights
-            test_batch = None
+            model_denoise_weights = \
+                denoiser_decomposition.trainable_weights
 
             # --- iterate over the batches of the dataset
             for input_batch in dataset:
@@ -279,13 +279,10 @@ def train_loop(
                 normalized_noisy_batch = normalize(noisy_batch)
 
                 # split input image into pyramid levels
-                if pyramid is not None:
-                    normalized_input_batch_decomposition = \
-                        pyramid(
-                            normalized_input_batch,
-                            training=False)
-                else:
-                    normalized_input_batch_decomposition = None
+                normalized_input_batch_decomposition = \
+                    pyramid(
+                        normalized_input_batch,
+                        training=False)
                 # Open a GradientTape to record the operations run
                 # during the forward pass,
                 # which enables auto-differentiation.
@@ -298,15 +295,11 @@ def train_loop(
                         denoiser_decomposition(
                             normalized_noisy_batch,
                             training=True)
-                    if inverse_pyramid is not None:
-                        denoised_batch = \
-                            inverse_pyramid(
-                                denoised_batch_decomposition)
-                        denormalized_denoised_batch = \
-                            denormalize(denoised_batch)
-                    else:
-                        denormalized_denoised_batch = \
-                            denoised_batch_decomposition
+                    denoised_batch = \
+                        inverse_pyramid(
+                            denoised_batch_decomposition)
+                    denormalized_denoised_batch = \
+                        denormalize(denoised_batch)
 
                     # compute the loss value for this mini-batch
                     loss_map = \

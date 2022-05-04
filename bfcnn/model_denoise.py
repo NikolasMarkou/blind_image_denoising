@@ -159,24 +159,18 @@ def model_builder(
         return (y * sigma_y) + mean_y
 
     # build pyramid
-    if use_pyramid:
-        logger.info(f"building pyramid: [{pyramid_config}]")
-        model_pyramid = \
-            build_pyramid_model(
-                input_dims=input_shape,
-                config=pyramid_config)
-    else:
-        model_pyramid = None
+    logger.info(f"building pyramid: [{pyramid_config}]")
+    model_pyramid = \
+        build_pyramid_model(
+            input_dims=input_shape,
+            config=pyramid_config)
 
     # build inverse pyramid
-    if use_inverse_pyramid:
-        logger.info(f"building inverse pyramid: [{inverse_pyramid_config}]")
-        model_inverse_pyramid = \
-            build_inverse_pyramid_model(
-                input_dims=input_shape,
-                config=inverse_pyramid_config)
-    else:
-        model_inverse_pyramid = None
+    logger.info(f"building inverse pyramid: [{inverse_pyramid_config}]")
+    model_inverse_pyramid = \
+        build_inverse_pyramid_model(
+            input_dims=input_shape,
+            config=inverse_pyramid_config)
 
     # --- connect the parts of the model
     # setup input
