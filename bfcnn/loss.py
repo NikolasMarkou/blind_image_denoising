@@ -186,8 +186,8 @@ def loss_function_builder(
             prediction_batch,
             noisy_batch,
             model_losses,
-            input_batch_decomposition = [],
-            prediction_batch_decomposition = []) -> Dict:
+            input_batch_decomposition = None,
+            prediction_batch_decomposition = None) -> Dict:
         """
         The loss function of the depth prediction model
 
