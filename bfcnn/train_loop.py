@@ -306,7 +306,7 @@ def train_loop(
                             denormalize(denoised_batch)
                     else:
                         denormalized_denoised_batch = \
-                            denoised_batch_decomposition[0]
+                            denoised_batch_decomposition
 
                     # compute the loss value for this mini-batch
                     loss_map = \
