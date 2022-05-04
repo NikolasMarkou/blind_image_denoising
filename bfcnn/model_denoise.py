@@ -203,13 +203,13 @@ def model_builder(
             trainable=False)
 
     # --- run inference
-    x_levels = model_pyramid(x)
+    x_levels = model_pyramid(x, training=False)
+
+    if len(x_levels) <= 0:
+        raise ValueError("problematic issue")
 
     means = []
     sigmas = []
-
-    if not use_pyramid:
-        x_levels = [x_levels]
 
     # local/global normalization cap
     if use_normalization:
