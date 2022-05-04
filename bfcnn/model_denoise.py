@@ -232,10 +232,7 @@ def model_builder(
             sigmas.append(sigma)
             x_levels[i] = x_level
 
-    if use_pyramid:
-        logger.info("pyramid produces [{0}] scales".format(len(x_levels)))
-    else:
-        logger.info("model produces [{0}] scale".format(len(x_levels)))
+    logger.info("pyramid produces [{0}] scales".format(len(x_levels)))
 
     # --- shared or separate models
     if shared_model:
