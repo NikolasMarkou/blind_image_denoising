@@ -186,8 +186,8 @@ def loss_function_builder(
             prediction_batch,
             noisy_batch,
             model_losses,
-            input_batch_decomposition = [],
-            prediction_batch_decomposition = []) -> Dict:
+            input_batch_decomposition = None,
+            prediction_batch_decomposition = None) -> Dict:
         """
         The loss function of the depth prediction model
 
@@ -222,12 +222,14 @@ def loss_function_builder(
 
         # --- loss prediction on decomposition
         mae_decomposition_loss = tf.constant(0.0)
-        for i in range(len(prediction_batch_decomposition)):
-            mae_decomposition_loss += \
-                mae(
-                    original=input_batch_decomposition[i],
-                    prediction=prediction_batch_decomposition[i],
-                    hinge=0) * (255.0 / (len(prediction_batch_decomposition) + EPSILON_DEFAULT))
+        if input_batch_decomposition is not None and \
+                prediction_batch_decomposition is not None:
+            for i in range(len(prediction_batch_decomposition)):
+                mae_decomposition_loss += \
+                    mae(
+                        original=input_batch_decomposition[i],
+                        prediction=prediction_batch_decomposition[i],
+                        hinge=0) * (255.0 / (len(prediction_batch_decomposition) + EPSILON_DEFAULT))
 
         # ---
         nae_prediction = \

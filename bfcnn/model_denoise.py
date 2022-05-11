@@ -158,24 +158,21 @@ def model_builder(
         y, mean_y, sigma_y = args
         return (y * sigma_y) + mean_y
 
-    # build pyramid
+    # build pyramid / inverse pyramid
     if use_pyramid:
         logger.info(f"building pyramid: [{pyramid_config}]")
         model_pyramid = \
             build_pyramid_model(
                 input_dims=input_shape,
                 config=pyramid_config)
-    else:
-        model_pyramid = None
 
-    # build inverse pyramid
-    if use_inverse_pyramid:
         logger.info(f"building inverse pyramid: [{inverse_pyramid_config}]")
         model_inverse_pyramid = \
             build_inverse_pyramid_model(
                 input_dims=input_shape,
                 config=inverse_pyramid_config)
     else:
+        model_pyramid = None
         model_inverse_pyramid = None
 
     # --- connect the parts of the model
@@ -210,7 +207,7 @@ def model_builder(
 
     # --- run inference
     if use_pyramid:
-        x_levels = model_pyramid(x)
+        x_levels = model_pyramid(x, training=False)
     else:
         x_levels = [x]
 
@@ -241,10 +238,7 @@ def model_builder(
             sigmas.append(sigma)
             x_levels[i] = x_level
 
-    if use_pyramid:
-        logger.info("pyramid produces [{0}] scales".format(len(x_levels)))
-    else:
-        logger.info("model produces [{0}] scale".format(len(x_levels)))
+    logger.info("pyramid produces [{0}] scales".format(len(x_levels)))
 
     # --- shared or separate models
     if shared_model:
@@ -351,7 +345,7 @@ def model_builder(
             name=f"{model_type}_denoiser_decomposition")
 
     # --- merge levels together
-    if use_inverse_pyramid:
+    if use_pyramid:
         x_result = \
             model_inverse_pyramid(x_levels)
     else:
