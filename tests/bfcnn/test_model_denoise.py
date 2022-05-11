@@ -29,4 +29,5 @@ def test_model_builder(config):
     assert isinstance(models.normalizer, keras.Model)
     # denormalize
     assert isinstance(models.denormalizer, keras.Model)
+
 # ---------------------------------------------------------------------

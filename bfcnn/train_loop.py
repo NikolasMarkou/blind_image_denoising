@@ -264,8 +264,8 @@ def train_loop(
                 denoiser_decomposition = \
                     prune_function(model=denoiser_decomposition)
 
-            model_denoise_weights = denoiser_decomposition.trainable_weights
-            test_batch = None
+            model_denoise_weights = \
+                denoiser_decomposition.trainable_weights
 
             # --- iterate over the batches of the dataset
             for input_batch in dataset:
@@ -278,11 +278,15 @@ def train_loop(
                 normalized_input_batch = normalize(input_batch)
                 normalized_noisy_batch = normalize(noisy_batch)
 
-                # split input image into pyramid levels
-                normalized_input_batch_decomposition = \
-                    pyramid(
-                        normalized_input_batch,
-                        training=False)
+                if pyramid is not None:
+                    # split input image into pyramid levels
+                    normalized_input_batch_decomposition = \
+                        pyramid(
+                            normalized_input_batch,
+                            training=False)
+                else:
+                    normalized_input_batch_decomposition = None
+
                 # Open a GradientTape to record the operations run
                 # during the forward pass,
                 # which enables auto-differentiation.
@@ -291,15 +295,24 @@ def train_loop(
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
-                    denoised_batch_decomposition = \
-                        denoiser_decomposition(
-                            normalized_noisy_batch,
-                            training=True)
-                    denoised_batch = \
-                        inverse_pyramid(
-                            denoised_batch_decomposition)
-                    denormalized_denoised_batch = \
-                        denormalize(denoised_batch)
+                    if inverse_pyramid is not None:
+                        denoised_batch_decomposition = \
+                            denoiser_decomposition(
+                                normalized_noisy_batch,
+                                training=True)
+                        denoised_batch = \
+                            inverse_pyramid(
+                                denoised_batch_decomposition)
+                        denormalized_denoised_batch = \
+                            denormalize(denoised_batch)
+                    else:
+                        denormalized_denoised_batch = \
+                            denoiser(
+                                normalized_noisy_batch,
+                                training=True)
+                        denormalized_denoised_batch = \
+                            denormalize(denormalized_denoised_batch)
+                        denoised_batch_decomposition = None
 
                     # compute the loss value for this mini-batch
                     loss_map = \
@@ -308,8 +321,8 @@ def train_loop(
                             noisy_batch=noisy_batch,
                             model_losses=denoiser.losses,
                             prediction_batch=denormalized_denoised_batch,
-                            input_batch_decomposition=normalized_input_batch_decomposition,
-                            prediction_batch_decomposition=denoised_batch_decomposition
+                            prediction_batch_decomposition=denoised_batch_decomposition,
+                            input_batch_decomposition=normalized_input_batch_decomposition
                         )
 
                     # use the gradient tape to automatically retrieve

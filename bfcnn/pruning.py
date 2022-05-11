@@ -125,7 +125,7 @@ class PruneStrategy(Enum):
 
 def prune_strategy_helper(
         strategy: PruneStrategy,
-        **kwargs) -> Callable:
+        **kwargs) -> Callable[[np.ndarray], np.ndarray]:
     """
     builds the pruning function to be called
 
@@ -137,61 +137,81 @@ def prune_strategy_helper(
         minimum_threshold = kwargs["minimum_threshold"]
 
         def fn(x: np.ndarray) -> np.ndarray:
-            x[np.abs(x) < minimum_threshold] = 0.0
-            return x
+            x_p = x.copy()
+            x_p[np.abs(x_p) < minimum_threshold] = 0.0
+            return x_p
     elif strategy == PruneStrategy.MINIMUM_THRESHOLD_BIFURCATE:
         minimum_threshold = kwargs["minimum_threshold"]
 
         def fn(x: np.ndarray) -> np.ndarray:
-            mask = np.abs(x) < minimum_threshold
+            x_p = x.copy()
+            mask = np.abs(x_p) < minimum_threshold
             rand = \
                 np.random.uniform(
                     -minimum_threshold * 2.0,
                     +minimum_threshold * 2.0,
                     size=mask.shape)
-            x[mask] = rand[mask]
-            x[np.abs(x) < minimum_threshold] = 0.0
-            return x
+            x_p[mask] = rand[mask]
+            x_p[np.abs(x_p) < minimum_threshold] = 0.0
+            return x_p
     elif strategy == PruneStrategy.MINIMUM_THRESHOLD_SHRINKAGE:
         shrinkage = kwargs["shrinkage"]
         minimum_threshold = kwargs["minimum_threshold"]
         shrinkage_threshold = kwargs["shrinkage_threshold"]
 
         def fn(x: np.ndarray) -> np.ndarray:
-            mask = np.abs(x) < shrinkage_threshold
-            x[mask] = x[mask] * shrinkage
-            x[np.abs(x) < minimum_threshold] = 0.0
-            return x
+            x_p = x.copy()
+            mask = np.abs(x_p) < shrinkage_threshold
+            x_p[mask] = x_p[mask] * shrinkage
+            x_p[np.abs(x_p) < minimum_threshold] = 0.0
+            return x_p
     elif strategy == PruneStrategy.PCA_PROJECTION:
         # required variance
         variance = kwargs["variance"]
+        # optional normal scaling before pca
+        scale = kwargs.get("scale", True)
         # optional minimum threshold
         minimum_threshold = kwargs.get("minimum_threshold", -1)
 
         def fn(x: np.ndarray) -> np.ndarray:
+            x_p = x.copy()
             # reshape x which is 4d to 2d
-            x_r, x_t_shape = reshape_to_4d_to_2d(x)
+            x_r, x_t_shape = reshape_to_4d_to_2d(x=x_p)
             # threshold again to zero very small values
             if minimum_threshold > 0.0:
                 x_r[np.abs(x_r) < minimum_threshold] = 0.0
+
+            if scale:
+                # init and fit scaler
+                scaler = StandardScaler()
+                x_r_1d = scaler.fit_transform(x_r.reshape(-1, 1))
+                x_r = x_r_1d.reshape(x_r.shape)
+
             pca = PCA(n_components=variance)
             pca.fit(x_r)
             # forward pass
             x_r = pca.transform(x_r)
             # inverse pass
             x_r = pca.inverse_transform(x_r)
+
+            if scale:
+                # inverse scaling
+                x_r_1d = scaler.inverse_transform(x_r.reshape(-1, 1))
+                x_r = x_r_1d.reshape(x_r.shape)
+
             # reshape and transpose back to original shape
-            x = reshape_to_2d_to_4d(x_r, x_t_shape=x_t_shape)
-            return x
+            x_p = reshape_to_2d_to_4d(x=x_r, x_t_shape=x_t_shape)
+            return x_p
     elif strategy == PruneStrategy.DROP_BOTTOM:
         percentage = kwargs["percentage"]
 
         def fn(x: np.ndarray) -> np.ndarray:
-            x_sorted = np.sort(np.abs(x), axis=None)
+            x_p = x.copy()
+            x_sorted = np.sort(np.abs(x_p), axis=None)
             x_threshold_index = int(np.round(len(x_sorted) * percentage))
             x_threshold = x_sorted[x_threshold_index]
-            x[np.abs(x) < x_threshold] = 0.0
-            return x
+            x_p[np.abs(x_p) < x_threshold] = 0.0
+            return x_p
     elif strategy == PruneStrategy.NONE:
         def fn(x: np.ndarray) -> np.ndarray:
             return x
