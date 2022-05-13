@@ -87,10 +87,10 @@ several types of noise and then try to recover the original image
 
 ## How to use (pretrained)
 
-Use any of the pretrained models included in the package
-* resnet_5x5_bn_3x3
-* sparse_resnet_5x5_bn_3x3
-* sparse_resnet_4x5_bn_3x3
+Use any of the pretrained models included in the package:
+* [resnet_color_1x5_non_shared_bn_16x3x3_128x128](bfcnn/pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128)
+* [resnet_color_1x5_non_shared_bn_16x3x3_128x128_skip_input](bfcnn/pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128_skip_input)
+* [resnet_color_laplacian_2x5_non_shared_bn_16x3x3_128x128_skip_input](bfcnn/pretrained/resnet_color_laplacian_2x5_non_shared_bn_16x3x3_128x128_skip_input)
 
 ### Train
 Prepare a training configuration and train with the following command:  
@@ -117,12 +117,12 @@ import bfcnn
 import tensorflow as tf
 
 # load model
-denoiser_model = bfcnn.load_model("resnet_5x5_bn_3x3")
+denoiser_model = bfcnn.load_model("resnet_color_1x5_non_shared_bn_16x3x3_128x128")
 
 # create random tensor
 input_tensor = \
     tf.random.uniform(
-        shape=[1, 256, 256, 1],
+        shape=[1, 256, 256, 3],
         minval=0,
         maxval=255,
         dtype=tf.int32)
