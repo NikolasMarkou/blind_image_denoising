@@ -52,7 +52,8 @@ if pretrained_dir.is_dir():
 
         # --- define model loader function
         def load_tf():
-            return tf.keras.models.load_model(directory / "saved_model")
+            saved_model_path = str(directory / "saved_model")
+            return tf.saved_model.load(saved_model_path)
 
         # --- define structure for each model
         pretrained_models[model_name] = {

@@ -96,7 +96,6 @@ def dataset_builder(
     if directory:
         dataset = \
             tf.keras.preprocessing.image_dataset_from_directory(
-                seed=0,
                 shuffle=True,
                 label_mode=None,
                 directory=directory,
@@ -111,7 +110,6 @@ def dataset_builder(
     if directory_testing:
         dataset_testing = \
             tf.keras.preprocessing.image_dataset_from_directory(
-                seed=0,
                 shuffle=True,
                 label_mode=None,
                 batch_size=batch_size,
@@ -225,7 +223,6 @@ def dataset_builder(
                 noisy_batch = \
                     noisy_batch + \
                     tf.random.truncated_normal(
-                        seed=0,
                         mean=0,
                         stddev=noise_std,
                         shape=input_shape_inference)
@@ -233,7 +230,6 @@ def dataset_builder(
                 # channel dependent noise
                 tmp_noisy_batch = \
                     tf.random.truncated_normal(
-                        seed=0,
                         mean=0,
                         stddev=noise_std,
                         shape=(input_shape_inference[0],
@@ -254,7 +250,6 @@ def dataset_builder(
                 noisy_batch = \
                     noisy_batch * \
                     tf.random.truncated_normal(
-                        seed=0,
                         mean=1,
                         stddev=noise_std,
                         shape=input_shape_inference)
@@ -262,7 +257,6 @@ def dataset_builder(
                 # channel dependent noise
                 tmp_noisy_batch = \
                     tf.random.truncated_normal(
-                        seed=0,
                         mean=1,
                         stddev=noise_std,
                         shape=(input_shape_inference[0],

@@ -125,7 +125,7 @@ class PruneStrategy(Enum):
 
 def prune_strategy_helper(
         strategy: PruneStrategy,
-        **kwargs) -> Callable:
+        **kwargs) -> Callable[[np.ndarray], np.ndarray]:
     """
     builds the pruning function to be called
 

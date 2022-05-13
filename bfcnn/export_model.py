@@ -71,9 +71,12 @@ def export_model(
     models = \
         model_builder(
             pipeline_config[MODEL_DENOISE_STR])
-    model_denoise = models.denoiser
-    model_normalize = models.normalizer
-    model_denormalize = models.denormalizer
+    # get each model
+    denoiser = models.denoiser
+    normalizer = models.normalizer
+    denormalizer = models.denormalizer
+    denoiser_decomposition = models.denoiser_decomposition
+
     logger.info("saving configuration pipeline")
     pipeline_config_path = \
         os.path.join(
@@ -82,7 +85,12 @@ def export_model(
     with open(pipeline_config_path, "w") as f:
         f.write(json.dumps(pipeline_config, indent=4))
     logger.info("restoring checkpoint weights")
-    checkpoint = tf.train.Checkpoint(model_denoise=model_denoise)
+    checkpoint = \
+        tf.train.Checkpoint(
+            model_denoise=denoiser,
+            model_normalize=normalizer,
+            model_denormalize=denormalizer,
+            model_denoise_decomposition=denoiser_decomposition)
     manager = \
         tf.train.CheckpointManager(
             checkpoint=checkpoint,
@@ -99,14 +107,14 @@ def export_model(
     no_channels = input_shape[2]
     denoising_module = \
         module_builder(
-            iterations=1,
             cast_to_uint8=True,
-            model_denoise=model_denoise,
-            model_normalize=model_normalize,
-            model_denormalize=model_denormalize,
+            model_denoise=denoiser,
+            model_normalize=normalizer,
+            model_denormalize=denormalizer,
             training_channels=no_channels)
 
-    # getting the concrete function traces the graph and forces variables to
+    # getting the concrete function traces the graph
+    # and forces variables to
     # be constructed, only after this can we save the
     # checkpoint and saved model.
     concrete_function = \
@@ -119,13 +127,16 @@ def export_model(
 
     # export the model as save_model format (default)
     logger.info("saving module")
+    checkpoint = \
+        tf.train.Checkpoint(
+            model_denoise=denoising_module)
     exported_checkpoint_manager = \
         tf.train.CheckpointManager(
             checkpoint=checkpoint,
             directory=output_checkpoint,
             max_to_keep=1)
     exported_checkpoint_manager.save(checkpoint_number=0)
-    options = tf.saved_model.SaveOptions(save_debug_info=True)
+    options = tf.saved_model.SaveOptions(save_debug_info=False)
     tf.saved_model.save(
         options=options,
         obj=denoising_module,
