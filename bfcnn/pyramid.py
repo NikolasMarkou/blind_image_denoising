@@ -160,33 +160,6 @@ def gaussian_filter_block(
 
     return gaussian_filter(input_layer)
 
-
-# ---------------------------------------------------------------------
-
-
-def upscale_2x2_block(
-        input_layer,
-        kernel_size: Tuple[int, int] = DEFAULT_UPSCALE_KERNEL_SIZE,
-        xy_max: Tuple[float, float] = DEFAULT_UPSCALE_XY_MAX,
-        cheap: bool = False,
-        trainable: bool = False):
-    """
-    creates an upscale block and filters the input_layer
-
-    :param input_layer: the input layer
-    :param kernel_size: kernel size tuple
-    :param xy_max: how far the gaussian are we going
-        (symmetrically) on the 2 axis
-    :param trainable: is the pyramid trainable (default False)
-    :return: filtered input layer
-    """
-
-    x = keras.layers.UpSampling2D(
-        size=(2, 2),
-        interpolation="nearest")(input_layer)
-    return x
-
-
 # ---------------------------------------------------------------------
 
 

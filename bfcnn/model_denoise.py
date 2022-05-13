@@ -17,7 +17,6 @@ from collections import namedtuple
 from .utilities import *
 from .custom_logger import logger
 from .pyramid import \
-    upscale_2x2_block, \
     build_pyramid_model, \
     build_inverse_pyramid_model
 from .model_noise_estimation import \
@@ -273,8 +272,9 @@ def model_builder(
                 tmp_level = resnet_models[i](x_level)
             else:
                 tmp_level = \
-                    upscale_2x2_block(
-                        input_layer=tmp_level)
+                    keras.layers.UpSampling2D(
+                        size=(2, 2),
+                        interpolation="bilinear")(tmp_level)
                 if use_noise_estimation_mixer:
                     # learnable mixer
                     tmp_level = \
@@ -290,7 +290,7 @@ def model_builder(
                     tmp_level = \
                         keras.layers.Add(
                             name="level_{0}_to_{1}".format(i+1, i))(
-                            [tmp_level, x_level]) * 0.5
+                            [tmp_level, x_level])
                 tmp_level = resnet_models[i](tmp_level)
             x_levels[i] = tmp_level
     else:

@@ -58,8 +58,9 @@ have a big enough ERF (effective receptive field) for the task at hand.
 In order to train such a model we corrupt an input image using 
 several types of noise and then try to recover the original image
 
-* normally distributed additive noise
-* normally distributed multiplicative noise
+* subsampling noise
+* normally distributed additive noise (same per channel / different same per channel)
+* normally distributed multiplicative noise (same per channel / different same per channel)
 
 ## Image examples
 
@@ -86,10 +87,10 @@ several types of noise and then try to recover the original image
 
 ## How to use (pretrained)
 
-Use any of the pretrained models included in the package
-* resnet_5x5_bn_3x3
-* sparse_resnet_5x5_bn_3x3
-* sparse_resnet_4x5_bn_3x3
+Use any of the pretrained models included in the package:
+* [resnet_color_1x5_non_shared_bn_16x3x3_128x128](bfcnn/pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128)
+* [resnet_color_1x5_non_shared_bn_16x3x3_128x128_skip_input](bfcnn/pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128_skip_input)
+* [resnet_color_laplacian_2x5_non_shared_bn_16x3x3_128x128_skip_input](bfcnn/pretrained/resnet_color_laplacian_2x5_non_shared_bn_16x3x3_128x128_skip_input)
 
 ### Train
 Prepare a training configuration and train with the following command:  
@@ -116,12 +117,12 @@ import bfcnn
 import tensorflow as tf
 
 # load model
-denoiser_model = bfcnn.load_model("resnet_5x5_bn_3x3")
+denoiser_model = bfcnn.load_model("resnet_color_1x5_non_shared_bn_16x3x3_128x128")
 
 # create random tensor
 input_tensor = \
     tf.random.uniform(
-        shape=[1, 256, 256, 1],
+        shape=[1, 256, 256, 3],
         minval=0,
         maxval=255,
         dtype=tf.int32)
@@ -142,15 +143,22 @@ We have used traditional (bias free) architectures.
 * all the above models with multi-scale processing
 
 ### Additions
-#### Multi-Scale Laplacian Pyramid
+#### ![Multi-Scale Laplacian Pyramid](bfcnn/pyramid.py)
 Our addition (not in the paper) is the laplacian multi-scale pyramid
 that expands the effective receptive field without the need to add many more layers (keeping it cheap computationally).
 ![](images/readme/laplacian_model.png "Laplacian model")
 ![](images/readme/laplacian_decomposition_lena.png "Laplacian Decomposition Lena")
 
-#### Multi-Scale Gaussian Pyramid
+#### ![Multi-Scale Gaussian Pyramid](bfcnn/pyramid.py)
 Our addition (not in the paper) is the gaussian multi-scale pyramid
 that expands the effective receptive field without the need to add many more layers (keeping it cheap computationally).
+
+#### ![Noise estimation model Multi-Scale mixer](bfcnn/model_noise_estimation.py)
+Our addition (not in the paper) is a noise estimation model that
+decides the contribution of each layer when mixing them back in.
+
+#### ![Squeeze and Excite with residual](bfcnn/utilities.py)
+Every resnet block has the option to include a residual squeeze and excite element (not in the paper) to it.
 
 #### Normalization layer
 Our addition (not in the paper) is a (non-channel wise and non-learnable) normalization layer (not BatchNorm) 
