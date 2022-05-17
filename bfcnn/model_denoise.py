@@ -76,20 +76,16 @@ def model_builder(
     local_normalization = config.get("local_normalization", -1)
     final_activation = config.get("final_activation", "linear")
     kernel_regularizer = config.get("kernel_regularizer", "l1")
-    inverse_pyramid_config = config.get("inverse_pyramid", None)
     add_skip_with_input = config.get("add_skip_with_input", True)
     add_intermediate_results = config.get("intermediate_results", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     add_learnable_multiplier = config.get("add_learnable_multiplier", False)
-    noise_estimation_mixer_config = config.get("noise_estimation_mixer", None)
     add_residual_between_models = config.get("add_residual_between_models", False)
 
     use_pyramid = pyramid_config is not None
-    use_inverse_pyramid = inverse_pyramid_config is not None
     use_local_normalization = local_normalization > 0
     use_global_normalization = local_normalization == 0
     use_normalization = use_local_normalization or use_global_normalization
-    use_noise_estimation_mixer = noise_estimation_mixer_config is not None
     local_normalization_kernel = [local_normalization, local_normalization]
     input_shape = input_shape_fixer(input_shape)
 
@@ -165,11 +161,11 @@ def model_builder(
                 input_dims=input_shape,
                 config=pyramid_config)
 
-        logger.info(f"building inverse pyramid: [{inverse_pyramid_config}]")
+        logger.info(f"building inverse pyramid: [{pyramid_config}]")
         model_inverse_pyramid = \
             build_inverse_pyramid_model(
                 input_dims=input_shape,
-                config=inverse_pyramid_config)
+                config=pyramid_config)
     else:
         model_pyramid = None
         model_inverse_pyramid = None
@@ -259,40 +255,27 @@ def model_builder(
     # --- add residual between models
     # speeds up training a lot, and better results
     if add_residual_between_models:
-        if use_noise_estimation_mixer:
-            model_noise_estimation = \
-                model_noise_estimation_builder(
-                    noise_estimation_mixer_config)
-        else:
-            model_noise_estimation = None
-
-        tmp_level = None
+        previous_level = None
+        current_level_output = None
         for i, x_level in reversed(list(enumerate(x_levels))):
-            if tmp_level is None:
-                tmp_level = resnet_models[i](x_level)
+            if previous_level is None:
+                current_level_output = resnet_models[i](x_level)
+                previous_level = current_level_output
             else:
-                tmp_level = \
+                previous_level = \
+                    tf.stop_gradient(previous_level)
+                previous_level = \
                     keras.layers.UpSampling2D(
                         size=(2, 2),
-                        interpolation="bilinear")(tmp_level)
-                if use_noise_estimation_mixer:
-                    # learnable mixer
-                    tmp_level = \
-                        noise_estimation_mixer(
-                            model_noise_estimation=model_noise_estimation,
-                            x0_input_layer=tmp_level,
-                            x1_input_layer=x_level)
-                    tmp_level = \
-                        keras.layers.Layer(
-                            name="level_{0}_to_{1}".format(i+1, i))(tmp_level)
-                else:
-                    # basic mixer
-                    tmp_level = \
-                        keras.layers.Add(
-                            name="level_{0}_to_{1}".format(i+1, i))(
-                            [tmp_level, x_level])
-                tmp_level = resnet_models[i](tmp_level)
-            x_levels[i] = tmp_level
+                        interpolation="bilinear")(previous_level)
+                current_level_input = \
+                    keras.layers.Add()(
+                        [previous_level, x_level])
+                current_level_output = resnet_models[i](current_level_input)
+                previous_level = \
+                    keras.layers.Add()(
+                        [previous_level, current_level_output])
+            x_levels[i] = current_level_output
     else:
         for i, x_level in enumerate(x_levels):
             x_levels[i] = resnet_models[i](x_level)
@@ -433,7 +416,7 @@ class DenoisingInferenceModule(tf.Module, abc.ABC):
         # --- normalize
         x = self._model_normalize(x)
 
-        # --- run denoise model as many times as required
+        # --- run denoise model
         x = self._model_denoise(x)
 
         # --- denormalize

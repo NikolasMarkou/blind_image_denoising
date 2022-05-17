@@ -14,15 +14,17 @@ import subprocess
 
 # ---------------------------------------------------------------------
 
-CUDA_DEVICE = 0
+CUDA_DEVICE = -1
 CONFIGS_DIR = "bfcnn/configs"
-CHECKPOINT_DIRECTORY = "/media/fast/training/bfcnn"
 OUTPUT_DIRECTORY = "bfcnn/pretrained/"
+CHECKPOINT_DIRECTORY = "/media/fast/training/bfcnn"
+
 CONFIGS = {
     os.path.basename(file_dir).split(".")[0]:
         os.path.join(CONFIGS_DIR, file_dir)
     for file_dir in os.listdir(CONFIGS_DIR)
 }
+
 # ---------------------------------------------------------------------
 
 

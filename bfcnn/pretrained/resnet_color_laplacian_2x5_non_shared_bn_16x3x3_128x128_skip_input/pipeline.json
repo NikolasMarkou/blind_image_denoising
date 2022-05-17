@@ -34,18 +34,6 @@
                 3,
                 3
             ]
-        },
-        "inverse_pyramid": {
-            "levels": 2,
-            "type": "laplacian",
-            "xy_max": [
-                1.0,
-                1.0
-            ],
-            "kernel_size": [
-                3,
-                3
-            ]
         }
     },
     "train": {
@@ -54,7 +42,7 @@
         "checkpoints_to_keep": 3,
         "checkpoint_every": 10000,
         "visualization_number": 4,
-        "visualization_every": 100,
+        "visualization_every": 1000,
         "random_batch_iterations": 10,
         "random_batch_size": [
             256,
