@@ -19,9 +19,6 @@ from .custom_logger import logger
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
-from .model_noise_estimation import \
-    model_builder as model_noise_estimation_builder, \
-    noise_estimation_mixer
 from .regularizer import builder as regularizer_builder
 
 # ---------------------------------------------------------------------
