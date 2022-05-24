@@ -6,10 +6,10 @@ __license__ = "MIT"
 
 # ---------------------------------------------------------------------
 
-import keras.layers
+import numpy as np
 import tensorflow as tf
+from tensorflow import keras
 import tensorflow_addons as tfa
-
 from typing import Dict, Callable, Iterator
 
 # ---------------------------------------------------------------------
@@ -17,7 +17,6 @@ from typing import Dict, Callable, Iterator
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .utilities import random_choice
 
 # ---------------------------------------------------------------------
 
@@ -44,24 +43,24 @@ def dataset_builder(
     # --- clip values to min max
     min_value = config.get("min_value", 0)
     max_value = config.get("max_value", 255)
-    clip_value = tf.constant(config.get("clip_value", True))
+    clip_value = config.get("clip_value", True)
     # --- if true round values
-    round_values = tf.constant(config.get("round_values", True))
+    round_values = config.get("round_values", True)
     # --- dataset augmentation
-    random_blur = tf.constant(config.get("random_blur", False))
+    random_blur = config.get("random_blur", False)
     subsample_size = config.get("subsample_size", -1)
     # in radians
-    random_rotate = tf.constant(config.get("random_rotate", 0.0))
+    random_rotate = config.get("random_rotate", 0.0)
     # if true randomly invert
-    random_invert = tf.constant(config.get("random_invert", False))
+    random_invert = config.get("random_invert", False)
     # if true randomly invert upside down image
-    random_up_down = tf.constant(config.get("random_up_down", False))
+    random_up_down = config.get("random_up_down", False)
     # if true randomly invert left right image
-    random_left_right = tf.constant(config.get("random_left_right", False))
+    random_left_right = config.get("random_left_right", False)
     additional_noise = config.get("additional_noise", [])
     multiplicative_noise = config.get("multiplicative_noise", [])
     # quantization value, -1 disabled, otherwise 2, 4, 8
-    quantization = tf.constant(config.get("quantization", -1))
+    quantization = config.get("quantization", -1)
     # whether to crop or not
     random_crop = dataset_shape[0:2] != input_shape[0:2]
     random_crop = tf.constant(random_crop)
@@ -88,9 +87,9 @@ def dataset_builder(
     else:
         quantization = 1
 
-    noise_choices = tf.constant(noise_choices)
-    additional_noise = tf.constant(additional_noise, dtype=tf.float32)
-    multiplicative_noise = tf.constant(multiplicative_noise, dtype=tf.float32)
+    noise_choices = noise_choices
+    additional_noise = additional_noise
+    multiplicative_noise = multiplicative_noise
 
     # --- define generator function from directory
     if directory:
@@ -160,19 +159,19 @@ def dataset_builder(
 
         # --- flip left right
         if random_left_right:
-            if tf.random.uniform(()) > 0.5:
+            if np.random.uniform() > 0.5:
                 input_batch = \
                     tf.image.flip_left_right(input_batch)
 
         # --- flip up down
         if random_up_down:
-            if tf.random.uniform(()) > 0.5:
+            if np.random.uniform() > 0.5:
                 input_batch = \
                     tf.image.flip_up_down(input_batch)
 
         # --- randomly rotate input
         if random_rotate > 0.0:
-            if tf.random.uniform(()) > 0.5:
+            if np.random.uniform() > 0.5:
                 angles = \
                     tf.random.uniform(
                         dtype=tf.float32,
@@ -188,7 +187,7 @@ def dataset_builder(
 
         # --- random invert colors
         if random_invert:
-            if tf.random.uniform(()) > 0.5:
+            if np.random.uniform() > 0.5:
                 input_batch = max_value - (input_batch - min_value)
 
         # --- clip values within boundaries
@@ -213,12 +212,13 @@ def dataset_builder(
         input_shape_inference = tf.shape(noisy_batch)
 
         # --- random select noise type
-        noise_type = random_choice(noise_choices, size=1)[0]
+
+        noise_type = np.random.choice(noise_choices, size=1)
 
         if noise_type == 0:
             # additional noise
-            noise_std = random_choice(additional_noise, size=1)[0]
-            if tf.random.uniform(()) > 0.5:
+            noise_std = np.random.choice(additional_noise, size=1)
+            if np.random.uniform() > 0.5:
                 # channel independent noise
                 noisy_batch = \
                     noisy_batch + \
@@ -244,8 +244,8 @@ def dataset_builder(
                 noisy_batch = noisy_batch + tmp_noisy_batch
         elif noise_type == 1:
             # multiplicative noise
-            noise_std = random_choice(multiplicative_noise, size=1)[0]
-            if tf.random.uniform(()) > 0.5:
+            noise_std = np.random.choice(multiplicative_noise, size=1)
+            if np.random.uniform() > 0.5:
                 # channel independent noise
                 noisy_batch = \
                     noisy_batch * \
@@ -272,7 +272,7 @@ def dataset_builder(
 
             # blur to embed noise
             if random_blur:
-                if tf.random.uniform(()) > 0.5:
+                if np.random.uniform() > 0.5:
                     noisy_batch = \
                         tfa.image.gaussian_filter2d(
                             image=noisy_batch,
