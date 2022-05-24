@@ -37,7 +37,7 @@ def dataset_builder(
     # crop image from dataset
     input_shape = config["input_shape"]
     directory = config.get("directory", None)
-    directory_testing = config.get("directory_testing", directory)
+    directory_testing = config.get("directory_testing", None)
     color_mode = config.get("color_mode", "rgb")
     # resolution of the files loaded (reshape)
     dataset_shape = config.get("dataset_shape", [256, 256])
