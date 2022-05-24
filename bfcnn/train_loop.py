@@ -227,14 +227,6 @@ def train_loop(
                 x_random,
                 training=False)
 
-    @tf.function
-    def create_test_batch(batch):
-        x_test_batch = augmentation_fn(batch)
-        x_test_batch = normalizer(x_test_batch, training=False)
-        x_test_batch = denoiser(x_test_batch, training=False)
-        x_test_batch = denormalizer(x_test_batch, training=False)
-        return x_test_batch
-
     # --- train the model
     with summary_writer.as_default():
         checkpoint = \
