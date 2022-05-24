@@ -320,14 +320,16 @@ def dataset_builder(
         DATASET_FN_STR:
             dataset.map(
                 map_func=input_batch_augmentations,
-                num_parallel_calls=tf.data.AUTOTUNE).prefetch(2),
+                deterministic=True,
+                num_parallel_calls=None).prefetch(2)
     }
 
     if dataset_testing is not None:
         result[DATASET_TESTING_FN_STR] = \
             dataset_testing.map(
                 map_func=input_batch_test_preparation,
-                num_parallel_calls=tf.data.AUTOTUNE).prefetch(2),
+                deterministic=True,
+                num_parallel_calls=None).prefetch(2)
 
     return result
 
