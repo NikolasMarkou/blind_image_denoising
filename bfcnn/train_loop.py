@@ -179,11 +179,9 @@ def train_loop(
         filepath=os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR),
         include_optimizer=False)
 
-    @tf.function
     def normalize(x_input):
         return normalizer(x_input, training=False)
 
-    @tf.function
     def denormalize(x_input):
         return denormalizer(x_input, training=False)
 
