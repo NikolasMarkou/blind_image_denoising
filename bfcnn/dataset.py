@@ -142,6 +142,9 @@ def dataset_builder(
     def input_batch_augmentations(input_batch):
         input_shape_inference = tf.shape(input_batch)
 
+        # --- convert to float32
+        input_batch = tf.cast(input_batch, dtype=tf.dtypes.float32)
+
         # --- crop randomly
         if random_crop:
             input_batch = \
@@ -187,9 +190,6 @@ def dataset_builder(
         if random_invert:
             if tf.random.uniform(()) > 0.5:
                 input_batch = max_value - (input_batch - min_value)
-
-        # --- convert to float32
-        input_batch = tf.cast(input_batch, dtype=tf.dtypes.float32)
 
         # --- clip values within boundaries
         if clip_value:
@@ -320,14 +320,14 @@ def dataset_builder(
         DATASET_FN_STR:
             dataset.map(
                 map_func=input_batch_augmentations,
-                num_parallel_calls=tf.data.AUTOTUNE).prefetch(tf.data.AUTOTUNE),
+                num_parallel_calls=tf.data.AUTOTUNE).prefetch(2),
     }
 
     if dataset_testing is not None:
         result[DATASET_TESTING_FN_STR] = \
             dataset_testing.map(
                 map_func=input_batch_test_preparation,
-                num_parallel_calls=tf.data.AUTOTUNE).prefetch(tf.data.AUTOTUNE),
+                num_parallel_calls=tf.data.AUTOTUNE).prefetch(2),
 
     return result
 
