@@ -142,7 +142,8 @@ def dataset_builder(
         input_shape_inference = tf.shape(input_batch)
 
         # --- convert to float32
-        input_batch = tf.cast(input_batch, dtype=tf.dtypes.float32)
+        input_batch = \
+            tf.cast(input_batch, dtype=tf.dtypes.float32)
 
         # --- crop randomly
         if random_crop:
@@ -212,7 +213,6 @@ def dataset_builder(
         input_shape_inference = tf.shape(noisy_batch)
 
         # --- random select noise type
-
         noise_type = np.random.choice(noise_choices, size=1)
 
         if noise_type == 0:
@@ -221,11 +221,12 @@ def dataset_builder(
             if np.random.uniform() > 0.5:
                 # channel independent noise
                 noisy_batch = \
-                    noisy_batch + \
-                    tf.random.truncated_normal(
-                        mean=0,
-                        stddev=noise_std,
-                        shape=input_shape_inference)
+                    noisy_batch.assign_add(
+                        tf.random.truncated_normal(
+                            mean=0,
+                            stddev=noise_std,
+                            shape=input_shape_inference)
+                        )
             else:
                 # channel dependent noise
                 tmp_noisy_batch = \
@@ -241,14 +242,14 @@ def dataset_builder(
                         tmp_noisy_batch,
                         axis=3,
                         repeats=[input_shape_inference[3]])
-                noisy_batch = noisy_batch + tmp_noisy_batch
+                noisy_batch = \
+                    noisy_batch.assign_add(tmp_noisy_batch)
         elif noise_type == 1:
             # multiplicative noise
             noise_std = np.random.choice(multiplicative_noise, size=1)
             if np.random.uniform() > 0.5:
                 # channel independent noise
-                noisy_batch = \
-                    noisy_batch * \
+                noisy_batch *= \
                     tf.random.truncated_normal(
                         mean=1,
                         stddev=noise_std,
@@ -268,8 +269,7 @@ def dataset_builder(
                         tmp_noisy_batch,
                         axis=3,
                         repeats=[input_shape_inference[3]])
-                noisy_batch = noisy_batch * tmp_noisy_batch
-
+                noisy_batch *= tmp_noisy_batch
             # blur to embed noise
             if random_blur:
                 if np.random.uniform() > 0.5:
@@ -291,7 +291,7 @@ def dataset_builder(
         elif noise_type == 3:
             # quantize values
             noisy_batch = tf.round(noisy_batch / quantization)
-            noisy_batch = noisy_batch * quantization
+            noisy_batch *= quantization
             noisy_batch = tf.round(noisy_batch)
         else:
             logger.info(
