@@ -71,7 +71,7 @@ def train_loop(
     # --- build dataset
     dataset_res = dataset_builder(config=config["dataset"])
     dataset = dataset_res[DATASET_FN_STR]
-    augmentation_fn = tf.function(dataset_res[AUGMENTATION_FN_STR])
+    augmentation_fn = dataset_res[AUGMENTATION_FN_STR]
 
     # --- build loss function
     loss_fn = tf.function(loss_function_builder(config=config["loss"]))
