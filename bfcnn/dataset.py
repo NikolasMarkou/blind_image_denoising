@@ -320,7 +320,6 @@ def dataset_builder(
         DATASET_FN_STR:
             dataset.map(
                 map_func=input_batch_augmentations,
-                deterministic=True,
                 num_parallel_calls=None).prefetch(2)
     }
 
@@ -328,7 +327,6 @@ def dataset_builder(
         result[DATASET_TESTING_FN_STR] = \
             dataset_testing.map(
                 map_func=input_batch_test_preparation,
-                deterministic=True,
                 num_parallel_calls=None).prefetch(2)
 
     return result
