@@ -167,6 +167,12 @@ after the DepthWise operations. This is to enforce sparsity with the differentia
 Our addition (not in the paper) is a differentiable relu for specific operations.
 ![](images/readme/differentiable_relu.png "Differentiable RELU")
 
+## References
+1. [Robust and interpretable blind image denoising via bias-free convolutional neural networks](https://arxiv.org/abs/1906.05478)
+2. [Fast and Accurate Image Super-Resolution with Deep Laplacian Pyramid Networks](https://arxiv.org/abs/1710.01992)
+3. [Densely Residual Laplacian Super-Resolution](https://arxiv.org/abs/1906.12021)
+4. [Can We Gain More from Orthogonality Regularizations in Training Deep CNNs?](https://arxiv.org/abs/1810.09102)
+5. [Squeeze-and-Excitation Networks](https://arxiv.org/abs/1709.01507)
 
 
 
