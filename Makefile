@@ -2,10 +2,10 @@ init:
 	pip install -r requirements.txt
 
 build: clean
-	python3 setup.py build
+	python setup.py build
 
 wheel: clean
-	python3 setup.py bdist_wheel
+	python setup.py bdist_wheel
 
 install:
 	python setup.py install

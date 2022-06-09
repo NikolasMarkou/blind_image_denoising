@@ -16,7 +16,7 @@ with open("LICENSE") as f:
 
 setuptools.setup(
     name="bfcnn",
-    version="1.0.0",
+    version="1.1.0",
     python_requires=">=3.6",
     description="Bias Free Convolutional Neural Network "
                 "for blind image denoising",
