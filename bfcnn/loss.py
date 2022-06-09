@@ -177,9 +177,9 @@ def loss_function_builder(
     # controls how we discount each level
     hinge = config.get("hinge", 0.0)
     regularization_multiplier = config.get("regularization", 1.0)
-    nae_multiplier = tf.constant(config.get("nae_multiplier", 0.0))
-    mae_multiplier = tf.constant(config.get("mae_multiplier", 1.0))
-    mae_delta_enabled = tf.constant(config.get("mae_delta", False))
+    nae_multiplier = config.get("nae_multiplier", 0.0)
+    mae_multiplier = config.get("mae_multiplier", 1.0)
+    mae_delta_enabled = config.get("mae_delta", False)
 
     def loss_function(
             input_batch,

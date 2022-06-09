@@ -1059,6 +1059,9 @@ def build_model_resnet(
 
     # --- skip with input layer
     if add_skip_with_input:
+        # TODO add mixer here
+        # low noise performs better with skip input
+        # high noise performs better with direct reconstruction
         output_layer = \
             keras.layers.Add()([output_layer, y])
 

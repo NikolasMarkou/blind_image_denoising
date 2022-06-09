@@ -74,7 +74,7 @@ def train_loop(
     augmentation_fn = tf.function(dataset_res[AUGMENTATION_FN_STR])
 
     # --- build loss function
-    loss_fn = tf.function(loss_function_builder(config=config["loss"]))
+    loss_fn = loss_function_builder(config=config["loss"])
 
     # --- build optimizer
     optimizer, lr_schedule = \
@@ -117,14 +117,11 @@ def train_loop(
     visualization_number = train_config.get("visualization_number", 5)
     # how many times the random batch will be iterated
     random_batch_iterations = \
-        tf.constant(
-            train_config.get("random_batch_iterations", 1),
-            dtype=tf.dtypes.int64,
-            name="random_batch_iterations")
+        train_config.get("random_batch_iterations", 1)
     # size of the random batch
     random_batch_size = \
         [visualization_number] + \
-        train_config.get("random_batch_size", [256, 256, 3])
+        train_config.get("random_batch_size", [128, 128, 3])
     # prune strategy
     prune_config = \
         train_config.get("prune", {"strategy": "none"})
@@ -182,58 +179,27 @@ def train_loop(
         filepath=os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR),
         include_optimizer=False)
 
-    x_iteration = \
-        tf.Variable(
-            initial_value=0,
-            trainable=False,
-            dtype=tf.dtypes.int64,
-            name="x_iteration")
-    x_random = \
-        tf.Variable(
-            initial_value=tf.zeros(shape=random_batch_size, dtype=tf.dtypes.float32),
-            trainable=False,
-            dtype=tf.dtypes.float32,
-            shape=random_batch_size,
-            name="x_random")
-
-    @tf.function
-    def normalize(x_input):
-        return normalizer(x_input, training=False)
-
-    @tf.function
-    def denormalize(x_input):
-        return denormalizer(x_input, training=False)
-
     # --- create random image and iterate through the model
-    @tf.function
     def create_random_batch():
-        x_iteration.assign(0)
-        x_random.assign(
+        x_iteration = 0
+        x_random = \
             tf.random.truncated_normal(
                 seed=0,
                 mean=0.0,
                 stddev=0.25,
-                shape=random_batch_size))
+                shape=random_batch_size)
         while x_iteration < random_batch_iterations:
-            x_tmp = denoiser(x_random, training=False)
-            x_random.assign(
+            x_random = denoiser(x_random, training=False)
+            x_random = \
                 tf.clip_by_value(
-                    x_tmp,
+                    x_random,
                     clip_value_min=-0.5,
-                    clip_value_max=+0.5))
-            x_iteration.assign_add(1)
+                    clip_value_max=+0.5)
+            x_iteration += 1
         return \
             denormalizer(
                 x_random,
                 training=False)
-
-    @tf.function
-    def create_test_batch(batch):
-        x_test_batch = augmentation_fn(batch)
-        x_test_batch = normalizer(x_test_batch, training=False)
-        x_test_batch = denoiser(x_test_batch, training=False)
-        x_test_batch = denormalizer(x_test_batch, training=False)
-        return x_test_batch
 
     # --- train the model
     with summary_writer.as_default():
@@ -275,8 +241,8 @@ def train_loop(
                 noisy_batch = augmentation_fn(input_batch)
 
                 # normalize input and noisy batch
-                normalized_input_batch = normalize(input_batch)
-                normalized_noisy_batch = normalize(noisy_batch)
+                normalized_input_batch = normalizer(input_batch, training=False)
+                normalized_noisy_batch = normalizer(noisy_batch, training=False)
 
                 if pyramid is not None:
                     # split input image into pyramid levels
@@ -302,16 +268,17 @@ def train_loop(
                                 training=True)
                         denoised_batch = \
                             inverse_pyramid(
-                                denoised_batch_decomposition)
+                                denoised_batch_decomposition,
+                                training=False)
                         denormalized_denoised_batch = \
-                            denormalize(denoised_batch)
+                            denormalizer(denoised_batch, training=False)
                     else:
                         denormalized_denoised_batch = \
                             denoiser(
                                 normalized_noisy_batch,
                                 training=True)
                         denormalized_denoised_batch = \
-                            denormalize(denormalized_denoised_batch)
+                            denormalizer(denormalized_denoised_batch, training=False)
                         denoised_batch_decomposition = None
 
                     # compute the loss value for this mini-batch

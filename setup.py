@@ -22,7 +22,7 @@ setuptools.setup(
                 "for blind image denoising",
     long_description=readme,
     author="Nikolas Markou",
-    author_email="nikolasmarkou@gmail.com",
+    author_email="nikolas.markou@electiconsulting.com",
     license=licence_text,
     packages=setuptools.find_packages(
         exclude=[
@@ -34,7 +34,7 @@ setuptools.setup(
         "numpy",
         "Keras",
         "setuptools",
-        "tensorflow>=2.4.1",
+        "tensorflow>=2.6.2",
         "matplotlib>=3.3.4",
         "tensorflow-addons",
     ],
@@ -43,10 +43,26 @@ setuptools.setup(
     package_data={
         "bfcnn": [
             "configs/*.json",
-            "pretrained/resnet_5x5_bn_3x3/model.tflite",
-            "pretrained/resnet_5x5_bn_3x3/pipeline.json",
-            "pretrained/resnet_5x5_bn_3x3/saved_model/saved_model.pb",
-            "pretrained/resnet_5x5_bn_3x3/saved_model/variables/**"
+            # resnet_color_1x5_non_shared_bn_16x3x3_128x128
+            "pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128/model.tflite",
+            "pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128/pipeline.json",
+            "pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128/saved_model/saved_model.pb",
+            "pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128/saved_model/variables/**",
+            # resnet_color_1x5_non_shared_bn_16x3x3_128x128_skip_input
+            "pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128_skip_input/model.tflite",
+            "pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128_skip_input/pipeline.json",
+            "pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128_skip_input/saved_model/saved_model.pb",
+            "pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128_skip_input/saved_model/variables/**",
+            # resnet_color_laplacian_2x5_non_shared_bn_16x3x3_128x128_skip_input
+            "pretrained/resnet_color_laplacian_2x5_non_shared_bn_16x3x3_128x128_skip_input/model.tflite",
+            "pretrained/resnet_color_laplacian_2x5_non_shared_bn_16x3x3_128x128_skip_input/pipeline.json",
+            "pretrained/resnet_color_laplacian_2x5_non_shared_bn_16x3x3_128x128_skip_input/saved_model/saved_model.pb",
+            "pretrained/resnet_color_laplacian_2x5_non_shared_bn_16x3x3_128x128_skip_input/saved_model/variables/**",
+            # resnet_color_laplacian_3x5_non_shared_bn_16x3x3_128x128_skip_input
+            "pretrained/resnet_color_laplacian_3x5_non_shared_bn_16x3x3_128x128_skip_input/model.tflite",
+            "pretrained/resnet_color_laplacian_3x5_non_shared_bn_16x3x3_128x128_skip_input/pipeline.json",
+            "pretrained/resnet_color_laplacian_3x5_non_shared_bn_16x3x3_128x128_skip_input/saved_model/saved_model.pb",
+            "pretrained/resnet_color_laplacian_3x5_non_shared_bn_16x3x3_128x128_skip_input/saved_model/variables/**"
         ]
     },
 )
