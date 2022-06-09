@@ -146,7 +146,15 @@ We have used traditional (bias free) architectures.
 Our addition (not in the paper) is the laplacian multi-scale pyramid
 that expands the effective receptive field without the need to add many more layers (keeping it cheap computationally).
 ![](images/readme/laplacian_model.png "Laplacian model")
+
+Which breaks down the original image into 3 different scales and processes them independently:
+
 ![](images/readme/laplacian_decomposition_lena.png "Laplacian Decomposition Lena")
+
+We also have the option to add residuals at the end of each processing levels, so it works like an iterative process:
+
+![](images/readme/laplacian_model_residual.png "Laplacian model residual")
+
 
 #### [Multi-Scale Gaussian Pyramid](bfcnn/pyramid.py)
 Our addition (not in the paper) is the gaussian multi-scale pyramid
