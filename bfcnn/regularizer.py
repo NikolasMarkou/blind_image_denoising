@@ -43,6 +43,11 @@ def reshape_to_2d(x):
 
 
 class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
+    """
+    Implements the soft orthogonality constraint as described in
+    Can We Gain More from Orthogonality Regularizations in Training Deep CNNs?
+    https://arxiv.org/abs/1810.09102
+    """
     def __init__(self,
                  lambda_coefficient: float = 1.0,
                  l1_coefficient: float = 0.01):
