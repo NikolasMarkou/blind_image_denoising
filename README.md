@@ -167,6 +167,9 @@ after the DepthWise operations. This is to enforce sparsity with the differentia
 Our addition (not in the paper) is a differentiable relu for specific operations.
 ![](images/readme/differentiable_relu.png "Differentiable RELU")
 
+#### [Soft Orthogonal Regularization](bfcnn/regularizer.py)
+Added optional orthogonality regularization. 
+
 ## References
 1. [Robust and interpretable blind image denoising via bias-free convolutional neural networks](https://arxiv.org/abs/1906.05478)
 2. [Fast and Accurate Image Super-Resolution with Deep Laplacian Pyramid Networks](https://arxiv.org/abs/1710.01992)
