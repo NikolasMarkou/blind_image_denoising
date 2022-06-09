@@ -17,12 +17,14 @@ from typing import Dict, Callable, Iterator
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
+from .utilities import merge_iterators
 
 # ---------------------------------------------------------------------
 
 DATASET_FN_STR = "dataset"
 AUGMENTATION_FN_STR = "augmentation"
 DATASET_TESTING_FN_STR = "dataset_testing"
+
 
 # ---------------------------------------------------------------------
 
@@ -35,11 +37,22 @@ def dataset_builder(
     batch_size = config["batch_size"]
     # crop image from dataset
     input_shape = config["input_shape"]
-    directory = config.get("directory", None)
-    directory_testing = config.get("directory_testing", None)
     color_mode = config.get("color_mode", "rgb")
+    # ---
+    inputs = config["inputs"]
+    # directory to load data from
+    directory = []
     # resolution of the files loaded (reshape)
-    dataset_shape = config.get("dataset_shape", [256, 256])
+    dataset_shape = []
+    if isinstance(inputs, list):
+        for i in inputs:
+            directory.append(i.get("directory", None))
+            dataset_shape.append(i.get("dataset_shape", [256, 256]))
+    elif isinstance(inputs, dict):
+        directory.append(config.get("directory", None))
+        dataset_shape.append(config.get("dataset_shape", [256, 256]))
+    else:
+        raise ValueError("dont know how to handle anything else than list and dict")
     # --- clip values to min max
     min_value = config.get("min_value", 0)
     max_value = config.get("max_value", 255)
@@ -62,7 +75,7 @@ def dataset_builder(
     # quantization value, -1 disabled, otherwise 2, 4, 8
     quantization = config.get("quantization", -1)
     # whether to crop or not
-    random_crop = dataset_shape[0:2] != input_shape[0:2]
+    random_crop = dataset_shape[0][0:2] != input_shape[0:2]
     random_crop = tf.constant(random_crop)
 
     # build noise options
@@ -93,50 +106,20 @@ def dataset_builder(
 
     # --- define generator function from directory
     if directory:
-        dataset = \
+        dataset = [
             tf.keras.preprocessing.image_dataset_from_directory(
+                directory=d,
+                image_size=s,
                 shuffle=True,
                 label_mode=None,
-                directory=directory,
                 batch_size=batch_size,
                 color_mode=color_mode,
-                image_size=dataset_shape,
                 interpolation="bilinear")
+            for d, s in zip(directory, dataset_shape)
+        ]
 
     else:
         raise ValueError("don't know how to handle non directory datasets")
-
-    if directory_testing:
-        dataset_testing = \
-            tf.keras.preprocessing.image_dataset_from_directory(
-                shuffle=True,
-                label_mode=None,
-                batch_size=batch_size,
-                color_mode=color_mode,
-                image_size=dataset_shape,
-                interpolation="bilinear",
-                directory=directory_testing)
-    else:
-        dataset_testing = None
-
-    def input_batch_test_preparation(input_batch):
-        # --- convert to float32
-        input_batch = tf.cast(input_batch, dtype=tf.dtypes.float32)
-
-        # --- clip values within boundaries
-        if clip_value:
-            input_batch = \
-                tf.clip_by_value(
-                    input_batch,
-                    clip_value_min=min_value,
-                    clip_value_max=max_value)
-
-        # --- round values to nearest integer
-        if round_values:
-            input_batch = tf.round(input_batch)
-
-        # --- convert to float32
-        return input_batch
 
     def input_batch_augmentations(input_batch):
         input_shape_inference = tf.shape(input_batch)
@@ -313,20 +296,20 @@ def dataset_builder(
         return noisy_batch
 
     # --- create the dataset
-    result = {
-        # augmentation function distorts the input batch and produces and noisy batch
-        AUGMENTATION_FN_STR: augmentation,
-        # dataset produces the dataset with basic geometric distortions
-        DATASET_FN_STR:
-            dataset.map(
+    result = dict()
+
+    result[AUGMENTATION_FN_STR] = augmentation
+
+    # dataset produces the dataset with basic geometric distortions
+    if len(dataset) == 1:
+        result[DATASET_FN_STR] = \
+            dataset[0].map(
                 map_func=input_batch_augmentations,
                 num_parallel_calls=None).prefetch(2)
-    }
-
-    if dataset_testing is not None:
-        result[DATASET_TESTING_FN_STR] = \
-            dataset_testing.map(
-                map_func=input_batch_test_preparation,
+    else:
+        result[DATASET_FN_STR] = \
+            tf.data.Dataset.sample_from_datasets(dataset).map(
+                map_func=input_batch_augmentations,
                 num_parallel_calls=None).prefetch(2)
 
     return result
