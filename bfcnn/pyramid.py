@@ -193,30 +193,6 @@ def downsample_2x2_block(
 # ---------------------------------------------------------------------
 
 
-class MixType(Enum):
-    EQUAL = 1
-    EXPONENTIAL = 2
-
-    @staticmethod
-    def from_string(type_str: str) -> "MixType":
-        # --- argument checking
-        if type_str is None:
-            raise ValueError("type_str must not be null")
-        if not isinstance(type_str, str):
-            raise ValueError("type_str must be string")
-        if len(type_str.strip()) <= 0:
-            raise ValueError("stripped type_str must not be empty")
-
-        # --- clean string and get
-        return MixType[type_str.strip().upper()]
-
-    def to_string(self) -> str:
-        return self.name
-
-
-# ---------------------------------------------------------------------
-
-
 class PyramidType(Enum):
     NONE = 1
     GAUSSIAN = 2
@@ -272,14 +248,13 @@ def build_gaussian_pyramid_model(
         keras.layers.Layer(name="level_0")(input_layer)
     multiscale_layers = [level_x]
     for level in range(1, levels):
+        level_x_down = \
+            keras.layers.AveragePooling2D(
+                pool_size=kernel_size,
+                strides=(2, 2),
+                padding="same")(level_x)
         level_x = \
-            downsample_2x2_block(
-                input_layer=level_x,
-                xy_max=xy_max,
-                trainable=trainable,
-                kernel_size=kernel_size)
-        level_x = \
-            keras.layers.Layer(name=f"level_{level}")(level_x)
+            keras.layers.Layer(name=f"level_{level}")(level_x_down)
         multiscale_layers.append(level_x)
 
     return \
@@ -297,18 +272,13 @@ def build_inverse_gaussian_pyramid_model(
         input_dims: Union[Tuple, List],
         levels: int,
         trainable: bool = False,
-        mix_type: MixType = MixType.EQUAL,
         name: str = "inverse_gaussian_pyramid") -> keras.Model:
     """
     Build a gaussian pyramid model
 
     :param input_dims: input dimensions
     :param levels: how many levels to go down the pyramid
-    :param kernel_size: kernel size tuple
-    :param xy_max: how far the gaussian are we going
-        (symmetrically) on the 2 axis
     :param trainable: is the pyramid trainable (default False)
-    :param mix_type: how to mix the different layers
     :param name: name of the model
     :return: inverse gaussian pyramid keras model
     """
@@ -318,29 +288,25 @@ def build_inverse_gaussian_pyramid_model(
         for i in range(0, levels)
     ]
 
-    # --- compute layer weights
-    if mix_type == MixType.EQUAL:
-        layer_weights = np.array([1.0 / levels] * levels)
-    elif mix_type == MixType.EXPONENTIAL:
-        layer_weights = np.array(range(levels))
-        layer_weights = 2 ** layer_weights
-        layer_weights = layer_weights / np.sum(layer_weights)
-    else:
-        raise ValueError("don't know how to use mix_type [{0}]".format(
-            mix_type))
-
     # --- merge different levels (from smallest to biggest)
-    output_layer = input_layers[-1] * layer_weights[-1]
-
-    for i in range(levels - 2, -1, -1):
-        level_up_x = \
-            keras.layers.UpSampling2D(
-                size=(2, 2),
-                interpolation="bilinear")(output_layer)
-        output_layer = \
-            keras.layers.Add()([
-                level_up_x,
-                input_layers[i] * layer_weights[i]])
+    output_layer = None
+    previous_layer = None
+    for level_x in reversed(input_layers):
+        if output_layer is None:
+            output_layer = level_x
+            previous_layer = level_x
+        else:
+            output_layer = \
+                keras.layers.UpSampling2D(
+                    size=(2, 2),
+                    interpolation="bilinear")(output_layer)
+            level_up_x = \
+                keras.layers.UpSampling2D(
+                    size=(2, 2),
+                    interpolation="bilinear")(previous_layer)
+            level_x_diff = level_x - level_up_x
+            output_layer = output_layer + level_x_diff
+            previous_layer = level_x
     output_layer = \
         keras.layers.Layer(name="output_tensor")(output_layer)
 
@@ -522,18 +488,15 @@ def build_inverse_pyramid_model(
     if config is None:
         no_levels = 1
         pyramid_type = PyramidType.from_string("NONE")
-        mix_type = MixType.from_string(MixType.EQUAL.to_string())
     else:
         no_levels = config.get("levels", 1)
         pyramid_type = PyramidType.from_string(config.get("type", "NONE"))
-        mix_type = MixType.from_string(config.get("mix_type", MixType.EQUAL.to_string()))
 
     if pyramid_type == PyramidType.GAUSSIAN:
         pyramid_model = \
             build_inverse_gaussian_pyramid_model(
                 input_dims=input_dims,
-                levels=no_levels,
-                mix_type=mix_type)
+                levels=no_levels)
     elif pyramid_type == PyramidType.LAPLACIAN:
         pyramid_model = \
             build_inverse_laplacian_pyramid_model(
@@ -543,8 +506,7 @@ def build_inverse_pyramid_model(
         pyramid_model = \
             build_inverse_gaussian_pyramid_model(
                 input_dims=input_dims,
-                levels=no_levels,
-                mix_type=mix_type)
+                levels=no_levels)
     else:
         raise ValueError(
             "don't know how to build pyramid type [{0}]".format(pyramid_type))
