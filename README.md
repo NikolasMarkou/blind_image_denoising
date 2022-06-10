@@ -163,6 +163,8 @@ We also have the option to add residuals at the end of each processing levels, s
 Our addition (not in the paper) is the gaussian multi-scale pyramid
 that expands the effective receptive field without the need to add many more layers (keeping it cheap computationally).
 
+![](images/readme/gaussian_decomposition_lena.png "Gaussian Decomposition Lena")
+
 #### [Noise estimation model Multi-Scale mixer](bfcnn/model_noise_estimation.py)
 Our addition (not in the paper) is a noise estimation model that
 decides the contribution of each layer when mixing them back in.
