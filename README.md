@@ -52,9 +52,16 @@ several types of noise and then try to recover the original image
 
 ## Image examples
 
-* we can clearly see that the model adapts well to different ranges of noise
+The following samples are `256x256` crops from the `KITTI` dataset, 
+denoised using the `resnet_color_laplacian_3x5_non_shared_bn_16x3x3_128x128_residual` model.
 
-noise (std) | mae (noisy) | mae (denoised) | Normal - Noisy - Denoised                     |
+We add truncated normal noise with different standard deviations and calculate the 
+`Mean Absolute Error (MAE)` both for the noisy images, and the denoised images. 
+The pixel range is 0-255. 
+
+We can clearly see that the model adapts well to different ranges of noise.
+
+noise (std) | MAE (noisy) | MAE (denoised) | Normal - Noisy - Denoised                     |
 ---|-----|-----|----------------------------------------------|
 1  |0.65|4.33 |![](images/readme/bfcnn_image_0.png "normal") |
 5  |3.50|3.39 |![](images/readme/bfcnn_image_1.png "normal") |
@@ -78,14 +85,14 @@ noise (std) | mae (noisy) | mae (denoised) | Normal - Noisy - Denoised          
 
 ### Train
 Prepare a training configuration and train with the following command:  
-```
+```bash
 python -m bfcnn.train \ 
   --model-directory ${TRAINING_DIR} \ 
   --pipeline-config ${PIPELINE}
 ```
 ### Export
 Export to frozen graph and/or tflite with the following command:
-```
+```bash
 python -m bfcnn.export \
     --checkpoint-directory ${TRAINING_DIR} \
     --pipeline-config ${PIPELINE} \
