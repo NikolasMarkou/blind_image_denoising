@@ -37,22 +37,10 @@ This paper provides excellent results
 
 ![](images/readme/bfcnn_noisy_1.png "single channel bias free denoising")
 
-Which can also be completely interpretable as a mask per pixel
+which can also be completely interpretable as a mask per pixel
 
 ![](images/readme/bfcnn_noisy_2.png "pixel smoothing interpretability")
 
-## Multi-Scale
-The system is trained in multiple scales by implementing ideas 
-from LapSRN (Laplacian Pyramid Super-Resolution Network) and MS-LapSRN (Multi-Scale Laplacian Pyramid Super-Resolution Network)
-
-![](images/readme/laplacian_pyramid_decomposition.png "laplacian pyramid decomposition")
-
-![](images/readme/laplacian_pyramid_recomposition.png "laplacian pyramid recomposition")
-
-## Low-Memory footprint
-By using a gaussian pyramid and a shared bias-free CNN model between each scale, 
-we can ensure that we have a small enough model to run on very small devices while ensure we
-have a big enough ERF (effective receptive field) for the task at hand.
 
 ## Corruption types
 In order to train such a model we corrupt an input image using 
@@ -143,6 +131,20 @@ We have used traditional (bias free) architectures.
 * resnet with sparse constraint
 * resnet with on/off per resnet block gates 
 * all the above models with multi-scale processing
+
+## Multi-Scale
+The system is trained in multiple scales by implementing ideas 
+from LapSRN (Laplacian Pyramid Super-Resolution Network) and MS-LapSRN (Multi-Scale Laplacian Pyramid Super-Resolution Network)
+
+![](images/readme/laplacian_pyramid_decomposition.png "laplacian pyramid decomposition")
+
+![](images/readme/laplacian_pyramid_recomposition.png "laplacian pyramid recomposition")
+
+## Low-Memory footprint
+By using a gaussian pyramid and a shared bias-free CNN model between each scale, 
+we can ensure that we have a small enough model to run on very small devices while ensure we
+have a big enough ERF (effective receptive field) for the task at hand.
+
 
 ### Additions
 #### [Multi-Scale Laplacian Pyramid](bfcnn/pyramid.py)
