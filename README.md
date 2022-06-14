@@ -54,18 +54,18 @@ several types of noise and then try to recover the original image
 
 * we can clearly see that the model adapts well to different ranges of noise
 
-Normal - Noisy - Denoised                     |
-----------------------------------------------|
-![](images/readme/bfcnn_image_0.png "normal") |
-![](images/readme/bfcnn_image_1.png "normal") |
-![](images/readme/bfcnn_image_2.png "normal") |
-![](images/readme/bfcnn_image_3.png "normal") |
-![](images/readme/bfcnn_image_4.png "normal") |
-![](images/readme/bfcnn_image_5.png "normal") |
-![](images/readme/bfcnn_image_6.png "normal") |
-![](images/readme/bfcnn_image_7.png "normal") |
-![](images/readme/bfcnn_image_8.png "normal") |
-![](images/readme/bfcnn_image_9.png "normal") |
+noise (std) | mae (noisy) | mae (denoised) | Normal - Noisy - Denoised                     |
+---|-----|-----|----------------------------------------------|
+1  |0.65|4.33 |![](images/readme/bfcnn_image_0.png "normal") |
+5  |3.50|3.39 |![](images/readme/bfcnn_image_1.png "normal") |
+10 |6.44|5.19 |![](images/readme/bfcnn_image_2.png "normal") |
+20 |13.22|6.60 |![](images/readme/bfcnn_image_3.png "normal") |
+30 |19.84|8.46 |![](images/readme/bfcnn_image_4.png "normal") |
+40 |27.02|12.95|![](images/readme/bfcnn_image_5.png "normal") |
+50 |30.59|15.06|![](images/readme/bfcnn_image_6.png "normal") |
+60 |34.34|17.81|![](images/readme/bfcnn_image_7.png "normal") |
+70 |40.64|22.36|![](images/readme/bfcnn_image_8.png "normal") |
+80 |45.68|27.99|![](images/readme/bfcnn_image_9.png "normal") |
 
 
 ## How to use (from scratch)
