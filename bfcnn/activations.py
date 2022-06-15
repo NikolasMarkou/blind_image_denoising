@@ -18,6 +18,58 @@ from .custom_layers import TrainableMultiplier, RandomOnOff
 # ---------------------------------------------------------------------
 
 
+def step_function_layer(
+        offset: float = 0.0,
+        multiplier: float = 20.0):
+    """
+    Differentiable step function approximation using tanh
+    non-saturation y:(0, 1) range x:(-0.1, +0.1)
+
+    :param offset:
+    :param multiplier:
+    :result:
+    """
+
+    # --- compute mean and sigma
+    if offset != 0.0:
+        def func(x):
+            x = x - offset
+            return (tf.math.tanh(x * multiplier) + 1.0) * 0.5
+    else:
+        def func(x):
+            return (tf.math.tanh(x * multiplier) + 1.0) * 0.5
+
+    return \
+        keras.layers.Lambda(
+            function=func,
+            trainable=False)
+
+# ---------------------------------------------------------------------
+
+
+def step_function(
+        input_layer,
+        **kwargs):
+    """
+    Differentiable step function approximation using tanh
+    non-saturation y:(0, 1) range x:(-0.1, +0.1)
+
+    :param input_layer:
+    :result:
+    """
+    # --- arguments check
+    if input_layer is None:
+        raise ValueError("input layer cannot be None")
+
+    # --- create layer
+    layer = step_function_layer(**kwargs)
+
+    # --- filter input layer
+    return layer(input_layer)
+
+# ---------------------------------------------------------------------
+
+
 def differentiable_relu_layer(
         threshold: float = 0.0,
         max_value: float = 6.0,
