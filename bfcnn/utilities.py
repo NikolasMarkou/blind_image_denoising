@@ -1,11 +1,3 @@
-# ---------------------------------------------------------------------
-
-__author__ = "Nikolas Markou"
-__version__ = "1.0.0"
-__license__ = "MIT"
-
-# ---------------------------------------------------------------------
-
 import os
 import json
 import keras
@@ -22,6 +14,7 @@ from typing import List, Tuple, Union, Dict, Iterable
 from .custom_logger import logger
 from .constants import EPSILON_DEFAULT
 from .custom_layers import TrainableMultiplier, RandomOnOff
+from .activations import differentiable_relu, differentiable_relu_layer
 
 # ---------------------------------------------------------------------
 
@@ -401,56 +394,6 @@ def mean_sigma_global(
     return \
         keras.layers.Lambda(
             function=func,
-            trainable=False)(input_layer)
-
-# ---------------------------------------------------------------------
-
-
-def differentiable_relu(
-        input_layer,
-        threshold: float = 0.0,
-        max_value: float = 6.0,
-        multiplier: float = 10.0):
-    """
-    Creates a differentiable relu operation
-
-    :param input_layer:
-    :param threshold: lower bound value before zeroing
-    :param max_value: max allowed value
-    :param multiplier: controls steepness
-    :result:
-    """
-    # --- arguments check
-    if threshold is None:
-        raise ValueError("threshold must not be empty")
-    if max_value is not None:
-        if threshold > max_value:
-            raise ValueError(
-                f"max_value [{max_value}] must be > threshold [{threshold}")
-
-    # --- function building
-    def func_diff_relu_0(args):
-        x = args
-        step_threshold = tf.math.sigmoid(multiplier * (x - threshold))
-        step_max_value = tf.math.sigmoid(multiplier * (x - max_value))
-        result = \
-            ((step_max_value * max_value) + ((1.0 - step_max_value) * x)) * \
-            step_threshold
-        return result
-
-    def func_diff_relu_1(args):
-        x = args
-        step_threshold = tf.math.sigmoid(multiplier * (x - threshold))
-        result = step_threshold * x
-        return result
-
-    fn = func_diff_relu_0
-    if max_value is None:
-        fn = func_diff_relu_1
-
-    return \
-        keras.layers.Lambda(
-            function=fn,
             trainable=False)(input_layer)
 
 # ---------------------------------------------------------------------
