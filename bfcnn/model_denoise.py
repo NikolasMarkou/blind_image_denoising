@@ -7,15 +7,23 @@ __license__ = "MIT"
 # ---------------------------------------------------------------------
 
 import abc
+import tensorflow as tf
 from tensorflow import keras
 from collections import namedtuple
+from typing import Dict, List, Tuple
 
 # ---------------------------------------------------------------------
 # local imports
 # ---------------------------------------------------------------------
 
-from .utilities import *
 from .custom_logger import logger
+from .utilities import \
+    input_shape_fixer, \
+    build_normalize_model, \
+    build_denormalize_model, \
+    mean_sigma_local, \
+    mean_sigma_global
+from .resnet_model import build_model_resnet
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
@@ -518,6 +526,7 @@ def module_builder(
                 model_denormalize=model_denormalize,
                 cast_to_uint8=cast_to_uint8)
     else:
-        raise ValueError("don't know how to handle training_channels:{0}".format(training_channels))
+        raise ValueError(
+            "don't know how to handle training_channels:{0}".format(training_channels))
 
 # ---------------------------------------------------------------------
