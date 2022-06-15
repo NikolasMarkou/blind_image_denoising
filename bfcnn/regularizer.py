@@ -4,12 +4,6 @@ blocks and builders for custom regularizers
 
 # ---------------------------------------------------------------------
 
-__author__ = "Nikolas Markou"
-__version__ = "1.0.0"
-__license__ = "MIT"
-
-# ---------------------------------------------------------------------
-
 import numpy as np
 from enum import Enum
 import tensorflow as tf
@@ -55,8 +49,9 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
         self._l1_coefficient = l1_coefficient
 
     def __call__(self, x):
-        # reshape
+        # --- reshape
         x = reshape_to_2d(x)
+
         # --- compute (Wt * W) - I
         wt_w = \
             tf.linalg.matmul(

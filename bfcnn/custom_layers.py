@@ -45,7 +45,8 @@ class TrainableMultiplier(tf.keras.layers.Layer):
     def get_config(self):
         return {
             "multiplier": self._w0.numpy(),
-            "activation": self._activation_type
+            "activation": self._activation_type,
+            "regularizer": self._regularizer
         }
 
     def compute_output_shape(self, input_shape):
@@ -104,6 +105,7 @@ class GeluLayer(tf.keras.layers.Layer):
     def __init__(self,
                  trainable: bool = True,
                  name=None,
+                 regularizer=None,
                  **kwargs):
         super(GeluLayer, self).__init__(
             trainable=trainable,
@@ -111,6 +113,7 @@ class GeluLayer(tf.keras.layers.Layer):
             **kwargs)
         self._offset = None
         self._multiplier = None
+        self._regularizer = keras.regularizers.get(regularizer)
 
     def build(self, input_shape):
         def init_offset_fn(shape, dtype):
@@ -123,14 +126,14 @@ class GeluLayer(tf.keras.layers.Layer):
             self.add_weight(
                 shape=[1],
                 trainable=True,
-                regularizer=None,
+                regularizer=self._regularizer,
                 name="offset",
                 initializer=init_offset_fn)
         self._multiplier = \
             self.add_weight(
                 shape=[1],
                 trainable=True,
-                regularizer=None,
+                regularizer=self._regularizer,
                 name="multiplier",
                 initializer=init_multiplier_fn)
         super(GeluLayer, self).build(input_shape)
@@ -144,7 +147,8 @@ class GeluLayer(tf.keras.layers.Layer):
     def get_config(self):
         return {
             "offset": self._offset.numpy(),
-            "multiplier": self._multiplier.numpy()
+            "multiplier": self._multiplier.numpy(),
+            "regularizer": self._regularizer,
         }
 
     def compute_output_shape(self, input_shape):
