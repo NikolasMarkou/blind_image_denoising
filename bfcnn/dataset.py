@@ -198,6 +198,8 @@ def dataset_builder(
         noise_type = \
             np.random.choice(noise_choices, size=1)[0]
 
+        logger.info(f"noise_type: {noise_type}")
+
         if noise_type == 0:
             # additional noise
             noise_std = np.random.choice(additional_noise, size=1)[0]
@@ -225,6 +227,14 @@ def dataset_builder(
                         axis=3,
                         repeats=[input_shape_inference[3]])
                 noisy_batch = noisy_batch + tmp_noisy_batch
+            # blur to embed noise
+            if random_blur:
+                if np.random.uniform() > 0.5:
+                    noisy_batch = \
+                        tfa.image.gaussian_filter2d(
+                            image=noisy_batch,
+                            sigma=1,
+                            filter_shape=(3, 3))
         elif noise_type == 1:
             # multiplicative noise
             noise_std = \
