@@ -6,7 +6,6 @@ __license__ = "MIT"
 
 # ---------------------------------------------------------------------
 
-import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow_addons as tfa
@@ -203,7 +202,7 @@ def dataset_builder(
         if noise_type == 0:
             # additional noise
             noise_std = random_choice(additional_noise, size=1)[0]
-            if np.random.uniform() > 0.5:
+            if tf.random.uniform(()) > 0.5:
                 # channel independent noise
                 noisy_batch = \
                     noisy_batch + \
@@ -229,7 +228,7 @@ def dataset_builder(
                 noisy_batch = noisy_batch + tmp_noisy_batch
             # blur to embed noise
             if random_blur:
-                if np.random.uniform() > 0.5:
+                if tf.random.uniform(()) > 0.5:
                     noisy_batch = \
                         tfa.image.gaussian_filter2d(
                             image=noisy_batch,

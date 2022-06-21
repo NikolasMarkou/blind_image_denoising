@@ -32,7 +32,7 @@
     "checkpoints_to_keep": 3,
     "checkpoint_every": 10000,
     "visualization_number": 4,
-    "visualization_every": 100,
+    "visualization_every": 1000,
     "random_batch_iterations": 5,
     "random_batch_size": [256, 256, 3],
     "random_batch_min_difference": 0.1,
