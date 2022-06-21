@@ -59,7 +59,7 @@
     "nae_multiplier": 10.0
   },
   "dataset": {
-    "batch_size": 2,
+    "batch_size": 16,
     "min_value": 0,
     "max_value": 255,
     "clip_value": true,
