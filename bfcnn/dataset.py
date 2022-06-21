@@ -195,8 +195,8 @@ def dataset_builder(
         input_shape_inference = tf.shape(noisy_batch)
 
         # --- random select noise type
-
-        noise_type = np.random.choice(noise_choices, size=1)
+        noise_type = \
+            np.random.choice(noise_choices, size=1)[0]
 
         if noise_type == 0:
             # additional noise
