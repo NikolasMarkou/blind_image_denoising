@@ -110,7 +110,7 @@ def train_loop(
     # how many steps to make a visualization
     visualization_every = \
         tf.constant(
-            train_config["visualization_every"],
+            train_config.get("visualization_every", 1000),
             dtype=tf.dtypes.int64,
             name="visualization_every")
     # how many visualizations to show
@@ -225,7 +225,7 @@ def train_loop(
                 int(global_epoch), int(global_step)))
 
             # --- pruning strategy
-            if use_prune and global_epoch >= prune_start_epoch:
+            if use_prune and (global_epoch >= prune_start_epoch):
                 logger.info(f"pruning weights at step [{int(global_step)}]")
                 denoiser_decomposition = \
                     prune_function(model=denoiser_decomposition)
@@ -324,7 +324,7 @@ def train_loop(
                         step=global_step)
 
                 # --- add image prediction for tensorboard
-                if global_step % visualization_every == 0:
+                if (global_step % visualization_every) == 0:
                     random_batch = create_random_batch()
                     visualize(
                         global_step=global_step,
@@ -343,15 +343,15 @@ def train_loop(
                         buckets=weight_buckets,
                         name="training/weights")
 
-                if use_prune and global_epoch >= prune_start_epoch and \
-                        int(prune_steps) != -1 and global_step % prune_steps == 0:
+                if use_prune and (global_epoch >= prune_start_epoch) and \
+                        (int(prune_steps) != -1) and (global_step % prune_steps == 0):
                     logger.info(f"pruning weights at step [{int(global_step)}]")
                     denoiser = \
                         prune_function(model=denoiser)
 
                 # --- check if it is time to save a checkpoint
                 if checkpoint_every > 0:
-                    if global_step % checkpoint_every == 0:
+                    if (global_step % checkpoint_every == 0):
                         logger.info("checkpoint at step: {0}".format(
                             int(global_step)))
                         manager.save()
