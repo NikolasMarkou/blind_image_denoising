@@ -200,7 +200,7 @@ def dataset_builder(
 
         if noise_type == 0:
             # additional noise
-            noise_std = np.random.choice(additional_noise, size=1)
+            noise_std = np.random.choice(additional_noise, size=1)[0]
             if np.random.uniform() > 0.5:
                 # channel independent noise
                 noisy_batch = \
@@ -227,7 +227,8 @@ def dataset_builder(
                 noisy_batch = noisy_batch + tmp_noisy_batch
         elif noise_type == 1:
             # multiplicative noise
-            noise_std = np.random.choice(multiplicative_noise, size=1)
+            noise_std = \
+                np.random.choice(multiplicative_noise, size=1)[0]
             if np.random.uniform() > 0.5:
                 # channel independent noise
                 noisy_batch = \
