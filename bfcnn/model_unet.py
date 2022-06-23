@@ -64,15 +64,15 @@ def unet_blocks(
             x = \
                 conv2d_wrapper(
                     x,
-                    conv_params=filter_changer(i, first_conv_params),
+                    conv_params=first_conv_params,
                     bn_params=None)
         x = \
             resnet_blocks(
                 input_layer=x,
                 no_layers=no_layers,
-                first_conv_params=filter_changer(i, first_conv_params),
-                second_conv_params=filter_changer(i, second_conv_params),
-                third_conv_params=filter_changer(i, third_conv_params),
+                first_conv_params=first_conv_params,
+                second_conv_params=second_conv_params,
+                third_conv_params=third_conv_params,
                 bn_params=bn_params,
                 gate_params=gate_params,
                 dropout_params=dropout_params,
@@ -100,15 +100,15 @@ def unet_blocks(
         x = \
             conv2d_wrapper(
                 x,
-                conv_params=filter_changer(i, first_conv_params),
+                conv_params=first_conv_params,
                 bn_params=None)
         x = \
             resnet_blocks(
                 input_layer=x,
                 no_layers=no_layers,
-                first_conv_params=filter_changer(i, first_conv_params),
-                second_conv_params=filter_changer(i, second_conv_params),
-                third_conv_params=filter_changer(i, third_conv_params),
+                first_conv_params=first_conv_params,
+                second_conv_params=second_conv_params,
+                third_conv_params=third_conv_params,
                 bn_params=bn_params,
                 gate_params=gate_params,
                 dropout_params=dropout_params,
