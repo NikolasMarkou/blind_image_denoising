@@ -54,7 +54,7 @@ def unet_blocks(
         params_new["filters"] = params_new["filters"] * ((level+1) ** 2)
         return params_new
 
-    # --- setup resnet
+    # --- setup unet
     x = input_layer
     levels_x = []
 
@@ -309,7 +309,7 @@ def build_model_unet(
                 bn_params=None,
                 **sparse_params)
 
-    # add resnet blocks
+    # add unet blocks
     x = \
         unet_blocks(
             input_layer=x,
