@@ -32,8 +32,8 @@
     "checkpoints_to_keep": 3,
     "checkpoint_every": 10000,
     "visualization_number": 4,
-    "visualization_every": 4000,
-    "random_batch_iterations": 10,
+    "visualization_every": 1000,
+    "random_batch_iterations": 5,
     "random_batch_size": [256, 256, 3],
     "random_batch_min_difference": 0.1,
     "optimizer": {
@@ -64,7 +64,7 @@
     "nae_multiplier": 10.0
   },
   "dataset": {
-    "batch_size": 2,
+    "batch_size": 16,
     "min_value": 0,
     "max_value": 255,
     "clip_value": true,
