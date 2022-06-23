@@ -51,7 +51,7 @@ def unet_blocks(
     # ---
     def filter_changer(level: int, params: Dict):
         params_new = params.copy()
-        params_new["filters"] = params_new["filters"] * ((level+1) ** 2)
+        params_new["filters"] = params_new["filters"] * (level+1)
         return params_new
 
     # --- setup unet
