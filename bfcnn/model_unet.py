@@ -60,11 +60,12 @@ def unet_blocks(
 
     # --- downside
     for i in range(no_levels):
-        x = \
-            conv2d_wrapper(
-                x,
-                conv_params=filter_changer(i, third_conv_params),
-                bn_params=bn_params)
+        if i > 0:
+            x = \
+                conv2d_wrapper(
+                    x,
+                    conv_params=filter_changer(i, first_conv_params),
+                    bn_params=None)
         x = \
             resnet_blocks(
                 input_layer=x,
@@ -99,8 +100,8 @@ def unet_blocks(
         x = \
             conv2d_wrapper(
                 x,
-                conv_params=filter_changer(i, third_conv_params),
-                bn_params=bn_params)
+                conv_params=filter_changer(i, first_conv_params),
+                bn_params=None)
         x = \
             resnet_blocks(
                 input_layer=x,
