@@ -31,10 +31,15 @@
     "random_batch_size": [256, 256, 1],
     "random_batch_min_difference": 0.1,
     "optimizer": {
-      "decay_rate": 0.9,
-      "decay_steps": 20000,
-      "learning_rate": 0.001,
-      "gradient_clipping_by_norm": 1.0
+      "gradient_clipping_by_norm": 1.0,
+      "schedule": {
+        "type": "exponential_decay",
+        "config": {
+          "decay_rate": 0.9,
+          "decay_steps": 20000,
+          "learning_rate": 0.001
+        }
+      }
     },
     "prune": {
       "start_epoch": 1,
