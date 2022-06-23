@@ -311,18 +311,18 @@ def dataset_builder(
     result[AUGMENTATION_FN_STR] = augmentation
 
     # dataset produces the dataset with basic geometric distortions
-    if len(dataset) == 1:
+    if len(dataset) == 0:
+        raise ValueError("don't know how to handle zero datasets")
+    elif len(dataset) == 1:
         result[DATASET_FN_STR] = \
             dataset[0].map(
                 map_func=input_batch_augmentations,
                 num_parallel_calls=tf.data.AUTOTUNE).prefetch(2)
-    elif len(dataset) > 1:
+    else:
         result[DATASET_FN_STR] = \
             tf.data.Dataset.sample_from_datasets(dataset).map(
                 map_func=input_batch_augmentations,
                 num_parallel_calls=tf.data.AUTOTUNE).prefetch(2)
-    else:
-        raise ValueError("don't know how to handle zero datasets")
 
     return result
 
