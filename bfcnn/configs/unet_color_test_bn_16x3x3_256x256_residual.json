@@ -19,7 +19,7 @@
     "input_shape": ["?", "?", 3],
     "add_residual_between_models": true,
     "kernel_initializer": "glorot_normal",
-    "kernel_regularizer": "soft_orthogonal"
+    "kernel_regularizer": "l1"
   },
   "train": {
     "epochs": 50,
