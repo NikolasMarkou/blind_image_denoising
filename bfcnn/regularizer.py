@@ -130,15 +130,18 @@ def builder_helper(
         raise ValueError("don't know how to handle config")
 
     # --- select correct regularizer
+    regularizer = None
     if regularizer_type == "l1":
-        return keras.regularizers.L1(**regularizer_parameters)
-    if regularizer_type == "l2":
-        return keras.regularizers.L2(**regularizer_parameters)
-    if regularizer_type == "l1l2":
-        return keras.regularizers.L1L2(**regularizer_parameters)
-    if regularizer_type == "soft_orthogonal":
-        return SoftOrthogonalConstraintRegularizer(**regularizer_parameters)
-    raise ValueError(f"don't know how to handle [{regularizer_type}]")
+        regularizer = keras.regularizers.L1(**regularizer_parameters)
+    elif regularizer_type == "l2":
+        regularizer = keras.regularizers.L2(**regularizer_parameters)
+    elif regularizer_type == "l1l2":
+        regularizer = keras.regularizers.L1L2(**regularizer_parameters)
+    elif regularizer_type == "soft_orthogonal":
+        regularizer = SoftOrthogonalConstraintRegularizer(**regularizer_parameters)
+    else:
+        raise ValueError(f"don't know how to handle [{regularizer_type}]")
+    return regularizer
 
 # ---------------------------------------------------------------------
 

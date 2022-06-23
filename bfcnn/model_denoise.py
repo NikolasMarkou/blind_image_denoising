@@ -23,7 +23,7 @@ from .utilities import \
     build_denormalize_model, \
     mean_sigma_local, \
     mean_sigma_global
-from .resnet_model import build_model_resnet
+from .model_resnet import build_model_resnet
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
