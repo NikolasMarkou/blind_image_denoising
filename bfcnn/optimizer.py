@@ -1,24 +1,76 @@
-r"""
-Constructs the optimizer builder
-"""
+import tensorflow as tf
+from tensorflow import keras
+from typing import Dict, Tuple
+
+# ---------------------------------------------------------------------
+# local imports
+# ---------------------------------------------------------------------
+
+from .custom_logger import logger
 
 # ---------------------------------------------------------------------
 
-__author__ = "Nikolas Markou"
-__version__ = "1.0.0"
-__license__ = "MIT"
 
-# ---------------------------------------------------------------------
+def schedule_builder(
+        config: Dict) -> keras.optimizers.schedules.LearningRateSchedule:
+    # --- argument checking
+    if not isinstance(config, Dict):
+        raise ValueError("config must be a dictionary")
 
+    # --- select type
+    schedule_type = config.get("type", None)
 
-from typing import Dict
-import tensorflow.keras as keras
+    # --- sanity checks
+    if schedule_type is None:
+        raise ValueError("schedule_type cannot be None")
+    if not isinstance(schedule_type, str):
+        raise ValueError("schedule_type must be a string")
+    schedule_type = schedule_type.lower().strip()
+
+    # --- select schedule
+    schedule = None
+    params = config.get("config", {})
+    if schedule_type == "exponential_decay":
+        decay_rate = params["decay_rate"]
+        decay_steps = params["decay_steps"]
+        learning_rate = params["learning_rate"]
+        schedule = \
+            keras.optimizers.schedules.ExponentialDecay(
+                initial_learning_rate=learning_rate,
+                decay_steps=decay_steps,
+                decay_rate=decay_rate)
+    elif schedule_type == "cosine_decay_restarts":
+        decay_steps = params["decay_steps"]
+        learning_rate = params["learning_rate"]
+        t_mul = params.get("t_mul", 2.0)
+        m_mul = params.get("m_mul", 1.0)
+        alpha = params.get("alpha", 0.0)
+        schedule = \
+            keras.optimizers.schedules.CosineDecayRestarts(
+                initial_learning_rate=learning_rate,
+                first_decay_steps=decay_steps,
+                t_mul=t_mul,
+                m_mul=m_mul,
+                alpha=alpha)
+    elif schedule_type == "cosine_decay":
+        decay_steps = params["decay_steps"]
+        learning_rate = params["learning_rate"]
+        schedule = \
+            keras.optimizers.schedules.CosineDecay(
+                initial_learning_rate=learning_rate,
+                decay_steps=decay_steps,
+                alpha=0.0,
+                name=None)
+    else:
+        raise ValueError(f"don't know how to handle {schedule_type}")
+    logger.info(f"created schedule: {schedule}")
+    return schedule
 
 # ---------------------------------------------------------------------
 
 
 def optimizer_builder(
-        config: Dict):
+        config: Dict) -> Tuple[keras.optimizers.Optimizer, keras.optimizers.schedules.LearningRateSchedule]:
     """
     Instantiate an optimizer.
 
@@ -26,21 +78,17 @@ def optimizer_builder(
     :return:
     """
     # --- argument checking
-    if not isinstance(config, dict):
+    if not isinstance(config, Dict):
         raise ValueError("config must be a dictionary")
 
     # --- read configuration
-    decay_rate = config["decay_rate"]
-    decay_steps = config["decay_steps"]
-    learning_rate = config["learning_rate"]
+    schedule_config = config["schedule"]
     gradient_clipping_by_norm = config["gradient_clipping_by_norm"]
 
     # --- set up schedule
     lr_schedule = \
-        keras.optimizers.schedules.ExponentialDecay(
-            initial_learning_rate=learning_rate,
-            decay_steps=decay_steps,
-            decay_rate=decay_rate)
+        schedule_builder(config=schedule_config)
+
     return \
         keras.optimizers.RMSprop(
             learning_rate=lr_schedule,

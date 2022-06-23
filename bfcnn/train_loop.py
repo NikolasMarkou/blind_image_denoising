@@ -22,11 +22,15 @@ from .constants import *
 from .visualize import visualize
 from .custom_logger import logger
 from .utilities import load_config
-from .dataset import dataset_builder
 from .loss import loss_function_builder
 from .optimizer import optimizer_builder
 from .model_denoise import model_builder as model_denoise_builder
 from .pruning import prune_function_builder, PruneStrategy, get_conv2d_weights
+from .dataset import \
+    dataset_builder, \
+    DATASET_TESTING_FN_STR, \
+    DATASET_FN_STR, \
+    AUGMENTATION_FN_STR
 
 
 # ---------------------------------------------------------------------
@@ -66,11 +70,11 @@ def train_loop(
 
     # --- build dataset
     dataset_res = dataset_builder(config=config["dataset"])
-    dataset = dataset_res["dataset"]
-    augmentation_fn = tf.function(dataset_res["augmentation"])
+    dataset = dataset_res[DATASET_FN_STR]
+    augmentation_fn = tf.function(dataset_res[AUGMENTATION_FN_STR])
 
     # --- build loss function
-    loss_fn = tf.function(loss_function_builder(config=config["loss"]))
+    loss_fn = loss_function_builder(config=config["loss"])
 
     # --- build optimizer
     optimizer, lr_schedule = \
@@ -106,21 +110,18 @@ def train_loop(
     # how many steps to make a visualization
     visualization_every = \
         tf.constant(
-            train_config["visualization_every"],
+            train_config.get("visualization_every", 1000),
             dtype=tf.dtypes.int64,
             name="visualization_every")
     # how many visualizations to show
     visualization_number = train_config.get("visualization_number", 5)
     # how many times the random batch will be iterated
     random_batch_iterations = \
-        tf.constant(
-            train_config.get("random_batch_iterations", 1),
-            dtype=tf.dtypes.int64,
-            name="random_batch_iterations")
+        train_config.get("random_batch_iterations", 1)
     # size of the random batch
     random_batch_size = \
         [visualization_number] + \
-        train_config.get("random_batch_size", [256, 256, 3])
+        train_config.get("random_batch_size", [128, 128, 3])
     # prune strategy
     prune_config = \
         train_config.get("prune", {"strategy": "none"})
@@ -142,18 +143,14 @@ def train_loop(
     # --- build the denoise model
     tf.summary.trace_on(graph=True, profiler=False)
     with summary_writer.as_default():
-        model_denoise, \
-        model_denoise_decomposition, \
-        model_normalize, \
-        model_denormalize, \
-        model_pyramid, \
-        model_inverse_pyramid = \
+        models = \
             model_denoise_builder(config=config[MODEL_DENOISE_STR])
 
         # The function to be traced.
         @tf.function
         def optimized_model(x_input):
-            return model_denoise(x_input, training=False)
+            return models.denoiser(x_input, training=False)
+
         x = \
             tf.random.truncated_normal(
                 seed=0,
@@ -166,55 +163,41 @@ def train_loop(
             name="denoiser")
         tf.summary.flush()
         tf.summary.trace_off()
+
+    # get each model
+    pyramid = models.pyramid
+    denoiser = models.denoiser
+    normalizer = models.normalizer
+    denormalizer = models.denormalizer
+    inverse_pyramid = models.inverse_pyramid
+    denoiser_decomposition = models.denoiser_decomposition
+
     # summary of model
-    model_denoise.summary(print_fn=logger.info)
+    denoiser.summary(print_fn=logger.info)
     # save model so we can visualize it easier
-    model_denoise.save(
+    denoiser.save(
         filepath=os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR),
         include_optimizer=False)
 
-    x_iteration = \
-        tf.Variable(
-            initial_value=0,
-            trainable=False,
-            dtype=tf.dtypes.int64,
-            name="x_iteration")
-    x_random = \
-        tf.Variable(
-            initial_value=tf.zeros(shape=random_batch_size, dtype=tf.dtypes.float32),
-            trainable=False,
-            dtype=tf.dtypes.float32,
-            shape=random_batch_size,
-            name="x_random")
-
-    @tf.function
-    def normalize(x_input):
-        return model_normalize(x_input, training=False)
-
-    @tf.function
-    def denormalize(x_input):
-        return model_denormalize(x_input, training=False)
-
     # --- create random image and iterate through the model
-    @tf.function
     def create_random_batch():
-        x_iteration.assign(0)
-        x_random.assign(
+        x_iteration = 0
+        x_random = \
             tf.random.truncated_normal(
                 seed=0,
                 mean=0.0,
                 stddev=0.25,
-                shape=random_batch_size))
+                shape=random_batch_size)
         while x_iteration < random_batch_iterations:
-            x_tmp = model_denoise(x_random, training=False)
-            x_random.assign(
+            x_random = denoiser(x_random, training=False)
+            x_random = \
                 tf.clip_by_value(
-                    x_tmp,
+                    x_random,
                     clip_value_min=-0.5,
-                    clip_value_max=+0.5))
-            x_iteration.assign_add(1)
+                    clip_value_max=+0.5)
+            x_iteration += 1
         return \
-            model_denormalize(
+            denormalizer(
                 x_random,
                 training=False)
 
@@ -225,10 +208,10 @@ def train_loop(
                 step=global_step,
                 epoch=global_epoch,
                 optimizer=optimizer,
-                model_denoise=model_denoise,
-                model_normalize=model_normalize,
-                model_denormalize=model_denormalize,
-                model_denoise_decomposition=model_denoise_decomposition)
+                model_denoise=denoiser,
+                model_normalize=normalizer,
+                model_denormalize=denormalizer,
+                model_denoise_decomposition=denoiser_decomposition)
         manager = \
             tf.train.CheckpointManager(
                 checkpoint=checkpoint,
@@ -242,26 +225,34 @@ def train_loop(
                 int(global_epoch), int(global_step)))
 
             # --- pruning strategy
-            if use_prune and global_epoch >= prune_start_epoch:
+            if use_prune and (global_epoch >= prune_start_epoch):
                 logger.info(f"pruning weights at step [{int(global_step)}]")
-                model_denoise_decomposition = \
-                    prune_function(model=model_denoise_decomposition)
+                denoiser_decomposition = \
+                    prune_function(model=denoiser_decomposition)
 
-            model_denoise_weights = model_denoise_decomposition.trainable_weights
+            model_denoise_weights = \
+                denoiser_decomposition.trainable_weights
 
             # --- iterate over the batches of the dataset
             for input_batch in dataset:
                 start_time = time.time()
+
                 # augment data
-                input_batch, noisy_batch = augmentation_fn(input_batch)
+                noisy_batch = augmentation_fn(input_batch)
+
                 # normalize input and noisy batch
-                normalized_input_batch = normalize(input_batch)
-                normalized_noisy_batch = normalize(noisy_batch)
-                # split input image into pyramid levels
-                normalized_input_batch_decomposition = \
-                    model_pyramid(
-                        normalized_input_batch,
-                        training=False)
+                normalized_input_batch = normalizer(input_batch, training=False)
+                normalized_noisy_batch = normalizer(noisy_batch, training=False)
+
+                if pyramid is not None:
+                    # split input image into pyramid levels
+                    normalized_input_batch_decomposition = \
+                        pyramid(
+                            normalized_input_batch,
+                            training=False)
+                else:
+                    normalized_input_batch_decomposition = None
+
                 # Open a GradientTape to record the operations run
                 # during the forward pass,
                 # which enables auto-differentiation.
@@ -270,25 +261,35 @@ def train_loop(
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
-                    denoised_batch_decomposition = \
-                        model_denoise_decomposition(
-                            normalized_noisy_batch,
-                            training=True)
-                    denoised_batch = \
-                        model_inverse_pyramid(
-                            denoised_batch_decomposition)
-                    denormalized_denoised_batch = \
-                        denormalize(denoised_batch)
+                    if inverse_pyramid is not None:
+                        denoised_batch_decomposition = \
+                            denoiser_decomposition(
+                                normalized_noisy_batch,
+                                training=True)
+                        denoised_batch = \
+                            inverse_pyramid(
+                                denoised_batch_decomposition,
+                                training=False)
+                        denormalized_denoised_batch = \
+                            denormalizer(denoised_batch, training=False)
+                    else:
+                        denormalized_denoised_batch = \
+                            denoiser(
+                                normalized_noisy_batch,
+                                training=True)
+                        denormalized_denoised_batch = \
+                            denormalizer(denormalized_denoised_batch, training=False)
+                        denoised_batch_decomposition = None
 
                     # compute the loss value for this mini-batch
                     loss_map = \
                         loss_fn(
                             input_batch=input_batch,
                             noisy_batch=noisy_batch,
-                            model_losses=model_denoise.losses,
+                            model_losses=denoiser.losses,
                             prediction_batch=denormalized_denoised_batch,
-                            input_batch_decomposition=normalized_input_batch_decomposition,
-                            prediction_batch_decomposition=denoised_batch_decomposition
+                            prediction_batch_decomposition=denoised_batch_decomposition,
+                            input_batch_decomposition=normalized_input_batch_decomposition
                         )
 
                     # use the gradient tape to automatically retrieve
@@ -323,7 +324,7 @@ def train_loop(
                         step=global_step)
 
                 # --- add image prediction for tensorboard
-                if global_step % visualization_every == 0:
+                if (global_step % visualization_every) == 0:
                     random_batch = create_random_batch()
                     visualize(
                         global_step=global_step,
@@ -332,24 +333,25 @@ def train_loop(
                         random_batch=random_batch,
                         prediction_batch=denormalized_denoised_batch,
                         visualization_number=visualization_number)
+                    # add weight visualization
                     weights = \
                         get_conv2d_weights(
-                            model=model_denoise)
+                            model=denoiser)
                     tf.summary.histogram(
                         data=weights,
                         step=global_step,
                         buckets=weight_buckets,
                         name="training/weights")
 
-                if use_prune and global_epoch >= prune_start_epoch and \
-                        int(prune_steps) != -1 and global_step % prune_steps == 0:
+                if use_prune and (global_epoch >= prune_start_epoch) and \
+                        (int(prune_steps) != -1) and (global_step % prune_steps == 0):
                     logger.info(f"pruning weights at step [{int(global_step)}]")
-                    model_denoise = \
-                        prune_function(model=model_denoise)
+                    denoiser = \
+                        prune_function(model=denoiser)
 
                 # --- check if it is time to save a checkpoint
                 if checkpoint_every > 0:
-                    if global_step % checkpoint_every == 0:
+                    if (global_step % checkpoint_every == 0):
                         logger.info("checkpoint at step: {0}".format(
                             int(global_step)))
                         manager.save()
@@ -389,7 +391,7 @@ def train_loop(
             global_epoch.assign_add(1)
             manager.save()
             # save model so we can visualize it easier
-            model_denoise.save(
+            denoiser.save(
                 os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR))
 
     logger.info("finished training")

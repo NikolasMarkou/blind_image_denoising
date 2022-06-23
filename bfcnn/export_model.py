@@ -25,6 +25,7 @@ from .model_denoise import model_builder, module_builder
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
+
 # ---------------------------------------------------------------------
 
 
@@ -41,7 +42,7 @@ def export_model(
     :param checkpoint_directory: path to the checkpoint directory
     :param output_directory: path to the output directory
     :param to_tflite: if true convert to tflite
-    :param test_model:
+    :param test_model: if true run model in test mode
     :return:
     """
     # --- argument checking
@@ -61,15 +62,24 @@ def export_model(
 
     # --- setup variables
     output_directory = str(output_directory)
-    output_checkpoint = os.path.join(output_directory, "checkpoint")
     output_saved_model = os.path.join(output_directory, "saved_model")
 
     # --- load and export denoising model
     logger.info("building denoising model")
     pipeline_config = load_config(pipeline_config)
-    model_denoise, model_normalize, model_denormalize = \
+    models = \
         model_builder(
             pipeline_config[MODEL_DENOISE_STR])
+    # get each model
+    denoiser = models.denoiser
+    normalizer = models.normalizer
+    denormalizer = models.denormalizer
+    # --- create the help variables
+    global_step = tf.Variable(
+        0, trainable=False, dtype=tf.dtypes.int64, name="global_step")
+    global_epoch = tf.Variable(
+        0, trainable=False, dtype=tf.dtypes.int64, name="global_epoch")
+
     logger.info("saving configuration pipeline")
     pipeline_config_path = \
         os.path.join(
@@ -77,8 +87,14 @@ def export_model(
             "pipeline.json")
     with open(pipeline_config_path, "w") as f:
         f.write(json.dumps(pipeline_config, indent=4))
-    logger.info("restoring checkpoint weights")
-    checkpoint = tf.train.Checkpoint(model_denoise=model_denoise)
+    logger.info(f"restoring checkpoint weights from [{checkpoint_directory}]")
+    checkpoint = \
+        tf.train.Checkpoint(
+            step=global_step,
+            epoch=global_epoch,
+            model_denoise=denoiser,
+            model_normalize=normalizer,
+            model_denormalize=denormalizer)
     manager = \
         tf.train.CheckpointManager(
             checkpoint=checkpoint,
@@ -87,6 +103,9 @@ def export_model(
     status = \
         checkpoint.restore(manager.latest_checkpoint).expect_partial()
     status.assert_existing_objects_matched()
+    logger.info(f"restored checkpoint "
+                f"at epoch [{int(global_epoch)}] "
+                f"and step [{int(global_step)}]")
 
     # --- combine denoise, normalize and denormalize
     logger.info("combining denoise, normalize and denormalize model")
@@ -95,14 +114,14 @@ def export_model(
     no_channels = input_shape[2]
     denoising_module = \
         module_builder(
-            iterations=1,
             cast_to_uint8=True,
-            model_denoise=model_denoise,
-            model_normalize=model_normalize,
-            model_denormalize=model_denormalize,
+            model_denoise=denoiser,
+            model_normalize=normalizer,
+            model_denormalize=denormalizer,
             training_channels=no_channels)
 
-    # getting the concrete function traces the graph and forces variables to
+    # getting the concrete function traces the graph
+    # and forces variables to
     # be constructed, only after this can we save the
     # checkpoint and saved model.
     concrete_function = \
@@ -114,19 +133,12 @@ def export_model(
         )
 
     # export the model as save_model format (default)
-    logger.info("saving module")
-    exported_checkpoint_manager = \
-        tf.train.CheckpointManager(
-            checkpoint=checkpoint,
-            directory=output_checkpoint,
-            max_to_keep=1)
-    exported_checkpoint_manager.save(checkpoint_number=0)
-    options = tf.saved_model.SaveOptions(save_debug_info=True)
+    logger.info(f"saving module: [{output_saved_model}]")
     tf.saved_model.save(
-        options=options,
         obj=denoising_module,
         signatures=concrete_function,
-        export_dir=output_saved_model)
+        export_dir=output_saved_model,
+        options=tf.saved_model.SaveOptions(save_debug_info=False))
 
     # --- export to tflite
     if to_tflite:
@@ -138,7 +150,7 @@ def export_model(
             tf.lite.OpsSet.SELECT_TF_OPS
         ]
         converter.optimizations = [
-            tf.lite.Optimize.OPTIMIZE_FOR_LATENCY
+            tf.lite.Optimize.DEFAULT
         ]
         tflite_model = converter.convert()
         output_tflite_model = \
@@ -180,5 +192,7 @@ def export_model(
                 step=0,
                 name="denoising_module",
                 profiler_outdir=output_log)
+
+    return concrete_function
 
 # ---------------------------------------------------------------------

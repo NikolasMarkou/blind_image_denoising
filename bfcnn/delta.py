@@ -15,8 +15,8 @@ import tensorflow as tf
 # local imports
 # ---------------------------------------------------------------------
 
-from .constants import *
 from .custom_logger import logger
+from .constants import EPSILON_DEFAULT
 
 # ---------------------------------------------------------------------
 

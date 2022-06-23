@@ -23,6 +23,9 @@ from .utilities import \
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
+from .optimizer import \
+    schedule_builder, \
+    optimizer_builder
 
 # ---------------------------------------------------------------------
 
@@ -52,15 +55,17 @@ if pretrained_dir.is_dir():
 
         # --- define model loader function
         def load_tf():
-            return tf.keras.models.load_model(directory / "saved_model")
+            saved_model_path = str(directory / "saved_model")
+            return tf.saved_model.load(saved_model_path)
 
         # --- define structure for each model
         pretrained_models[model_name] = {
             "load_tf": load_tf,
             "directory": directory,
-            "tflite": directory / "model.tflite",
-            "configuration": directory / "pipeline.json",
-            "tf": directory / "saved_model" / "saved_model.pb"
+            "tflite": str(directory / "model.tflite"),
+            "configuration": str(directory / "pipeline.json"),
+            "saved_model_path": str(directory / "saved_model"),
+            "tf": str(directory / "saved_model" / "saved_model.pb")
         }
 else:
     logger.info(
@@ -76,14 +81,16 @@ def load_model(model_path: str):
 
     # --- load from pretrained
     if model_path in pretrained_models:
-        return pretrained_models[str(model_path)]["load_tf"]()
+        return \
+            tf.saved_model.load(
+                pretrained_models[model_path]["saved_model_path"])
 
     # --- load from any directory
     if not os.path.exists(model_path):
         raise ValueError(
             "model_path [{0}] does not exist".format(model_path))
 
-    return tf.keras.models.load_model(str(model_path))
+    return tf.saved_model.load(str(model_path))
 
 # ---------------------------------------------------------------------
 
@@ -95,6 +102,8 @@ __all__ = [
     load_image,
     export_model,
     model_builder,
+    schedule_builder,
+    optimizer_builder,
     pretrained_models,
     build_pyramid_model,
     build_inverse_pyramid_model

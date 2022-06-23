@@ -11,7 +11,7 @@ __license__ = "MIT"
 import keras
 import numpy as np
 from enum import Enum
-from typing import Dict, Callable, List
+from typing import Dict, Callable, List, Tuple
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
@@ -20,6 +20,53 @@ from sklearn.preprocessing import StandardScaler
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
+
+
+# ---------------------------------------------------------------------
+
+
+def reshape_to_4d_to_2d(
+        x: np.ndarray) -> Tuple[np.ndarray, Tuple]:
+    """
+    Reshapes tensor from 4d to 2d
+
+    :param x:
+    :return: reshaped array and transposed shape
+    """
+    # --- argument checking
+    if x is None:
+        raise ValueError("input cannot be empty")
+    if len(x.shape) != 4:
+        raise ValueError("only 4-dimensional tensors allowed")
+
+    # --- reshape to 2d matrix
+    x_t = np.transpose(x, axes=(3, 0, 1, 2))
+    x_r = np.reshape(x_t, newshape=(x_t.shape[0], -1))
+    return x_r, x_t.shape
+
+# ---------------------------------------------------------------------
+
+
+def reshape_to_2d_to_4d(
+        x: np.ndarray,
+        x_t_shape: Tuple) -> np.ndarray:
+    """
+    Reshaped tensor from 2d to 4d
+
+    :param x:
+    :param x_t_shape:
+    :return:
+    """
+    # --- argument checking
+    if x is None:
+        raise ValueError("input cannot be empty")
+    if len(x.shape) != 2:
+        raise ValueError("only 2-dimensional tensors allowed")
+
+    # reshape and transpose back to original shape
+    x_r = np.reshape(x, newshape=x_t_shape)
+    x_t = np.transpose(x_r, axes=(1, 2, 3, 0))
+    return x_t
 
 
 # ---------------------------------------------------------------------
@@ -78,7 +125,7 @@ class PruneStrategy(Enum):
 
 def prune_strategy_helper(
         strategy: PruneStrategy,
-        **kwargs) -> Callable:
+        **kwargs) -> Callable[[np.ndarray], np.ndarray]:
     """
     builds the pruning function to be called
 
@@ -86,85 +133,85 @@ def prune_strategy_helper(
     :param kwargs:
     :return:
     """
-    fn = None
     if strategy == PruneStrategy.MINIMUM_THRESHOLD:
         minimum_threshold = kwargs["minimum_threshold"]
 
         def fn(x: np.ndarray) -> np.ndarray:
-            x[np.abs(x) < minimum_threshold] = 0.0
-            return x
+            x_p = x.copy()
+            x_p[np.abs(x_p) < minimum_threshold] = 0.0
+            return x_p
     elif strategy == PruneStrategy.MINIMUM_THRESHOLD_BIFURCATE:
         minimum_threshold = kwargs["minimum_threshold"]
 
         def fn(x: np.ndarray) -> np.ndarray:
-            mask = np.abs(x) < minimum_threshold
+            x_p = x.copy()
+            mask = np.abs(x_p) < minimum_threshold
             rand = \
                 np.random.uniform(
                     -minimum_threshold * 2.0,
                     +minimum_threshold * 2.0,
                     size=mask.shape)
-            x[mask] = rand[mask]
-            x[np.abs(x) < minimum_threshold] = 0.0
-            return x
+            x_p[mask] = rand[mask]
+            x_p[np.abs(x_p) < minimum_threshold] = 0.0
+            return x_p
     elif strategy == PruneStrategy.MINIMUM_THRESHOLD_SHRINKAGE:
         shrinkage = kwargs["shrinkage"]
         minimum_threshold = kwargs["minimum_threshold"]
         shrinkage_threshold = kwargs["shrinkage_threshold"]
 
         def fn(x: np.ndarray) -> np.ndarray:
-            mask = np.abs(x) < shrinkage_threshold
-            x[mask] = x[mask] * shrinkage
-            x[np.abs(x) < minimum_threshold] = 0.0
-            return x
+            x_p = x.copy()
+            mask = np.abs(x_p) < shrinkage_threshold
+            x_p[mask] = x_p[mask] * shrinkage
+            x_p[np.abs(x_p) < minimum_threshold] = 0.0
+            return x_p
     elif strategy == PruneStrategy.PCA_PROJECTION:
         # required variance
         variance = kwargs["variance"]
+        # optional normal scaling before pca
+        scale = kwargs.get("scale", True)
         # optional minimum threshold
         minimum_threshold = kwargs.get("minimum_threshold", -1)
 
         def fn(x: np.ndarray) -> np.ndarray:
-            # threshold again to zero very small values
-            if minimum_threshold != -1:
-                x[np.abs(x) < minimum_threshold] = 0.0
+            x_p = x.copy()
             # reshape x which is 4d to 2d
-            x_transpose = np.transpose(x, axes=(3, 0, 1, 2))
-            x_transpose_shape = x_transpose.shape
-            x_reshaped = \
-                np.reshape(
-                    x_transpose,
-                    newshape=(
-                        x_transpose_shape[0],
-                        np.prod(x_transpose_shape[1:])))
-            scaler = StandardScaler()
-            scaler.fit(x_reshaped)
-            x_reshaped = scaler.transform(x_reshaped)
+            x_r, x_t_shape = reshape_to_4d_to_2d(x=x_p)
+            # threshold again to zero very small values
+            if minimum_threshold > 0.0:
+                x_r[np.abs(x_r) < minimum_threshold] = 0.0
+
+            if scale:
+                # init and fit scaler
+                scaler = StandardScaler()
+                x_r_1d = scaler.fit_transform(x_r.reshape(-1, 1))
+                x_r = x_r_1d.reshape(x_r.shape)
+
             pca = PCA(n_components=variance)
-            pca.fit(x_reshaped)
+            pca.fit(x_r)
             # forward pass
-            x_reshaped = pca.transform(x_reshaped)
+            x_r = pca.transform(x_r)
             # inverse pass
-            x_reshaped = pca.inverse_transform(x_reshaped)
-            # convert back to scale
-            x_reshaped = scaler.inverse_transform(x_reshaped)
+            x_r = pca.inverse_transform(x_r)
+
+            if scale:
+                # inverse scaling
+                x_r_1d = scaler.inverse_transform(x_r.reshape(-1, 1))
+                x_r = x_r_1d.reshape(x_r.shape)
+
             # reshape and transpose back to original shape
-            x_reshaped = \
-                np.reshape(
-                    x_reshaped,
-                    newshape=x_transpose_shape)
-            x = \
-                np.transpose(
-                    x_reshaped,
-                    axes=(1, 2, 3, 0))
-            return x
+            x_p = reshape_to_2d_to_4d(x=x_r, x_t_shape=x_t_shape)
+            return x_p
     elif strategy == PruneStrategy.DROP_BOTTOM:
         percentage = kwargs["percentage"]
 
         def fn(x: np.ndarray) -> np.ndarray:
-            x_sorted = np.sort(np.abs(x), axis=None)
+            x_p = x.copy()
+            x_sorted = np.sort(np.abs(x_p), axis=None)
             x_threshold_index = int(np.round(len(x_sorted) * percentage))
             x_threshold = x_sorted[x_threshold_index]
-            x[np.abs(x) < x_threshold] = 0.0
-            return x
+            x_p[np.abs(x_p) < x_threshold] = 0.0
+            return x_p
     elif strategy == PruneStrategy.NONE:
         def fn(x: np.ndarray) -> np.ndarray:
             return x
@@ -272,6 +319,5 @@ def get_conv2d_weights(
     if len(weights) == 0:
         return np.ndarray([])
     return np.concatenate(weights)
-
 
 # ---------------------------------------------------------------------

@@ -7,34 +7,56 @@ __license__ = "MIT"
 # ---------------------------------------------------------------------
 
 import abc
+import tensorflow as tf
 from tensorflow import keras
+from collections import namedtuple
+from typing import Dict, List, Tuple
 
 # ---------------------------------------------------------------------
 # local imports
 # ---------------------------------------------------------------------
 
-from .utilities import *
 from .custom_logger import logger
+from .utilities import \
+    input_shape_fixer, \
+    build_normalize_model, \
+    build_denormalize_model, \
+    mean_sigma_local, \
+    mean_sigma_global
+from .resnet_model import build_model_resnet
 from .pyramid import \
-    upscale_2x2_block, \
     build_pyramid_model, \
     build_inverse_pyramid_model
-from .model_noise_estimation import \
-    model_builder as model_noise_estimation_builder, \
-    noise_estimation_mixer
+from .regularizer import builder as regularizer_builder
+
+# ---------------------------------------------------------------------
+
+BuilderResults = namedtuple(
+    "BuilderResults",
+    {
+        "denoiser",
+        "denoiser_decomposition",
+        "normalizer",
+        "denormalizer",
+        "pyramid",
+        "inverse_pyramid"
+     })
 
 # ---------------------------------------------------------------------
 
 
 def model_builder(
-        config: Dict) -> Tuple[keras.Model, keras.Model,
-                               keras.Model, keras.Model, keras.Model]:
+        config: Dict) -> BuilderResults:
     """
     Reads a configuration and returns 5 models,
 
     :param config: configuration dictionary
-    :return: denoiser model, normalize model,
-            denormalize model, pyramid model, inverse pyramid model
+    :return:
+        denoiser model,
+        normalize model,
+        denormalize model,
+        pyramid model,
+        inverse pyramid model
     """
     logger.info("building model with config [{0}]".format(config))
 
@@ -59,20 +81,16 @@ def model_builder(
     local_normalization = config.get("local_normalization", -1)
     final_activation = config.get("final_activation", "linear")
     kernel_regularizer = config.get("kernel_regularizer", "l1")
-    inverse_pyramid_config = config.get("inverse_pyramid", None)
     add_skip_with_input = config.get("add_skip_with_input", True)
     add_intermediate_results = config.get("intermediate_results", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     add_learnable_multiplier = config.get("add_learnable_multiplier", False)
-    noise_estimation_mixer_config = config.get("noise_estimation_mixer", None)
     add_residual_between_models = config.get("add_residual_between_models", False)
 
     use_pyramid = pyramid_config is not None
-    use_inverse_pyramid = inverse_pyramid_config is not None
     use_local_normalization = local_normalization > 0
     use_global_normalization = local_normalization == 0
     use_normalization = use_local_normalization or use_global_normalization
-    use_noise_estimation_mixer = noise_estimation_mixer_config is not None
     local_normalization_kernel = [local_normalization, local_normalization]
     input_shape = input_shape_fixer(input_shape)
 
@@ -83,6 +101,9 @@ def model_builder(
         raise ValueError("filters must be > 0")
     if kernel_size <= 0:
         raise ValueError("kernel_size must be > 0")
+
+    kernel_regularizer = \
+        regularizer_builder(kernel_regularizer)
 
     # --- build normalize denormalize models
     model_normalize = \
@@ -137,24 +158,21 @@ def model_builder(
         y, mean_y, sigma_y = args
         return (y * sigma_y) + mean_y
 
-    # build pyramid
+    # build pyramid / inverse pyramid
     if use_pyramid:
         logger.info(f"building pyramid: [{pyramid_config}]")
         model_pyramid = \
             build_pyramid_model(
                 input_dims=input_shape,
                 config=pyramid_config)
-    else:
-        model_pyramid = None
 
-    # build inverse pyramid
-    if use_inverse_pyramid:
-        logger.info(f"building inverse pyramid: [{inverse_pyramid_config}]")
+        logger.info(f"building inverse pyramid: [{pyramid_config}]")
         model_inverse_pyramid = \
             build_inverse_pyramid_model(
                 input_dims=input_shape,
-                config=inverse_pyramid_config)
+                config=pyramid_config)
     else:
+        model_pyramid = None
         model_inverse_pyramid = None
 
     # --- connect the parts of the model
@@ -189,7 +207,7 @@ def model_builder(
 
     # --- run inference
     if use_pyramid:
-        x_levels = model_pyramid(x)
+        x_levels = model_pyramid(x, training=False)
     else:
         x_levels = [x]
 
@@ -220,10 +238,7 @@ def model_builder(
             sigmas.append(sigma)
             x_levels[i] = x_level
 
-    if use_pyramid:
-        logger.info("pyramid produces [{0}] scales".format(len(x_levels)))
-    else:
-        logger.info("model produces [{0}] scale".format(len(x_levels)))
+    logger.info("pyramid produces [{0}] scales".format(len(x_levels)))
 
     # --- shared or separate models
     if shared_model:
@@ -245,40 +260,27 @@ def model_builder(
     # --- add residual between models
     # speeds up training a lot, and better results
     if add_residual_between_models:
-        if use_noise_estimation_mixer:
-            model_noise_estimation = \
-                model_noise_estimation_builder(
-                    noise_estimation_mixer_config)
-        else:
-            model_noise_estimation = None
-
-        tmp_level = None
+        previous_level = None
+        current_level_output = None
         for i, x_level in reversed(list(enumerate(x_levels))):
-            if tmp_level is None:
-                tmp_level = resnet_models[i](x_level)
+            if previous_level is None:
+                current_level_output = resnet_models[i](x_level)
+                previous_level = current_level_output
             else:
-                tmp_level = \
-                    upscale_2x2_block(
-                        input_layer=tmp_level)
-                if use_noise_estimation_mixer:
-                    # learnable mixer
-                    tmp_level = \
-                        noise_estimation_mixer(
-                            model_noise_estimation=model_noise_estimation,
-                            x0_input_layer=tmp_level,
-                            x1_input_layer=x_level)
-                    tmp_level = \
-                        keras.layers.Add(
-                            name="level_{0}_to_{1}".format(i+1, i))(
-                            [tmp_level, x_level]) * 0.5
-                else:
-                    # basic mixer
-                    tmp_level = \
-                        keras.layers.Add(
-                            name="level_{0}_to_{1}".format(i+1, i))(
-                            [tmp_level, x_level]) * 0.5
-                tmp_level = resnet_models[i](tmp_level)
-            x_levels[i] = tmp_level
+                previous_level = \
+                    tf.stop_gradient(previous_level)
+                previous_level = \
+                    keras.layers.UpSampling2D(
+                        size=(2, 2),
+                        interpolation="bilinear")(previous_level)
+                current_level_input = \
+                    keras.layers.Add()(
+                        [previous_level, x_level])
+                current_level_output = resnet_models[i](current_level_input)
+                previous_level = \
+                    keras.layers.Add()(
+                        [previous_level, current_level_output])
+            x_levels[i] = current_level_output
     else:
         for i, x_level in enumerate(x_levels):
             x_levels[i] = resnet_models[i](x_level)
@@ -331,7 +333,7 @@ def model_builder(
             name=f"{model_type}_denoiser_decomposition")
 
     # --- merge levels together
-    if use_inverse_pyramid:
+    if use_pyramid:
         x_result = \
             model_inverse_pyramid(x_levels)
     else:
@@ -359,13 +361,13 @@ def model_builder(
             outputs=output_layers,
             name=f"{model_type}_denoiser")
 
-    return \
-        model_denoise, \
-        model_denoise_decomposition, \
-        model_normalize, \
-        model_denormalize, \
-        model_pyramid, \
-        model_inverse_pyramid
+    return BuilderResults(
+        denoiser=model_denoise,
+        denoiser_decomposition=model_denoise_decomposition,
+        normalizer=model_normalize,
+        denormalizer=model_denormalize,
+        pyramid=model_pyramid,
+        inverse_pyramid=model_inverse_pyramid)
 
 # ---------------------------------------------------------------------
 
@@ -375,11 +377,10 @@ class DenoisingInferenceModule(tf.Module, abc.ABC):
 
     def __init__(
             self,
-            model_denoise: keras.Model = None,
-            model_normalize: keras.Model = None,
-            model_denormalize: keras.Model = None,
+            model_denoise: keras.Model,
+            model_normalize: keras.Model,
+            model_denormalize: keras.Model,
             training_channels: int = 1,
-            iterations: int = 1,
             cast_to_uint8: bool = True):
         """
         Initializes a module for denoising.
@@ -388,20 +389,20 @@ class DenoisingInferenceModule(tf.Module, abc.ABC):
         :param model_normalize: model that normalizes the input
         :param model_denormalize: model that denormalizes the output
         :param training_channels: how many color channels were used in training
-        :param iterations: how many times to run the model
         :param cast_to_uint8: cast output to uint8
 
         """
         # --- argument checking
         if model_denoise is None:
             raise ValueError("model_denoise should not be None")
-        if iterations <= 0:
-            raise ValueError("iterations should be > 0")
+        if model_normalize is None:
+            raise ValueError("model_normalize should not be None")
+        if model_denormalize is None:
+            raise ValueError("model_denormalize should not be None")
         if training_channels <= 0:
             raise ValueError("training channels should be > 0")
 
         # --- setup instance variables
-        self._iterations = iterations
         self._cast_to_uint8 = cast_to_uint8
         self._model_denoise = model_denoise
         self._model_normalize = model_normalize
@@ -415,25 +416,16 @@ class DenoisingInferenceModule(tf.Module, abc.ABC):
         :param image: uint8 Tensor of shape
         :return: denoised image: uint8 Tensor of shape if the input
         """
-        # --- argument checking
-        # --- argument checking
-        if image is None:
-            raise ValueError("input image cannot be empty")
-
         x = tf.cast(image, dtype=tf.float32)
 
         # --- normalize
-        if self._model_normalize is not None:
-            x = self._model_normalize(x)
+        x = self._model_normalize(x)
 
-        # --- run denoise model as many times as required
-        for i in range(self._iterations):
-            x = self._model_denoise(x)
-            x = tf.clip_by_value(x, clip_value_min=-0.5, clip_value_max=+0.5)
+        # --- run denoise model
+        x = self._model_denoise(x)
 
         # --- denormalize
-        if self._model_denormalize is not None:
-            x = self._model_denormalize(x)
+        x = self._model_denormalize(x)
 
         # --- cast to uint8
         if self._cast_to_uint8:
@@ -455,14 +447,12 @@ class DenoisingInferenceModule1Channel(DenoisingInferenceModule):
             model_denoise: keras.Model = None,
             model_normalize: keras.Model = None,
             model_denormalize: keras.Model = None,
-            iterations: int = 1,
             cast_to_uint8: bool = True):
         super().__init__(
             model_denoise=model_denoise,
             model_normalize=model_normalize,
             model_denormalize=model_denormalize,
             training_channels=1,
-            iterations=iterations,
             cast_to_uint8=cast_to_uint8)
 
     @tf.function(
@@ -481,14 +471,12 @@ class DenoisingInferenceModule3Channel(DenoisingInferenceModule):
             model_denoise: keras.Model = None,
             model_normalize: keras.Model = None,
             model_denormalize: keras.Model = None,
-            iterations: int = 1,
             cast_to_uint8: bool = True):
         super().__init__(
             model_denoise=model_denoise,
             model_normalize=model_normalize,
             model_denormalize=model_denormalize,
             training_channels=3,
-            iterations=iterations,
             cast_to_uint8=cast_to_uint8)
 
     @tf.function(
@@ -506,7 +494,6 @@ def module_builder(
         model_normalize: keras.Model = None,
         model_denormalize: keras.Model = None,
         training_channels: int = 1,
-        iterations: int = 1,
         cast_to_uint8: bool = True) -> DenoisingInferenceModule:
     """
     builds a module for denoising.
@@ -515,14 +502,12 @@ def module_builder(
     :param model_normalize: model that normalizes the input
     :param model_denormalize: model that denormalizes the output
     :param training_channels: how many color channels were used in training
-    :param iterations: how many times to run the model
     :param cast_to_uint8: cast output to uint8
 
     :return: denoiser module
     """
     logger.info(
         f"building denoising module with "
-        f"iterations:{iterations}, "
         f"training_channels:{training_channels}, "
         f"cast_to_uint8:{cast_to_uint8}")
 
@@ -532,7 +517,6 @@ def module_builder(
                 model_denoise=model_denoise,
                 model_normalize=model_normalize,
                 model_denormalize=model_denormalize,
-                iterations=iterations,
                 cast_to_uint8=cast_to_uint8)
     elif training_channels == 3:
         return \
@@ -540,9 +524,9 @@ def module_builder(
                 model_denoise=model_denoise,
                 model_normalize=model_normalize,
                 model_denormalize=model_denormalize,
-                iterations=iterations,
                 cast_to_uint8=cast_to_uint8)
     else:
-        raise ValueError("don't know how to handle training_channels:{0}".format(training_channels))
+        raise ValueError(
+            "don't know how to handle training_channels:{0}".format(training_channels))
 
 # ---------------------------------------------------------------------
