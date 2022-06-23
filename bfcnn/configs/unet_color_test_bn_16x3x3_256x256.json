@@ -10,7 +10,7 @@
     "kernel_size": 5,
     "batchnorm": true,
     "activation": "elu",
-    "clip_values": true,
+    "clip_values": false,
     "shared_model": false,
     "output_multiplier": 1.0,
     "local_normalization": -1,
