@@ -1,5 +1,6 @@
 {
   "model_denoise": {
+    "type": "unet",
     "filters": 16,
     "no_layers": 5,
     "no_levels": 3,
@@ -7,7 +8,6 @@
     "add_var": false,
     "max_value": 255,
     "kernel_size": 5,
-    "type": "resnet",
     "batchnorm": true,
     "activation": "elu",
     "clip_values": true,
