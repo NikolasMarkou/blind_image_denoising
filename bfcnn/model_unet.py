@@ -61,6 +61,11 @@ def unet_blocks(
     # --- downside
     for i in range(no_levels):
         x = \
+            conv2d_wrapper(
+                x,
+                conv_params=filter_changer(i, third_conv_params),
+                bn_params=bn_params)
+        x = \
             resnet_blocks(
                 input_layer=x,
                 no_layers=no_layers,
@@ -91,7 +96,11 @@ def unet_blocks(
                     interpolation="bilinear")(x)
             x = \
                 tf.keras.layers.Concatenate()([x, level_x])
-
+        x = \
+            conv2d_wrapper(
+                x,
+                conv_params=filter_changer(i, third_conv_params),
+                bn_params=bn_params)
         x = \
             resnet_blocks(
                 input_layer=x,
