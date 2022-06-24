@@ -75,6 +75,18 @@ def lunet_blocks(
         if x is None:
             x = level_x
         else:
+            level_x = \
+                resnet_blocks(
+                    input_layer=level_x,
+                    no_layers=no_layers,
+                    first_conv_params=first_conv_params,
+                    second_conv_params=second_conv_params,
+                    third_conv_params=third_conv_params,
+                    bn_params=bn_params,
+                    gate_params=gate_params,
+                    dropout_params=dropout_params,
+                    multiplier_params=multiplier_params
+                )
             x = \
                 tf.keras.layers.UpSampling2D(
                     size=(2, 2),
@@ -85,7 +97,7 @@ def lunet_blocks(
             conv2d_wrapper(
                 x,
                 conv_params=first_conv_params,
-                bn_params=bn_params)
+                bn_params=None)
         x = \
             resnet_blocks(
                 input_layer=x,
@@ -255,7 +267,7 @@ def build_model_lunet(
         rate=dropout_rate
     )
 
-    unet_params = dict(
+    lunet_params = dict(
         no_levels=no_levels,
         no_layers=no_layers,
         bn_params=bn_params,
@@ -269,13 +281,13 @@ def build_model_lunet(
         base_conv_params["activation"] = "linear"
 
     if add_gates:
-        unet_params["gate_params"] = gate_params
+        lunet_params["gate_params"] = gate_params
 
     if add_learnable_multiplier:
-        unet_params["multiplier_params"] = multiplier_params
+        lunet_params["multiplier_params"] = multiplier_params
 
     if dropout_rate != -1:
-        unet_params["dropout_params"] = dropout_params
+        lunet_params["dropout_params"] = dropout_params
 
     # --- build model
     # set input
@@ -297,7 +309,7 @@ def build_model_lunet(
     x = \
         lunet_blocks(
             input_layer=x,
-            **unet_params)
+            **lunet_params)
 
     # optional batch norm
     if use_bn:
