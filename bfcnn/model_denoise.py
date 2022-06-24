@@ -145,7 +145,7 @@ def model_builder(
     model_builder_fn = None
     if model_type == "unet":
         model_builder_fn = build_model_unet
-    if model_type == "lunet":
+    elif model_type == "lunet":
         model_builder_fn = build_model_lunet
     elif model_type == "resnet":
         model_builder_fn = build_model_resnet
