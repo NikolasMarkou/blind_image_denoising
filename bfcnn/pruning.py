@@ -1,19 +1,11 @@
 r"""build weight pruning strategies"""
 
-# ---------------------------------------------------------------------
-
-__author__ = "Nikolas Markou"
-__version__ = "1.0.0"
-__license__ = "MIT"
-
-# ---------------------------------------------------------------------
-
 import keras
 import numpy as np
 from enum import Enum
-from typing import Dict, Callable, List, Tuple
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+from typing import Dict, Callable, List, Tuple, Union
 
 # ---------------------------------------------------------------------
 # local imports
@@ -43,6 +35,7 @@ def reshape_to_4d_to_2d(
     x_t = np.transpose(x, axes=(3, 0, 1, 2))
     x_r = np.reshape(x_t, newshape=(x_t.shape[0], -1))
     return x_r, x_t.shape
+
 
 # ---------------------------------------------------------------------
 
@@ -110,11 +103,12 @@ class PruneStrategy(Enum):
             raise ValueError("type_str must not be null")
         if not isinstance(type_str, str):
             raise ValueError("type_str must be string")
-        if len(type_str.strip()) <= 0:
+        type_str = type_str.strip().upper()
+        if len(type_str) <= 0:
             raise ValueError("stripped type_str must not be empty")
 
         # --- clean string and get
-        return PruneStrategy[type_str.strip().upper()]
+        return PruneStrategy[type_str]
 
     def to_string(self) -> str:
         return self.name
@@ -232,7 +226,13 @@ def prune_conv2d_weights(
     :param prune_fn: pruning strategy function
     :return: pruned model
     """
+    # --- argument checking
+    if model is None:
+        raise ValueError("model cannot be None")
+    if prune_fn is None:
+        raise ValueError("prune_fn cannon be None")
 
+    # --- go through each layer and prune
     for layer in model.layers:
         layer_config = layer.get_config()
         if "layers" not in layer_config:
@@ -263,15 +263,33 @@ def prune_conv2d_weights(
 
 
 def prune_function_builder(
-        config: Dict) -> Callable:
+        config: Union[List, List[Dict]]) -> Callable:
     """
     Constructs a pruning function
     :param config: pruning configuration
     :return: pruning function
     """
-    strategy = PruneStrategy.from_string(config["strategy"])
-    strategy_config = config["config"]
-    prune_fn = prune_strategy_helper(strategy, **strategy_config)
+    # --- argument checking
+    if config is None:
+        raise ValueError("config cannot be None")
+
+    # --- prepare variables
+    if isinstance(config, List):
+        prune_fns = [
+            prune_strategy_helper(
+                PruneStrategy.from_string(c["strategy"]), **(c["config"]))
+            for c in config
+        ]
+
+        def prune_fn(w):
+            for f in prune_fns:
+                w = f(w)
+            return w
+    else:
+        prune_fn = \
+            prune_strategy_helper(
+                PruneStrategy.from_string(config["strategy"]),
+                **(config["config"]))
 
     def prune(model: keras.Model) -> keras.Model:
         return \

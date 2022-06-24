@@ -1,10 +1,10 @@
 import os
 import json
-import keras
 import itertools
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
+from tensorflow import keras
 from typing import List, Tuple, Union, Dict, Iterable
 
 # ---------------------------------------------------------------------
@@ -13,6 +13,7 @@ from typing import List, Tuple, Union, Dict, Iterable
 
 from .custom_logger import logger
 from .constants import EPSILON_DEFAULT
+from .model_resnet import resnet_blocks
 from .custom_layers import TrainableMultiplier, RandomOnOff
 from .activations import differentiable_relu, differentiable_relu_layer
 from .utilities import \
@@ -24,8 +25,9 @@ from .utilities import \
 # ---------------------------------------------------------------------
 
 
-def resnet_blocks(
+def unet_blocks(
         input_layer,
+        no_levels: int,
         no_layers: int,
         first_conv_params: Dict,
         second_conv_params: Dict,
@@ -36,17 +38,7 @@ def resnet_blocks(
         multiplier_params: Dict = None,
         **kwargs):
     """
-    Create a series of residual network blocks
-
-    :param input_layer: the input layer to perform on
-    :param no_layers: how many residual network blocks to add
-    :param first_conv_params: the parameters of the first conv
-    :param second_conv_params: the parameters of the middle conv
-    :param third_conv_params: the parameters of the third conv
-    :param bn_params: batch normalization parameters
-    :param gate_params: gate optional parameters
-    :param dropout_params: dropout optional parameters
-    :param multiplier_params: learnable optional parameters
+    Create a unet block
 
     :return: filtered input_layer
     """
@@ -54,65 +46,83 @@ def resnet_blocks(
     if input_layer is None:
         raise ValueError("input_layer must be none")
     if no_layers < 0:
-        raise ValueError("no_layers must be >= 0")
-    use_bn = bn_params is not None
-    use_gate = gate_params is not None
-    use_dropout = dropout_params is not None
-    use_multiplier = multiplier_params is not None
+        raise ValueError("no_layers_per_level must be >= 0")
 
-    def dense_wrapper():
-        return \
-            tf.keras.layers.Dense(
-                use_bias=False,
-                activation="relu",
-                units=third_conv_params["filters"],
-                kernel_regularizer=third_conv_params.get("kernel_regularizer", "l1"),
-                kernel_initializer=third_conv_params.get("kernel_initializer", "glorot_normal"))
+    # ---
+    def filter_changer(level: int, params: Dict):
+        params_new = params.copy()
+        params_new["filters"] = params_new["filters"] * (level+1)
+        return params_new
 
-    # --- setup resnet
+    # --- setup unet
     x = input_layer
+    levels_x = []
 
-    if use_gate:
-        g = tf.keras.layers.GlobalAveragePooling2D()(input_layer)
-        if use_bn:
-            g = tf.keras.layers.BatchNormalization(**bn_params)(g)
-        g = dense_wrapper()(g)
+    # --- downside
+    for i in range(no_levels):
+        if i > 0:
+            x = \
+                conv2d_wrapper(
+                    x,
+                    conv_params=first_conv_params,
+                    bn_params=None)
+        x = \
+            resnet_blocks(
+                input_layer=x,
+                no_layers=no_layers,
+                first_conv_params=first_conv_params,
+                second_conv_params=second_conv_params,
+                third_conv_params=third_conv_params,
+                bn_params=bn_params,
+                gate_params=gate_params,
+                dropout_params=dropout_params,
+                multiplier_params=multiplier_params
+            )
+        levels_x.append(x)
+        x = \
+            keras.layers.AveragePooling2D(
+                pool_size=(3, 3),
+                strides=(2, 2),
+                padding="same")(x)
 
-    # --- create several number of residual blocks
-    for i in range(no_layers):
-        previous_layer = x
-        x = conv2d_wrapper(x, conv_params=first_conv_params, bn_params=bn_params)
-        x = conv2d_wrapper(x, conv_params=second_conv_params, bn_params=bn_params)
-        x = conv2d_wrapper(x, conv_params=third_conv_params, bn_params=bn_params)
-        # compute activation per channel
-        if use_gate:
-            y0 = tf.keras.layers.GlobalAveragePooling2D()(x)
-            y0 = y0 * (1.0 - 0.9 * g)
-            if use_bn:
-                y0 = tf.keras.layers.BatchNormalization(**bn_params)(y0)
-            y = dense_wrapper()(y0)
-            g = g + y0
-            # if x < -2.5: return 0
-            # if x > 2.5: return 1
-            # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
-            y = tf.keras.activations.hard_sigmoid(2.5 - y)
-            y = tf.expand_dims(y, axis=1)
-            y = tf.expand_dims(y, axis=1)
-            x = tf.keras.layers.Multiply()([x, y])
-        # optional multiplier
-        if use_multiplier:
-            x = TrainableMultiplier(**multiplier_params)(x)
-        if use_dropout:
-            x = RandomOnOff(**dropout_params)(x)
-        # skip connection
-        x = tf.keras.layers.Add()([x, previous_layer])
+    # --- upside
+    x = None
+    for level_x in reversed(levels_x):
+        if x is None:
+            x = level_x
+        else:
+            x = \
+                tf.keras.layers.UpSampling2D(
+                    size=(2, 2),
+                    interpolation="bilinear")(x)
+            x = \
+                tf.keras.layers.Concatenate()([x, level_x])
+        x = \
+            conv2d_wrapper(
+                x,
+                conv_params=first_conv_params,
+                bn_params=None)
+        x = \
+            resnet_blocks(
+                input_layer=x,
+                no_layers=no_layers,
+                first_conv_params=first_conv_params,
+                second_conv_params=second_conv_params,
+                third_conv_params=third_conv_params,
+                bn_params=bn_params,
+                gate_params=gate_params,
+                dropout_params=dropout_params,
+                multiplier_params=multiplier_params
+            )
+
     return x
 
 # ---------------------------------------------------------------------
 
 
-def build_model_resnet(
+def build_model_unet(
         input_dims,
+        no_levels: int,
         no_layers: int,
         kernel_size: int,
         filters: int,
@@ -132,12 +142,14 @@ def build_model_resnet(
         add_learnable_multiplier: bool = False,
         add_projection_to_input: bool = True,
         add_concat_input: bool = False,
-        name="resnet") -> keras.Model:
+        name="unet",
+        **kwargs) -> keras.Model:
     """
-    builds a resnet model
+    builds a u-net model
 
     :param input_dims: Models input dimensions
-    :param no_layers: Number of resnet layers
+    :param no_levels: Number of unet layers
+    :param no_layers: Number of resnet layers per unet level
     :param kernel_size: kernel size of the conv layers
     :param filters: number of filters per convolutional layer
     :param activation: intermediate activation
@@ -157,8 +169,12 @@ def build_model_resnet(
     :param add_projection_to_input: if true project to input tensor channel number
     :param add_concat_input: if true concat input to intermediate before projecting
     :param name: name of the model
-    :return: resnet model
+    :return: unet model
     """
+    # --- logging
+    logger.info("building unet")
+    logger.info(f"parameters not used: {kwargs}")
+
     # --- setup parameters
     bn_params = dict(
         center=use_bias,
@@ -255,7 +271,8 @@ def build_model_resnet(
         rate=dropout_rate
     )
 
-    resnet_params = dict(
+    unet_params = dict(
+        no_levels=no_levels,
         no_layers=no_layers,
         bn_params=bn_params,
         first_conv_params=first_conv_params,
@@ -268,13 +285,13 @@ def build_model_resnet(
         base_conv_params["activation"] = "linear"
 
     if add_gates:
-        resnet_params["gate_params"] = gate_params
+        unet_params["gate_params"] = gate_params
 
     if add_learnable_multiplier:
-        resnet_params["multiplier_params"] = multiplier_params
+        unet_params["multiplier_params"] = multiplier_params
 
     if dropout_rate != -1:
-        resnet_params["dropout_params"] = dropout_params
+        unet_params["dropout_params"] = dropout_params
 
     # --- build model
     # set input
@@ -302,11 +319,11 @@ def build_model_resnet(
                 bn_params=None,
                 **sparse_params)
 
-    # add resnet blocks
+    # add unet blocks
     x = \
-        resnet_blocks(
+        unet_blocks(
             input_layer=x,
-            **resnet_params)
+            **unet_params)
 
     # optional batch norm
     if use_bn:

@@ -23,7 +23,8 @@ from .utilities import \
     build_denormalize_model, \
     mean_sigma_local, \
     mean_sigma_global
-from .resnet_model import build_model_resnet
+from .model_unet import build_model_unet
+from .model_resnet import build_model_resnet
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
@@ -62,8 +63,8 @@ def model_builder(
 
     # --- argument parsing
     model_type = config["type"]
-    levels = config.get("levels", 1)
     filters = config.get("filters", 32)
+    no_levels = config.get("no_levels", 1)
     add_var = config.get("add_var", False)
     no_layers = config.get("no_layers", 5)
     min_value = config.get("min_value", 0)
@@ -95,8 +96,8 @@ def model_builder(
     input_shape = input_shape_fixer(input_shape)
 
     # --- argument checking
-    if levels <= 0:
-        raise ValueError("levels must be > 0")
+    if no_levels <= 0:
+        raise ValueError("no_levels must be > 0")
     if filters <= 0:
         raise ValueError("filters must be > 0")
     if kernel_size <= 0:
@@ -125,6 +126,7 @@ def model_builder(
         filters=filters,
         use_bn=batchnorm,
         add_sparsity=False,
+        no_levels=no_levels,
         no_layers=no_layers,
         activation=activation,
         input_dims=input_shape,
@@ -139,12 +141,18 @@ def model_builder(
         add_learnable_multiplier=add_learnable_multiplier,
     )
 
-    if model_type == "resnet":
+    model_builder_fn = None
+    if model_type == "unet":
+        model_builder_fn = build_model_unet
+    elif model_type == "resnet":
+        model_builder_fn = build_model_resnet
         model_params["add_gates"] = False
         model_params["add_sparsity"] = False
     elif model_type == "sparse_resnet":
+        model_builder_fn = build_model_resnet
         model_params["add_sparsity"] = True
     elif model_type == "gatenet":
+        model_builder_fn = build_model_resnet
         model_params["add_gates"] = True
     else:
         raise ValueError(
@@ -244,14 +252,14 @@ def model_builder(
     if shared_model:
         logger.info("building shared model")
         resnet_model = \
-            build_model_resnet(
+            model_builder_fn(
                 name="level_shared",
                 **model_params)
-        resnet_models = [resnet_model] * len(x_levels)
+        denoise_models = [resnet_model] * len(x_levels)
     else:
         logger.info("building per scale model")
-        resnet_models = [
-            build_model_resnet(
+        denoise_models = [
+            model_builder_fn(
                 name=f"level_{i}",
                 **model_params)
             for i in range(len(x_levels))
@@ -264,7 +272,7 @@ def model_builder(
         current_level_output = None
         for i, x_level in reversed(list(enumerate(x_levels))):
             if previous_level is None:
-                current_level_output = resnet_models[i](x_level)
+                current_level_output = denoise_models[i](x_level)
                 previous_level = current_level_output
             else:
                 previous_level = \
@@ -276,14 +284,14 @@ def model_builder(
                 current_level_input = \
                     keras.layers.Add()(
                         [previous_level, x_level])
-                current_level_output = resnet_models[i](current_level_input)
+                current_level_output = denoise_models[i](current_level_input)
                 previous_level = \
                     keras.layers.Add()(
                         [previous_level, current_level_output])
             x_levels[i] = current_level_output
     else:
         for i, x_level in enumerate(x_levels):
-            x_levels[i] = resnet_models[i](x_level)
+            x_levels[i] = denoise_models[i](x_level)
 
     # --- split intermediate results and actual results
     x_levels_intermediate = []

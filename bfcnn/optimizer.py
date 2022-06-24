@@ -63,6 +63,7 @@ def schedule_builder(
                 name=None)
     else:
         raise ValueError(f"don't know how to handle {schedule_type}")
+    # ---
     logger.info(f"created schedule: {schedule}")
     return schedule
 
