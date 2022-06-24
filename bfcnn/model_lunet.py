@@ -76,6 +76,11 @@ def lunet_blocks(
             x = level_x
         else:
             level_x = \
+                conv2d_wrapper(
+                    level_x,
+                    conv_params=first_conv_params,
+                    bn_params=bn_params)
+            level_x = \
                 resnet_blocks(
                     input_layer=level_x,
                     no_layers=no_layers,
@@ -97,7 +102,7 @@ def lunet_blocks(
             conv2d_wrapper(
                 x,
                 conv_params=first_conv_params,
-                bn_params=None)
+                bn_params=bn_params)
         x = \
             resnet_blocks(
                 input_layer=x,
