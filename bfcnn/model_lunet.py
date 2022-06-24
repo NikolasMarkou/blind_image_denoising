@@ -65,8 +65,6 @@ def lunet_blocks(
         level_x_diff = level_x - level_x_smoothed
         level_x = level_x_down
         levels_x.append(level_x_diff)
-    level_x = \
-        keras.layers.Layer(name=f"level_{no_levels - 1}")(level_x)
     levels_x.append(level_x)
 
     # --- upside
@@ -74,6 +72,23 @@ def lunet_blocks(
     for level_x in reversed(levels_x):
         if x is None:
             x = level_x
+            x = \
+                conv2d_wrapper(
+                    x,
+                    conv_params=first_conv_params,
+                    bn_params=None)
+            x = \
+                resnet_blocks(
+                    input_layer=x,
+                    no_layers=no_layers,
+                    first_conv_params=first_conv_params,
+                    second_conv_params=second_conv_params,
+                    third_conv_params=third_conv_params,
+                    bn_params=bn_params,
+                    gate_params=gate_params,
+                    dropout_params=dropout_params,
+                    multiplier_params=multiplier_params
+                )
         else:
             level_x = \
                 conv2d_wrapper(
@@ -98,23 +113,23 @@ def lunet_blocks(
                     interpolation="bilinear")(x)
             x = \
                 tf.keras.layers.Concatenate()([x, level_x])
-        x = \
-            conv2d_wrapper(
-                x,
-                conv_params=first_conv_params,
-                bn_params=None)
-        x = \
-            resnet_blocks(
-                input_layer=x,
-                no_layers=no_layers,
-                first_conv_params=first_conv_params,
-                second_conv_params=second_conv_params,
-                third_conv_params=third_conv_params,
-                bn_params=bn_params,
-                gate_params=gate_params,
-                dropout_params=dropout_params,
-                multiplier_params=multiplier_params
-            )
+            x = \
+                conv2d_wrapper(
+                    x,
+                    conv_params=first_conv_params,
+                    bn_params=bn_params)
+            x = \
+                resnet_blocks(
+                    input_layer=x,
+                    no_layers=no_layers,
+                    first_conv_params=first_conv_params,
+                    second_conv_params=second_conv_params,
+                    third_conv_params=third_conv_params,
+                    bn_params=bn_params,
+                    gate_params=gate_params,
+                    dropout_params=dropout_params,
+                    multiplier_params=multiplier_params
+                )
 
     return x
 
