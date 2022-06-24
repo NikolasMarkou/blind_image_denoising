@@ -160,7 +160,9 @@ def builder(
 
     # --- prepare variables
     if isinstance(config, List):
-        regularizers = [builder_helper(config=r) for r in config]
+        regularizers = [
+            builder_helper(config=r) for r in config
+        ]
     else:
         return builder_helper(config=config)
 

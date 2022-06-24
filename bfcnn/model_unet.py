@@ -87,7 +87,7 @@ def unet_blocks(
 
     # --- upside
     x = None
-    for i, level_x in enumerate(reversed(levels_x)):
+    for level_x in reversed(levels_x):
         if x is None:
             x = level_x
         else:
