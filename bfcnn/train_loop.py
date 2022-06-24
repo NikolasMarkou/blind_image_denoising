@@ -122,12 +122,9 @@ def train_loop(
     random_batch_size = \
         [visualization_number] + \
         train_config.get("random_batch_size", [128, 128, 3])
-    # prune strategy
+    # --- prune strategy
     prune_config = \
-        train_config.get("prune", {"strategy": "none"})
-    use_prune = \
-        PruneStrategy.from_string(prune_config["strategy"]) != PruneStrategy.NONE
-    use_prune = tf.constant(use_prune)
+        train_config.get("prune", {"strategies": []})
     prune_start_epoch = \
         tf.constant(
             prune_config.get("start_epoch", 0),
@@ -138,7 +135,18 @@ def train_loop(
             prune_config.get("steps", -1),
             dtype=tf.dtypes.int64,
             name="prune_steps")
-    prune_function = prune_function_builder(prune_config)
+    prune_strategies = prune_config["strategies"]
+    if prune_strategies is None:
+        use_prune = False
+    elif isinstance(prune_strategies, list):
+        use_prune = len(prune_strategies) > 0
+    elif isinstance(prune_strategies, dict):
+        use_prune = True
+    else:
+        use_prune = False
+    use_prune = tf.constant(use_prune)
+    prune_fn = \
+        prune_function_builder(prune_strategies)
 
     # --- build the denoise model
     tf.summary.trace_on(graph=True, profiler=False)
@@ -228,7 +236,7 @@ def train_loop(
             if use_prune and (global_epoch >= prune_start_epoch):
                 logger.info(f"pruning weights at step [{int(global_step)}]")
                 denoiser_decomposition = \
-                    prune_function(model=denoiser_decomposition)
+                    prune_fn(model=denoiser_decomposition)
 
             model_denoise_weights = \
                 denoiser_decomposition.trainable_weights
@@ -347,7 +355,7 @@ def train_loop(
                         (int(prune_steps) != -1) and (global_step % prune_steps == 0):
                     logger.info(f"pruning weights at step [{int(global_step)}]")
                     denoiser = \
-                        prune_function(model=denoiser)
+                        prune_fn(model=denoiser)
 
                 # --- check if it is time to save a checkpoint
                 if checkpoint_every > 0:

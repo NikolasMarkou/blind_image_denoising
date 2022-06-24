@@ -1,5 +1,7 @@
 EPSILON_DEFAULT = 0.0001
 
+TYPE_STR = "type"
+CONFIG_STR = "config"
 MODEL_DENOISE_STR = "model_denoise"
 MODEL_DISCRIMINATE_STR = "model_discriminate"
 MODEL_DENOISE_DEFAULT_NAME_STR = "model_denoise.h5"

@@ -49,12 +49,14 @@
     },
     "prune": {
       "start_epoch": 1,
-      "strategy": "minimum_threshold_shrinkage",
-      "config": {
-        "shrinkage": 0.75,
-        "minimum_threshold": 0.000005,
-        "shrinkage_threshold": 0.00001
-      }
+      "strategies": [{
+        "type": "minimum_threshold_shrinkage",
+        "config": {
+          "shrinkage": 0.75,
+          "minimum_threshold": 0.000005,
+          "shrinkage_threshold": 0.00001
+        }
+      }]
     }
   },
   "loss": {

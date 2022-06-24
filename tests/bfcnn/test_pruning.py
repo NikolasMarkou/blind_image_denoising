@@ -43,7 +43,7 @@ def test_prune_function_builder(config):
     prune_config = train_config["prune"]
     pruning_fn = \
         bfcnn.pruning.prune_function_builder(
-            config=prune_config)
+            config=prune_config["strategies"])
 
     assert pruning_fn is not None
     assert callable(pruning_fn)
@@ -62,7 +62,7 @@ def test_build_model_and_prune_configs(config):
     prune_config = train_config["prune"]
     pruning_fn = \
         bfcnn.pruning.prune_function_builder(
-            config=prune_config)
+            config=prune_config["strategies"])
     _ = pruning_fn(models.denoiser)
 
 
@@ -179,7 +179,6 @@ def test_pca_projection_strategy(shape):
     x_p_2d, _ = reshape_to_4d_to_2d(x_p)
     assert x_2d.shape == x_p_2d.shape
     assert np.linalg.matrix_rank(x_2d) >= np.linalg.matrix_rank(x_p_2d)
-    assert np.sum(x_2d, axis=None) >= np.sum(x_p_2d, axis=None)
 
 # ---------------------------------------------------------------------
 

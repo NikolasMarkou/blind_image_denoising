@@ -164,16 +164,11 @@ def prune_strategy_helper(
         variance = kwargs["variance"]
         # optional normal scaling before pca
         scale = kwargs.get("scale", True)
-        # optional minimum threshold
-        minimum_threshold = kwargs.get("minimum_threshold", -1)
 
         def fn(x: np.ndarray) -> np.ndarray:
             x_p = x.copy()
             # reshape x which is 4d to 2d
             x_r, x_t_shape = reshape_to_4d_to_2d(x=x_p)
-            # threshold again to zero very small values
-            if minimum_threshold > 0.0:
-                x_r[np.abs(x_r) < minimum_threshold] = 0.0
 
             if scale:
                 # init and fit scaler
@@ -277,7 +272,7 @@ def prune_function_builder(
     if isinstance(config, List):
         prune_fns = [
             prune_strategy_helper(
-                PruneStrategy.from_string(c["strategy"]), **(c["config"]))
+                PruneStrategy.from_string(c["type"]), **(c["config"]))
             for c in config
         ]
 
@@ -285,11 +280,13 @@ def prune_function_builder(
             for f in prune_fns:
                 w = f(w)
             return w
-    else:
+    elif isinstance(config, Dict):
         prune_fn = \
             prune_strategy_helper(
-                PruneStrategy.from_string(config["strategy"]),
+                PruneStrategy.from_string(config["type"]),
                 **(config["config"]))
+    else:
+        raise ValueError(f"don't know how to handle [{config}]")
 
     def prune(model: keras.Model) -> keras.Model:
         return \
