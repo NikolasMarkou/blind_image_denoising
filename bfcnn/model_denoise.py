@@ -24,6 +24,7 @@ from .utilities import \
     mean_sigma_local, \
     mean_sigma_global
 from .model_unet import build_model_unet
+from .model_lunet import build_model_lunet
 from .model_resnet import build_model_resnet
 from .pyramid import \
     build_pyramid_model, \
@@ -144,6 +145,8 @@ def model_builder(
     model_builder_fn = None
     if model_type == "unet":
         model_builder_fn = build_model_unet
+    if model_type == "lunet":
+        model_builder_fn = build_model_lunet
     elif model_type == "resnet":
         model_builder_fn = build_model_resnet
         model_params["add_gates"] = False

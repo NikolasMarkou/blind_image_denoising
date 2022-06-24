@@ -25,7 +25,7 @@ from .utilities import \
 # ---------------------------------------------------------------------
 
 
-def unet_blocks(
+def lunet_blocks(
         input_layer,
         no_levels: int,
         no_layers: int,
@@ -38,7 +38,7 @@ def unet_blocks(
         multiplier_params: Dict = None,
         **kwargs):
     """
-    Create a unet block
+    Create a lunet block
 
     :return: filtered input_layer
     """
@@ -48,36 +48,26 @@ def unet_blocks(
     if no_layers < 0:
         raise ValueError("no_layers_per_level must be >= 0")
 
-    # --- setup unet
-    x = input_layer
+    level_x = input_layer
     levels_x = []
+    kernel_size = (3, 3)
 
-    # --- downside
-    for i in range(no_levels):
-        if i > 0:
-            x = \
-                conv2d_wrapper(
-                    x,
-                    conv_params=first_conv_params,
-                    bn_params=None)
-        x = \
-            resnet_blocks(
-                input_layer=x,
-                no_layers=no_layers,
-                first_conv_params=first_conv_params,
-                second_conv_params=second_conv_params,
-                third_conv_params=third_conv_params,
-                bn_params=bn_params,
-                gate_params=gate_params,
-                dropout_params=dropout_params,
-                multiplier_params=multiplier_params
-            )
-        levels_x.append(x)
-        x = \
+    for level in range(0, no_levels - 1):
+        level_x_down = \
             keras.layers.AveragePooling2D(
-                pool_size=(3, 3),
+                pool_size=kernel_size,
                 strides=(2, 2),
-                padding="same")(x)
+                padding="same")(level_x)
+        level_x_smoothed = \
+            keras.layers.UpSampling2D(
+                size=(2, 2),
+                interpolation="bilinear")(level_x_down)
+        level_x_diff = level_x - level_x_smoothed
+        level_x = level_x_down
+        levels_x.append(level_x_diff)
+    level_x = \
+        keras.layers.Layer(name=f"level_{no_levels - 1}")(level_x)
+    levels_x.append(level_x)
 
     # --- upside
     x = None
@@ -95,7 +85,7 @@ def unet_blocks(
             conv2d_wrapper(
                 x,
                 conv_params=first_conv_params,
-                bn_params=None)
+                bn_params=bn_params)
         x = \
             resnet_blocks(
                 input_layer=x,
@@ -114,7 +104,7 @@ def unet_blocks(
 # ---------------------------------------------------------------------
 
 
-def build_model_unet(
+def build_model_lunet(
         input_dims,
         no_levels: int,
         no_layers: int,
@@ -136,10 +126,10 @@ def build_model_unet(
         add_learnable_multiplier: bool = False,
         add_projection_to_input: bool = True,
         add_concat_input: bool = False,
-        name="unet",
+        name="lunet",
         **kwargs) -> keras.Model:
     """
-    builds a u-net model
+    builds a lu-net model
 
     :param input_dims: Models input dimensions
     :param no_levels: Number of unet layers
@@ -303,19 +293,9 @@ def build_model_unet(
                 kernel_size=(5, 5))
         x = tf.keras.layers.Concatenate()([x, x_var])
 
-    # add base layer
-    x = tf.keras.layers.Conv2D(**base_conv_params)(x)
-
-    if add_sparsity:
-        x = \
-            sparse_block(
-                input_layer=x,
-                bn_params=None,
-                **sparse_params)
-
-    # add unet blocks
+    # add lunet blocks
     x = \
-        unet_blocks(
+        lunet_blocks(
             input_layer=x,
             **unet_params)
 
