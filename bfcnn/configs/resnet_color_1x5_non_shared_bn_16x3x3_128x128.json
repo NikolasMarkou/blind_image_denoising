@@ -80,8 +80,8 @@
     "color_mode": "rgb",
     "random_left_right": true,
     "input_shape": [128, 128, 3],
-    "multiplicative_noise": [],
-    "additional_noise": [1, 5, 10, 20, 40],
+    "multiplicative_noise": [0.05, 0.1, 0.2],
+    "additional_noise": [1, 5, 10, 20, 40, 60, 80],
     "inputs": [
       {
         "dataset_shape": [256, 768],
