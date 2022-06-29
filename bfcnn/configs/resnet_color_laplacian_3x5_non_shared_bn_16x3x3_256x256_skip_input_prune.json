@@ -1,27 +1,32 @@
 {
   "model_denoise": {
-    "type": "lunet",
     "filters": 16,
     "no_layers": 5,
-    "no_levels": 3,
     "min_value": 0,
     "add_var": false,
     "max_value": 255,
     "kernel_size": 5,
+    "type": "resnet",
     "batchnorm": true,
     "activation": "elu",
     "clip_values": false,
     "shared_model": false,
     "output_multiplier": 1.0,
     "local_normalization": -1,
+    "kernel_regularizer": "l1",
     "final_activation": "tanh",
-    "add_skip_with_input": false,
-    "input_shape": ["?", "?", 3],
+    "add_skip_with_input": true,
     "add_residual_between_models": false,
+    "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
-    "kernel_regularizer": "l1"
+    "pyramid": {
+      "levels": 3,
+      "type": "laplacian",
+      "xy_max": [1.0, 1.0],
+      "kernel_size": [3, 3]
+    }
   },
-  "train": {
+   "train": {
     "epochs": 50,
     "total_steps": -1,
     "checkpoints_to_keep": 3,
@@ -43,13 +48,19 @@
       }
     },
     "prune": {
-      "start_epoch": 1,
+      "start_epoch": 0,
       "strategies": [{
         "type": "minimum_threshold_shrinkage",
         "config": {
           "shrinkage": 0.75,
           "minimum_threshold": 0.000005,
           "shrinkage_threshold": 0.00001
+        }
+      },{
+        "type": "pca_projection",
+        "config": {
+          "variance": 0.95,
+          "scale": true
         }
       }]
     }
@@ -84,3 +95,4 @@
     ]
   }
 }
+
