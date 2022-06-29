@@ -77,18 +77,6 @@ def lunet_blocks(
                     x,
                     conv_params=first_conv_params,
                     bn_params=None)
-            x = \
-                resnet_blocks(
-                    input_layer=x,
-                    no_layers=no_layers,
-                    first_conv_params=first_conv_params,
-                    second_conv_params=second_conv_params,
-                    third_conv_params=third_conv_params,
-                    bn_params=bn_params,
-                    gate_params=gate_params,
-                    dropout_params=dropout_params,
-                    multiplier_params=multiplier_params
-                )
         else:
             level_x = \
                 conv2d_wrapper(
@@ -118,18 +106,18 @@ def lunet_blocks(
                     x,
                     conv_params=first_conv_params,
                     bn_params=bn_params)
-            x = \
-                resnet_blocks(
-                    input_layer=x,
-                    no_layers=no_layers,
-                    first_conv_params=first_conv_params,
-                    second_conv_params=second_conv_params,
-                    third_conv_params=third_conv_params,
-                    bn_params=bn_params,
-                    gate_params=gate_params,
-                    dropout_params=dropout_params,
-                    multiplier_params=multiplier_params
-                )
+        x = \
+            resnet_blocks(
+                input_layer=x,
+                no_layers=no_layers,
+                first_conv_params=first_conv_params,
+                second_conv_params=second_conv_params,
+                third_conv_params=third_conv_params,
+                bn_params=bn_params,
+                gate_params=gate_params,
+                dropout_params=dropout_params,
+                multiplier_params=multiplier_params
+            )
 
     return x
 
