@@ -44,7 +44,7 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
     """
     def __init__(self,
                  lambda_coefficient: float = 1.0,
-                 l1_coefficient: float = 0.01):
+                 l1_coefficient: float = 0.001):
         self._lambda_coefficient = lambda_coefficient
         self._l1_coefficient = l1_coefficient
 
