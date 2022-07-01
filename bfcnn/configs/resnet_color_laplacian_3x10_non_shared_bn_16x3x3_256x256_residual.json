@@ -8,6 +8,7 @@
     "kernel_size": 5,
     "type": "resnet",
     "batchnorm": true,
+    "add_gates": false,
     "activation": "elu",
     "clip_values": true,
     "shared_model": false,

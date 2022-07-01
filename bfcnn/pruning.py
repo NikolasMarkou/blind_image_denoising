@@ -213,7 +213,7 @@ def prune_strategy_helper(
 
 def prune_conv2d_weights(
         model: keras.Model,
-        prune_fn: Callable) -> keras.Model:
+        prune_fn: Callable[[np.ndarray], np.ndarray]) -> keras.Model:
     """
     go through the model and prune its weights given the config and strategy
 
@@ -258,7 +258,7 @@ def prune_conv2d_weights(
 
 
 def prune_function_builder(
-        config: Union[List, List[Dict]]) -> Callable:
+        config: Union[List, List[Dict]]) -> Callable[[np.ndarray], np.ndarray]:
     """
     Constructs a pruning function
     :param config: pruning configuration
@@ -276,10 +276,11 @@ def prune_function_builder(
             for c in config
         ]
 
-        def prune_fn(w):
+        def prune_fn(w: np.ndarray) -> np.ndarray:
+            w_tmp = w
             for f in prune_fns:
-                w = f(w)
-            return w
+                w_tmp = f(w_tmp)
+            return w_tmp
     elif isinstance(config, Dict):
         prune_fn = \
             prune_strategy_helper(

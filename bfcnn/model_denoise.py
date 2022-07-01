@@ -72,6 +72,7 @@ def model_builder(
     max_value = config.get("max_value", 255)
     batchnorm = config.get("batchnorm", True)
     kernel_size = config.get("kernel_size", 3)
+    add_gates = config.get("add_gates", False)
     pyramid_config = config.get("pyramid", None)
     dropout_rate = config.get("dropout_rate", -1)
     activation = config.get("activation", "relu")
@@ -122,13 +123,13 @@ def model_builder(
 
     # --- build denoise model
     model_params = dict(
-        add_gates=False,
         add_var=add_var,
         filters=filters,
         use_bn=batchnorm,
         add_sparsity=False,
         no_levels=no_levels,
         no_layers=no_layers,
+        add_gates=add_gates,
         activation=activation,
         input_dims=input_shape,
         kernel_size=kernel_size,
@@ -149,14 +150,10 @@ def model_builder(
         model_builder_fn = build_model_lunet
     elif model_type == "resnet":
         model_builder_fn = build_model_resnet
-        model_params["add_gates"] = False
         model_params["add_sparsity"] = False
     elif model_type == "sparse_resnet":
         model_builder_fn = build_model_resnet
         model_params["add_sparsity"] = True
-    elif model_type == "gatenet":
-        model_builder_fn = build_model_resnet
-        model_params["add_gates"] = True
     else:
         raise ValueError(
             "don't know how to build model [{0}]".format(model_type))
