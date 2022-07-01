@@ -276,8 +276,6 @@ def model_builder(
                 previous_level = current_level_output
             else:
                 previous_level = \
-                    tf.stop_gradient(previous_level)
-                previous_level = \
                     keras.layers.UpSampling2D(
                         size=(2, 2),
                         interpolation="bilinear")(previous_level)
