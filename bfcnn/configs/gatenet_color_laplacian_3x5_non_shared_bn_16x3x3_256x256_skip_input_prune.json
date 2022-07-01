@@ -27,7 +27,7 @@
       "kernel_size": [3, 3]
     }
   },
-   "train": {
+  "train": {
     "epochs": 50,
     "total_steps": -1,
     "checkpoints_to_keep": 3,

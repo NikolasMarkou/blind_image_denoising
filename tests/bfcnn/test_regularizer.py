@@ -64,3 +64,18 @@ def test_create_2d_soft_orthogonal_constraint(shape):
 
 # ---------------------------------------------------------------------
 
+
+@pytest.mark.parametrize(
+    "config", [
+        ["l1"],
+        ["l1l2"],
+        ["l1", "l2"],
+        ["soft_orthogonal"],
+        ["soft_orthogonal", "l1"]
+    ])
+def test_builder(config):
+    prune_fns = bfcnn.regularizer.builder(config=config)
+    assert prune_fns is not None
+
+# ---------------------------------------------------------------------
+
