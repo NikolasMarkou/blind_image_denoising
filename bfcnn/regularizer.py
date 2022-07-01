@@ -4,12 +4,6 @@ blocks and builders for custom regularizers
 
 # ---------------------------------------------------------------------
 
-__author__ = "Nikolas Markou"
-__version__ = "1.0.0"
-__license__ = "MIT"
-
-# ---------------------------------------------------------------------
-
 import numpy as np
 from enum import Enum
 import tensorflow as tf
@@ -50,13 +44,14 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
     """
     def __init__(self,
                  lambda_coefficient: float = 1.0,
-                 l1_coefficient: float = 0.01):
+                 l1_coefficient: float = 0.001):
         self._lambda_coefficient = lambda_coefficient
         self._l1_coefficient = l1_coefficient
 
     def __call__(self, x):
-        # reshape
+        # --- reshape
         x = reshape_to_2d(x)
+
         # --- compute (Wt * W) - I
         wt_w = \
             tf.linalg.matmul(
@@ -135,15 +130,18 @@ def builder_helper(
         raise ValueError("don't know how to handle config")
 
     # --- select correct regularizer
+    regularizer = None
     if regularizer_type == "l1":
-        return keras.regularizers.L1(**regularizer_parameters)
-    if regularizer_type == "l2":
-        return keras.regularizers.L2(**regularizer_parameters)
-    if regularizer_type == "l1l2":
-        return keras.regularizers.L1L2(**regularizer_parameters)
-    if regularizer_type == "soft_orthogonal":
-        return SoftOrthogonalConstraintRegularizer(**regularizer_parameters)
-    raise ValueError(f"don't know how to handle [{regularizer_type}]")
+        regularizer = keras.regularizers.L1(**regularizer_parameters)
+    elif regularizer_type == "l2":
+        regularizer = keras.regularizers.L2(**regularizer_parameters)
+    elif regularizer_type == "l1l2":
+        regularizer = keras.regularizers.L1L2(**regularizer_parameters)
+    elif regularizer_type == "soft_orthogonal":
+        regularizer = SoftOrthogonalConstraintRegularizer(**regularizer_parameters)
+    else:
+        raise ValueError(f"don't know how to handle [{regularizer_type}]")
+    return regularizer
 
 # ---------------------------------------------------------------------
 
@@ -162,7 +160,9 @@ def builder(
 
     # --- prepare variables
     if isinstance(config, List):
-        regularizers = [builder_helper(config=r) for r in config]
+        regularizers = [
+            builder_helper(config=r) for r in config
+        ]
     else:
         return builder_helper(config=config)
 

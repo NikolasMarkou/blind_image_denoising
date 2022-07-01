@@ -23,6 +23,9 @@ from .utilities import \
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
+from .optimizer import \
+    schedule_builder, \
+    optimizer_builder
 
 # ---------------------------------------------------------------------
 
@@ -99,6 +102,8 @@ __all__ = [
     load_image,
     export_model,
     model_builder,
+    schedule_builder,
+    optimizer_builder,
     pretrained_models,
     build_pyramid_model,
     build_inverse_pyramid_model

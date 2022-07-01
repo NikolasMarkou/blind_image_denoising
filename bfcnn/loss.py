@@ -2,12 +2,6 @@ r"""Constructs the loss function of the blind image denoising"""
 
 # ---------------------------------------------------------------------
 
-__author__ = "Nikolas Markou"
-__version__ = "1.0.0"
-__license__ = "MIT"
-
-# ---------------------------------------------------------------------
-
 import tensorflow as tf
 from tensorflow import keras
 from typing import List, Dict, Callable

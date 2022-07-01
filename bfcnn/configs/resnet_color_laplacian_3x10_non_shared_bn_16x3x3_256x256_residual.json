@@ -8,6 +8,7 @@
     "kernel_size": 5,
     "type": "resnet",
     "batchnorm": true,
+    "add_gates": false,
     "activation": "elu",
     "clip_values": true,
     "shared_model": false,
@@ -32,24 +33,31 @@
     "checkpoints_to_keep": 3,
     "checkpoint_every": 10000,
     "visualization_number": 4,
-    "visualization_every": 4000,
-    "random_batch_iterations": 10,
+    "visualization_every": 1000,
+    "random_batch_iterations": 5,
     "random_batch_size": [256, 256, 3],
     "random_batch_min_difference": 0.1,
     "optimizer": {
-      "decay_rate": 0.95,
-      "decay_steps": 80000,
-      "learning_rate": 0.001,
-      "gradient_clipping_by_norm": 1.0
+      "gradient_clipping_by_norm": 1.0,
+      "schedule": {
+        "type": "exponential_decay",
+        "config": {
+          "decay_rate": 0.9,
+          "decay_steps": 20000,
+          "learning_rate": 0.001
+        }
+      }
     },
     "prune": {
       "start_epoch": 1,
-      "strategy": "minimum_threshold_shrinkage",
-      "config": {
-        "shrinkage": 0.75,
-        "minimum_threshold": 0.000005,
-        "shrinkage_threshold": 0.00001
-      }
+      "strategies": [{
+        "type": "minimum_threshold_shrinkage",
+        "config": {
+          "shrinkage": 0.75,
+          "minimum_threshold": 0.000005,
+          "shrinkage_threshold": 0.00001
+        }
+      }]
     }
   },
   "loss": {
@@ -59,7 +67,7 @@
     "nae_multiplier": 10.0
   },
   "dataset": {
-    "batch_size": 2,
+    "batch_size": 16,
     "min_value": 0,
     "max_value": 255,
     "clip_value": true,

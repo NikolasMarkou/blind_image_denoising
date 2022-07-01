@@ -2,14 +2,6 @@ r"""
 blocks and builders for pyramid handling
 """
 
-# ---------------------------------------------------------------------
-
-__author__ = "Nikolas Markou"
-__version__ = "1.0.0"
-__license__ = "MIT"
-
-# ---------------------------------------------------------------------
-
 import numpy as np
 from enum import Enum
 import tensorflow as tf
