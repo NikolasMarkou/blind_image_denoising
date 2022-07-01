@@ -29,6 +29,7 @@ from .model_resnet import build_model_resnet
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
+from .constants import CONFIG_STR, TYPE_STR
 from .regularizer import builder as regularizer_builder
 
 # ---------------------------------------------------------------------
@@ -63,7 +64,7 @@ def model_builder(
     logger.info("building model with config [{0}]".format(config))
 
     # --- argument parsing
-    model_type = config["type"]
+    model_type = config[TYPE_STR]
     filters = config.get("filters", 32)
     no_levels = config.get("no_levels", 1)
     add_var = config.get("add_var", False)

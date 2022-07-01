@@ -12,7 +12,7 @@ from typing import Dict, Callable, List, Tuple, Union
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-
+from .constants import CONFIG_STR, TYPE_STR
 
 # ---------------------------------------------------------------------
 
@@ -272,7 +272,7 @@ def prune_function_builder(
     if isinstance(config, List):
         prune_fns = [
             prune_strategy_helper(
-                PruneStrategy.from_string(c["type"]), **(c["config"]))
+                PruneStrategy.from_string(c[TYPE_STR]), **(c[CONFIG_STR]))
             for c in config
         ]
 
@@ -284,8 +284,8 @@ def prune_function_builder(
     elif isinstance(config, Dict):
         prune_fn = \
             prune_strategy_helper(
-                PruneStrategy.from_string(config["type"]),
-                **(config["config"]))
+                PruneStrategy.from_string(config[TYPE_STR]),
+                **(config[CONFIG_STR]))
     else:
         raise ValueError(f"don't know how to handle [{config}]")
 

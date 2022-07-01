@@ -13,6 +13,7 @@ from typing import Dict, Tuple, Union, List, Any
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
+from .constants import CONFIG_STR, TYPE_STR
 
 
 # ---------------------------------------------------------------------
@@ -124,8 +125,8 @@ def builder_helper(
         regularizer_type = config.lower()
         regularizer_parameters = {}
     elif isinstance(config, Dict):
-        regularizer_type = config.get("type", None).lower()
-        regularizer_parameters = config.get("parameters", {})
+        regularizer_type = config.get(TYPE_STR, None).lower()
+        regularizer_parameters = config.get(CONFIG_STR, {})
     else:
         raise ValueError("don't know how to handle config")
 
