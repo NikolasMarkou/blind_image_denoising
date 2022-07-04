@@ -7,19 +7,25 @@
     "max_value": 255,
     "kernel_size": 5,
     "type": "resnet",
-    "add_gates": true,
     "batchnorm": true,
-    "activation": "elu",
-    "clip_values": false,
+    "activation": "relu",
+    "add_gates": true,
+    "clip_values": true,
     "shared_model": false,
     "output_multiplier": 1.0,
     "local_normalization": -1,
-    "kernel_regularizer": "l1",
     "final_activation": "tanh",
     "add_skip_with_input": true,
     "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
+    "kernel_regularizer": {
+      "type": "soft_orthogonal",
+      "config": {
+        "lambda_coefficient": 1.0,
+        "l1_coefficient": 0.001
+      }
+    },
     "pyramid": {
       "levels": 3,
       "type": "laplacian",
@@ -27,7 +33,7 @@
       "kernel_size": [3, 3]
     }
   },
-  "train": {
+   "train": {
     "epochs": 50,
     "total_steps": -1,
     "checkpoints_to_keep": 3,
@@ -56,12 +62,6 @@
           "shrinkage": 0.75,
           "minimum_threshold": 0.000005,
           "shrinkage_threshold": 0.00001
-        }
-      },{
-        "type": "pca_projection",
-        "config": {
-          "variance": 0.95,
-          "scale": true
         }
       }]
     }
