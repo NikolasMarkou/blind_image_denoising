@@ -19,18 +19,18 @@
     "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
-    "kernel_regularizer": {
+    "kernel_regularizer": [{
       "type": "soft_orthogonal",
       "config": {
         "lambda_coefficient": 1.0,
         "l1_coefficient": 0.001
       }
-    },
+    }],
     "pyramid": {
       "levels": 3,
       "type": "laplacian",
       "xy_max": [1.0, 1.0],
-      "kernel_size": [3, 3]
+      "kernel_size": [5, 5]
     }
   },
    "train": {
