@@ -29,7 +29,7 @@
     "pyramid": {
       "levels": 3,
       "type": "laplacian",
-      "xy_max": [1.0, 1.0],
+      "xy_max": [2.0, 2.0],
       "kernel_size": [5, 5]
     }
   },
