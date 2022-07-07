@@ -496,7 +496,7 @@ class DenoisingInferenceModule3Channel(DenoisingInferenceModule):
 # ---------------------------------------------------------------------
 
 
-def module_builder(
+def module_denoiser_builder(
         model_denoise: keras.Model = None,
         model_normalize: keras.Model = None,
         model_denormalize: keras.Model = None,
