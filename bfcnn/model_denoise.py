@@ -220,10 +220,10 @@ def model_builder(
     else:
         x_levels = [x]
 
+    # --- local/global normalization cap
     means = []
     sigmas = []
 
-    # local/global normalization cap
     if use_normalization:
         for i, x_level in enumerate(x_levels):
             mean, sigma = None, None
