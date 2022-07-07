@@ -94,6 +94,7 @@ def train_loop(
         epochs, trainable=False, dtype=tf.dtypes.int64, name="global_total_epochs")
     trace_every = train_config.get("trace_every", 100)
     weight_buckets = train_config.get("weight_buckets", 100)
+    error_buckets = train_config.get("error_buckets", 255)
     total_steps = \
         tf.constant(
             train_config.get("total_steps", -1),
@@ -350,6 +351,17 @@ def train_loop(
                         step=global_step,
                         buckets=weight_buckets,
                         name="training/weights")
+
+                    # --- prediction error distribution
+                    input_prediction_error = \
+                        (input_batch - denormalized_denoised_batch) / 255
+                    input_prediction_error = \
+                        tf.reshape(input_prediction_error, shape=[-1])
+                    tf.summary.histogram(
+                        data=input_prediction_error,
+                        step=global_step,
+                        buckets=error_buckets,
+                        name="training/error_distribution")
 
                 if use_prune and (global_epoch >= prune_start_epoch) and \
                         (int(prune_steps) != -1) and (global_step % prune_steps == 0):
