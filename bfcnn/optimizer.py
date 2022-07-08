@@ -26,11 +26,13 @@ def schedule_builder(
         raise ValueError("schedule_type cannot be None")
     if not isinstance(schedule_type, str):
         raise ValueError("schedule_type must be a string")
-    schedule_type = schedule_type.lower().strip()
 
     # --- select schedule
     schedule = None
     params = config.get(CONFIG_STR, {})
+    schedule_type = schedule_type.lower().strip()
+    logger.info(f"building schedule: {schedule_type}, with params: {params}")
+
     if schedule_type == "exponential_decay":
         decay_rate = params["decay_rate"]
         decay_steps = params["decay_steps"]
@@ -65,7 +67,6 @@ def schedule_builder(
     else:
         raise ValueError(f"don't know how to handle {schedule_type}")
     # ---
-    logger.info(f"created schedule: {schedule}")
     return schedule
 
 # ---------------------------------------------------------------------

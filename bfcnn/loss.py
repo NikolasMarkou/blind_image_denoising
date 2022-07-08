@@ -88,6 +88,25 @@ def mae_weighted_delta(
 # ---------------------------------------------------------------------
 
 
+def mae_diff(
+        error,
+        hinge: float = 0.0):
+    """
+    Mean Absolute Error (mean over channels and batches)
+
+    :param error: original image batch
+    :param hinge: hinge value
+    """
+    d = tf.abs(error)
+    d = keras.layers.ReLU(threshold=hinge)(d)
+    # mean over all dims
+    d = tf.reduce_mean(d, axis=[1, 2, 3])
+    # mean over batch
+    return tf.reduce_mean(d, axis=[0])
+
+# ---------------------------------------------------------------------
+
+
 def mae(
         original,
         prediction,
@@ -99,12 +118,8 @@ def mae(
     :param prediction: denoised image batch
     :param hinge: hinge value
     """
-    d = tf.abs(original - prediction)
-    d = keras.layers.ReLU(threshold=hinge)(d)
-    # mean over all dims
-    d = tf.reduce_mean(d, axis=[1, 2, 3])
-    # mean over batch
-    return tf.reduce_mean(d, axis=[0])
+    error = original - prediction
+    return mae_diff(error, hinge=hinge)
 
 # ---------------------------------------------------------------------
 
@@ -169,11 +184,12 @@ def loss_function_builder(
     logger.info("building loss_function with config [{0}]".format(config))
 
     # controls how we discount each level
-    hinge = config.get("hinge", 0.0)
-    regularization_multiplier = config.get("regularization", 1.0)
-    nae_multiplier = config.get("nae_multiplier", 0.0)
-    mae_multiplier = config.get("mae_multiplier", 1.0)
-    mae_delta_enabled = config.get("mae_delta", False)
+    hinge = tf.config(config.get("hinge", 0.0))
+    nae_multiplier = tf.constant(config.get("nae_multiplier", 0.0))
+    mae_multiplier = tf.constant(config.get("mae_multiplier", 1.0))
+    mae_delta_enabled = tf.constant(config.get("mae_delta", False))
+    regularization_multiplier = tf.constant(config.get("regularization", 1.0))
+    mae_variance_multiplier = tf.constant(config.get("variance_multiplier", 0.0))
 
     def loss_function(
             input_batch,
@@ -189,6 +205,8 @@ def loss_function_builder(
         :param prediction_batch: prediction
         :param noisy_batch: noisy batch
         :param model_losses: weight/regularization losses
+        :param input_batch_decomposition:
+        :param prediction_batch_decomposition:
         :return: dictionary of losses
         """
 
@@ -196,10 +214,11 @@ def loss_function_builder(
         mae_prediction_loss = tf.constant(0.0)
         mae_weighted_delta_loss = tf.constant(0.0)
 
+        error = input_batch - prediction_batch
+
         mae_prediction_loss += \
-            mae(
-                original=input_batch,
-                prediction=prediction_batch,
+            mae_diff(
+                error=error,
                 hinge=hinge)
         if mae_delta_enabled:
             mae_weighted_delta_loss += \
@@ -209,9 +228,8 @@ def loss_function_builder(
                     hinge=hinge)
 
         mae_actual = \
-            mae(
-                original=input_batch,
-                prediction=prediction_batch,
+            mae_diff(
+                error=error,
                 hinge=0)
 
         # --- loss prediction on decomposition
@@ -234,6 +252,16 @@ def loss_function_builder(
 
         nae_improvement = nae_noise - nae_prediction
 
+        # --- variance loss experimental
+        mae_variance_loss = tf.constant(0.0)
+        if mae_variance_multiplier > 0.0:
+            mae_variance_loss += \
+                tf.math.reduce_mean(
+                    tf.math.reduce_variance(
+                        error,
+                        axis=[1, 2, 3],
+                        keepdims=False))
+
         # --- regularization error
         regularization_loss = tf.add_n(model_losses)
 
@@ -244,6 +272,7 @@ def loss_function_builder(
         # --- add up loss
         mean_total_loss = \
             nae_prediction * nae_multiplier + \
+            mae_variance_loss * mae_variance_multiplier + \
             regularization_loss * regularization_multiplier + \
             (mae_prediction_loss + mae_weighted_delta_loss + mae_decomposition_loss) * mae_multiplier
 
@@ -254,6 +283,7 @@ def loss_function_builder(
             "nae_prediction": nae_prediction,
             MEAN_TOTAL_LOSS_STR: mean_total_loss,
             "nae_improvement": nae_improvement,
+            "mae_variance_loss": mae_variance_loss,
             REGULARIZATION_LOSS_STR: regularization_loss,
             MAE_DECOMPOSITION_LOSS_STR: mae_decomposition_loss,
         }
