@@ -34,7 +34,7 @@
     "pyramid": {
       "levels": 3,
       "type": "laplacian",
-      "xy_max": [1.0, 1.0],
+      "xy_max": [2.0, 2.0],
       "kernel_size": [5, 5]
     }
   },
@@ -67,12 +67,6 @@
           "shrinkage": 0.75,
           "minimum_threshold": 0.000005,
           "shrinkage_threshold": 0.00001
-        }
-      },{
-        "type": "pca_projection",
-        "config": {
-          "variance": 0.95,
-          "scale": true
         }
       }]
     }
