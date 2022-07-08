@@ -88,8 +88,10 @@ class SoftOrthogonalCustomConstraintRegularizer(keras.regularizers.Regularizer):
     """
 
     def __init__(self,
-                 lambda_coefficient: float = 1.0):
+                 lambda_coefficient: float = 1.0,
+                 l1_coefficient: float = 0.001):
         self._lambda_coefficient = lambda_coefficient
+        self._l1_coefficient = l1_coefficient
 
     def __call__(self, x):
         # --- reshape
@@ -110,10 +112,13 @@ class SoftOrthogonalCustomConstraintRegularizer(keras.regularizers.Regularizer):
                 tf.norm(wt_w_masked,
                         ord="fro",
                         axis=(0, 1),
-                        keepdims=False))
+                        keepdims=False)) + \
+            self._l1_coefficient * \
+            tf.reduce_sum(tf.abs(wt_w), axis=None, keepdims=False)
 
     def get_config(self):
         return {
+            "l1_coefficient": self._l1_coefficient,
             "lambda_coefficient": self._lambda_coefficient
         }
 
