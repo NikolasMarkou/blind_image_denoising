@@ -34,6 +34,7 @@ def reshape_to_2d(x):
         raise ValueError(f"don't know how to handle shape [{x.shape}]")
     return x_reshaped
 
+
 # ---------------------------------------------------------------------
 
 
@@ -43,6 +44,7 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
     Can We Gain More from Orthogonality Regularizations in Training Deep CNNs?
     https://arxiv.org/abs/1810.09102
     """
+
     def __init__(self,
                  lambda_coefficient: float = 1.0,
                  l1_coefficient: float = 0.001):
@@ -58,6 +60,7 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
             tf.linalg.matmul(
                 tf.transpose(x, perm=(1, 0)),
                 x)
+
         # frobenius norm
         return \
             self._lambda_coefficient * \
@@ -75,6 +78,45 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
             "lambda_coefficient": self._lambda_coefficient
         }
 
+
+# ---------------------------------------------------------------------
+
+
+class SoftOrthogonalCustomConstraintRegularizer(keras.regularizers.Regularizer):
+    """
+    Implements a custom soft orthogonality constraint that allows different independent distributions
+    """
+    def __init__(self,
+                 lambda_coefficient: float = 1.0):
+        self._lambda_coefficient = lambda_coefficient
+
+    def __call__(self, x):
+        # --- reshape
+        x = reshape_to_2d(x)
+
+        # --- compute (Wt * W) - I
+        wt_w = \
+            tf.linalg.matmul(
+                tf.transpose(x, perm=(1, 0)),
+                x)
+        wt_w_mask = tf.ones(tf.shape(wt_w)[0]) - tf.eye(tf.shape(wt_w)[0])
+        wt_w_masked = tf.math.multiply(wt_w, wt_w_mask)
+
+        # frobenius norm
+        return \
+            self._lambda_coefficient * \
+            tf.square(
+                tf.norm(wt_w_masked),
+                ord="fro",
+                axis=(0, 1),
+                keepdims=False)
+
+    def get_config(self):
+        return {
+            "lambda_coefficient": self._lambda_coefficient
+        }
+
+
 # ---------------------------------------------------------------------
 
 
@@ -82,6 +124,7 @@ class RegularizerMixer(keras.regularizers.Regularizer):
     """
     Combines regularizers
     """
+
     def __init__(self,
                  regularizers: List[keras.regularizers.Regularizer]):
         self._regularizers = regularizers
@@ -105,6 +148,7 @@ class RegularizerMixer(keras.regularizers.Regularizer):
             ]
         }
 
+
 # ---------------------------------------------------------------------
 
 
@@ -123,26 +167,29 @@ def builder_helper(
     # --- prepare variables
     if isinstance(config, str):
         regularizer_type = config.lower()
-        regularizer_parameters = {}
+        regularizer_params = {}
     elif isinstance(config, Dict):
         regularizer_type = config.get(TYPE_STR, None).lower()
-        regularizer_parameters = config.get(CONFIG_STR, {})
+        regularizer_params = config.get(CONFIG_STR, {})
     else:
         raise ValueError("don't know how to handle config")
 
     # --- select correct regularizer
     regularizer = None
     if regularizer_type == "l1":
-        regularizer = keras.regularizers.L1(**regularizer_parameters)
+        regularizer = keras.regularizers.L1(**regularizer_params)
     elif regularizer_type == "l2":
-        regularizer = keras.regularizers.L2(**regularizer_parameters)
+        regularizer = keras.regularizers.L2(**regularizer_params)
     elif regularizer_type == "l1l2":
-        regularizer = keras.regularizers.L1L2(**regularizer_parameters)
+        regularizer = keras.regularizers.L1L2(**regularizer_params)
     elif regularizer_type == "soft_orthogonal":
-        regularizer = SoftOrthogonalConstraintRegularizer(**regularizer_parameters)
+        regularizer = SoftOrthogonalConstraintRegularizer(**regularizer_params)
+    elif regularizer_type == "soft_orthogonal_custom":
+        regularizer = SoftOrthogonalCustomConstraintRegularizer(**regularizer_params)
     else:
         raise ValueError(f"don't know how to handle [{regularizer_type}]")
     return regularizer
+
 
 # ---------------------------------------------------------------------
 
