@@ -84,7 +84,11 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
 
 class SoftOrthogonalCustomConstraintRegularizer(keras.regularizers.Regularizer):
     """
-    Implements a custom soft orthogonality constraint that allows different independent distributions
+    Implements the soft orthogonality constraint as described in
+    Can We Gain More from Orthogonality Regularizations in Training Deep CNNs?
+    https://arxiv.org/abs/1810.09102
+
+    I changed the original a bit so the diagonal doesnt need to be necessarily ones.
     """
 
     def __init__(self,
