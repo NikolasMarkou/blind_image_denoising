@@ -184,7 +184,7 @@ def loss_function_builder(
     logger.info("building loss_function with config [{0}]".format(config))
 
     # controls how we discount each level
-    hinge = tf.config(config.get("hinge", 0.0))
+    hinge = tf.constant(config.get("hinge", 0.0))
     nae_multiplier = tf.constant(config.get("nae_multiplier", 0.0))
     mae_multiplier = tf.constant(config.get("mae_multiplier", 1.0))
     mae_delta_enabled = tf.constant(config.get("mae_delta", False))
