@@ -72,7 +72,8 @@
     }
   },
   "loss": {
-    "hinge": 1.0,
+    "hinge": 2.5,
+    "cutoff": 200.0,
     "mae_multiplier": 1.0,
     "regularization": 0.01,
     "nae_multiplier": 10.0
