@@ -13,10 +13,10 @@
     "clip_values": true,
     "shared_model": false,
     "output_multiplier": 1.0,
-    "local_normalization": 5,
+    "local_normalization": -1,
     "final_activation": "tanh",
-    "add_skip_with_input": true,
-    "add_residual_between_models": false,
+    "add_skip_with_input": false,
+    "add_residual_between_models": true,
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
     "kernel_regularizer": [{
