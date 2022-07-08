@@ -86,6 +86,7 @@ class SoftOrthogonalCustomConstraintRegularizer(keras.regularizers.Regularizer):
     """
     Implements a custom soft orthogonality constraint that allows different independent distributions
     """
+
     def __init__(self,
                  lambda_coefficient: float = 1.0):
         self._lambda_coefficient = lambda_coefficient
@@ -106,10 +107,10 @@ class SoftOrthogonalCustomConstraintRegularizer(keras.regularizers.Regularizer):
         return \
             self._lambda_coefficient * \
             tf.square(
-                tf.norm(wt_w_masked),
-                ord="fro",
-                axis=(0, 1),
-                keepdims=False)
+                tf.norm(wt_w_masked,
+                        ord="fro",
+                        axis=(0, 1),
+                        keepdims=False))
 
     def get_config(self):
         return {
