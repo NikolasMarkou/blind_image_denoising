@@ -13,7 +13,7 @@ sys.path.append(os.getcwd() + "/../")
 # ---------------------------------------------------------------------
 
 import bfcnn
-from bfcnn.regularizer import SoftOrthogonalConstraintRegularizer
+from bfcnn.regularizer import SoftOrthonormalConstraintRegularizer
 
 # ---------------------------------------------------------------------
 
@@ -34,7 +34,7 @@ def test_create_4d_soft_orthogonal_constraint(shape):
             maxval=+1,
             shape=shape)
     regularizer = \
-        bfcnn.regularizer.SoftOrthogonalConstraintRegularizer(1.0)
+        bfcnn.regularizer.SoftOrthonormalConstraintRegularizer(1.0)
     result = regularizer(x_random)
     assert result >= 0
 
@@ -58,7 +58,7 @@ def test_create_2d_soft_orthogonal_constraint(shape):
             maxval=+1,
             shape=shape)
     regularizer = \
-        bfcnn.regularizer.SoftOrthogonalConstraintRegularizer(1.0)
+        bfcnn.regularizer.SoftOrthonormalConstraintRegularizer(1.0)
     result = regularizer(x_random)
     assert result >= 0
 

@@ -14,7 +14,7 @@
     "shared_model": false,
     "output_multiplier": 1.0,
     "local_normalization": -1,
-    "kernel_regularizer": "soft_orthogonal",
+    "kernel_regularizer": "soft_orthonormal",
     "final_activation": "tanh",
     "add_skip_with_input": false,
     "add_residual_between_models": true,

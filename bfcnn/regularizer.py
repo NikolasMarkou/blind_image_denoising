@@ -38,11 +38,14 @@ def reshape_to_2d(x):
 # ---------------------------------------------------------------------
 
 
-class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
+class SoftOrthonormalConstraintRegularizer(keras.regularizers.Regularizer):
     """
     Implements the soft orthogonality constraint as described in
     Can We Gain More from Orthogonality Regularizations in Training Deep CNNs?
     https://arxiv.org/abs/1810.09102
+
+    This constraint forces the kernels
+    to be orthogonal and have a l2 norm of 1 (orthonormal)
     """
 
     def __init__(self,
@@ -82,13 +85,15 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
 # ---------------------------------------------------------------------
 
 
-class SoftOrthogonalCustomConstraintRegularizer(keras.regularizers.Regularizer):
+class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
     """
     Implements the soft orthogonality constraint as described in
     Can We Gain More from Orthogonality Regularizations in Training Deep CNNs?
     https://arxiv.org/abs/1810.09102
 
-    I changed the original a bit so the diagonal doesnt need to be necessarily ones.
+    This constraint forces the kernels
+    to be orthogonal and have a l2 norm of whatever they want (orthogonal)
+    but subject to l1 constraint
     """
 
     def __init__(self,
@@ -101,11 +106,12 @@ class SoftOrthogonalCustomConstraintRegularizer(keras.regularizers.Regularizer):
         # --- reshape
         x = reshape_to_2d(x)
 
-        # --- compute (Wt * W) - I
+        # --- compute (Wt * W)
         wt_w = \
             tf.linalg.matmul(
                 tf.transpose(x, perm=(1, 0)),
                 x)
+        # mask diagonal
         wt_w_mask = tf.ones(tf.shape(wt_w)[0]) - tf.eye(tf.shape(wt_w)[0])
         wt_w_masked = tf.math.multiply(wt_w, wt_w_mask)
 
@@ -192,10 +198,10 @@ def builder_helper(
         regularizer = keras.regularizers.L2(**regularizer_params)
     elif regularizer_type == "l1l2":
         regularizer = keras.regularizers.L1L2(**regularizer_params)
+    elif regularizer_type == "soft_orthonormal":
+        regularizer = SoftOrthonormalConstraintRegularizer(**regularizer_params)
     elif regularizer_type == "soft_orthogonal":
         regularizer = SoftOrthogonalConstraintRegularizer(**regularizer_params)
-    elif regularizer_type == "soft_orthogonal_custom":
-        regularizer = SoftOrthogonalCustomConstraintRegularizer(**regularizer_params)
     else:
         raise ValueError(f"don't know how to handle [{regularizer_type}]")
     return regularizer
