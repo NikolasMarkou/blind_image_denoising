@@ -261,12 +261,15 @@ def build_model_resnet(
     )
 
     resnet_params = dict(
+        bn_params=None,
         no_layers=no_layers,
-        bn_params=bn_params,
         first_conv_params=first_conv_params,
         second_conv_params=second_conv_params,
         third_conv_params=third_conv_params,
     )
+
+    if use_bn:
+        resnet_params["bn_params"] = bn_params
 
     # make it linear so it gets sparse afterwards
     if add_sparsity:
