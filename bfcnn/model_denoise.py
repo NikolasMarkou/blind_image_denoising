@@ -78,6 +78,7 @@ def model_builder(
     dropout_rate = config.get("dropout_rate", -1)
     activation = config.get("activation", "relu")
     clip_values = config.get("clip_values", False)
+    add_final_bn = config.get("add_final_bn", True)
     shared_model = config.get("shared_model", False)
     add_concat_input = config.get("add_concat_input", False)
     input_shape = config.get("input_shape", (None, None, 3))
@@ -135,6 +136,7 @@ def model_builder(
         input_dims=input_shape,
         kernel_size=kernel_size,
         dropout_rate=dropout_rate,
+        add_final_bn=add_final_bn,
         add_concat_input=add_concat_input,
         final_activation=final_activation,
         kernel_regularizer=kernel_regularizer,

@@ -142,6 +142,7 @@ def build_model_lunet(
         add_sparsity: bool = False,
         add_gates: bool = False,
         add_var: bool = False,
+        add_final_bn: bool = False,
         add_intermediate_results: bool = False,
         add_learnable_multiplier: bool = False,
         add_projection_to_input: bool = True,
@@ -168,6 +169,7 @@ def build_model_lunet(
     :param add_sparsity: if true add sparsity layer
     :param add_gates: if true add gate layer
     :param add_var: if true add variance for each block
+    :param add_final_bn: add a batch norm after the resnet blocks
     :param add_intermediate_results: if true output results before projection
     :param add_learnable_multiplier:
     :param add_projection_to_input: if true project to input tensor channel number
@@ -320,7 +322,7 @@ def build_model_lunet(
             **lunet_params)
 
     # optional batch norm
-    if use_bn:
+    if add_final_bn:
         x = tf.keras.layers.BatchNormalization(**bn_params)(x)
 
     # optional concat and mix with input
