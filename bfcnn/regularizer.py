@@ -35,7 +35,7 @@ class RegularizationType(Enum):
 
     SOFT_ORTHONORMAL = 3
 
-    SOFT_ORTHOGONAL = 3
+    SOFT_ORTHOGONAL = 4
 
     @staticmethod
     def from_string(type_str: str) -> "RegularizationType":
