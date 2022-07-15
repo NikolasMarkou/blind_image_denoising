@@ -13,7 +13,7 @@ sys.path.append(os.getcwd() + "/../")
 # ---------------------------------------------------------------------
 
 import bfcnn
-from bfcnn.regularizer import SoftOrthogonalConstraintRegularizer
+from bfcnn.regularizer import SoftOrthonormalConstraintRegularizer
 
 # ---------------------------------------------------------------------
 
@@ -34,7 +34,7 @@ def test_create_4d_soft_orthogonal_constraint(shape):
             maxval=+1,
             shape=shape)
     regularizer = \
-        bfcnn.regularizer.SoftOrthogonalConstraintRegularizer(1.0)
+        bfcnn.regularizer.SoftOrthonormalConstraintRegularizer(1.0)
     result = regularizer(x_random)
     assert result >= 0
 
@@ -58,9 +58,24 @@ def test_create_2d_soft_orthogonal_constraint(shape):
             maxval=+1,
             shape=shape)
     regularizer = \
-        bfcnn.regularizer.SoftOrthogonalConstraintRegularizer(1.0)
+        bfcnn.regularizer.SoftOrthonormalConstraintRegularizer(1.0)
     result = regularizer(x_random)
     assert result >= 0
+
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "config", [
+        ["l1"],
+        ["l1l2"],
+        ["l1", "l2"],
+        ["soft_orthogonal"],
+        ["soft_orthogonal", "l1"]
+    ])
+def test_builder(config):
+    prune_fns = bfcnn.regularizer.builder(config=config)
+    assert prune_fns is not None
 
 # ---------------------------------------------------------------------
 

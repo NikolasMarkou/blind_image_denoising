@@ -1,25 +1,36 @@
 {
   "model_denoise": {
     "filters": 16,
-    "no_layers": 10,
+    "no_layers": 5,
     "min_value": 0,
     "add_var": false,
     "max_value": 255,
     "kernel_size": 5,
     "type": "resnet",
-    "batchnorm": true,
+    "batchnorm": false,
+    "activation": "relu",
     "add_gates": false,
-    "activation": "elu",
     "clip_values": true,
     "shared_model": false,
     "output_multiplier": 1.0,
     "local_normalization": -1,
-    "kernel_regularizer": "soft_orthonormal",
     "final_activation": "tanh",
     "add_skip_with_input": false,
     "add_residual_between_models": true,
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
+    "kernel_regularizer": [{
+      "type": "soft_orthogonal",
+      "config": {
+        "lambda_coefficient": 1.0,
+        "l1_coefficient": 0.001
+      }
+    }, {
+      "type": "l1",
+      "config": {
+        "l1": 0.01
+      }
+    }],
     "pyramid": {
       "levels": 3,
       "type": "laplacian",
@@ -27,7 +38,7 @@
       "kernel_size": [3, 3]
     }
   },
-  "train": {
+   "train": {
     "epochs": 50,
     "total_steps": -1,
     "checkpoints_to_keep": 3,
@@ -49,19 +60,20 @@
       }
     },
     "prune": {
-      "start_epoch": 1,
+      "start_epoch": 0,
       "strategies": [{
         "type": "minimum_threshold_shrinkage",
         "config": {
           "shrinkage": 0.75,
-          "minimum_threshold": 0.000005,
-          "shrinkage_threshold": 0.00001
+          "minimum_threshold":   0.00005,
+          "shrinkage_threshold": 0.0001
         }
       }]
     }
   },
   "loss": {
-    "hinge": 1.0,
+    "hinge": 2.5,
+    "cutoff": 200.0,
     "mae_multiplier": 1.0,
     "regularization": 0.01,
     "nae_multiplier": 10.0
@@ -90,3 +102,4 @@
     ]
   }
 }
+

@@ -16,6 +16,7 @@ from .delta import delta_xy_magnitude
 from .pyramid import build_pyramid_model
 from .utilities import input_shape_fixer
 
+
 # ---------------------------------------------------------------------
 
 
@@ -88,44 +89,82 @@ def mae_weighted_delta(
 # ---------------------------------------------------------------------
 
 
+def mae_diff(
+        error,
+        hinge: float = 0.0,
+        cutoff: float = 255.0):
+    """
+    Mean Absolute Error (mean over channels and batches)
+
+    :param error: original image batch
+    :param hinge: hinge value
+    :param cutoff: max value
+    """
+    d = tf.abs(error)
+    d = keras.layers.ReLU(threshold=hinge, max_value=cutoff)(d)
+    # mean over all dims
+    d = tf.reduce_mean(d, axis=[1, 2, 3])
+    # mean over batch
+    return tf.reduce_mean(d, axis=[0])
+
+
+# ---------------------------------------------------------------------
+
+
 def mae(
         original,
         prediction,
-        hinge: float = 0.0):
+        hinge: float = 0.0,
+        cutoff: float = 255.0):
     """
     Mean Absolute Error (mean over channels and batches)
 
     :param original: original image batch
     :param prediction: denoised image batch
     :param hinge: hinge value
+    :param cutoff: max value
     """
-    d = tf.abs(original - prediction)
-    d = keras.layers.ReLU(threshold=hinge)(d)
+    error = original - prediction
+    return mae_diff(error, hinge=hinge, cutoff=cutoff)
+
+# ---------------------------------------------------------------------
+
+
+def mse_diff(
+        error,
+        hinge: float = 0,
+        cutoff: float = 255.0):
+    """
+    Mean Square Error (mean over channels and batches)
+
+    :param error:
+    :param hinge: hinge value
+    :param cutoff: max value
+    """
+    d = tf.square(error)
+    d = keras.layers.ReLU(threshold=hinge, max_value=cutoff)(d)
     # mean over all dims
     d = tf.reduce_mean(d, axis=[1, 2, 3])
     # mean over batch
     return tf.reduce_mean(d, axis=[0])
-
 # ---------------------------------------------------------------------
 
 
 def mse(
         original,
         prediction,
-        hinge: float = 0):
+        hinge: float = 0,
+        cutoff: float = (255.0 * 255.0)):
     """
     Mean Square Error (mean over channels and batches)
 
     :param original: original image batch
     :param prediction: denoised image batch
     :param hinge: hinge value
+    :param cutoff: max value
     """
-    d = tf.square(original - prediction)
-    d = keras.layers.ReLU(threshold=hinge)(d)
-    # mean over all dims
-    d = tf.reduce_mean(d, axis=[1, 2, 3])
-    # mean over batch
-    return tf.reduce_mean(d, axis=[0])
+    error = tf.square(original - prediction)
+    return mse_diff(error=error, hinge=hinge, cutoff=cutoff)
 
 
 # ---------------------------------------------------------------------
@@ -169,19 +208,21 @@ def loss_function_builder(
     logger.info("building loss_function with config [{0}]".format(config))
 
     # controls how we discount each level
-    hinge = config.get("hinge", 0.0)
-    regularization_multiplier = config.get("regularization", 1.0)
-    nae_multiplier = config.get("nae_multiplier", 0.0)
-    mae_multiplier = config.get("mae_multiplier", 1.0)
-    mae_delta_enabled = config.get("mae_delta", False)
+    hinge = tf.constant(config.get("hinge", 0.0))
+    cutoff = tf.constant(config.get("cutoff", 255.0))
+    nae_multiplier = tf.constant(config.get("nae_multiplier", 0.0))
+    mae_multiplier = tf.constant(config.get("mae_multiplier", 1.0))
+    mae_delta_enabled = tf.constant(config.get("mae_delta", False))
+    regularization_multiplier = tf.constant(config.get("regularization", 1.0))
+    mae_variance_multiplier = tf.constant(config.get("variance_multiplier", 0.0))
 
     def loss_function(
             input_batch,
             prediction_batch,
             noisy_batch,
             model_losses,
-            input_batch_decomposition = None,
-            prediction_batch_decomposition = None) -> Dict:
+            input_batch_decomposition=None,
+            prediction_batch_decomposition=None) -> Dict:
         """
         The loss function of the depth prediction model
 
@@ -189,6 +230,8 @@ def loss_function_builder(
         :param prediction_batch: prediction
         :param noisy_batch: noisy batch
         :param model_losses: weight/regularization losses
+        :param input_batch_decomposition:
+        :param prediction_batch_decomposition:
         :return: dictionary of losses
         """
 
@@ -196,10 +239,11 @@ def loss_function_builder(
         mae_prediction_loss = tf.constant(0.0)
         mae_weighted_delta_loss = tf.constant(0.0)
 
+        error = input_batch - prediction_batch
+
         mae_prediction_loss += \
-            mae(
-                original=input_batch,
-                prediction=prediction_batch,
+            mae_diff(
+                error=error,
                 hinge=hinge)
         if mae_delta_enabled:
             mae_weighted_delta_loss += \
@@ -209,9 +253,8 @@ def loss_function_builder(
                     hinge=hinge)
 
         mae_actual = \
-            mae(
-                original=input_batch,
-                prediction=prediction_batch,
+            mae_diff(
+                error=error,
                 hinge=0)
 
         # --- loss prediction on decomposition
@@ -223,7 +266,10 @@ def loss_function_builder(
                     mae(
                         original=input_batch_decomposition[i],
                         prediction=prediction_batch_decomposition[i],
-                        hinge=0) * (255.0 / (len(prediction_batch_decomposition) + EPSILON_DEFAULT))
+                        hinge=hinge/255,
+                        cutoff=cutoff/255)
+            mae_decomposition_loss = \
+                mae_decomposition_loss * (255.0 / (len(prediction_batch_decomposition) + EPSILON_DEFAULT))
 
         # ---
         nae_prediction = \
@@ -233,6 +279,16 @@ def loss_function_builder(
             nae(input_batch, noisy_batch, hinge)
 
         nae_improvement = nae_noise - nae_prediction
+
+        # --- variance loss experimental
+        mae_variance_loss = tf.constant(0.0)
+        if mae_variance_multiplier > 0.0:
+            mae_variance_loss += \
+                tf.math.reduce_mean(
+                    tf.math.reduce_variance(
+                        error,
+                        axis=[1, 2, 3],
+                        keepdims=False))
 
         # --- regularization error
         regularization_loss = tf.add_n(model_losses)
@@ -244,6 +300,7 @@ def loss_function_builder(
         # --- add up loss
         mean_total_loss = \
             nae_prediction * nae_multiplier + \
+            mae_variance_loss * mae_variance_multiplier + \
             regularization_loss * regularization_multiplier + \
             (mae_prediction_loss + mae_weighted_delta_loss + mae_decomposition_loss) * mae_multiplier
 
@@ -254,6 +311,7 @@ def loss_function_builder(
             "nae_prediction": nae_prediction,
             MEAN_TOTAL_LOSS_STR: mean_total_loss,
             "nae_improvement": nae_improvement,
+            "mae_variance_loss": mae_variance_loss,
             REGULARIZATION_LOSS_STR: regularization_loss,
             MAE_DECOMPOSITION_LOSS_STR: mae_decomposition_loss,
         }

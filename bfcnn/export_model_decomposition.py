@@ -1,11 +1,3 @@
-# ---------------------------------------------------------------------
-
-__author__ = "Nikolas Markou"
-__version__ = "1.0.0"
-__license__ = "MIT"
-
-# ---------------------------------------------------------------------
-
 import os
 import json
 import tensorflow as tf
@@ -19,8 +11,8 @@ from typing import List, Union, Tuple, Dict
 from .constants import *
 from .custom_logger import logger
 from .utilities import load_config
-from .model_denoise import model_builder, module_builder
-
+from .model_denoise import model_builder, module_denoiser_builder
+from .model_decomposition import module_decomposition_builder
 # ---------------------------------------------------------------------
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
@@ -36,7 +28,7 @@ def export_model(
         to_tflite: bool = True,
         test_model: bool = True):
     """
-    build and export a denoising model
+    build and export a decomposition model
 
     :param pipeline_config: path or dictionary of a configuration
     :param checkpoint_directory: path to the checkpoint directory
@@ -74,12 +66,23 @@ def export_model(
     denoiser = models.denoiser
     normalizer = models.normalizer
     denormalizer = models.denormalizer
-    # --- create the help variables
-    global_step = tf.Variable(
-        0, trainable=False, dtype=tf.dtypes.int64, name="global_step")
-    global_epoch = tf.Variable(
-        0, trainable=False, dtype=tf.dtypes.int64, name="global_epoch")
+    denoiser_decomposition = models.denoiser_decomposition
 
+    # --- create the help variables
+    global_step = \
+        tf.Variable(
+            initial_value=0,
+            trainable=False,
+            dtype=tf.dtypes.int64,
+            name="global_step")
+    global_epoch = \
+        tf.Variable(
+            initial_value=0,
+            trainable=False,
+            dtype=tf.dtypes.int64,
+            name="global_epoch")
+
+    # ---
     logger.info("saving configuration pipeline")
     pipeline_config_path = \
         os.path.join(
@@ -94,7 +97,8 @@ def export_model(
             epoch=global_epoch,
             model_denoise=denoiser,
             model_normalize=normalizer,
-            model_denormalize=denormalizer)
+            model_denormalize=denormalizer,
+            model_denoise_decomposition=denoiser_decomposition)
     manager = \
         tf.train.CheckpointManager(
             checkpoint=checkpoint,
@@ -112,10 +116,10 @@ def export_model(
     dataset_config = pipeline_config["dataset"]
     input_shape = dataset_config["input_shape"]
     no_channels = input_shape[2]
-    denoising_module = \
-        module_builder(
+    decomposition_module = \
+        module_decomposition_builder(
             cast_to_uint8=True,
-            model_denoise=denoiser,
+            model_decomposition=denoiser_decomposition,
             model_normalize=normalizer,
             model_denormalize=denormalizer,
             training_channels=no_channels)
@@ -125,7 +129,7 @@ def export_model(
     # be constructed, only after this can we save the
     # checkpoint and saved model.
     concrete_function = \
-        denoising_module.__call__.get_concrete_function(
+        decomposition_module.__call__.get_concrete_function(
             tf.TensorSpec(
                 shape=[None, None, None] + [no_channels],
                 dtype=tf.uint8,
@@ -135,7 +139,7 @@ def export_model(
     # export the model as save_model format (default)
     logger.info(f"saving module: [{output_saved_model}]")
     tf.saved_model.save(
-        obj=denoising_module,
+        obj=decomposition_module,
         signatures=concrete_function,
         export_dir=output_saved_model,
         options=tf.saved_model.SaveOptions(save_debug_info=False))
@@ -190,7 +194,7 @@ def export_model(
         with writer.as_default():
             tf.summary.trace_export(
                 step=0,
-                name="denoising_module",
+                name="decomposition_module",
                 profiler_outdir=output_log)
 
     return concrete_function

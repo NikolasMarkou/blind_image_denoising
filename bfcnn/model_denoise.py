@@ -29,6 +29,7 @@ from .model_resnet import build_model_resnet
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
+from .constants import CONFIG_STR, TYPE_STR
 from .regularizer import builder as regularizer_builder
 
 # ---------------------------------------------------------------------
@@ -63,7 +64,7 @@ def model_builder(
     logger.info("building model with config [{0}]".format(config))
 
     # --- argument parsing
-    model_type = config["type"]
+    model_type = config[TYPE_STR]
     filters = config.get("filters", 32)
     no_levels = config.get("no_levels", 1)
     add_var = config.get("add_var", False)
@@ -77,6 +78,7 @@ def model_builder(
     dropout_rate = config.get("dropout_rate", -1)
     activation = config.get("activation", "relu")
     clip_values = config.get("clip_values", False)
+    add_final_bn = config.get("add_final_bn", True)
     shared_model = config.get("shared_model", False)
     add_concat_input = config.get("add_concat_input", False)
     input_shape = config.get("input_shape", (None, None, 3))
@@ -94,7 +96,7 @@ def model_builder(
     use_local_normalization = local_normalization > 0
     use_global_normalization = local_normalization == 0
     use_normalization = use_local_normalization or use_global_normalization
-    local_normalization_kernel = [local_normalization, local_normalization]
+    local_normalization_kernel = (local_normalization, local_normalization)
     input_shape = input_shape_fixer(input_shape)
 
     # --- argument checking
@@ -134,6 +136,7 @@ def model_builder(
         input_dims=input_shape,
         kernel_size=kernel_size,
         dropout_rate=dropout_rate,
+        add_final_bn=add_final_bn,
         add_concat_input=add_concat_input,
         final_activation=final_activation,
         kernel_regularizer=kernel_regularizer,
@@ -219,10 +222,10 @@ def model_builder(
     else:
         x_levels = [x]
 
+    # --- local/global normalization cap
     means = []
     sigmas = []
 
-    # local/global normalization cap
     if use_normalization:
         for i, x_level in enumerate(x_levels):
             mean, sigma = None, None
@@ -495,7 +498,7 @@ class DenoisingInferenceModule3Channel(DenoisingInferenceModule):
 # ---------------------------------------------------------------------
 
 
-def module_builder(
+def module_denoiser_builder(
         model_denoise: keras.Model = None,
         model_normalize: keras.Model = None,
         model_denormalize: keras.Model = None,
