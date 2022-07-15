@@ -9,12 +9,44 @@ __license__ = "MIT"
 import os
 import sys
 import argparse
+from enum import Enum
 
 # ---------------------------------------------------------------------
 # local imports
 # ---------------------------------------------------------------------
 
-from .export_model import export_model
+from .export_model_denoise import export_model as export_model_denoise
+from .export_model_decomposition import export_model as export_model_decomposition
+
+# ---------------------------------------------------------------------
+
+
+class ModelType(Enum):
+    # denoise model
+    DENOISE = 0
+
+    # decomposition model
+    DECOMPOSITION = 1
+
+    @staticmethod
+    def from_string(type_str: str) -> "ModelType":
+        # --- argument checking
+        if type_str is None:
+            raise ValueError("type_str must not be null")
+        if not isinstance(type_str, str):
+            raise ValueError("type_str must be string")
+        type_str = type_str.strip().upper()
+        if len(type_str) <= 0:
+            raise ValueError("stripped type_str must not be empty")
+
+        # --- clean string and get
+        return ModelType[type_str]
+
+    def to_string(self) -> str:
+        return self.name
+
+    def __str__(self):
+        return self.name
 
 # ---------------------------------------------------------------------
 
@@ -25,12 +57,24 @@ def main(args):
         raise ValueError("Pipeline configuration [{0}] is not valid".format(
             args.pipeline_config))
 
-    export_model(
-        pipeline_config=args.pipeline_config,
-        checkpoint_directory=args.checkpoint_directory,
-        output_directory=args.output_directory,
-        to_tflite=args.to_tflite,
-        test_model=args.test_model)
+    if args.model_type == ModelType.DENOISE:
+        export_model_denoise(
+            pipeline_config=args.pipeline_config,
+            checkpoint_directory=args.checkpoint_directory,
+            output_directory=args.output_directory,
+            to_tflite=args.to_tflite,
+            test_model=args.test_model)
+    elif args.model_type == ModelType.DECOMPOSITION:
+        export_model_decomposition(
+            pipeline_config=args.pipeline_config,
+            checkpoint_directory=args.checkpoint_directory,
+            output_directory=args.output_directory,
+            to_tflite=args.to_tflite,
+            test_model=args.test_model)
+    else:
+        raise ValueError(
+            f"don't know how to handle type [{args.model_type}")
+
     return 0
 
 # ---------------------------------------------------------------------
@@ -39,6 +83,14 @@ def main(args):
 if __name__ == "__main__":
     # define arguments
     parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--model-type",
+        default=ModelType.DENOISE,
+        type=ModelType,
+        choices=list(ModelType),
+        dest="model_type",
+        help="type of model to export")
 
     parser.add_argument(
         "--pipeline-config",

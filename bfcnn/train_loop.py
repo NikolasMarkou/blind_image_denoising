@@ -94,6 +94,7 @@ def train_loop(
         epochs, trainable=False, dtype=tf.dtypes.int64, name="global_total_epochs")
     trace_every = train_config.get("trace_every", 100)
     weight_buckets = train_config.get("weight_buckets", 100)
+    error_buckets = train_config.get("error_buckets", 255)
     total_steps = \
         tf.constant(
             train_config.get("total_steps", -1),
@@ -122,12 +123,9 @@ def train_loop(
     random_batch_size = \
         [visualization_number] + \
         train_config.get("random_batch_size", [128, 128, 3])
-    # prune strategy
+    # --- prune strategy
     prune_config = \
-        train_config.get("prune", {"strategy": "none"})
-    use_prune = \
-        PruneStrategy.from_string(prune_config["strategy"]) != PruneStrategy.NONE
-    use_prune = tf.constant(use_prune)
+        train_config.get("prune", {"strategies": []})
     prune_start_epoch = \
         tf.constant(
             prune_config.get("start_epoch", 0),
@@ -138,7 +136,18 @@ def train_loop(
             prune_config.get("steps", -1),
             dtype=tf.dtypes.int64,
             name="prune_steps")
-    prune_function = prune_function_builder(prune_config)
+    prune_strategies = prune_config["strategies"]
+    if prune_strategies is None:
+        use_prune = False
+    elif isinstance(prune_strategies, list):
+        use_prune = len(prune_strategies) > 0
+    elif isinstance(prune_strategies, dict):
+        use_prune = True
+    else:
+        use_prune = False
+    use_prune = tf.constant(use_prune)
+    prune_fn = \
+        prune_function_builder(prune_strategies)
 
     # --- build the denoise model
     tf.summary.trace_on(graph=True, profiler=False)
@@ -220,6 +229,35 @@ def train_loop(
         status = \
             checkpoint.restore(manager.latest_checkpoint).expect_partial()
 
+        # --- define denoise fn
+        if inverse_pyramid is not None:
+            @tf.function
+            def denoise_fn(x):
+                x0 = \
+                    denoiser_decomposition(
+                        x,
+                        training=True)
+                x1 = \
+                    inverse_pyramid(
+                        x0,
+                        training=False)
+                x2 = \
+                    denormalizer(x1, training=False)
+                return x0, x1, x2
+        else:
+            @tf.function
+            def denoise_fn(x):
+                x2 = \
+                    denoiser(
+                        x,
+                        training=True)
+                x1 = \
+                    denormalizer(x2, training=False)
+                x0 = None
+                return x0, x1, None
+
+        # ---
+
         while global_epoch < global_total_epochs:
             logger.info("epoch: {0}, step: {1}".format(
                 int(global_epoch), int(global_step)))
@@ -228,7 +266,7 @@ def train_loop(
             if use_prune and (global_epoch >= prune_start_epoch):
                 logger.info(f"pruning weights at step [{int(global_step)}]")
                 denoiser_decomposition = \
-                    prune_function(model=denoiser_decomposition)
+                    prune_fn(model=denoiser_decomposition)
 
             model_denoise_weights = \
                 denoiser_decomposition.trainable_weights
@@ -261,25 +299,10 @@ def train_loop(
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
-                    if inverse_pyramid is not None:
-                        denoised_batch_decomposition = \
-                            denoiser_decomposition(
-                                normalized_noisy_batch,
-                                training=True)
-                        denoised_batch = \
-                            inverse_pyramid(
-                                denoised_batch_decomposition,
-                                training=False)
-                        denormalized_denoised_batch = \
-                            denormalizer(denoised_batch, training=False)
-                    else:
-                        denormalized_denoised_batch = \
-                            denoiser(
-                                normalized_noisy_batch,
-                                training=True)
-                        denormalized_denoised_batch = \
-                            denormalizer(denormalized_denoised_batch, training=False)
-                        denoised_batch_decomposition = None
+                    denoised_batch_decomposition, \
+                    denoised_batch, \
+                    denormalized_denoised_batch = \
+                        denoise_fn(normalized_noisy_batch)
 
                     # compute the loss value for this mini-batch
                     loss_map = \
@@ -343,11 +366,22 @@ def train_loop(
                         buckets=weight_buckets,
                         name="training/weights")
 
+                    # --- prediction error distribution
+                    input_prediction_error = \
+                        (input_batch - denormalized_denoised_batch) / 255
+                    input_prediction_error = \
+                        tf.reshape(input_prediction_error, shape=[-1])
+                    tf.summary.histogram(
+                        data=input_prediction_error,
+                        step=global_step,
+                        buckets=error_buckets,
+                        name="training/error_distribution")
+
                 if use_prune and (global_epoch >= prune_start_epoch) and \
                         (int(prune_steps) != -1) and (global_step % prune_steps == 0):
                     logger.info(f"pruning weights at step [{int(global_step)}]")
                     denoiser = \
-                        prune_function(model=denoiser)
+                        prune_fn(model=denoiser)
 
                 # --- check if it is time to save a checkpoint
                 if checkpoint_every > 0:

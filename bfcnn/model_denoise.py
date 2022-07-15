@@ -24,10 +24,12 @@ from .utilities import \
     mean_sigma_local, \
     mean_sigma_global
 from .model_unet import build_model_unet
+from .model_lunet import build_model_lunet
 from .model_resnet import build_model_resnet
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
+from .constants import CONFIG_STR, TYPE_STR
 from .regularizer import builder as regularizer_builder
 
 # ---------------------------------------------------------------------
@@ -62,7 +64,7 @@ def model_builder(
     logger.info("building model with config [{0}]".format(config))
 
     # --- argument parsing
-    model_type = config["type"]
+    model_type = config[TYPE_STR]
     filters = config.get("filters", 32)
     no_levels = config.get("no_levels", 1)
     add_var = config.get("add_var", False)
@@ -71,10 +73,12 @@ def model_builder(
     max_value = config.get("max_value", 255)
     batchnorm = config.get("batchnorm", True)
     kernel_size = config.get("kernel_size", 3)
+    add_gates = config.get("add_gates", False)
     pyramid_config = config.get("pyramid", None)
     dropout_rate = config.get("dropout_rate", -1)
     activation = config.get("activation", "relu")
     clip_values = config.get("clip_values", False)
+    add_final_bn = config.get("add_final_bn", True)
     shared_model = config.get("shared_model", False)
     add_concat_input = config.get("add_concat_input", False)
     input_shape = config.get("input_shape", (None, None, 3))
@@ -92,7 +96,7 @@ def model_builder(
     use_local_normalization = local_normalization > 0
     use_global_normalization = local_normalization == 0
     use_normalization = use_local_normalization or use_global_normalization
-    local_normalization_kernel = [local_normalization, local_normalization]
+    local_normalization_kernel = (local_normalization, local_normalization)
     input_shape = input_shape_fixer(input_shape)
 
     # --- argument checking
@@ -121,17 +125,18 @@ def model_builder(
 
     # --- build denoise model
     model_params = dict(
-        add_gates=False,
         add_var=add_var,
         filters=filters,
         use_bn=batchnorm,
         add_sparsity=False,
         no_levels=no_levels,
         no_layers=no_layers,
+        add_gates=add_gates,
         activation=activation,
         input_dims=input_shape,
         kernel_size=kernel_size,
         dropout_rate=dropout_rate,
+        add_final_bn=add_final_bn,
         add_concat_input=add_concat_input,
         final_activation=final_activation,
         kernel_regularizer=kernel_regularizer,
@@ -144,16 +149,14 @@ def model_builder(
     model_builder_fn = None
     if model_type == "unet":
         model_builder_fn = build_model_unet
+    elif model_type == "lunet":
+        model_builder_fn = build_model_lunet
     elif model_type == "resnet":
         model_builder_fn = build_model_resnet
-        model_params["add_gates"] = False
         model_params["add_sparsity"] = False
     elif model_type == "sparse_resnet":
         model_builder_fn = build_model_resnet
         model_params["add_sparsity"] = True
-    elif model_type == "gatenet":
-        model_builder_fn = build_model_resnet
-        model_params["add_gates"] = True
     else:
         raise ValueError(
             "don't know how to build model [{0}]".format(model_type))
@@ -219,10 +222,10 @@ def model_builder(
     else:
         x_levels = [x]
 
+    # --- local/global normalization cap
     means = []
     sigmas = []
 
-    # local/global normalization cap
     if use_normalization:
         for i, x_level in enumerate(x_levels):
             mean, sigma = None, None
@@ -275,8 +278,6 @@ def model_builder(
                 current_level_output = denoise_models[i](x_level)
                 previous_level = current_level_output
             else:
-                previous_level = \
-                    tf.stop_gradient(previous_level)
                 previous_level = \
                     keras.layers.UpSampling2D(
                         size=(2, 2),
@@ -497,7 +498,7 @@ class DenoisingInferenceModule3Channel(DenoisingInferenceModule):
 # ---------------------------------------------------------------------
 
 
-def module_builder(
+def module_denoiser_builder(
         model_denoise: keras.Model = None,
         model_normalize: keras.Model = None,
         model_denormalize: keras.Model = None,

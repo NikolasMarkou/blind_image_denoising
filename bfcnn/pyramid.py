@@ -11,6 +11,7 @@ from typing import Dict, Tuple, Union, List
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
+from .constants import CONFIG_STR, TYPE_STR
 
 # ---------------------------------------------------------------------
 
@@ -436,7 +437,7 @@ def build_pyramid_model(
         no_levels = config.get("levels", 1)
         xy_max = config.get("xy_max", DEFAULT_XY_MAX)
         kernel_size = config.get("kernel_size", DEFAULT_KERNEL_SIZE)
-        pyramid_type = PyramidType.from_string(config.get("type", "NONE"))
+        pyramid_type = PyramidType.from_string(config.get(TYPE_STR, "NONE"))
 
     if pyramid_type == PyramidType.GAUSSIAN:
         pyramid_model = \
@@ -482,7 +483,7 @@ def build_inverse_pyramid_model(
         pyramid_type = PyramidType.from_string("NONE")
     else:
         no_levels = config.get("levels", 1)
-        pyramid_type = PyramidType.from_string(config.get("type", "NONE"))
+        pyramid_type = PyramidType.from_string(config.get(TYPE_STR, "NONE"))
 
     if pyramid_type == PyramidType.GAUSSIAN:
         pyramid_model = \

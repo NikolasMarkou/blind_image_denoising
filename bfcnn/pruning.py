@@ -12,7 +12,7 @@ from typing import Dict, Callable, List, Tuple, Union
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-
+from .constants import CONFIG_STR, TYPE_STR
 
 # ---------------------------------------------------------------------
 
@@ -164,16 +164,11 @@ def prune_strategy_helper(
         variance = kwargs["variance"]
         # optional normal scaling before pca
         scale = kwargs.get("scale", True)
-        # optional minimum threshold
-        minimum_threshold = kwargs.get("minimum_threshold", -1)
 
         def fn(x: np.ndarray) -> np.ndarray:
             x_p = x.copy()
             # reshape x which is 4d to 2d
             x_r, x_t_shape = reshape_to_4d_to_2d(x=x_p)
-            # threshold again to zero very small values
-            if minimum_threshold > 0.0:
-                x_r[np.abs(x_r) < minimum_threshold] = 0.0
 
             if scale:
                 # init and fit scaler
@@ -218,7 +213,7 @@ def prune_strategy_helper(
 
 def prune_conv2d_weights(
         model: keras.Model,
-        prune_fn: Callable) -> keras.Model:
+        prune_fn: Callable[[np.ndarray], np.ndarray]) -> keras.Model:
     """
     go through the model and prune its weights given the config and strategy
 
@@ -263,7 +258,7 @@ def prune_conv2d_weights(
 
 
 def prune_function_builder(
-        config: Union[List, List[Dict]]) -> Callable:
+        config: Union[List, List[Dict]]) -> Callable[[np.ndarray], np.ndarray]:
     """
     Constructs a pruning function
     :param config: pruning configuration
@@ -277,19 +272,22 @@ def prune_function_builder(
     if isinstance(config, List):
         prune_fns = [
             prune_strategy_helper(
-                PruneStrategy.from_string(c["strategy"]), **(c["config"]))
+                PruneStrategy.from_string(c[TYPE_STR]), **(c[CONFIG_STR]))
             for c in config
         ]
 
-        def prune_fn(w):
+        def prune_fn(w: np.ndarray) -> np.ndarray:
+            w_tmp = w
             for f in prune_fns:
-                w = f(w)
-            return w
-    else:
+                w_tmp = f(w_tmp)
+            return w_tmp
+    elif isinstance(config, Dict):
         prune_fn = \
             prune_strategy_helper(
-                PruneStrategy.from_string(config["strategy"]),
-                **(config["config"]))
+                PruneStrategy.from_string(config[TYPE_STR]),
+                **(config[CONFIG_STR]))
+    else:
+        raise ValueError(f"don't know how to handle [{config}]")
 
     def prune(model: keras.Model) -> keras.Model:
         return \
