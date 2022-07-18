@@ -20,6 +20,7 @@ from .constants import CONFIG_STR, TYPE_STR
 # define file constants
 REGULARIZERS_STR = "regularizers"
 L1_COEFFICIENT_STR = "l1_coefficient"
+DIAG_COEFFICIENT_STR = "diag_coefficient"
 LAMBDA_COEFFICIENT_STR = "lambda_coefficient"
 
 
@@ -140,9 +141,11 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
 
     def __init__(self,
                  lambda_coefficient: float = 1.0,
-                 l1_coefficient: float = 0.001):
+                 l1_coefficient: float = 0.001,
+                 diag_coefficient: float = 1.0):
         self._lambda_coefficient = lambda_coefficient
         self._l1_coefficient = l1_coefficient
+        self._diag_coefficient = diag_coefficient
 
     def __call__(self, x):
         # --- reshape
@@ -154,8 +157,11 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
                 tf.transpose(x, perm=(1, 0)),
                 x)
         # mask diagonal
-        wt_w_mask = tf.ones(tf.shape(wt_w)[0]) - tf.eye(tf.shape(wt_w)[0])
+        i = tf.eye(tf.shape(wt_w)[0])
+        wt_w_mask = tf.ones(tf.shape(wt_w)[0]) - i
+        wt_w = tf.abs(wt_w)
         wt_w_masked = tf.math.multiply(wt_w, wt_w_mask)
+        wt_w_diag = tf.math.multiply(wt_w, i)
 
         # frobenius norm
         return \
@@ -165,12 +171,15 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
                         ord="fro",
                         axis=(0, 1),
                         keepdims=False)) + \
-            self._l1_coefficient * \
-            tf.reduce_sum(tf.abs(wt_w), axis=None, keepdims=False)
+            self._l1_coefficient * (
+                    tf.reduce_sum(wt_w_masked, axis=None, keepdims=False) +
+                    tf.reduce_sum(tf.nn.relu(wt_w_diag-self._diag_coefficient), axis=None, keepdims=False)
+            )
 
     def get_config(self):
         return {
             L1_COEFFICIENT_STR: self._l1_coefficient,
+            DIAG_COEFFICIENT_STR: self._diag_coefficient,
             LAMBDA_COEFFICIENT_STR: self._lambda_coefficient
         }
 
