@@ -8,7 +8,7 @@
     "kernel_size": 5,
     "type": "resnet",
     "batchnorm": true,
-    "activation": "relu",
+    "activation": "elu",
     "add_gates": true,
     "clip_values": true,
     "shared_model": false,
@@ -17,7 +17,7 @@
     "local_normalization": -1,
     "final_activation": "tanh",
     "add_skip_with_input": false,
-    "add_residual_between_models": true,
+    "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
     "kernel_regularizer": [{
