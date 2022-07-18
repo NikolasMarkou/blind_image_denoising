@@ -166,7 +166,7 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
                         axis=(0, 1),
                         keepdims=False)) + \
             self._l1_coefficient * \
-            tf.reduce_sum(tf.abs(wt_w_masked), axis=None, keepdims=False)
+            tf.reduce_sum(tf.abs(wt_w), axis=None, keepdims=False)
 
     def get_config(self):
         return {
