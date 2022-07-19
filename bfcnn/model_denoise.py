@@ -283,8 +283,17 @@ def model_builder(
                         size=(2, 2),
                         interpolation="bilinear")(previous_level)
                 current_level_input = \
-                    keras.layers.Add()(
-                        [previous_level, x_level])
+                    keras.layers.Add()([previous_level, x_level])
+                current_level_input_down = \
+                    keras.layers.AveragePooling2D(
+                        pool_size=kernel_size,
+                        strides=(2, 2),
+                        padding="same")(current_level_input)
+                current_level_input_smoothed = \
+                    keras.layers.UpSampling2D(
+                        size=(2, 2),
+                        interpolation="bilinear")(current_level_input_down)
+                current_level_input = current_level_input - current_level_input_smoothed
                 current_level_output = denoise_models[i](current_level_input)
                 previous_level = \
                     keras.layers.Add()(
