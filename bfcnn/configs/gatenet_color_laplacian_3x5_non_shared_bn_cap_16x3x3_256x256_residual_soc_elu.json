@@ -10,7 +10,7 @@
     "batchnorm": true,
     "activation": "elu",
     "add_gates": true,
-    "clip_values": true,
+    "clip_values": false,
     "shared_model": false,
     "add_final_bn": false,
     "output_multiplier": 1.0,
