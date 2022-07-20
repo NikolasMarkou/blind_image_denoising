@@ -21,7 +21,7 @@
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
     "kernel_regularizer": [{
-      "type": "soft_orthogonal",
+      "type": "soft_orthonormal",
       "config": {
         "lambda_coefficient": 1.0,
         "l1_coefficient": 0.001
