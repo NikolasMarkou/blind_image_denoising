@@ -276,8 +276,6 @@ def model_builder(
         for i, x_level in reversed(list(enumerate(x_levels))):
             if previous_level is None:
                 current_level_output = denoise_models[i](x_level)
-                # stop the signal to propagate
-                previous_level = tf.stop_gradient(current_level_output)
             else:
                 previous_level = \
                     keras.layers.UpSampling2D(
