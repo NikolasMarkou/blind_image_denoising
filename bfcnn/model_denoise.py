@@ -276,6 +276,7 @@ def model_builder(
         for i, x_level in reversed(list(enumerate(x_levels))):
             if previous_level is None:
                 current_level_output = denoise_models[i](x_level)
+                previous_level = current_level_output
             else:
                 previous_level = \
                     keras.layers.UpSampling2D(
