@@ -27,6 +27,11 @@ def snr(
         base: float = 10.0):
     """
     Signal-to-noise ratio expressed in dB
+
+    :param original: original image batch
+    :param prediction: denoised image batch
+    :param multiplier:
+    :param base: logarithm base
     """
     d_2 = tf.square(original - prediction)
     # sum over all dims
@@ -102,7 +107,7 @@ def mae_diff(
     """
     d = tf.abs(error)
     d = keras.layers.ReLU(threshold=hinge, max_value=cutoff)(d)
-    # mean over all dims
+    # --- mean over all dims
     d = tf.reduce_mean(d, axis=[1, 2, 3])
     # mean over batch
     return tf.reduce_mean(d, axis=[0])
@@ -236,15 +241,19 @@ def loss_function_builder(
         """
 
         # --- mean absolute error from prediction
-        mae_prediction_loss = tf.constant(0.0)
-        mae_weighted_delta_loss = tf.constant(0.0)
-
         error = input_batch - prediction_batch
 
-        mae_prediction_loss += \
-            mae_diff(
-                error=error,
-                hinge=hinge)
+        # --- loss prediction on mae
+        mae_prediction_loss = tf.constant(0.0)
+        if input_batch_decomposition is None and \
+                prediction_batch_decomposition is None:
+            mae_prediction_loss += \
+                mae_diff(
+                    error=error,
+                    hinge=hinge)
+
+        # --- loss prediction on delta
+        mae_weighted_delta_loss = tf.constant(0.0)
         if mae_delta_enabled:
             mae_weighted_delta_loss += \
                 mae_weighted_delta(
