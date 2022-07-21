@@ -230,6 +230,10 @@ def loss_function_builder(
     # --- regularization
     regularization_multiplier = tf.constant(config.get("regularization", 1.0))
 
+    # --- flags
+    use_single_loss = tf.constant(config.get("single_loss", True))
+    use_decomposition_loss = tf.constant(config.get("decomposition_loss", False))
+
     def loss_function(
             input_batch,
             prediction_batch,
@@ -255,14 +259,12 @@ def loss_function_builder(
 
         # --- loss prediction on mae
         mae_prediction_loss = tf.constant(0.0)
-        if input_batch_decomposition is None and \
-                prediction_batch_decomposition is None:
+        if use_single_loss:
             mae_prediction_loss += mae_diff(error=error, hinge=hinge)
 
         # --- loss prediction on decomposition
         mae_decomposition_loss = tf.constant(0.0)
-        if input_batch_decomposition is not None and \
-                prediction_batch_decomposition is not None:
+        if use_decomposition_loss:
             for i in range(len(prediction_batch_decomposition)):
                 mae_decomposition_loss += \
                     mae(
@@ -288,7 +290,7 @@ def loss_function_builder(
         nae_improvement = nae_noise - nae_prediction
 
         # --- variance loss experimental
-        mae_variance_loss = tf.Variable(0.0)
+        mae_variance_loss = tf.constant(0.0)
         if mae_variance_enabled:
             mae_variance_loss += \
                 tf.math.reduce_mean(
@@ -312,13 +314,13 @@ def loss_function_builder(
             (mae_prediction_loss + mae_decomposition_loss) * mae_multiplier
 
         return {
-            "nae_noise": nae_noise,
+            NAE_NOISE_STR: nae_noise,
             MAE_LOSS_STR: mae_actual,
-            "snr": signal_to_noise_ratio,
-            "nae_prediction": nae_prediction,
+            SNR_STR: signal_to_noise_ratio,
+            NAE_PREDICTION_STR: nae_prediction,
             MEAN_TOTAL_LOSS_STR: mean_total_loss,
-            "nae_improvement": nae_improvement,
-            "mae_variance_loss": mae_variance_loss,
+            NAE_IMPROVEMENT_STR: nae_improvement,
+            MAE_VARIANCE_LOSS_STR: mae_variance_loss,
             REGULARIZATION_LOSS_STR: regularization_loss,
             MAE_DECOMPOSITION_LOSS_STR: mae_decomposition_loss,
         }
