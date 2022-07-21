@@ -10,7 +10,7 @@
     "batchnorm": true,
     "activation": "elu",
     "add_gates": true,
-    "clip_values": false,
+    "clip_values": true,
     "shared_model": false,
     "add_final_bn": false,
     "output_multiplier": 1.0,
@@ -21,10 +21,10 @@
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
     "kernel_regularizer": {
-      "type": "soft_orthonormal",
+      "type": "soft_orthogonal",
       "config": {
-        "lambda_coefficient": 0.9,
-        "l1_coefficient": 0.01
+        "lambda_coefficient": 1.0,
+        "l1_coefficient": 0.001
       }
     },
     "pyramid": {
@@ -69,9 +69,10 @@
   },
   "loss": {
     "hinge": 2.5,
-    "cutoff": 200.0,
+    "cutoff": 10.0,
     "mae_multiplier": 1.0,
     "regularization": 0.01,
+    "nae_multiplier": 10.0,
     "single_loss": true,
     "decomposition_loss": true
   },
