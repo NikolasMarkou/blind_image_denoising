@@ -254,13 +254,13 @@ def loss_function_builder(
         mae_actual = mae_diff(error=error, hinge=0)
 
         # --- loss prediction on mae
-        mae_prediction_loss = tf.Variable(0.0)
+        mae_prediction_loss = tf.constant(0.0)
         if input_batch_decomposition is None and \
                 prediction_batch_decomposition is None:
             mae_prediction_loss += mae_diff(error=error, hinge=hinge)
 
         # --- loss prediction on decomposition
-        mae_decomposition_loss = tf.Variable(0.0)
+        mae_decomposition_loss = tf.constant(0.0)
         if input_batch_decomposition is not None and \
                 prediction_batch_decomposition is not None:
             for i in range(len(prediction_batch_decomposition)):
@@ -274,7 +274,7 @@ def loss_function_builder(
                 mae_decomposition_loss * (255.0 / (len(prediction_batch_decomposition) + EPSILON_DEFAULT))
 
         # --- loss prediction on delta
-        mae_weighted_delta_loss = tf.Variable(0.0)
+        mae_weighted_delta_loss = tf.constant(0.0)
         if mae_delta_enabled:
             mae_weighted_delta_loss += \
                 mae_weighted_delta(
