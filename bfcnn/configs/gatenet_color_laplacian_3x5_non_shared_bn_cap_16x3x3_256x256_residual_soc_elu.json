@@ -73,7 +73,7 @@
     "mae_multiplier": 1.0,
     "regularization": 0.01,
     "nae_multiplier": 10.0,
-    "single_loss": true,
+    "single_loss": false,
     "decomposition_loss": true
   },
   "dataset": {
