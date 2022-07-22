@@ -269,9 +269,7 @@ def loss_function_builder(
                 mae_decomposition_loss += \
                     mae(
                         original=input_batch_decomposition[i],
-                        prediction=prediction_batch_decomposition[i],
-                        hinge=hinge/255,
-                        cutoff=cutoff/255)
+                        prediction=prediction_batch_decomposition[i])
             mae_decomposition_loss = \
                 mae_decomposition_loss * (255.0 / (len(prediction_batch_decomposition) + EPSILON_DEFAULT))
 
