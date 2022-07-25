@@ -255,12 +255,19 @@ def loss_function_builder(
 
         # --- mean absolute error from prediction
         error = input_batch - prediction_batch
-        mae_actual = mae_diff(error=error, hinge=0)
+        mae_actual = \
+            mae_diff(
+                error=error,
+                hinge=0)
 
         # --- loss prediction on mae
         mae_prediction_loss = tf.constant(0.0)
         if use_single_loss:
-            mae_prediction_loss += mae_diff(error=error, hinge=hinge)
+            mae_prediction_loss += \
+                mae_diff(
+                    error=error,
+                    hinge=hinge,
+                    cutoff=cutoff)
 
         # --- loss prediction on decomposition
         mae_decomposition_loss = tf.constant(0.0)
@@ -279,12 +286,11 @@ def loss_function_builder(
             mae_weighted_delta_loss += \
                 mae_weighted_delta(
                     original=input_batch,
-                    prediction=prediction_batch,
-                    hinge=hinge)
+                    prediction=prediction_batch)
 
         # ---
-        nae_prediction = nae(input_batch, prediction_batch, hinge)
-        nae_noise = nae(input_batch, noisy_batch, hinge)
+        nae_prediction = nae(input_batch, prediction_batch)
+        nae_noise = nae(input_batch, noisy_batch)
         nae_improvement = nae_noise - nae_prediction
 
         # --- variance loss experimental
