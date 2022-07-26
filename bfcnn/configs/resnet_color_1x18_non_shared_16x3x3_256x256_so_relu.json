@@ -12,7 +12,7 @@
     "add_gates": false,
     "clip_values": false,
     "shared_model": false,
-    "add_final_bn": true,
+    "add_final_bn": false,
     "output_multiplier": 1.0,
     "local_normalization": -1,
     "final_activation": "tanh",
