@@ -1,30 +1,26 @@
 {
   "model_denoise": {
     "filters": 16,
-    "no_layers": 18,
+    "no_layers": 5,
     "min_value": 0,
     "add_var": false,
     "max_value": 255,
     "kernel_size": 5,
     "type": "resnet",
-    "batchnorm": false,
+    "batchnorm": true,
     "activation": "relu",
     "add_gates": false,
-    "clip_values": true,
+    "clip_values": false,
     "shared_model": false,
+    "add_final_bn": false,
     "output_multiplier": 1.0,
     "local_normalization": -1,
     "final_activation": "tanh",
     "add_skip_with_input": false,
-    "add_residual_between_models": true,
+    "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
-    "kernel_regularizer": {
-      "type": "l1",
-      "config": {
-        "l1": 0.01
-      }
-    }
+    "kernel_regularizer": "l1"
   },
    "train": {
     "epochs": 50,
