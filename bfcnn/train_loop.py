@@ -233,27 +233,33 @@ def train_loop(
         if inverse_pyramid is not None:
             @tf.function
             def denoise_fn(x):
+                # denoised decomposition
                 x0 = \
                     denoiser_decomposition(
                         x,
                         training=True)
+                # denoised merged
                 x1 = \
                     inverse_pyramid(
                         x0,
                         training=False)
+                # denoised denormalized
                 x2 = \
                     denormalizer(x1, training=False)
                 return x0, x1, x2
         else:
             @tf.function
             def denoise_fn(x):
-                x2 = \
+                # denoised decomposition
+                x0 = None
+                # denoised merged
+                x1 = \
                     denoiser(
                         x,
                         training=True)
-                x1 = \
-                    denormalizer(x2, training=False)
-                x0 = None
+                # denoised denormalized
+                x2 = \
+                    denormalizer(x1, training=False)
                 return x0, x1, x2
 
         # ---
