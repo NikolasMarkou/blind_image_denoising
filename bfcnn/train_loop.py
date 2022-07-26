@@ -254,7 +254,7 @@ def train_loop(
                 x1 = \
                     denormalizer(x2, training=False)
                 x0 = None
-                return x0, x1, None
+                return x0, x1, x2
 
         # ---
 
