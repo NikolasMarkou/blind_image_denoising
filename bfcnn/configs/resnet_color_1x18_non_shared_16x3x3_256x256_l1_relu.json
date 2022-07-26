@@ -1,7 +1,7 @@
 {
   "model_denoise": {
     "filters": 16,
-    "no_layers": 5,
+    "no_layers": 18,
     "min_value": 0,
     "add_var": false,
     "max_value": 255,
@@ -12,7 +12,7 @@
     "add_gates": false,
     "clip_values": false,
     "shared_model": false,
-    "add_final_bn": false,
+    "add_final_bn": true,
     "output_multiplier": 1.0,
     "local_normalization": -1,
     "final_activation": "tanh",
