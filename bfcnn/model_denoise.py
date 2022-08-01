@@ -295,8 +295,10 @@ def model_builder(
                     keras.layers.UpSampling2D(
                         size=(2, 2),
                         interpolation="bilinear")(current_level_input_down)
-                current_level_input = current_level_input - current_level_input_smoothed
-                current_level_output = denoise_models[i](current_level_input)
+                current_level_input = \
+                    current_level_input - current_level_input_smoothed
+                current_level_output = \
+                    denoise_models[i](current_level_input)
                 previous_level = \
                     keras.layers.Add()(
                         [previous_level, current_level_output])

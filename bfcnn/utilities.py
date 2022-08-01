@@ -197,16 +197,14 @@ def conv2d_wrapper(
         input_layer,
         conv_params: Dict,
         bn_params: Dict = None,
-        zero_center_total: bool = False,
-        zero_center_channel: bool = False):
+        depthwise_scaling: bool = False):
     """
     wraps a conv2d with a preceding normalizer
 
     :param input_layer: the layer to operate on
     :param conv_params: conv2d parameters
     :param bn_params: batchnorm parameters, None to disable bn
-    :param zero_center_total: if True center the batch to zero mean
-    :param zero_center_channel: if True center each channel to zero mean
+    :param depthwise_scaling: if True add a learnable point-wise depthwise scaling conv2d at the end
     :return:
     """
     # --- argument checking
@@ -220,13 +218,21 @@ def conv2d_wrapper(
 
     # --- perform the transformations
     x = input_layer
-    if zero_center_total:
-        x = x - tf.reduce_mean(x, axis=[1, 2, 3], keepdims=True)
-    if zero_center_channel:
-        x = x - tf.reduce_mean(x, axis=[1, 2], keepdims=True)
     if use_bn:
         x = tf.keras.layers.BatchNormalization(**bn_params)(x)
+    # ideally this should be orthonormal
     x = tf.keras.layers.Conv2D(**conv_params)(x)
+    # learn the proper scale of the previous layer
+    if depthwise_scaling:
+        x = tf.keras.layers.DepthwiseConv2D(
+            use_bias=False,
+            strides=(1, 1),
+            padding="same",
+            depth_multiplier=1,
+            kernel_size=(1, 1),
+            activation="linear",
+            depthwise_initializer="ones",
+            depthwise_regularizer="l1")(x)
     return x
 
 # ---------------------------------------------------------------------

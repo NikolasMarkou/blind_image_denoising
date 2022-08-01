@@ -30,6 +30,7 @@ def resnet_blocks(
         first_conv_params: Dict,
         second_conv_params: Dict,
         third_conv_params: Dict,
+        depthwise_scaling: bool = False,
         bn_params: Dict = None,
         gate_params: Dict = None,
         dropout_params: Dict = None,
@@ -43,6 +44,7 @@ def resnet_blocks(
     :param first_conv_params: the parameters of the first conv
     :param second_conv_params: the parameters of the middle conv
     :param third_conv_params: the parameters of the third conv
+    :param depthwise_scaling: if True add a learnable point-wise depthwise scaling conv2d
     :param bn_params: batch normalization parameters
     :param gate_params: gate optional parameters
     :param dropout_params: dropout optional parameters
@@ -81,9 +83,18 @@ def resnet_blocks(
     # --- create several number of residual blocks
     for i in range(no_layers):
         previous_layer = x
-        x = conv2d_wrapper(x, conv_params=first_conv_params, bn_params=bn_params)
-        x = conv2d_wrapper(x, conv_params=second_conv_params, bn_params=bn_params)
-        x = conv2d_wrapper(x, conv_params=third_conv_params, bn_params=bn_params)
+        x = conv2d_wrapper(input_layer=x,
+                           conv_params=first_conv_params,
+                           bn_params=bn_params,
+                           depthwise_scaling=depthwise_scaling)
+        x = conv2d_wrapper(input_layer=x,
+                           conv_params=second_conv_params,
+                           bn_params=bn_params,
+                           depthwise_scaling=depthwise_scaling)
+        x = conv2d_wrapper(input_layer=x,
+                           conv_params=third_conv_params,
+                           bn_params=bn_params,
+                           depthwise_scaling=depthwise_scaling)
         # compute activation per channel
         if use_gate:
             y0 = tf.keras.layers.GlobalAveragePooling2D()(x)
@@ -124,6 +135,7 @@ def build_model_resnet(
         kernel_initializer="glorot_normal",
         channel_index: int = 2,
         dropout_rate: float = -1,
+        depthwise_scaling: bool = False,
         add_skip_with_input: bool = True,
         add_sparsity: bool = False,
         add_gates: bool = False,
@@ -150,6 +162,7 @@ def build_model_resnet(
     :param use_bias: use bias
     :param kernel_regularizer: Kernel weight regularizer
     :param kernel_initializer: Kernel weight initializer
+    :param depthwise_scaling: if True for each full convolutional kernel add a scaling depthwise
     :param add_skip_with_input: if true skip with input
     :param add_sparsity: if true add sparsity layer
     :param add_gates: if true add gate layer
@@ -265,6 +278,7 @@ def build_model_resnet(
     resnet_params = dict(
         bn_params=None,
         no_layers=no_layers,
+        depthwise_scaling=depthwise_scaling,
         first_conv_params=first_conv_params,
         second_conv_params=second_conv_params,
         third_conv_params=third_conv_params,
@@ -303,7 +317,12 @@ def build_model_resnet(
         x = tf.keras.layers.Concatenate()([x, x_var])
 
     # add base layer
-    x = tf.keras.layers.Conv2D(**base_conv_params)(x)
+    x = \
+        conv2d_wrapper(
+            input_layer=x,
+            bn_params=None,
+            conv_params=base_conv_params,
+            depthwise_scaling=depthwise_scaling)
 
     if add_sparsity:
         x = \
@@ -338,6 +357,12 @@ def build_model_resnet(
         output_layer = \
             tf.keras.layers.Conv2D(
                 **final_conv_params)(output_layer)
+        output_layer = \
+            conv2d_wrapper(
+                input_layer=output_layer,
+                bn_params=None,
+                conv_params=final_conv_params,
+                depthwise_scaling=depthwise_scaling)
 
         # learnable multiplier
         if add_learnable_multiplier:
