@@ -355,9 +355,6 @@ def build_model_resnet(
     # --- output to original channels / projection
     if add_projection_to_input:
         output_layer = \
-            tf.keras.layers.Conv2D(
-                **final_conv_params)(output_layer)
-        output_layer = \
             conv2d_wrapper(
                 input_layer=output_layer,
                 bn_params=None,
