@@ -83,6 +83,7 @@ def model_builder(
     add_concat_input = config.get("add_concat_input", False)
     input_shape = config.get("input_shape", (None, None, 3))
     output_multiplier = config.get("output_multiplier", 1.0)
+    depthwise_scaling = config.get("depthwise_scaling", False)
     local_normalization = config.get("local_normalization", -1)
     final_activation = config.get("final_activation", "linear")
     kernel_regularizer = config.get("kernel_regularizer", "l1")
@@ -139,6 +140,7 @@ def model_builder(
         add_final_bn=add_final_bn,
         add_concat_input=add_concat_input,
         final_activation=final_activation,
+        depthwise_scaling=depthwise_scaling,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
         add_skip_with_input=add_skip_with_input,

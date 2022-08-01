@@ -15,21 +15,19 @@
     "add_final_bn": false,
     "output_multiplier": 1.0,
     "local_normalization": -1,
+    "depthwise_scaling": true,
     "final_activation": "tanh",
     "add_skip_with_input": false,
     "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
-    "kernel_regularizer": [
-      "l1",
-      {
-        "type": "soft_orthonormal",
-        "config": {
-          "lambda_coefficient": 0.1,
-          "l1_coefficient": 0.0001
-        }
+    "kernel_regularizer": {
+      "type": "soft_orthonormal",
+      "config": {
+        "lambda_coefficient": 0.1,
+        "l1_coefficient": 0.0001
       }
-    ]
+    }
   },
    "train": {
     "epochs": 50,
