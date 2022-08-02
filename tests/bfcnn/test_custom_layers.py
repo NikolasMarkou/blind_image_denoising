@@ -46,7 +46,9 @@ def test_multiplier_layer(units):
         trainable=True,
         inputs=input_layer,
         outputs=output_layer)
-    result = model.predict(np.random.normal(size=(10, 256)))
+    result = model(np.random.normal(size=(10, 256)), training=True)
+    assert result.shape == (10, units)
+    result = model(np.random.normal(size=(10, 256)), training=False)
     assert result.shape == (10, units)
 
 # ---------------------------------------------------------------------
@@ -80,7 +82,9 @@ def test_channelwise_multiplier_layer_on_dense(units):
         trainable=True,
         inputs=input_layer,
         outputs=output_layer)
-    result = model.predict(np.random.normal(size=(10, 256)))
+    result = model(np.random.normal(size=(10, 256)), training=True)
+    assert result.shape == (10, units)
+    result = model(np.random.normal(size=(10, 256)), training=False)
     assert result.shape == (10, units)
 
 # ---------------------------------------------------------------------
@@ -116,15 +120,43 @@ def test_channelwise_multiplier_layer_on_conv2d(filters):
         trainable=True,
         inputs=input_layer,
         outputs=output_layer)
-    result = model.predict(np.random.normal(size=(10, 32, 32, 1)))
+    result = model(np.random.normal(size=(10, 32, 32, 1)), training=True)
+    assert result.shape == (10, 32, 32, filters)
+    result = model(np.random.normal(size=(10, 32, 32, 1)), training=False)
     assert result.shape == (10, 32, 32, filters)
 
 # ---------------------------------------------------------------------
 
 
-def test_random_on_off():
-    # TODO
-    pass
+@pytest.mark.parametrize(
+    "units", [8, 16, 32, 64])
+def test_random_on_off_layer_dense(units):
+    dense_params = dict(
+        use_bias=False,
+        activation="relu",
+        units=units,
+        kernel_regularizer="l1",
+        kernel_initializer="glorot_normal")
+    multiplier_params = dict(
+        rate=0.5,
+    )
+    input_layer = \
+        keras.Input(
+            name="input_tensor",
+            shape=(256,))
+    x = input_layer
+    x = keras.layers.Dense(**dense_params)(x)
+    x = bfcnn.RandomOnOff(**multiplier_params)(x)
+    output_layer = x
+    model = keras.Model(
+        name="model",
+        trainable=True,
+        inputs=input_layer,
+        outputs=output_layer)
+    result = model(np.random.normal(size=(10, 256)), training=True)
+    assert result.shape == (10, units)
+    result = model(np.random.normal(size=(10, 256)), training=False)
+    assert result.shape == (10, units)
 
 
 # ---------------------------------------------------------------------
