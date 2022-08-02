@@ -13,8 +13,8 @@ from typing import List, Tuple, Union, Dict, Iterable
 
 from .custom_logger import logger
 from .constants import EPSILON_DEFAULT
-from .custom_layers import TrainableMultiplier, RandomOnOff
 from .activations import differentiable_relu, differentiable_relu_layer
+from .custom_layers import Multiplier, RandomOnOff, ChannelwiseMultiplier
 
 # ---------------------------------------------------------------------
 
@@ -205,7 +205,7 @@ def conv2d_wrapper(
     :param conv_params: conv2d parameters
     :param bn_params: batchnorm parameters, None to disable bn
     :param depthwise_scaling: if True add a learnable point-wise depthwise scaling conv2d at the end
-    :return:
+    :return: transformed input
     """
     # --- argument checking
     if input_layer is None:
@@ -233,6 +233,44 @@ def conv2d_wrapper(
             activation="linear",
             depthwise_initializer="ones",
             depthwise_regularizer="l1")(x)
+    return x
+
+# ---------------------------------------------------------------------
+
+
+def dense_wrapper(
+        input_layer,
+        dense_params: Dict,
+        bn_params: Dict = None,
+        elementwise_params: Dict = None):
+    """
+    wraps a dense layer with a preceding normalizer
+
+    :param input_layer: the layer to operate on
+    :param dense_params: dense parameters
+    :param bn_params: batchnorm parameters, None to disable bn
+    :param elementwise_params: if True add a learnable elementwise scaling
+    :return: transformed input
+    """
+    # --- argument checking
+    if input_layer is None:
+        raise ValueError("input_layer cannot be None")
+    if dense_params is None:
+        raise ValueError("dense_params cannot be None")
+
+    # --- prepare arguments
+    use_bn = bn_params is not None
+    use_elementwise = elementwise_params is not None
+
+    # --- perform the transformations
+    x = input_layer
+    if use_bn:
+        x = tf.keras.layers.BatchNormalization(**bn_params)(x)
+    # ideally this should be orthonormal
+    x = tf.keras.layers.Dense(**dense_params)(x)
+    # learn the proper scale of the previous layer
+    if use_elementwise:
+        x = ChannelwiseMultiplier(**elementwise_params)(x)
     return x
 
 # ---------------------------------------------------------------------

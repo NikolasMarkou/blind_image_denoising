@@ -13,10 +13,14 @@ from typing import List, Tuple, Union, Dict, Iterable
 
 from .custom_logger import logger
 from .constants import EPSILON_DEFAULT
-from .custom_layers import TrainableMultiplier, RandomOnOff
+from .custom_layers import \
+    Multiplier, \
+    RandomOnOff, \
+    ChannelwiseMultiplier
 from .activations import differentiable_relu, differentiable_relu_layer
 from .utilities import \
     sparse_block, \
+    dense_wrapper, \
     conv2d_wrapper, \
     mean_sigma_local, \
     mean_sigma_global
@@ -62,23 +66,31 @@ def resnet_blocks(
     use_dropout = dropout_params is not None
     use_multiplier = multiplier_params is not None
 
-    def dense_wrapper():
-        return \
-            tf.keras.layers.Dense(
-                use_bias=False,
-                activation="relu",
-                units=third_conv_params["filters"],
-                kernel_regularizer=third_conv_params.get("kernel_regularizer", "l1"),
-                kernel_initializer=third_conv_params.get("kernel_initializer", "glorot_normal"))
+    elementwise_params = dict(
+        multiplier=1.0,
+        regularizer="l1",
+        activation="relu"
+    )
+
+    dense_params = dict(
+        use_bias=False,
+        activation="relu",
+        units=third_conv_params["filters"],
+        kernel_regularizer=third_conv_params.get("kernel_regularizer", "l1"),
+        kernel_initializer=third_conv_params.get("kernel_initializer", "glorot_normal")
+    )
 
     # --- setup resnet
     x = input_layer
 
     if use_gate:
         g = tf.keras.layers.GlobalAveragePooling2D()(input_layer)
-        if use_bn:
-            g = tf.keras.layers.BatchNormalization(**bn_params)(g)
-        g = dense_wrapper()(g)
+        g = \
+            dense_wrapper(
+                input_layer=g,
+                bn_params=bn_params,
+                dense_params=dense_params,
+                elementwise_params=elementwise_params)
 
     # --- create several number of residual blocks
     for i in range(no_layers):
@@ -101,7 +113,12 @@ def resnet_blocks(
             y0 = y0 * (1.0 - 0.9 * g)
             if use_bn:
                 y0 = tf.keras.layers.BatchNormalization(**bn_params)(y0)
-            y = dense_wrapper()(y0)
+            y = \
+                dense_wrapper(
+                    input_layer=y0,
+                    bn_params=None,
+                    dense_params=dense_params,
+                    elementwise_params=elementwise_params)
             g = g + y0
             # if x < -2.5: return 0
             # if x > 2.5: return 1
@@ -112,7 +129,7 @@ def resnet_blocks(
             x = tf.keras.layers.Multiply()([x, y])
         # optional multiplier
         if use_multiplier:
-            x = TrainableMultiplier(**multiplier_params)(x)
+            x = Multiplier(**multiplier_params)(x)
         if use_dropout:
             x = RandomOnOff(**dropout_params)(x)
         # skip connection
@@ -364,7 +381,7 @@ def build_model_resnet(
         # learnable multiplier
         if add_learnable_multiplier:
             output_layer = \
-                TrainableMultiplier(**multiplier_params)(output_layer)
+                Multiplier(**multiplier_params)(output_layer)
 
         # cap it off to limit values
         output_layer = \
