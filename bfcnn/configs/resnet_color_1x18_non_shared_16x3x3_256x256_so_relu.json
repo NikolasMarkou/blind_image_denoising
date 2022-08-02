@@ -1,40 +1,41 @@
 {
   "model_denoise": {
     "filters": 16,
-    "no_layers": 5,
+    "no_layers": 18,
     "min_value": 0,
     "add_var": false,
     "max_value": 255,
     "kernel_size": 5,
     "type": "resnet",
     "batchnorm": true,
+    "activation": "relu",
     "add_gates": false,
-    "activation": "elu",
     "clip_values": false,
     "shared_model": false,
+    "add_final_bn": false,
     "output_multiplier": 1.0,
     "local_normalization": -1,
-    "kernel_regularizer": "l1",
     "final_activation": "tanh",
     "add_skip_with_input": false,
-    "add_residual_between_models": true,
+    "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
-    "pyramid": {
-      "levels": 3,
-      "type": "laplacian",
-      "xy_max": [1.0, 1.0],
-      "kernel_size": [3, 3]
+    "kernel_regularizer": {
+      "type": "soft_orthonormal",
+      "config": {
+        "lambda_coefficient": 1.0,
+        "l1_coefficient": 0.001
+      }
     }
   },
-  "train": {
+   "train": {
     "epochs": 50,
     "total_steps": -1,
     "checkpoints_to_keep": 3,
     "checkpoint_every": 10000,
     "visualization_number": 4,
     "visualization_every": 1000,
-    "random_batch_iterations": 10,
+    "random_batch_iterations": 5,
     "random_batch_size": [256, 256, 3],
     "random_batch_min_difference": 0.1,
     "optimizer": {
@@ -49,22 +50,24 @@
       }
     },
     "prune": {
-      "start_epoch": 1,
+      "start_epoch": 0,
       "strategies": [{
         "type": "minimum_threshold_shrinkage",
         "config": {
           "shrinkage": 0.75,
-          "minimum_threshold": 0.000005,
-          "shrinkage_threshold": 0.00001
+          "minimum_threshold":   0.00005,
+          "shrinkage_threshold": 0.0001
         }
       }]
     }
   },
   "loss": {
-    "hinge": 2.5,
+    "hinge": 0.0,
+    "cutoff": 255.0,
     "mae_multiplier": 1.0,
     "regularization": 0.01,
-    "nae_multiplier": 10.0
+    "single_loss": true,
+    "decomposition_loss": false
   },
   "dataset": {
     "batch_size": 16,
@@ -79,7 +82,7 @@
     "random_up_down": true,
     "color_mode": "rgb",
     "random_left_right": true,
-    "input_shape": [128, 128, 3],
+    "input_shape": [256, 256, 3],
     "multiplicative_noise": [0.05, 0.1, 0.2],
     "additional_noise": [1, 5, 10, 20, 40, 60, 80],
     "inputs": [
@@ -90,3 +93,4 @@
     ]
   }
 }
+

@@ -13,7 +13,7 @@ from typing import List, Tuple, Union, Dict, Iterable
 
 from .custom_logger import logger
 from .constants import EPSILON_DEFAULT
-from .custom_layers import TrainableMultiplier, RandomOnOff
+from .custom_layers import Multiplier, RandomOnOff
 
 # ---------------------------------------------------------------------
 

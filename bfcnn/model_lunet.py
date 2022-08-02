@@ -14,7 +14,7 @@ from typing import List, Tuple, Union, Dict, Iterable
 from .custom_logger import logger
 from .constants import EPSILON_DEFAULT
 from .model_resnet import resnet_blocks
-from .custom_layers import TrainableMultiplier, RandomOnOff
+from .custom_layers import Multiplier, RandomOnOff
 from .activations import differentiable_relu, differentiable_relu_layer
 from .utilities import \
     sparse_block, \
@@ -345,7 +345,7 @@ def build_model_lunet(
         # learnable multiplier
         if add_learnable_multiplier:
             output_layer = \
-                TrainableMultiplier(**multiplier_params)(output_layer)
+                Multiplier(**multiplier_params)(output_layer)
 
         # cap it off to limit values
         output_layer = \

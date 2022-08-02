@@ -20,6 +20,7 @@ from .constants import CONFIG_STR, TYPE_STR
 # define file constants
 REGULARIZERS_STR = "regularizers"
 L1_COEFFICIENT_STR = "l1_coefficient"
+DIAG_COEFFICIENT_STR = "diag_coefficient"
 LAMBDA_COEFFICIENT_STR = "lambda_coefficient"
 
 
@@ -35,7 +36,7 @@ class RegularizationType(Enum):
 
     SOFT_ORTHONORMAL = 3
 
-    SOFT_ORTHOGONAL = 3
+    SOFT_ORTHOGONAL = 4
 
     @staticmethod
     def from_string(type_str: str) -> "RegularizationType":
@@ -154,8 +155,11 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
                 tf.transpose(x, perm=(1, 0)),
                 x)
         # mask diagonal
-        wt_w_mask = tf.ones(tf.shape(wt_w)[0]) - tf.eye(tf.shape(wt_w)[0])
+        shape = tf.shape(wt_w)[0]
+        wt_w_i = tf.eye(shape)
+        wt_w_mask = tf.ones(shape) - wt_w_i
         wt_w_masked = tf.math.multiply(wt_w, wt_w_mask)
+        wt_w_diag = tf.square(tf.math.multiply(wt_w, wt_w_i))
 
         # frobenius norm
         return \
@@ -166,7 +170,7 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
                         axis=(0, 1),
                         keepdims=False)) + \
             self._l1_coefficient * \
-            tf.reduce_sum(tf.abs(wt_w), axis=None, keepdims=False)
+            tf.reduce_sum(wt_w_diag, axis=None, keepdims=False)
 
     def get_config(self):
         return {

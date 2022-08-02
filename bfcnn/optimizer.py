@@ -86,7 +86,7 @@ def optimizer_builder(
 
     # --- read configuration
     schedule_config = config["schedule"]
-    gradient_clipping_by_norm = config["gradient_clipping_by_norm"]
+    gradient_clipping_by_norm = config.get("gradient_clipping_by_norm", 1.0)
 
     # --- set up schedule
     lr_schedule = \

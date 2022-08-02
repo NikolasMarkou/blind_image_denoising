@@ -13,8 +13,8 @@ from typing import List, Tuple, Union, Dict, Iterable
 
 from .custom_logger import logger
 from .constants import EPSILON_DEFAULT
-from .custom_layers import TrainableMultiplier, RandomOnOff
 from .activations import differentiable_relu, differentiable_relu_layer
+from .custom_layers import Multiplier, RandomOnOff, ChannelwiseMultiplier
 
 # ---------------------------------------------------------------------
 
@@ -197,17 +197,15 @@ def conv2d_wrapper(
         input_layer,
         conv_params: Dict,
         bn_params: Dict = None,
-        zero_center_total: bool = False,
-        zero_center_channel: bool = False):
+        depthwise_scaling: bool = False):
     """
     wraps a conv2d with a preceding normalizer
 
     :param input_layer: the layer to operate on
     :param conv_params: conv2d parameters
     :param bn_params: batchnorm parameters, None to disable bn
-    :param zero_center_total: if True center the batch to zero mean
-    :param zero_center_channel: if True center each channel to zero mean
-    :return:
+    :param depthwise_scaling: if True add a learnable point-wise depthwise scaling conv2d at the end
+    :return: transformed input
     """
     # --- argument checking
     if input_layer is None:
@@ -220,13 +218,59 @@ def conv2d_wrapper(
 
     # --- perform the transformations
     x = input_layer
-    if zero_center_total:
-        x = x - tf.reduce_mean(x, axis=[1, 2, 3], keepdims=True)
-    if zero_center_channel:
-        x = x - tf.reduce_mean(x, axis=[1, 2], keepdims=True)
     if use_bn:
         x = tf.keras.layers.BatchNormalization(**bn_params)(x)
+    # ideally this should be orthonormal
     x = tf.keras.layers.Conv2D(**conv_params)(x)
+    # learn the proper scale of the previous layer
+    if depthwise_scaling:
+        x = tf.keras.layers.DepthwiseConv2D(
+            use_bias=False,
+            strides=(1, 1),
+            padding="same",
+            depth_multiplier=1,
+            kernel_size=(1, 1),
+            activation="linear",
+            depthwise_initializer="ones",
+            depthwise_regularizer="l1")(x)
+    return x
+
+# ---------------------------------------------------------------------
+
+
+def dense_wrapper(
+        input_layer,
+        dense_params: Dict,
+        bn_params: Dict = None,
+        elementwise_params: Dict = None):
+    """
+    wraps a dense layer with a preceding normalizer
+
+    :param input_layer: the layer to operate on
+    :param dense_params: dense parameters
+    :param bn_params: batchnorm parameters, None to disable bn
+    :param elementwise_params: if True add a learnable elementwise scaling
+    :return: transformed input
+    """
+    # --- argument checking
+    if input_layer is None:
+        raise ValueError("input_layer cannot be None")
+    if dense_params is None:
+        raise ValueError("dense_params cannot be None")
+
+    # --- prepare arguments
+    use_bn = bn_params is not None
+    use_elementwise = elementwise_params is not None
+
+    # --- perform the transformations
+    x = input_layer
+    if use_bn:
+        x = tf.keras.layers.BatchNormalization(**bn_params)(x)
+    # ideally this should be orthonormal
+    x = tf.keras.layers.Dense(**dense_params)(x)
+    # learn the proper scale of the previous layer
+    if use_elementwise:
+        x = ChannelwiseMultiplier(**elementwise_params)(x)
     return x
 
 # ---------------------------------------------------------------------
