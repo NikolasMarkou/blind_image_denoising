@@ -391,10 +391,13 @@ def train_loop(
 
                 # --- check if it is time to save a checkpoint
                 if checkpoint_every > 0:
-                    if (global_step % checkpoint_every == 0):
+                    if global_step % checkpoint_every == 0:
                         logger.info("checkpoint at step: {0}".format(
                             int(global_step)))
                         manager.save()
+                        # save model so we can visualize it easier
+                        denoiser.save(
+                            os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR))
 
                 # --- keep time of steps per second
                 stop_time = time.time()

@@ -45,8 +45,8 @@ class Multiplier(tf.keras.layers.Layer):
     def get_config(self):
         return {
             "multiplier": self._w0.numpy(),
-            "activation": self._activation_type,
-            "regularizer": self._regularizer
+            "regularizer": self._regularizer,
+            "activation": self._activation_type
         }
 
     def compute_output_shape(self, input_shape):
@@ -100,8 +100,8 @@ class ChannelwiseMultiplier(tf.keras.layers.Layer):
     def get_config(self):
         return {
             "multiplier": self._w0.numpy(),
-            "activation": self._activation_type,
-            "regularizer": self._regularizer
+            "regularizer": self._regularizer,
+            "activation": self._activation_type
         }
 
     def compute_output_shape(self, input_shape):

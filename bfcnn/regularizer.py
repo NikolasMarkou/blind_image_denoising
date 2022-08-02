@@ -215,7 +215,7 @@ class RegularizerMixer(keras.regularizers.Regularizer):
 
 
 def builder_helper(
-        config: Union[str, Dict],
+        config: Union[str, Dict, keras.regularizers.Regularizer],
         verbose: bool = False) -> keras.regularizers.Regularizer:
     """
     build a single regularizing function
@@ -235,6 +235,9 @@ def builder_helper(
     elif isinstance(config, Dict):
         regularizer_type = config.get(TYPE_STR, None).lower()
         regularizer_params = config.get(CONFIG_STR, {})
+    elif isinstance(config, keras.regularizers.Regularizer) \
+            and not type(config) == keras.regularizers.Regularizer:
+        return config
     else:
         raise ValueError("don't know how to handle config")
 

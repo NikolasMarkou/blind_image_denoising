@@ -27,7 +27,7 @@ def test_multiplier_layer(units):
         units=units,
         kernel_regularizer="l1",
         kernel_initializer="glorot_normal")
-    multiplier_params = dict(
+    params = dict(
         multiplier=1.0,
         regularizer=None,
         trainable=True,
@@ -39,7 +39,8 @@ def test_multiplier_layer(units):
             shape=(256,))
     x = input_layer
     x = keras.layers.Dense(**dense_params)(x)
-    x = bfcnn.Multiplier(**multiplier_params)(x)
+    layer = bfcnn.Multiplier(**params)
+    x = layer(x)
     output_layer = x
     model = keras.Model(
         name="model",
@@ -50,6 +51,9 @@ def test_multiplier_layer(units):
     assert result.shape == (10, units)
     result = model(np.random.normal(size=(10, 256)), training=False)
     assert result.shape == (10, units)
+
+    assert len(layer.weights) == 1
+    assert layer.weights[0].numpy().shape == (1, )
 
 # ---------------------------------------------------------------------
 
@@ -63,7 +67,7 @@ def test_channelwise_multiplier_layer_on_dense(units):
         units=units,
         kernel_regularizer="l1",
         kernel_initializer="glorot_normal")
-    elementwise_params = dict(
+    params = dict(
         multiplier=1.0,
         regularizer=None,
         trainable=True,
@@ -75,7 +79,8 @@ def test_channelwise_multiplier_layer_on_dense(units):
             shape=(256,))
     x = input_layer
     x = keras.layers.Dense(**dense_params)(x)
-    x = bfcnn.ChannelwiseMultiplier(**elementwise_params)(x)
+    layer = bfcnn.ChannelwiseMultiplier(**params)
+    x = layer(x)
     output_layer = x
     model = keras.Model(
         name="model",
@@ -86,6 +91,9 @@ def test_channelwise_multiplier_layer_on_dense(units):
     assert result.shape == (10, units)
     result = model(np.random.normal(size=(10, 256)), training=False)
     assert result.shape == (10, units)
+
+    assert len(layer.weights) == 1
+    assert layer.weights[0].numpy().shape == (units,)
 
 # ---------------------------------------------------------------------
 
@@ -101,7 +109,7 @@ def test_channelwise_multiplier_layer_on_conv2d(filters):
         filters=filters,
         trainable=True,
         activation="relu")
-    elementwise_params = dict(
+    params = dict(
         multiplier=1.0,
         regularizer=None,
         trainable=True,
@@ -113,7 +121,8 @@ def test_channelwise_multiplier_layer_on_conv2d(filters):
             shape=(32, 32, 1))
     x = input_layer
     x = keras.layers.Conv2D(**conv_params)(x)
-    x = bfcnn.ChannelwiseMultiplier(**elementwise_params)(x)
+    layer = bfcnn.ChannelwiseMultiplier(**params)
+    x = layer(x)
     output_layer = x
     model = keras.Model(
         name="model",
@@ -124,6 +133,9 @@ def test_channelwise_multiplier_layer_on_conv2d(filters):
     assert result.shape == (10, 32, 32, filters)
     result = model(np.random.normal(size=(10, 32, 32, 1)), training=False)
     assert result.shape == (10, 32, 32, filters)
+
+    assert len(layer.weights) == 1
+    assert layer.weights[0].numpy().shape == (filters,)
 
 # ---------------------------------------------------------------------
 
@@ -137,7 +149,7 @@ def test_random_on_off_layer_dense(units):
         units=units,
         kernel_regularizer="l1",
         kernel_initializer="glorot_normal")
-    multiplier_params = dict(
+    params = dict(
         rate=0.5,
     )
     input_layer = \
@@ -146,7 +158,8 @@ def test_random_on_off_layer_dense(units):
             shape=(256,))
     x = input_layer
     x = keras.layers.Dense(**dense_params)(x)
-    x = bfcnn.RandomOnOff(**multiplier_params)(x)
+    layer = bfcnn.RandomOnOff(**params)
+    x = layer(x)
     output_layer = x
     model = keras.Model(
         name="model",
@@ -158,6 +171,8 @@ def test_random_on_off_layer_dense(units):
     result = model(np.random.normal(size=(10, 256)), training=False)
     assert result.shape == (10, units)
 
+    assert len(layer.weights) == 1
+    assert layer.weights[0].numpy().shape == (1,)
 
 # ---------------------------------------------------------------------
 
