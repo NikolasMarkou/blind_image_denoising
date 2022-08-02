@@ -224,15 +224,12 @@ def conv2d_wrapper(
     x = tf.keras.layers.Conv2D(**conv_params)(x)
     # learn the proper scale of the previous layer
     if depthwise_scaling:
-        x = tf.keras.layers.DepthwiseConv2D(
-            use_bias=False,
-            strides=(1, 1),
-            padding="same",
-            depth_multiplier=1,
-            kernel_size=(1, 1),
-            activation="linear",
-            depthwise_initializer="ones",
-            depthwise_regularizer="l1")(x)
+        x = \
+            ChannelwiseMultiplier(
+                multiplier=1.0,
+                regularizer="l2",
+                trainable=True,
+                activation="linear")(x)
     return x
 
 # ---------------------------------------------------------------------
