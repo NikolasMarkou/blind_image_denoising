@@ -198,7 +198,6 @@ def build_model_resnet(
 
     # --- setup parameters
     bn_params = dict(
-        axis=0,
         center=use_bias,
         scale=True,
         momentum=0.999,
