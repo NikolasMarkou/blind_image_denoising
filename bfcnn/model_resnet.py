@@ -98,11 +98,11 @@ def resnet_blocks(
         x = conv2d_wrapper(input_layer=x,
                            conv_params=first_conv_params,
                            bn_params=bn_params,
-                           depthwise_scaling=depthwise_scaling)
+                           depthwise_scaling=False)
         x = conv2d_wrapper(input_layer=x,
                            conv_params=second_conv_params,
                            bn_params=bn_params,
-                           depthwise_scaling=depthwise_scaling)
+                           depthwise_scaling=False)
         x = conv2d_wrapper(input_layer=x,
                            conv_params=third_conv_params,
                            bn_params=bn_params,

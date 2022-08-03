@@ -227,7 +227,7 @@ def conv2d_wrapper(
         x = \
             ChannelwiseMultiplier(
                 multiplier=1.0,
-                regularizer="l2",
+                regularizer="l1",
                 trainable=True,
                 activation="linear")(x)
     return x
