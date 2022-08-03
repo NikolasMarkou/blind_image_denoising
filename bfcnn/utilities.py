@@ -220,6 +220,8 @@ def conv2d_wrapper(
     x = input_layer
     if use_bn:
         x = tf.keras.layers.BatchNormalization(**bn_params)(x)
+    # ideally this should be orthonormal
+    x = tf.keras.layers.Conv2D(**conv_params)(x)
     # learn the proper scale of the previous layer
     if depthwise_scaling:
         x = \
@@ -228,8 +230,6 @@ def conv2d_wrapper(
                 regularizer="l2",
                 trainable=True,
                 activation="linear")(x)
-    # ideally this should be orthonormal
-    x = tf.keras.layers.Conv2D(**conv_params)(x)
     return x
 
 # ---------------------------------------------------------------------
