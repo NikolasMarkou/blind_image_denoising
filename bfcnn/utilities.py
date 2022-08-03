@@ -219,7 +219,9 @@ def conv2d_wrapper(
     # --- perform the transformations
     x = input_layer
     if use_bn:
+        x = tf.expand_dims(x, axis=-1)
         x = tf.keras.layers.BatchNormalization(**bn_params)(x)
+        x = tf.squeeze(x, axis=-1)
     # ideally this should be orthonormal
     x = tf.keras.layers.Conv2D(**conv_params)(x)
     # learn the proper scale of the previous layer
