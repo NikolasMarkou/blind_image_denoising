@@ -186,17 +186,6 @@ def build_model_lunet(
         per_channel_sparsity=False
     )
 
-    base_conv_params = dict(
-        filters=filters,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation="linear",
-        kernel_size=kernel_size,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
     gate_params = dict(
         kernel_size=1,
         filters=filters,
