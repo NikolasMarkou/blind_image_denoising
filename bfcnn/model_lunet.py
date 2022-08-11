@@ -29,6 +29,7 @@ def lunet_blocks(
         input_layer,
         no_levels: int,
         no_layers: int,
+        base_conv_param: Dict,
         first_conv_params: Dict,
         second_conv_params: Dict,
         third_conv_params: Dict,
@@ -75,26 +76,14 @@ def lunet_blocks(
             x = \
                 conv2d_wrapper(
                     x,
-                    conv_params=first_conv_params,
+                    conv_params=base_conv_param,
                     bn_params=None)
         else:
             level_x = \
                 conv2d_wrapper(
                     level_x,
-                    conv_params=first_conv_params,
+                    conv_params=base_conv_param,
                     bn_params=None)
-            level_x = \
-                resnet_blocks(
-                    input_layer=level_x,
-                    no_layers=no_layers,
-                    first_conv_params=first_conv_params,
-                    second_conv_params=second_conv_params,
-                    third_conv_params=third_conv_params,
-                    bn_params=bn_params,
-                    gate_params=gate_params,
-                    dropout_params=dropout_params,
-                    multiplier_params=multiplier_params
-                )
             x = \
                 tf.keras.layers.UpSampling2D(
                     size=(2, 2),
@@ -104,7 +93,7 @@ def lunet_blocks(
             x = \
                 conv2d_wrapper(
                     x,
-                    conv_params=first_conv_params,
+                    conv_params=base_conv_param,
                     bn_params=bn_params)
         x = \
             resnet_blocks(
@@ -219,6 +208,17 @@ def build_model_lunet(
         kernel_initializer=kernel_initializer
     )
 
+    base_conv_params = dict(
+        kernel_size=3,
+        filters=filters,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation=activation,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer,
+    )
+
     first_conv_params = dict(
         kernel_size=1,
         filters=filters,
@@ -281,6 +281,7 @@ def build_model_lunet(
         no_levels=no_levels,
         no_layers=no_layers,
         bn_params=bn_params,
+        base_conv_params=base_conv_params,
         first_conv_params=first_conv_params,
         second_conv_params=second_conv_params,
         third_conv_params=third_conv_params,
