@@ -2,7 +2,7 @@
   "model_denoise": {
     "type": "lunet",
     "filters": 16,
-    "no_layers": 5,
+    "no_layers": 6,
     "no_levels": 3,
     "min_value": 0,
     "add_var": false,
