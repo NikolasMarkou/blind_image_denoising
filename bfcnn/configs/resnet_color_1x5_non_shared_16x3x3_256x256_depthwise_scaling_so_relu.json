@@ -15,7 +15,7 @@
     "add_final_bn": false,
     "output_multiplier": 1.0,
     "local_normalization": -1,
-    "depthwise_scaling": true,
+    "channelwise_scaling": true,
     "final_activation": "tanh",
     "add_skip_with_input": false,
     "add_residual_between_models": false,

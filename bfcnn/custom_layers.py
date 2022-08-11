@@ -3,6 +3,9 @@ from typing import Any
 import tensorflow as tf
 from tensorflow import keras
 
+# ---------------------------------------------------------------------
+
+from .regularizer import builder, REGULARIZER_ALLOWED_TYPES
 
 # ---------------------------------------------------------------------
 
@@ -10,7 +13,7 @@ from tensorflow import keras
 class Multiplier(tf.keras.layers.Layer):
     def __init__(self,
                  multiplier: float = 1.0,
-                 regularizer=None,
+                 regularizer: REGULARIZER_ALLOWED_TYPES = None,
                  trainable: bool = True,
                  activation: Any = "linear",
                  name=None,
@@ -65,7 +68,7 @@ class ChannelwiseMultiplier(tf.keras.layers.Layer):
     """
     def __init__(self,
                  multiplier: float = 1.0,
-                 regularizer="l1",
+                 regularizer: REGULARIZER_ALLOWED_TYPES = None,
                  trainable: bool = True,
                  activation: Any = "linear",
                  name=None,
@@ -158,8 +161,8 @@ class RandomOnOff(tf.keras.layers.Layer):
 class GeluLayer(tf.keras.layers.Layer):
     def __init__(self,
                  trainable: bool = True,
+                 regularizer: REGULARIZER_ALLOWED_TYPES = None,
                  name=None,
-                 regularizer=None,
                  **kwargs):
         super(GeluLayer, self).__init__(
             trainable=trainable,
@@ -214,11 +217,11 @@ class GeluLayer(tf.keras.layers.Layer):
 class DifferentiableReluLayer(tf.keras.layers.Layer):
     def __init__(self,
                  trainable: bool = True,
-                 name=None,
-                 regularizer=None,
                  threshold: float = 0.0,
                  max_value: float = 6.0,
                  multiplier: float = 10.0,
+                 regularizer: REGULARIZER_ALLOWED_TYPES = None,
+                 name=None,
                  **kwargs):
         """
         Creates a differentiable relu layer

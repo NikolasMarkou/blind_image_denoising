@@ -22,7 +22,8 @@ REGULARIZERS_STR = "regularizers"
 L1_COEFFICIENT_STR = "l1_coefficient"
 DIAG_COEFFICIENT_STR = "diag_coefficient"
 LAMBDA_COEFFICIENT_STR = "lambda_coefficient"
-
+REGULARIZER_ALLOWED_TYPES = \
+    Union[str, Dict, keras.regularizers.Regularizer]
 
 # ---------------------------------------------------------------------
 

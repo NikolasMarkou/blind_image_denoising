@@ -197,14 +197,14 @@ def conv2d_wrapper(
         input_layer,
         conv_params: Dict,
         bn_params: Dict = None,
-        depthwise_scaling: bool = False):
+        channelwise_scaling: bool = False):
     """
     wraps a conv2d with a preceding normalizer
 
     :param input_layer: the layer to operate on
     :param conv_params: conv2d parameters
     :param bn_params: batchnorm parameters, None to disable bn
-    :param depthwise_scaling: if True add a learnable point-wise depthwise scaling conv2d at the end
+    :param channelwise_scaling: if True add a learnable point-wise depthwise scaling conv2d at the end
     :return: transformed input
     """
     # --- argument checking
@@ -223,11 +223,12 @@ def conv2d_wrapper(
     # ideally this should be orthonormal
     x = tf.keras.layers.Conv2D(**conv_params)(x)
     # learn the proper scale of the previous layer
-    if depthwise_scaling:
+    if channelwise_scaling:
+        # add a very small l1 penalty
         x = \
             ChannelwiseMultiplier(
                 multiplier=1.0,
-                regularizer="l1",
+                regularizer=keras.regularizers.L1(1e-6),
                 trainable=True,
                 activation="linear")(x)
     return x
