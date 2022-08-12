@@ -93,7 +93,7 @@ def lunet_blocks(
             x = \
                 conv2d_wrapper(
                     x,
-                    conv_params=base_conv_params,
+                    conv_params=first_conv_params,
                     bn_params=bn_params)
         x = \
             resnet_blocks(
