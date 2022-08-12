@@ -79,11 +79,6 @@ def lunet_blocks(
                     conv_params=base_conv_params,
                     bn_params=None)
         else:
-            level_x = \
-                conv2d_wrapper(
-                    level_x,
-                    conv_params=base_conv_params,
-                    bn_params=None)
             x = \
                 tf.keras.layers.UpSampling2D(
                     size=(2, 2),
