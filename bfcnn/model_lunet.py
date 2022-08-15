@@ -59,8 +59,13 @@ def lunet_blocks(
                 pool_size=kernel_size,
                 strides=(2, 2),
                 padding="same")(level_x)
-        levels_x.append(level_x_down)
+        level_x_smoothed = \
+            keras.layers.UpSampling2D(
+                size=(2, 2),
+                interpolation="bilinear")(level_x_down)
+        level_x_diff = level_x - level_x_smoothed
         level_x = level_x_down
+        levels_x.append(level_x_diff)
     levels_x.append(level_x)
 
     # --- upside
