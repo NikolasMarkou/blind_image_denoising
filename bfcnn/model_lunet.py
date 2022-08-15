@@ -59,13 +59,8 @@ def lunet_blocks(
                 pool_size=kernel_size,
                 strides=(2, 2),
                 padding="same")(level_x)
-        level_x_smoothed = \
-            keras.layers.UpSampling2D(
-                size=(2, 2),
-                interpolation="bilinear")(level_x_down)
-        level_x_diff = level_x - level_x_smoothed
+        levels_x.append(level_x_down)
         level_x = level_x_down
-        levels_x.append(level_x_diff)
     levels_x.append(level_x)
 
     # --- upside
@@ -79,18 +74,6 @@ def lunet_blocks(
         if x is None:
             x = level_x
         else:
-            level_x = \
-                resnet_blocks(
-                    input_layer=level_x,
-                    no_layers=no_layers,
-                    first_conv_params=first_conv_params,
-                    second_conv_params=second_conv_params,
-                    third_conv_params=third_conv_params,
-                    bn_params=bn_params,
-                    gate_params=gate_params,
-                    dropout_params=dropout_params,
-                    multiplier_params=multiplier_params
-                )
             x = \
                 tf.keras.layers.UpSampling2D(
                     size=(2, 2),
