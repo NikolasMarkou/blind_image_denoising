@@ -23,8 +23,8 @@
     "kernel_regularizer": {
       "type": "soft_orthonormal",
       "config": {
-        "lambda_coefficient": 1.0,
-        "l1_coefficient": 0.001
+        "lambda_coefficient": 0.01,
+        "l1_coefficient": 0.0001
       }
     }
   },
