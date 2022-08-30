@@ -20,7 +20,13 @@
     "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
-    "kernel_regularizer": "l1"
+    "kernel_regularizer": {
+      "type": "soft_orthonormal",
+      "config": {
+        "lambda_coefficient": 0.01,
+        "l1_coefficient": 0.0001
+      }
+    }
   },
    "train": {
     "epochs": 50,
