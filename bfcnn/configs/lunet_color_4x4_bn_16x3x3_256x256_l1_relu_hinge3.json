@@ -87,7 +87,7 @@
       },
       {
         "dataset_shape": [512, 512],
-        "directory": "/media/data1_4tb/datasets/KITTI/Megadepth/"
+        "directory": "/media/data1_4tb/datasets/KITTI/Megadepth/0000"
       }
     ]
   }
