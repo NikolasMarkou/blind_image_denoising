@@ -88,6 +88,10 @@
       {
         "dataset_shape": [512, 512],
         "directory": "/media/data1_4tb/datasets/Megadepth/"
+      },
+      {
+        "dataset_shape": [360, 640],
+        "directory": "/media/data1_4tb/datasets/bdd_data/train/"
       }
     ]
   }
