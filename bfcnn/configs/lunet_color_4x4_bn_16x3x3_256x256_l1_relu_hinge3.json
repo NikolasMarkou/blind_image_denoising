@@ -84,6 +84,10 @@
       {
         "dataset_shape": [256, 768],
         "directory": "/media/data1_4tb/datasets/KITTI/data/depth/raw_image_values/"
+      },
+      {
+        "dataset_shape": [512, 512],
+        "directory": "/media/data1_4tb/datasets/KITTI/Megadepth/"
       }
     ]
   }

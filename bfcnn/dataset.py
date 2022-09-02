@@ -98,14 +98,20 @@ def dataset_builder(
     # --- define generator function from directory
     if directory:
         dataset = [
-            tf.keras.preprocessing.image_dataset_from_directory(
+            tf.keras.utils.image_dataset_from_directory(
                 directory=d,
-                image_size=s,
-                shuffle=True,
+                labels=None,
                 label_mode=None,
-                batch_size=batch_size,
+                class_names=None,
                 color_mode=color_mode,
-                interpolation="bilinear")
+                batch_size=batch_size,
+                shuffle=True,
+                image_size=s,
+                seed=0,
+                validation_split=None,
+                subset=None,
+                interpolation="bilinear",
+                crop_to_aspect_ratio=True)
             for d, s in zip(directory, dataset_shape)
         ]
 
