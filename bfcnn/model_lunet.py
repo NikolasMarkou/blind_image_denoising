@@ -51,18 +51,19 @@ def lunet_blocks(
 
     level_x = input_layer
     levels_x = []
+    strides = (2, 2)
     kernel_size = (3, 3)
-
+    interpolation = "bilinear"
     for level in range(0, no_levels - 1):
         level_x_down = \
             keras.layers.AveragePooling2D(
                 pool_size=kernel_size,
-                strides=(2, 2),
+                strides=strides,
                 padding="same")(level_x)
         level_x_smoothed = \
             keras.layers.UpSampling2D(
-                size=(2, 2),
-                interpolation="bilinear")(level_x_down)
+                size=strides,
+                interpolation=interpolation)(level_x_down)
         level_x_diff = level_x - level_x_smoothed
         level_x = level_x_down
         levels_x.append(level_x_diff)
@@ -93,8 +94,8 @@ def lunet_blocks(
                 )
             x = \
                 tf.keras.layers.UpSampling2D(
-                    size=(2, 2),
-                    interpolation="bilinear")(x)
+                    size=strides,
+                    interpolation=interpolation)(x)
             x = \
                 tf.keras.layers.Add()([x, level_x])
         x = \
