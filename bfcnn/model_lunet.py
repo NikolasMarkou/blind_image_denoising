@@ -181,14 +181,6 @@ def build_model_lunet(
         epsilon=1e-4
     )
 
-    # this make it 68% sparse
-    sparse_params = dict(
-        symmetric=True,
-        max_value=3.0,
-        threshold_sigma=1.0,
-        per_channel_sparsity=False
-    )
-
     gate_params = dict(
         kernel_size=1,
         filters=filters,
@@ -212,12 +204,12 @@ def build_model_lunet(
     )
 
     first_conv_params = dict(
-        kernel_size=1,
         filters=filters,
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
         activation=activation,
+        kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
     )
