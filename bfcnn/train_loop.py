@@ -261,7 +261,7 @@ def train_loop(
                 x2 = \
                     denormalizer(x1, training=False)
                 return x0, x1, x2
-        
+
         # ---
         while global_epoch < global_total_epochs:
             logger.info("epoch: {0}, step: {1}".format(
