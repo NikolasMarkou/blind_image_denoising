@@ -261,9 +261,8 @@ def train_loop(
                 x2 = \
                     denormalizer(x1, training=False)
                 return x0, x1, x2
-
+        
         # ---
-
         while global_epoch < global_total_epochs:
             logger.info("epoch: {0}, step: {1}".format(
                 int(global_epoch), int(global_step)))
@@ -338,19 +337,18 @@ def train_loop(
                 for name, key in [
                     ("loss/mae", MAE_LOSS_STR),
                     ("loss/total", MEAN_TOTAL_LOSS_STR),
+                    ("quality/nae_noise", NAE_NOISE_STR),
                     ("loss/nae", NAE_PREDICTION_LOSS_STR),
+                    ("quality/signal_to_noise_ratio", SNR_STR),
                     ("loss/regularization", REGULARIZATION_LOSS_STR),
                     ("loss/mae_decomposition", MAE_DECOMPOSITION_LOSS_STR),
-                    ("quality/nae_noise", "nae_noise"),
-                    ("quality/signal_to_noise_ratio", "snr"),
                     ("quality/nae_improvement", NAE_IMPROVEMENT_QUALITY_STR)
                 ]:
-                    if key not in loss_map:
-                        continue
-                    tf.summary.scalar(
-                        name=name,
-                        data=loss_map[key],
-                        step=global_step)
+                    if key in loss_map:
+                        tf.summary.scalar(
+                            name=name,
+                            data=loss_map[key],
+                            step=global_step)
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
