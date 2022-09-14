@@ -287,9 +287,9 @@ def loss_function_builder(
                     prediction=prediction_batch)
 
         # ---
-        nae_prediction = nae(input_batch, prediction_batch)
         nae_noise = nae(input_batch, noisy_batch)
-        nae_improvement = nae_noise - nae_prediction
+        nae_prediction = nae(input_batch, prediction_batch)
+        nae_improvement = (nae_noise + EPSILON_DEFAULT) / (nae_prediction + EPSILON_DEFAULT)
 
         # --- variance loss experimental
         mae_variance_loss = tf.constant(0.0)
