@@ -80,6 +80,7 @@ def model_builder(
     clip_values = config.get("clip_values", False)
     add_final_bn = config.get("add_final_bn", True)
     shared_model = config.get("shared_model", False)
+    add_laplacian = config.get("add_laplacian", True)
     add_concat_input = config.get("add_concat_input", False)
     input_shape = config.get("input_shape", (None, None, 3))
     output_multiplier = config.get("output_multiplier", 1.0)
@@ -138,6 +139,7 @@ def model_builder(
         kernel_size=kernel_size,
         dropout_rate=dropout_rate,
         add_final_bn=add_final_bn,
+        add_laplacian=add_laplacian,
         add_concat_input=add_concat_input,
         final_activation=final_activation,
         channelwise_scaling=channelwise_scaling,

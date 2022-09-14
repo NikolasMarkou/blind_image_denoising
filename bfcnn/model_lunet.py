@@ -1,9 +1,4 @@
-import os
-import json
-import itertools
-import numpy as np
 import tensorflow as tf
-from pathlib import Path
 from tensorflow import keras
 from typing import List, Tuple, Union, Dict, Iterable
 
@@ -12,15 +7,9 @@ from typing import List, Tuple, Union, Dict, Iterable
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .constants import EPSILON_DEFAULT
 from .model_resnet import resnet_blocks
-from .custom_layers import Multiplier, RandomOnOff
-from .activations import differentiable_relu, differentiable_relu_layer
-from .utilities import \
-    sparse_block, \
-    conv2d_wrapper, \
-    mean_sigma_local, \
-    mean_sigma_global
+from .custom_layers import Multiplier
+from .utilities import conv2d_wrapper, mean_sigma_local
 
 # ---------------------------------------------------------------------
 
@@ -37,6 +26,7 @@ def lunet_blocks(
         gate_params: Dict = None,
         dropout_params: Dict = None,
         multiplier_params: Dict = None,
+        add_laplacian: bool = True,
         **kwargs):
     """
     Create a lunet block
@@ -54,20 +44,30 @@ def lunet_blocks(
     strides = (2, 2)
     kernel_size = (3, 3)
     interpolation = "bilinear"
-    for level in range(0, no_levels - 1):
-        level_x_down = \
-            keras.layers.AveragePooling2D(
-                pool_size=kernel_size,
-                strides=strides,
-                padding="same")(level_x)
-        level_x_smoothed = \
-            keras.layers.UpSampling2D(
-                size=strides,
-                interpolation=interpolation)(level_x_down)
-        level_x_diff = level_x - level_x_smoothed
-        level_x = level_x_down
-        levels_x.append(level_x_diff)
-    levels_x.append(level_x)
+    if add_laplacian:
+        for level in range(0, no_levels - 1):
+            level_x_down = \
+                keras.layers.AveragePooling2D(
+                    pool_size=kernel_size,
+                    strides=strides,
+                    padding="same")(level_x)
+            level_x_smoothed = \
+                keras.layers.UpSampling2D(
+                    size=strides,
+                    interpolation=interpolation)(level_x_down)
+            level_x_diff = level_x - level_x_smoothed
+            level_x = level_x_down
+            levels_x.append(level_x_diff)
+        levels_x.append(level_x)
+    else:
+        levels_x.append(level_x)
+        for level in range(0, no_levels - 1):
+            level_x = \
+                keras.layers.AveragePooling2D(
+                    pool_size=kernel_size,
+                    strides=strides,
+                    padding="same")(level_x)
+            levels_x.append(level_x)
 
     # --- upside
     x = None
@@ -139,6 +139,7 @@ def build_model_lunet(
         add_learnable_multiplier: bool = False,
         add_projection_to_input: bool = True,
         add_concat_input: bool = False,
+        add_laplacian: bool = True,
         name="lunet",
         **kwargs) -> keras.Model:
     """
@@ -166,6 +167,7 @@ def build_model_lunet(
     :param add_learnable_multiplier:
     :param add_projection_to_input: if true project to input tensor channel number
     :param add_concat_input: if true concat input to intermediate before projecting
+    :param add_laplacian: if true each level of lunet is a laplacian, if false a gaussian
     :param name: name of the model
     :return: unet model
     """
@@ -265,6 +267,7 @@ def build_model_lunet(
         no_levels=no_levels,
         no_layers=no_layers,
         bn_params=bn_params,
+        add_laplacian=add_laplacian,
         base_conv_params=base_conv_params,
         first_conv_params=first_conv_params,
         second_conv_params=second_conv_params,
