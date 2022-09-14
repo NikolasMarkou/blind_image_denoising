@@ -51,7 +51,7 @@
       }
     },
     "prune": {
-      "start_epoch": 0,
+      "start_epoch": 1,
       "strategies": [{
         "type": "minimum_threshold_shrinkage",
         "config": {
