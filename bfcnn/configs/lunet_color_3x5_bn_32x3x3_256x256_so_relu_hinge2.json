@@ -1,7 +1,7 @@
 {
   "model_denoise": {
     "filters": 32,
-    "no_levels": 4,
+    "no_levels": 3,
     "no_layers": 5,
     "min_value": 0,
     "add_var": false,
