@@ -42,7 +42,7 @@ def load_image(
     x = tf.keras.preprocessing.image.img_to_array(x)
     x = np.array([x])
     if normalize:
-        x = ((x / 255.0) * 2.0) - 1.0
+        x = layer_normalize((x, 0.0, 255.0))
     return x
 
 # ---------------------------------------------------------------------
