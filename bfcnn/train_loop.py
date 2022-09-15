@@ -223,11 +223,13 @@ def train_loop(
                 stddev=0.25,
                 shape=test_images.shape) + \
             test_images
-        x_random = denoiser(x_random, training=False)
-        return \
+        x_input = \
             denormalizer(
                 x_random,
                 training=False)
+        x_random = denoiser(x_random, training=False)
+        x_output = denormalizer(x_random,training=False)
+        return x_input, x_output
 
     # --- create random image and iterate through the model
     def create_random_batch():
@@ -393,16 +395,17 @@ def train_loop(
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
-                    test_batch = None
+                    test_input_batch, test_output_batch = None
                     random_batch = create_random_batch()
                     if use_test_images:
-                        test_batch = denoise_test_batch()
+                        test_input_batch, test_output_batch = denoise_test_batch()
                     visualize(
                         global_step=global_step,
-                        test_batch=test_batch,
                         input_batch=input_batch,
                         noisy_batch=noisy_batch,
                         random_batch=random_batch,
+                        test_input_batch=test_input_batch,
+                        test_output_batch=test_output_batch,
                         prediction_batch=denormalized_denoised_batch,
                         visualization_number=visualization_number)
                     # add weight visualization
