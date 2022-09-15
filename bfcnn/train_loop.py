@@ -395,7 +395,8 @@ def train_loop(
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
-                    test_input_batch, test_output_batch = None
+                    test_input_batch = None
+                    test_output_batch = None
                     random_batch = create_random_batch()
                     if use_test_images:
                         test_input_batch, test_output_batch = denoise_test_batch()
