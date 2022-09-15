@@ -31,6 +31,7 @@ def snr(
     :param multiplier:
     :param base: logarithm base
     """
+    # mse of prediction
     d_2 = tf.square(original - prediction)
     # sum over all dims
     d_2 = tf.reduce_sum(d_2, axis=[1, 2, 3])

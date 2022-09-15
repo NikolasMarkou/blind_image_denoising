@@ -10,6 +10,8 @@ __license__ = "MIT"
 
 import os
 import time
+
+import numpy as np
 import tensorflow as tf
 from pathlib import Path
 from typing import Union, Dict
@@ -21,9 +23,9 @@ from typing import Union, Dict
 from .constants import *
 from .visualize import visualize
 from .custom_logger import logger
-from .utilities import load_config
 from .loss import loss_function_builder
 from .optimizer import optimizer_builder
+from .utilities import load_config, load_image
 from .model_denoise import model_builder as model_denoise_builder
 from .pruning import prune_function_builder, PruneStrategy, get_conv2d_weights
 from .dataset import \
@@ -31,7 +33,9 @@ from .dataset import \
     DATASET_TESTING_FN_STR, \
     DATASET_FN_STR, \
     AUGMENTATION_FN_STR
+# ---------------------------------------------------------------------
 
+CURRENT_DIRECTORY = os.path.realpath(os.path.dirname(__file__))
 
 # ---------------------------------------------------------------------
 
@@ -123,6 +127,28 @@ def train_loop(
     random_batch_size = \
         [visualization_number] + \
         train_config.get("random_batch_size", [128, 128, 3])
+    # test images
+    use_test_images = train_config.get("use_test_images", False)
+    test_images = []
+    if use_test_images:
+        images_directory = os.path.join(CURRENT_DIRECTORY, "images")
+        for image_filename in os.listdir(images_directory):
+            # create full image path
+            image_path = os.path.join(images_directory, image_filename)
+            # check if current path is a file
+            if os.path.isfile(image_path):
+                image = \
+                    load_image(
+                        path=image_path,
+                        color_mode="rgb",
+                        target_size=(512, 512),
+                        normalize=True)
+                test_images.append(image)
+        test_images = \
+            np.concatenate(
+                test_images,
+                axis=0)
+
     # --- prune strategy
     prune_config = \
         train_config.get("prune", {"strategies": []})
@@ -187,6 +213,14 @@ def train_loop(
     denoiser.save(
         filepath=os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR),
         include_optimizer=False)
+
+    # --- test image
+    def denoise_test_batch():
+        x_random = denoiser(test_images, training=False)
+        return \
+            denormalizer(
+                x_random,
+                training=False)
 
     # --- create random image and iterate through the model
     def create_random_batch():
@@ -352,9 +386,13 @@ def train_loop(
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
+                    test_batch = None
                     random_batch = create_random_batch()
+                    if use_test_images:
+                        test_batch = denoise_test_batch()
                     visualize(
                         global_step=global_step,
+                        test_batch=test_batch,
                         input_batch=input_batch,
                         noisy_batch=noisy_batch,
                         random_batch=random_batch,

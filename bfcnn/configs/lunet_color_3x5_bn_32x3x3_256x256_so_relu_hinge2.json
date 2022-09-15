@@ -33,6 +33,7 @@
   "train": {
     "epochs": 50,
     "total_steps": -1,
+    "use_test_images": true,
     "checkpoints_to_keep": 3,
     "checkpoint_every": 10000,
     "visualization_number": 4,
