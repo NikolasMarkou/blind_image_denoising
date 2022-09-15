@@ -327,8 +327,10 @@ def train_loop(
                 noisy_batch = augmentation_fn(input_batch)
 
                 # normalize input and noisy batch
-                normalized_input_batch = normalizer(input_batch, training=False)
-                normalized_noisy_batch = normalizer(noisy_batch, training=False)
+                normalized_input_batch = \
+                    normalizer(input_batch, training=False)
+                normalized_noisy_batch = \
+                    normalizer(noisy_batch, training=False)
 
                 if pyramid is not None:
                     # split input image into pyramid levels
@@ -358,10 +360,7 @@ def train_loop(
                             input_batch=input_batch,
                             noisy_batch=noisy_batch,
                             model_losses=denoiser.losses,
-                            prediction_batch=denormalized_denoised_batch,
-                            prediction_batch_decomposition=denoised_batch_decomposition,
-                            input_batch_decomposition=normalized_input_batch_decomposition
-                        )
+                            prediction_batch=denormalized_denoised_batch)
 
                     # use the gradient tape to automatically retrieve
                     # the gradients of the trainable variables
@@ -379,12 +378,12 @@ def train_loop(
                 # --- add loss summaries for tensorboard
                 for name, key in [
                     ("loss/mae", MAE_LOSS_STR),
+                    ("loss/kl_loss", KL_LOSS_STR),
                     ("loss/total", MEAN_TOTAL_LOSS_STR),
                     ("quality/nae_noise", NAE_NOISE_STR),
                     ("loss/nae", NAE_PREDICTION_LOSS_STR),
                     ("quality/signal_to_noise_ratio", SNR_STR),
                     ("loss/regularization", REGULARIZATION_LOSS_STR),
-                    ("loss/mae_decomposition", MAE_DECOMPOSITION_LOSS_STR),
                     ("quality/nae_improvement", NAE_IMPROVEMENT_QUALITY_STR)
                 ]:
                     if key in loss_map:

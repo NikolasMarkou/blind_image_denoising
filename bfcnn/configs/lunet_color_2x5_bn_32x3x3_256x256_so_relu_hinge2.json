@@ -67,9 +67,7 @@
     "hinge": 2.0,
     "cutoff": 255.0,
     "mae_multiplier": 1.0,
-    "regularization": 0.01,
-    "single_loss": true,
-    "decomposition_loss": false
+    "regularization": 0.01
   },
   "dataset": {
     "batch_size": 8,
