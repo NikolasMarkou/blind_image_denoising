@@ -131,6 +131,7 @@ def mae(
     error = original - prediction
     return mae_diff(error, hinge=hinge, cutoff=cutoff)
 
+
 # ---------------------------------------------------------------------
 
 
@@ -151,6 +152,8 @@ def mse_diff(
     d = tf.reduce_mean(d, axis=[1, 2, 3])
     # mean over batch
     return tf.reduce_mean(d, axis=[0])
+
+
 # ---------------------------------------------------------------------
 
 
@@ -218,12 +221,6 @@ def loss_function_builder(
     # --- mae
     mae_multiplier = tf.constant(config.get("mae_multiplier", 1.0))
 
-    # --- kl-loss
-    kl_multiplier = tf.constant(config.get("kl_multiplier", 0.0))
-    kl_enabled = tf.constant(kl_multiplier > 0.0)
-    kl_mean = tf.constant(config.get("kl_mean", 0.0))
-    kl_variance = tf.constant(config.get("kl_variance", 5.0))
-
     # --- regularization
     regularization_multiplier = tf.constant(config.get("regularization", 1.0))
 
@@ -259,28 +256,6 @@ def loss_function_builder(
         nae_improvement = \
             (nae_noise + EPSILON_DEFAULT) / (nae_prediction + EPSILON_DEFAULT)
 
-        # --- variance loss experimental
-        kl_loss = tf.constant(0.0)
-        if kl_enabled:
-            mean_error = \
-                tf.math.reduce_mean(
-                    tf.math.reduce_mean(
-                        error, axis=[1, 2, 3],
-                        keepdims=False))
-            variance_error = \
-                tf.math.reduce_mean(
-                    tf.math.reduce_variance(
-                        error,
-                        axis=[1, 2, 3],
-                        keepdims=False))
-            kl_loss += \
-                0.5 * (
-                    tf.math.log(kl_variance / variance_error)
-                    - 1.0 +
-                    variance_error +
-                    (kl_mean - mean_error) * (kl_mean - mean_error) / (kl_variance + EPSILON_DEFAULT)
-                )
-
         # --- regularization error
         regularization_loss = tf.add_n(model_losses)
 
@@ -290,12 +265,10 @@ def loss_function_builder(
 
         # --- add up loss
         mean_total_loss = \
-            kl_loss * kl_multiplier + \
             mae_prediction_loss * mae_multiplier + \
             regularization_loss * regularization_multiplier
 
         return {
-            KL_LOSS_STR: kl_loss,
             NAE_NOISE_STR: nae_noise,
             MAE_LOSS_STR: mae_actual,
             SNR_STR: signal_to_noise_ratio,
