@@ -216,7 +216,14 @@ def train_loop(
 
     # --- test image
     def denoise_test_batch():
-        x_random = denoiser(test_images, training=False)
+        x_random = \
+            tf.random.truncated_normal(
+                seed=0,
+                mean=0.0,
+                stddev=0.25,
+                shape=test_images.shape) + \
+            test_images
+        x_random = denoiser(x_random, training=False)
         return \
             denormalizer(
                 x_random,
