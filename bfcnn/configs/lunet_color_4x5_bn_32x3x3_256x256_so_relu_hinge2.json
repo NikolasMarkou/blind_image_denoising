@@ -46,7 +46,7 @@
         "type": "exponential_decay",
         "config": {
           "decay_rate": 0.9,
-          "decay_steps": 20000,
+          "decay_steps": 50000,
           "learning_rate": 0.001
         }
       }
@@ -97,6 +97,14 @@
       {
         "dataset_shape": [360, 640],
         "directory": "/media/data1_4tb/datasets/bdd_data/train/"
+      },
+      {
+        "dataset_shape": [512, 512],
+        "directory": "/media/data1_4tb/datasets/WIDER/WIDER_train/"
+      },
+      {
+        "dataset_shape": [512, 512],
+        "directory": "/media/data1_4tb/datasets/WFLW/images/"
       }
     ]
   }
