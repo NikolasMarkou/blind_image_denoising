@@ -44,7 +44,7 @@
         "type": "exponential_decay",
         "config": {
           "decay_rate": 0.9,
-          "decay_steps": 20000,
+          "decay_steps": 40000,
           "learning_rate": 0.001
         }
       }
