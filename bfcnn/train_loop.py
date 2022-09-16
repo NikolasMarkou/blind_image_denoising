@@ -216,20 +216,27 @@ def train_loop(
 
     # --- test image
     def denoise_test_batch():
-        x_random = \
+        x_noisy = \
             tf.random.truncated_normal(
                 seed=0,
                 mean=0.0,
                 stddev=0.25,
                 shape=test_images.shape) + \
             test_images
-        x_input = \
+        x_noisy = \
+            tf.clip_by_value(
+                x_noisy,
+                clip_value_min=-0.5,
+                clip_value_max=+0.5)
+        x_noisy_denormalized = \
             denormalizer(
-                x_random,
+                x_noisy,
                 training=False)
-        x_random = denoiser(x_random, training=False)
-        x_output = denormalizer(x_random,training=False)
-        return x_input, x_output
+        x_noisy = \
+            denoiser(x_noisy, training=False)
+        x_denoised_denormalized = \
+            denormalizer(x_noisy, training=False)
+        return x_noisy_denormalized, x_denoised_denormalized
 
     # --- create random image and iterate through the model
     def create_random_batch():
@@ -349,7 +356,7 @@ def train_loop(
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
-                    denoised_batch_decomposition, \
+                    _, \
                     denoised_batch, \
                     denormalized_denoised_batch = \
                         denoise_fn(normalized_noisy_batch)
