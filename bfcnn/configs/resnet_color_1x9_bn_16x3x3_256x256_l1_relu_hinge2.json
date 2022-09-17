@@ -1,20 +1,18 @@
 {
   "model_denoise": {
-    "filters": 32,
-    "no_levels": 3,
-    "no_layers": 5,
+    "filters": 16,
+    "no_layers": 9,
     "min_value": 0,
     "add_var": false,
     "max_value": 255,
-    "kernel_size": 3,
-    "type": "lunet",
+    "kernel_size": 5,
+    "type": "resnet",
     "batchnorm": true,
     "activation": "relu",
     "add_gates": false,
     "clip_values": false,
     "shared_model": false,
     "add_final_bn": false,
-    "add_laplacian": true,
     "output_multiplier": 1.0,
     "local_normalization": -1,
     "final_activation": "tanh",
@@ -22,15 +20,9 @@
     "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
-    "kernel_regularizer": {
-      "type": "soft_orthonormal",
-      "config": {
-        "lambda_coefficient": 0.01,
-        "l1_coefficient": 0.0001
-      }
-    }
+    "kernel_regularizer": "l1"
   },
-  "train": {
+   "train": {
     "epochs": 50,
     "total_steps": -1,
     "use_test_images": true,
@@ -42,6 +34,7 @@
     "random_batch_size": [256, 256, 3],
     "random_batch_min_difference": 0.1,
     "optimizer": {
+      "gradient_clipping_by_norm": 1.0,
       "schedule": {
         "type": "exponential_decay",
         "config": {
@@ -57,8 +50,8 @@
         "type": "minimum_threshold_shrinkage",
         "config": {
           "shrinkage": 0.75,
-          "minimum_threshold": 0.000005,
-          "shrinkage_threshold": 0.00001
+          "minimum_threshold":   0.00005,
+          "shrinkage_threshold": 0.0001
         }
       }]
     }
@@ -70,7 +63,7 @@
     "regularization": 0.01
   },
   "dataset": {
-    "batch_size": 8,
+    "batch_size": 16,
     "min_value": 0,
     "max_value": 255,
     "clip_value": true,
@@ -109,3 +102,4 @@
     ]
   }
 }
+

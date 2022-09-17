@@ -82,15 +82,6 @@ def resnet_blocks(
     # --- setup resnet
     x = input_layer
 
-    if use_gate:
-        g = tf.keras.layers.GlobalAveragePooling2D()(input_layer)
-        g = \
-            dense_wrapper(
-                input_layer=g,
-                bn_params=bn_params,
-                dense_params=dense_params,
-                elementwise_params=elementwise_params)
-
     # --- create several number of residual blocks
     for i in range(no_layers):
         previous_layer = x
@@ -108,17 +99,13 @@ def resnet_blocks(
                            channelwise_scaling=channelwise_scaling)
         # compute activation per channel
         if use_gate:
-            y0 = tf.keras.layers.GlobalAveragePooling2D()(x)
-            y0 = y0 * (1.0 - 0.9 * g)
-            if use_bn:
-                y0 = tf.keras.layers.BatchNormalization(**bn_params)(y0)
+            y = tf.keras.layers.GlobalAveragePooling2D()(x)
             y = \
                 dense_wrapper(
-                    input_layer=y0,
-                    bn_params=None,
+                    input_layer=y,
+                    bn_params=bn_params,
                     dense_params=dense_params,
                     elementwise_params=elementwise_params)
-            g = g + y0
             # if x < -2.5: return 0
             # if x > 2.5: return 1
             # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5

@@ -1,7 +1,7 @@
 {
   "model_denoise": {
     "filters": 32,
-    "no_levels": 2,
+    "no_levels": 4,
     "no_layers": 5,
     "min_value": 0,
     "add_var": false,
@@ -22,13 +22,7 @@
     "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
-    "kernel_regularizer": {
-      "type": "soft_orthonormal",
-      "config": {
-        "lambda_coefficient": 0.01,
-        "l1_coefficient": 0.0001
-      }
-    }
+    "kernel_regularizer": "l1"
   },
   "train": {
     "epochs": 50,
@@ -46,7 +40,7 @@
         "type": "exponential_decay",
         "config": {
           "decay_rate": 0.9,
-          "decay_steps": 40000,
+          "decay_steps": 50000,
           "learning_rate": 0.001
         }
       }

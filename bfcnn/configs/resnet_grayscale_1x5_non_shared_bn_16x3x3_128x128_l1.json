@@ -1,7 +1,7 @@
 {
   "model_denoise": {
     "filters": 16,
-    "no_layers": 10,
+    "no_layers": 5,
     "min_value": 0,
     "add_var": false,
     "max_value": 255,
@@ -10,22 +10,16 @@
     "batchnorm": true,
     "add_gates": false,
     "activation": "elu",
-    "clip_values": true,
-    "shared_model": true,
+    "clip_values": false,
+    "shared_model": false,
     "output_multiplier": 1.0,
     "local_normalization": -1,
-    "kernel_regularizer": "l1",
     "final_activation": "tanh",
     "add_skip_with_input": false,
-    "add_residual_between_models": true,
-    "input_shape": ["?", "?", 3],
+    "add_residual_between_models": false,
+    "input_shape": ["?", "?", 1],
     "kernel_initializer": "glorot_normal",
-    "pyramid": {
-      "levels": 3,
-      "type": "laplacian",
-      "xy_max": [1.0, 1.0],
-      "kernel_size": [3, 3]
-    }
+    "kernel_regularizer": "l1"
   },
   "train": {
     "epochs": 50,
@@ -34,8 +28,8 @@
     "checkpoint_every": 10000,
     "visualization_number": 4,
     "visualization_every": 1000,
-    "random_batch_iterations": 5,
-    "random_batch_size": [256, 256, 3],
+    "random_batch_iterations": 10,
+    "random_batch_size": [256, 256, 1],
     "random_batch_min_difference": 0.1,
     "optimizer": {
       "gradient_clipping_by_norm": 1.0,
@@ -77,11 +71,11 @@
     "random_invert": false,
     "random_rotate": 0.314,
     "random_up_down": true,
-    "color_mode": "rgb",
+    "color_mode": "grayscale",
     "random_left_right": true,
-    "input_shape": [256, 256, 3],
-    "multiplicative_noise": [0.05, 0.1, 0.2],
-    "additional_noise": [1, 5, 10, 20, 40, 60, 80],
+    "input_shape": [128, 128, 1],
+    "multiplicative_noise": [],
+    "additional_noise": [1, 5, 10, 20, 40],
     "inputs": [
       {
         "dataset_shape": [256, 768],
