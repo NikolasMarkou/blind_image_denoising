@@ -26,6 +26,7 @@ from .utilities import \
 from .model_unet import build_model_unet
 from .model_lunet import build_model_lunet
 from .model_resnet import build_model_resnet
+from .custom_layers import ChannelwiseMultiplier, Multiplier
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
@@ -273,13 +274,20 @@ def model_builder(
         ]
 
     # --- add residual between models
-    # speeds up training a lot, and better results
+    # speeds up training a lot, and better results (but adds artifacts)
     if add_residual_between_models:
         previous_level = None
         current_level_output = None
         for i, x_level in reversed(list(enumerate(x_levels))):
             if previous_level is None:
                 current_level_output = denoise_models[i](x_level)
+                if shared_model and len(x_levels) > 1:
+                    current_level_output = \
+                        Multiplier(
+                            multiplier=1.0,
+                            trainable=True,
+                            regularizer=None,
+                            activation="linear")(current_level_output)
                 previous_level = current_level_output
             else:
                 previous_level = \
@@ -303,13 +311,28 @@ def model_builder(
                     current_level_input - current_level_input_smoothed
                 current_level_output = \
                     denoise_models[i](current_level_input)
+                if shared_model and len(x_levels) > 1:
+                    current_level_output = \
+                        Multiplier(
+                            multiplier=1.0,
+                            trainable=True,
+                            regularizer=None,
+                            activation="linear")(current_level_output)
                 previous_level = \
                     keras.layers.Add()(
                         [previous_level, current_level_output])
             x_levels[i] = current_level_output
     else:
         for i, x_level in enumerate(x_levels):
-            x_levels[i] = denoise_models[i](x_level)
+            x_level_tmp = denoise_models[i](x_level)
+            if shared_model and len(x_levels) > 1:
+                x_level_tmp = \
+                    Multiplier(
+                        multiplier=1.0,
+                        trainable=True,
+                        regularizer=None,
+                        activation="linear")(x_level_tmp)
+            x_levels[i] = x_level_tmp
 
     # --- split intermediate results and actual results
     x_levels_intermediate = []

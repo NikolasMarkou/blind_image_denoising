@@ -1,11 +1,63 @@
 import numpy as np
-from typing import Any
 import tensorflow as tf
+from typing import Any, List
 from tensorflow import keras
 
 # ---------------------------------------------------------------------
 
 from .regularizer import builder, REGULARIZER_ALLOWED_TYPES
+
+
+# ---------------------------------------------------------------------
+
+
+class BinaryEntropyActivityRegularizer(tf.keras.layers.Layer):
+    def __init__(self,
+                 threshold: float = 0.5,
+                 rate: float = 1e-2):
+        super(BinaryEntropyActivityRegularizer, self).__init__()
+        self._rate = rate
+        self._threshold = threshold
+
+    def call(self, inputs, training):
+        # We use `add_loss` to create a regularization loss
+        # that depends on the inputs.
+
+        # --- threshold
+        threshold_to_binary = \
+            tf.round(tf.nn.sigmoid(inputs - self._threshold))
+
+        # --- per variable calculation
+        p_per_variable = \
+            tf.reduce_mean(
+                threshold_to_binary,
+                axis=[0],
+                keepdims=False)
+        total_mean_entropy_per_variable = \
+            tf.reduce_mean(
+                -p_per_variable * tf.math.log(p_per_variable) - \
+                (1.0 - p_per_variable) * tf.math.log(1.0 - p_per_variable),
+                axis=None,
+                keepdims=False
+            )
+
+        # --- add loss
+        self.add_loss(
+            self._rate *
+            total_mean_entropy_per_variable
+        )
+
+        return inputs
+
+    def compute_output_shape(self, input_shape):
+        return input_shape
+
+    def get_config(self):
+        return {
+            "rate": self._rate,
+            "threshold": self._threshold
+        }
+
 
 # ---------------------------------------------------------------------
 
@@ -55,6 +107,7 @@ class Multiplier(tf.keras.layers.Layer):
     def compute_output_shape(self, input_shape):
         return input_shape
 
+
 # ---------------------------------------------------------------------
 
 
@@ -66,6 +119,7 @@ class ChannelwiseMultiplier(tf.keras.layers.Layer):
     if (batch, filters) input then it learns to scale the filters
     if (batch, x, y, channels) input then it learns to scale the channels
     """
+
     def __init__(self,
                  multiplier: float = 1.0,
                  regularizer: REGULARIZER_ALLOWED_TYPES = None,
@@ -109,6 +163,7 @@ class ChannelwiseMultiplier(tf.keras.layers.Layer):
 
     def compute_output_shape(self, input_shape):
         return input_shape
+
 
 # ---------------------------------------------------------------------
 
@@ -211,6 +266,7 @@ class GeluLayer(tf.keras.layers.Layer):
     def compute_output_shape(self, input_shape):
         return input_shape
 
+
 # ---------------------------------------------------------------------
 
 
@@ -241,7 +297,6 @@ class DifferentiableReluLayer(tf.keras.layers.Layer):
         self._regularizer = keras.regularizers.get(regularizer)
 
     def build(self, input_shape):
-
         def init_threshold_fn(shape, dtype):
             return np.zeros(shape, dtype=np.float32) + self._threshold
 

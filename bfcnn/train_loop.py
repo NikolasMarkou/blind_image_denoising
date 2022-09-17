@@ -232,10 +232,10 @@ def train_loop(
             denormalizer(
                 x_noisy,
                 training=False)
-        x_noisy = \
+        x_denoised = \
             denoiser(x_noisy, training=False)
         x_denoised_denormalized = \
-            denormalizer(x_noisy, training=False)
+            denormalizer(x_denoised, training=False)
         return x_noisy_denormalized, x_denoised_denormalized
 
     # --- create random image and iterate through the model

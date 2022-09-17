@@ -13,6 +13,7 @@
     "clip_values": false,
     "shared_model": false,
     "add_final_bn": false,
+    "add_laplacian": false,
     "output_multiplier": 1.0,
     "local_normalization": -1,
     "final_activation": "tanh",
@@ -20,12 +21,17 @@
     "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
-    "kernel_regularizer": "l1"
+    "kernel_regularizer": "l1",
+    "pyramid": {
+      "levels": 3,
+      "type": "laplacian",
+      "xy_max": [1.0, 1.0],
+      "kernel_size": [3, 3]
+    }
   },
    "train": {
     "epochs": 50,
     "total_steps": -1,
-    "use_test_images": true,
     "checkpoints_to_keep": 3,
     "checkpoint_every": 10000,
     "visualization_number": 4,
@@ -39,7 +45,7 @@
         "type": "exponential_decay",
         "config": {
           "decay_rate": 0.9,
-          "decay_steps": 40000,
+          "decay_steps": 20000,
           "learning_rate": 0.001
         }
       }
