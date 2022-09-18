@@ -29,7 +29,6 @@ def dataset_builder(
     # crop image from dataset
     input_shape = config["input_shape"]
     color_mode = config.get("color_mode", "rgb")
-    scales = config("scales", [1])
 
     # ---
     inputs = config["inputs"]
