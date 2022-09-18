@@ -29,6 +29,8 @@ def dataset_builder(
     # crop image from dataset
     input_shape = config["input_shape"]
     color_mode = config.get("color_mode", "rgb")
+    scales = config("scales", [1])
+
     # ---
     inputs = config["inputs"]
     # directory to load data from
@@ -95,6 +97,12 @@ def dataset_builder(
     additional_noise = tf.constant(additional_noise, dtype=tf.float32)
     multiplicative_noise = tf.constant(multiplicative_noise, dtype=tf.float32)
 
+    # --- define scales
+    input_shapes = [
+        (int(round(input_shape[0] * s)), int(round(input_shape[1] * s)))
+        for s in scales
+    ]
+
     # --- define generator function from directory
     if directory:
         dataset = [
@@ -121,21 +129,47 @@ def dataset_builder(
     def input_batch_augmentations(input_batch):
         input_shape_inference = tf.shape(input_batch)
 
-        # --- convert to float32
-        input_batch = tf.cast(input_batch, dtype=tf.dtypes.float32)
-
         # --- crop randomly
         if random_crop:
+            # pick random number
+            random_numbers = \
+                tf.random.uniform(
+                    shape=(2,),
+                    minval=0.1,
+                    maxval=0.9,
+                    dtype=tf.dtypes.float32,
+                )
+            crop_width = \
+                tf.cast(
+                    tf.round(
+                        random_numbers[0] * input_shape_inference[1]),
+                    dtype=tf.int64)
+            crop_height = \
+                tf.cast(
+                    tf.round(
+                        random_numbers[1] * input_shape_inference[2]),
+                    dtype=tf.int64)
+            # crop
             input_batch = \
                 tf.image.random_crop(
                     value=input_batch,
                     size=(
                         input_shape_inference[0],
-                        input_shape[0],
-                        input_shape[1],
+                        crop_width,
+                        crop_height,
                         input_shape_inference[3])
                 )
-            input_shape_inference = tf.shape(input_batch)
+
+        # --- resize to input_shape
+        input_batch = \
+            tf.image.resize(
+                images=input_batch,
+                size=(
+                    input_shape[0],
+                    input_shape[1]
+                ),
+                preserve_aspect_ratio=True)
+        input_shape_inference = tf.shape(input_batch)
 
         # --- flip left right
         if random_left_right:
@@ -181,6 +215,10 @@ def dataset_builder(
         # --- round values to nearest integer
         if round_values:
             input_batch = tf.round(input_batch)
+
+        # --- convert to float32
+        input_batch = \
+            tf.cast(input_batch, dtype=tf.dtypes.float32)
 
         # --- convert to float32
         return input_batch
