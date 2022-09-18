@@ -161,13 +161,10 @@ def dataset_builder(
 
         # --- resize to input_shape
         input_batch = \
-            tf.image.resize(
+            tf.image.resize_with_pad(
                 images=input_batch,
-                size=(
-                    input_shape[0],
-                    input_shape[1]
-                ),
-                preserve_aspect_ratio=False)
+                target_height=input_shape[0],
+                target_width=input_shape[1])
         input_shape_inference = tf.shape(input_batch)
 
         # --- flip left right
