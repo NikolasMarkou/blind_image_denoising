@@ -96,12 +96,6 @@ def dataset_builder(
     additional_noise = tf.constant(additional_noise, dtype=tf.float32)
     multiplicative_noise = tf.constant(multiplicative_noise, dtype=tf.float32)
 
-    # --- define scales
-    input_shapes = [
-        (int(round(input_shape[0] * s)), int(round(input_shape[1] * s)))
-        for s in scales
-    ]
-
     # --- define generator function from directory
     if directory:
         dataset = [
