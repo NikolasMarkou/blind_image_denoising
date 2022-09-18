@@ -87,7 +87,7 @@ def resnet_blocks(
         previous_layer = x
         x = conv2d_wrapper(input_layer=x,
                            conv_params=first_conv_params,
-                           bn_params=bn_params,
+                           bn_params=None,
                            channelwise_scaling=False)
         x = conv2d_wrapper(input_layer=x,
                            conv_params=second_conv_params,
