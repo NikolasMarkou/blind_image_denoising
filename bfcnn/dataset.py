@@ -122,10 +122,6 @@ def dataset_builder(
     def input_batch_augmentations(input_batch):
         input_shape_inference = tf.shape(input_batch)
 
-        # --- convert to float32
-        input_batch = \
-            tf.cast(input_batch, dtype=tf.dtypes.float32)
-
         # --- crop randomly
         if random_crop:
             # pick random number
@@ -213,6 +209,9 @@ def dataset_builder(
             input_batch = tf.round(input_batch)
 
         # --- convert to float32
+        input_batch = \
+            tf.cast(input_batch, dtype=tf.dtypes.float32)
+
         return input_batch
 
     # --- define augmentation function
