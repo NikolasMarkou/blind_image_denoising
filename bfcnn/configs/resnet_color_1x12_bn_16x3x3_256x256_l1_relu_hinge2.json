@@ -66,6 +66,8 @@
     "batch_size": 16,
     "min_value": 0,
     "max_value": 255,
+    "min_scale": 0.1,
+    "max_scale": 0.9,
     "clip_value": true,
     "random_blur": true,
     "subsample_size": -1,
