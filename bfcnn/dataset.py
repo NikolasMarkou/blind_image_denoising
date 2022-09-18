@@ -127,7 +127,7 @@ def dataset_builder(
             # pick random number
             random_numbers = \
                 tf.random.uniform(
-                    shape=(2,),
+                    shape=(1,),
                     minval=0.1,
                     maxval=0.9,
                     dtype=tf.dtypes.float32,
@@ -141,7 +141,7 @@ def dataset_builder(
             crop_height = \
                 tf.cast(
                     tf.round(
-                        random_numbers[1] *
+                        random_numbers[0] *
                         tf.cast(input_shape_inference[2], tf.float32)),
                     dtype=tf.int32)
             # crop
