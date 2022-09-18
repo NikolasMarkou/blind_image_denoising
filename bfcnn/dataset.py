@@ -158,7 +158,7 @@ def dataset_builder(
         # --- resize to input_shape
         input_batch = \
             tf.image.resize_with_pad(
-                images=input_batch,
+                image=input_batch,
                 target_height=input_shape[0],
                 target_width=input_shape[1])
         input_shape_inference = tf.shape(input_batch)
