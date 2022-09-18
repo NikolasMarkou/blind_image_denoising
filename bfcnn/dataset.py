@@ -66,6 +66,9 @@ def dataset_builder(
     multiplicative_noise = config.get("multiplicative_noise", [])
     # quantization value, -1 disabled, otherwise 2, 4, 8
     quantization = tf.constant(config.get("quantization", -1))
+    # min/max scale
+    min_scale = tf.constant(config.get("min_scale", 0.1))
+    max_scale = tf.constant(config.get("max_scale", 0.9))
     # whether to crop or not
     random_crop = dataset_shape[0][0:2] != input_shape[0:2]
     random_crop = tf.constant(random_crop)
@@ -128,8 +131,8 @@ def dataset_builder(
             random_numbers = \
                 tf.random.uniform(
                     shape=(1,),
-                    minval=0.1,
-                    maxval=0.9,
+                    minval=min_scale,
+                    maxval=max_scale,
                     dtype=tf.dtypes.float32,
                 )
             crop_width = \
@@ -137,30 +140,33 @@ def dataset_builder(
                     tf.round(
                         random_numbers[0] *
                         tf.cast(input_shape_inference[1], tf.float32)),
-                    dtype=tf.int32)
+                    dtype=tf.int32) + 1
             crop_height = \
                 tf.cast(
                     tf.round(
                         random_numbers[0] *
                         tf.cast(input_shape_inference[2], tf.float32)),
-                    dtype=tf.int32)
+                    dtype=tf.int32) + 1
+            crop_size = \
+                tf.math.minimum(
+                    x=crop_width,
+                    y=crop_height)
             # crop
             input_batch = \
                 tf.image.random_crop(
                     value=input_batch,
                     size=(
                         input_shape_inference[0],
-                        crop_width,
-                        crop_height,
+                        crop_size,
+                        crop_size,
                         input_shape_inference[3])
                 )
 
         # --- resize to input_shape
         input_batch = \
-            tf.image.resize_with_pad(
-                image=input_batch,
-                target_height=input_shape[0],
-                target_width=input_shape[1])
+            tf.image.resize(
+                images=input_batch,
+                size=(input_shape[0], input_shape[1]))
         input_shape_inference = tf.shape(input_batch)
 
         # --- flip left right
