@@ -135,13 +135,15 @@ def dataset_builder(
             crop_width = \
                 tf.cast(
                     tf.round(
-                        random_numbers[0] * input_shape_inference[1]),
-                    dtype=tf.int64)
+                        random_numbers[0] *
+                        tf.cast(input_shape_inference[1], tf.float32)),
+                    dtype=tf.int32)
             crop_height = \
                 tf.cast(
                     tf.round(
-                        random_numbers[1] * input_shape_inference[2]),
-                    dtype=tf.int64)
+                        random_numbers[1] *
+                        tf.cast(input_shape_inference[2], tf.float32)),
+                    dtype=tf.int32)
             # crop
             input_batch = \
                 tf.image.random_crop(
