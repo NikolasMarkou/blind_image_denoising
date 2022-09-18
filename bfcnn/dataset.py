@@ -122,6 +122,10 @@ def dataset_builder(
     def input_batch_augmentations(input_batch):
         input_shape_inference = tf.shape(input_batch)
 
+        # --- convert to float32
+        input_batch = \
+            tf.cast(input_batch, dtype=tf.dtypes.float32)
+
         # --- crop randomly
         if random_crop:
             # pick random number
@@ -163,7 +167,7 @@ def dataset_builder(
                     input_shape[0],
                     input_shape[1]
                 ),
-                preserve_aspect_ratio=True)
+                preserve_aspect_ratio=False)
         input_shape_inference = tf.shape(input_batch)
 
         # --- flip left right
@@ -210,10 +214,6 @@ def dataset_builder(
         # --- round values to nearest integer
         if round_values:
             input_batch = tf.round(input_batch)
-
-        # --- convert to float32
-        input_batch = \
-            tf.cast(input_batch, dtype=tf.dtypes.float32)
 
         # --- convert to float32
         return input_batch
