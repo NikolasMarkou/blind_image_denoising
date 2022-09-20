@@ -444,8 +444,9 @@ def sparse_block(
 
     # --- threshold based on normalization
     # keep only positive above threshold
+
     x_binary = \
-        tf.relu(tf.sign(x_bn - threshold_sigma))
+        tf.nn.relu(tf.sign(x_bn - threshold_sigma))
 
     # --- zero out values below the threshold
     x_result = \
