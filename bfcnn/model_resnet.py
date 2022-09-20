@@ -250,7 +250,7 @@ def build_model_resnet(
         padding="same",
         use_bias=use_bias,
         # this must be the same as the base
-        activation="linear",
+        activation=activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -334,8 +334,8 @@ def build_model_resnet(
                 bn_params=None,
                 **sparse_params)
 
-    if use_bn:
-        x = tf.keras.layers.BatchNormalization(**bn_params)(x)
+    # if use_bn:
+    #     x = tf.keras.layers.BatchNormalization(**bn_params)(x)
 
     # add resnet blocks
     x = \
