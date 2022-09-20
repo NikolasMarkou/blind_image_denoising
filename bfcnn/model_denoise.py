@@ -158,10 +158,6 @@ def model_builder(
         model_builder_fn = build_model_lunet
     elif model_type == "resnet":
         model_builder_fn = build_model_resnet
-        model_params["add_sparsity"] = False
-    elif model_type == "sparse_resnet":
-        model_builder_fn = build_model_resnet
-        model_params["add_sparsity"] = True
     else:
         raise ValueError(
             "don't know how to build model [{0}]".format(model_type))
