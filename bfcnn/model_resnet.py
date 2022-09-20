@@ -92,8 +92,6 @@ def resnet_blocks(
                            conv_params=first_conv_params,
                            bn_params=None,
                            channelwise_scaling=False)
-        if use_sparsity:
-            x = sparse_block(x, **sparse_params)
         x = conv2d_wrapper(input_layer=x,
                            conv_params=second_conv_params,
                            bn_params=bn_params,
@@ -102,7 +100,8 @@ def resnet_blocks(
                            conv_params=third_conv_params,
                            bn_params=bn_params,
                            channelwise_scaling=channelwise_scaling)
-
+        if use_sparsity:
+            x = sparse_block(x, **sparse_params)
         # compute activation per channel
         if use_gate:
             y = tf.keras.layers.GlobalAveragePooling2D()(x)
