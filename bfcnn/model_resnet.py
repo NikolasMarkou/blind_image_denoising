@@ -192,10 +192,7 @@ def build_model_resnet(
 
     # this make it 68% sparse
     sparse_params = dict(
-        symmetric=True,
-        max_value=3.0,
         threshold_sigma=1.0,
-        per_channel_sparsity=False
     )
 
     base_conv_params = dict(

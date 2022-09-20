@@ -422,86 +422,34 @@ def mean_sigma_global(
 
 def sparse_block(
         input_layer,
-        bn_params: Dict = None,
-        threshold_sigma: float = 1.0,
-        max_value: float = None,
-        symmetric: bool = True,
-        per_channel_sparsity: bool = False):
+        threshold_sigma: float = 1.0):
     """
-    Create sparsity in an input layer
+    create sparsity in an input layer (keeps only positive)
 
     :param input_layer:
-    :param bn_params: batch norm parameters
-    :param threshold_sigma: sparsity of the results
-    :param max_value: max allowed value
-    :param symmetric: if true allow negative values else zero them off
-    :param per_channel_sparsity: if true perform sparsity on per channel level
+    :param threshold_sigma: sparsity of the results (0 -> 50% sparsity)
 
     :return: sparse results
     """
     # --- argument checking
     if threshold_sigma < 0:
         raise ValueError("threshold_sigma must be >= 0")
-    if max_value is not None and max_value < 0:
-        raise ValueError("max_value must be >= 0")
-    if max_value is not None and threshold_sigma > max_value:
-        raise ValueError("threshold_sigma must be <= max_value")
-    use_bn = bn_params is not None
 
-    # --- function building
-    def func_norm(args):
-        x, mean_x, sigma_x = args
-        return (x - mean_x) / sigma_x
+    # --- batch normalization
+    x_bn = \
+        tf.keras.layers.BatchNormalization()(input_layer)
 
-    def func_abs_sign(args):
-        y = args
-        y_abs = tf.abs(y)
-        y_sign = tf.sign(y)
-        return y_abs, y_sign
+    # --- threshold based on normalization
+    # keep only positive above threshold
+    x_binary = \
+        tf.relu(tf.sign(x_bn - threshold_sigma))
 
-    # --- computation is relu((mean-x)/sigma) with custom threshold
-    # compute axis to perform mean/sigma calculation on
-    if use_bn:
-        # learnable model
-        x_bn = \
-            tf.keras.layers.BatchNormalization(
-                **bn_params)(input_layer)
-    else:
-        # not learnable model
-        shape = tf.keras.backend.int_shape(input_layer)
-        int_shape = len(shape)
-        k = 1
-        if per_channel_sparsity:
-            k = 2
-        axis = list([i + 1 for i in range(max(int_shape - k, 1))])
-        mean, sigma = \
-            mean_sigma_global(
-                input_layer,
-                axis=axis)
-        x_bn = \
-            tf.keras.layers.Lambda(func_norm, trainable=False)([
-                input_layer, mean, sigma])
-
-    # ---
-    if symmetric:
-        x_abs, x_sign = \
-            tf.keras.layers.Lambda(func_abs_sign, trainable=False)(x_bn)
-        x_relu = \
-            differentiable_relu(
-                input_layer=x_abs,
-                threshold=threshold_sigma,
-                max_value=max_value)
-        x_result = \
-            tf.keras.layers.Multiply()([
-                x_relu,
-                x_sign,
-            ])
-    else:
-        x_result = \
-            differentiable_relu(
-                input_layer=x_bn,
-                threshold=threshold_sigma,
-                max_value=max_value)
+    # --- zero out values below the threshold
+    x_result = \
+        tf.keras.layers.Multiply()([
+            x_binary,
+            input_layer,
+        ])
 
     return x_result
 
