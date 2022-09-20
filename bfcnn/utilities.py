@@ -12,7 +12,7 @@ from typing import List, Tuple, Union, Dict, Iterable
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .constants import EPSILON_DEFAULT
+from .constants import DEFAULT_EPSILON
 from .activations import differentiable_relu, differentiable_relu_layer
 from .custom_layers import Multiplier, RandomOnOff, ChannelwiseMultiplier
 
@@ -295,7 +295,7 @@ def learnable_per_channel_multiplier_layer(
         kernel = np.zeros(shape)
         for i in range(shape[2]):
             kernel[:, :, i, 0] = \
-                np.random.normal(scale=EPSILON_DEFAULT, loc=0.0)
+                np.random.normal(scale=DEFAULT_EPSILON, loc=0.0)
         return kernel
     x = \
         tf.keras.layers.DepthwiseConv2D(
@@ -363,7 +363,7 @@ def mean_variance_local(
 def mean_sigma_local(
         input_layer,
         kernel_size: Tuple[int, int] = (5, 5),
-        epsilon: float = EPSILON_DEFAULT):
+        epsilon: float = DEFAULT_EPSILON):
     """
     calculate window mean per channel and window sigma per channel
 
@@ -388,7 +388,7 @@ def mean_sigma_local(
 def mean_sigma_global(
         input_layer,
         axis: List[int] = [1, 2, 3],
-        sigma_epsilon: float = EPSILON_DEFAULT):
+        sigma_epsilon: float = DEFAULT_EPSILON):
     """
     Create a global mean sigma per channel
 

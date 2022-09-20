@@ -38,8 +38,8 @@ def snr(
     d_prediction = tf.reduce_sum(prediction, axis=[1, 2, 3])
     # mean over batch
     result = \
-        (tf.reduce_mean(d_prediction, axis=[0]) + EPSILON_DEFAULT) / \
-        (tf.reduce_mean(d_2, axis=[0]) + EPSILON_DEFAULT)
+        (tf.reduce_mean(d_prediction, axis=[0]) + DEFAULT_EPSILON) / \
+        (tf.reduce_mean(d_2, axis=[0]) + DEFAULT_EPSILON)
     return multiplier * tf.math.log(result) / tf.math.log(base)
 
 
@@ -63,7 +63,7 @@ def mae_weighted_delta(
             kernel_size=5,
             alpha=1.0,
             beta=1.0,
-            eps=EPSILON_DEFAULT)
+            eps=DEFAULT_EPSILON)
 
     d_weight = \
         original_delta / \
@@ -71,7 +71,7 @@ def mae_weighted_delta(
             input_tensor=original_delta,
             axis=[1, 2],
             keepdims=True)) +
-         EPSILON_DEFAULT)
+         DEFAULT_EPSILON)
     d_weight = tf.abs(d_weight)
 
     # --- calculate hinged absolute diff
@@ -197,7 +197,7 @@ def nae(
     # mean over batch
     loss = \
         tf.reduce_mean(d, axis=[0]) / \
-        (tf.reduce_mean(d_x, axis=[0]) + EPSILON_DEFAULT)
+        (tf.reduce_mean(d_x, axis=[0]) + DEFAULT_EPSILON)
     return loss
 
 
@@ -254,7 +254,7 @@ def loss_function_builder(
         nae_noise = nae(input_batch, noisy_batch)
         nae_prediction = nae(input_batch, prediction_batch)
         nae_improvement = \
-            (nae_noise + EPSILON_DEFAULT) / (nae_prediction + EPSILON_DEFAULT)
+            (nae_noise + DEFAULT_EPSILON) / (nae_prediction + DEFAULT_EPSILON)
 
         # --- regularization error
         regularization_loss = tf.add_n(model_losses)

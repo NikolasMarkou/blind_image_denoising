@@ -7,9 +7,10 @@ from typing import List, Tuple, Union, Dict, Iterable
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .model_resnet import resnet_blocks
 from .custom_layers import Multiplier
+from .model_resnet import resnet_blocks
 from .utilities import conv2d_wrapper, mean_sigma_local
+from .constants import DEFAULT_BN_EPSILON, DEFAULT_BN_MOMENTUM
 
 # ---------------------------------------------------------------------
 
@@ -179,8 +180,8 @@ def build_model_lunet(
     bn_params = dict(
         center=use_bias,
         scale=True,
-        momentum=0.999,
-        epsilon=1e-4
+        momentum=DEFAULT_BN_MOMENTUM,
+        epsilon=DEFAULT_BN_EPSILON
     )
 
     gate_params = dict(

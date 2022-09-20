@@ -16,7 +16,7 @@ import tensorflow as tf
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .constants import EPSILON_DEFAULT
+from .constants import DEFAULT_EPSILON
 
 # ---------------------------------------------------------------------
 
@@ -154,7 +154,7 @@ def delta_xy_magnitude(
         kernel_size: int = 3,
         alpha: float = 1.0,
         beta: float = 1.0,
-        eps: float = EPSILON_DEFAULT):
+        eps: float = DEFAULT_EPSILON):
     """
     Computes the delta loss of a layer
     (alpha * (dI/dx)^2 + beta * (dI/dy)^2) ^ 0.5
@@ -184,7 +184,7 @@ def delta_loss(
         kernel_size: int = 3,
         alpha: float = 1.0,
         beta: float = 1.0,
-        eps: float = EPSILON_DEFAULT,
+        eps: float = DEFAULT_EPSILON,
         axis: List[int] = [1, 2, 3]):
     """
     Computes the delta loss of a layer

@@ -12,9 +12,9 @@ from typing import List, Tuple, Union, Dict, Iterable
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .constants import EPSILON_DEFAULT
 from .model_resnet import resnet_blocks
 from .custom_layers import Multiplier, RandomOnOff
+from .constants import DEFAULT_BN_EPSILON, DEFAULT_BN_MOMENTUM
 from .activations import differentiable_relu, differentiable_relu_layer
 from .utilities import \
     sparse_block, \
@@ -175,8 +175,8 @@ def build_model_unet(
     bn_params = dict(
         center=use_bias,
         scale=True,
-        momentum=0.999,
-        epsilon=1e-4
+        momentum=DEFAULT_BN_MOMENTUM,
+        epsilon=DEFAULT_BN_EPSILON
     )
 
     # this make it 68% sparse

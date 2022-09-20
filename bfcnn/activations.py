@@ -12,7 +12,7 @@ from typing import List, Tuple, Union, Dict, Iterable
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .constants import EPSILON_DEFAULT
+from .constants import DEFAULT_EPSILON
 from .custom_layers import Multiplier, RandomOnOff
 
 # ---------------------------------------------------------------------
