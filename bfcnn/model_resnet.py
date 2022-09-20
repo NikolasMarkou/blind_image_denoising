@@ -99,9 +99,18 @@ def resnet_blocks(
         x = conv2d_wrapper(input_layer=x,
                            conv_params=third_conv_params,
                            bn_params=bn_params,
-                           channelwise_scaling=channelwise_scaling)
+                           channelwise_scaling=False)
         if use_sparsity:
             x = sparse_block(x, **sparse_params)
+        # learn the proper scale of the previous layer
+        if channelwise_scaling:
+            # add a very small l1 penalty
+            x = \
+                ChannelwiseMultiplier(
+                    multiplier=1.0,
+                    regularizer=keras.regularizers.L1(1e-6),
+                    trainable=True,
+                    activation="linear")(x)
         # compute activation per channel
         if use_gate:
             y = tf.keras.layers.GlobalAveragePooling2D()(x)
