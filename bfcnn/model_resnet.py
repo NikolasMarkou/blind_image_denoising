@@ -36,6 +36,7 @@ def resnet_blocks(
         third_conv_params: Dict,
         bn_params: Dict = None,
         gate_params: Dict = None,
+        sparse_params: Dict = None,
         dropout_params: Dict = None,
         multiplier_params: Dict = None,
         channelwise_scaling: bool = False,
@@ -49,10 +50,12 @@ def resnet_blocks(
     :param second_conv_params: the parameters of the middle conv
     :param third_conv_params: the parameters of the third conv
     :param bn_params: batch normalization parameters
+    :param sparse_params: sparse parameters
     :param gate_params: gate optional parameters
     :param dropout_params: dropout optional parameters
     :param multiplier_params: learnable optional parameters
-:param channelwise_scaling: if True add a learnable point-wise depthwise scaling conv2d
+    :param channelwise_scaling: if True add a learnable point-wise depthwise scaling conv2d
+
     :return: filtered input_layer
     """
     # --- argument check
@@ -60,9 +63,9 @@ def resnet_blocks(
         raise ValueError("input_layer must be none")
     if no_layers < 0:
         raise ValueError("no_layers must be >= 0")
-    use_bn = bn_params is not None
     use_gate = gate_params is not None
     use_dropout = dropout_params is not None
+    use_sparsity = sparse_params is not None
     use_multiplier = multiplier_params is not None
 
     elementwise_params = dict(
@@ -97,6 +100,9 @@ def resnet_blocks(
                            conv_params=third_conv_params,
                            bn_params=bn_params,
                            channelwise_scaling=channelwise_scaling)
+        if use_sparsity:
+            x = sparse_block(x, **sparse_params)
+
         # compute activation per channel
         if use_gate:
             y = tf.keras.layers.GlobalAveragePooling2D()(x)
@@ -277,6 +283,7 @@ def build_model_resnet(
 
     resnet_params = dict(
         bn_params=None,
+        sparse_params=None,
         no_layers=no_layers,
         channelwise_scaling=channelwise_scaling,
         first_conv_params=first_conv_params,
@@ -289,7 +296,7 @@ def build_model_resnet(
 
     # make it linear so it gets sparse afterwards
     if add_sparsity:
-        base_conv_params["activation"] = "linear"
+        resnet_params["sparse_params"] = sparse_params
 
     if add_gates:
         resnet_params["gate_params"] = gate_params
@@ -323,16 +330,6 @@ def build_model_resnet(
             bn_params=None,
             conv_params=base_conv_params,
             channelwise_scaling=channelwise_scaling)
-
-    if add_sparsity:
-        x = \
-            sparse_block(
-                input_layer=x,
-                bn_params=None,
-                **sparse_params)
-
-    # if use_bn:
-    #     x = tf.keras.layers.BatchNormalization(**bn_params)(x)
 
     # add resnet blocks
     x = \

@@ -435,9 +435,12 @@ def sparse_block(
     if threshold_sigma < 0:
         raise ValueError("threshold_sigma must be >= 0")
 
+    x = input_layer
+
     # --- batch normalization
     x_bn = \
-        tf.keras.layers.BatchNormalization()(input_layer)
+        tf.keras.layers.BatchNormalization(
+            center=False)(x)
 
     # --- threshold based on normalization
     # keep only positive above threshold
@@ -448,7 +451,7 @@ def sparse_block(
     x_result = \
         tf.keras.layers.Multiply()([
             x_binary,
-            input_layer,
+            x,
         ])
 
     return x_result
