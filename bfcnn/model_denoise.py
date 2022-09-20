@@ -81,6 +81,7 @@ def model_builder(
     clip_values = config.get("clip_values", False)
     add_final_bn = config.get("add_final_bn", True)
     shared_model = config.get("shared_model", False)
+    add_sparsity = config.get("add_sparsity", False)
     add_laplacian = config.get("add_laplacian", True)
     add_concat_input = config.get("add_concat_input", False)
     input_shape = config.get("input_shape", (None, None, 3))
@@ -131,13 +132,13 @@ def model_builder(
         add_var=add_var,
         filters=filters,
         use_bn=batchnorm,
-        add_sparsity=False,
         no_levels=no_levels,
         no_layers=no_layers,
         add_gates=add_gates,
         activation=activation,
         input_dims=input_shape,
         kernel_size=kernel_size,
+        add_sparsity=add_sparsity,
         dropout_rate=dropout_rate,
         add_final_bn=add_final_bn,
         add_laplacian=add_laplacian,
