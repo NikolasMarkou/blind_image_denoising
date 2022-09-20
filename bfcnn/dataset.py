@@ -67,8 +67,8 @@ def dataset_builder(
     # quantization value, -1 disabled, otherwise 2, 4, 8
     quantization = tf.constant(config.get("quantization", -1))
     # min/max scale
-    min_scale = tf.constant(config.get("min_scale", 0.1))
-    max_scale = tf.constant(config.get("max_scale", 0.9))
+    min_scale = tf.constant(config.get("min_scale", 0.25))
+    max_scale = tf.constant(config.get("max_scale", 1.0))
     # whether to crop or not
     random_crop = dataset_shape[0][0:2] != input_shape[0:2]
     random_crop = tf.constant(random_crop)
@@ -121,6 +121,8 @@ def dataset_builder(
 
     else:
         raise ValueError("don't know how to handle non directory datasets")
+
+    tf.random.set_seed(0)
 
     def input_batch_augmentations(input_batch):
         input_shape_inference = tf.shape(input_batch)
