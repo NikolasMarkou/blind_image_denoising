@@ -335,6 +335,9 @@ def build_model_resnet(
                 bn_params=None,
                 **sparse_params)
 
+    if use_bn:
+        x = tf.keras.layers.BatchNormalization(**bn_params)(x)
+
     # add resnet blocks
     x = \
         resnet_blocks(
