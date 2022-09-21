@@ -165,7 +165,7 @@ class ChannelwiseMultiplier(tf.keras.layers.Layer):
         super(ChannelwiseMultiplier, self).build(input_shape)
 
     def call(self, inputs):
-        return self._activation(self._w0 * self._w1) * inputs
+        return self._activation(self._w0 + self._w1) * inputs
 
     def get_config(self):
         return {
