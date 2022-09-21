@@ -25,6 +25,50 @@ LAMBDA_COEFFICIENT_STR = "lambda_coefficient"
 REGULARIZER_ALLOWED_TYPES = \
     Union[str, Dict, keras.regularizers.Regularizer]
 
+
+# ---------------------------------------------------------------------
+
+
+def reshape_to_2d(x):
+    # --- get weights rank
+    x_rank = tf.rank(x)
+
+    # --- reshape to 2d matrix
+    if x_rank == 2:
+        # dense matrix
+        x_reshaped = \
+            tf.transpose(
+                x, perm=(1, 0))
+    elif x_rank == 4:
+        # cnn kernel
+        x_transpose = \
+            tf.transpose(
+                x, perm=(3, 0, 1, 2))
+        x_reshaped = \
+            tf.reshape(
+                x_transpose,
+                shape=(tf.shape(x_transpose)[0], -1))
+    else:
+        raise ValueError(f"don't know how to handle shape [{x.shape}]")
+    return x_reshaped
+
+
+# ---------------------------------------------------------------------
+
+
+def wt_x_w(weights):
+    # --- reshape
+    wt = reshape_to_2d(weights)
+
+    # --- compute (Wt * W)
+    wt_w = \
+        tf.linalg.matmul(
+            wt,
+            tf.transpose(wt, perm=(1, 0)))
+
+    return wt_w
+
+
 # ---------------------------------------------------------------------
 
 
@@ -56,43 +100,6 @@ class RegularizationType(Enum):
     def to_string(self) -> str:
         return self.name
 
-# ---------------------------------------------------------------------
-
-
-def reshape_to_2d(x):
-    # --- argument checking
-    if x is None:
-        raise ValueError("input cannot be empty")
-
-    # --- reshape to 2d matrix
-    if len(x.shape) == 2:
-        x_reshaped = x
-    elif len(x.shape) == 4:
-        # reshape x which is 4d to 2d
-        x_transpose = tf.transpose(x, perm=(3, 0, 1, 2))
-        x_reshaped = \
-            tf.reshape(
-                x_transpose,
-                shape=(tf.shape(x_transpose)[0], -1))
-    else:
-        raise ValueError(f"don't know how to handle shape [{x.shape}]")
-    return x_reshaped
-
-
-# ---------------------------------------------------------------------
-
-
-def wt_x_w(weights):
-    # --- reshape
-    weights = reshape_to_2d(weights)
-
-    # --- compute (Wt * W) - I
-    wt_w = \
-        tf.linalg.matmul(
-            weights,
-            tf.transpose(weights, perm=(1, 0)))
-
-    return wt_w
 
 # ---------------------------------------------------------------------
 
@@ -110,11 +117,11 @@ class SoftOrthonormalConstraintRegularizer(keras.regularizers.Regularizer):
     def __init__(self,
                  lambda_coefficient: float = 1.0,
                  l1_coefficient: float = 0.001):
-        self._lambda_coefficient = lambda_coefficient
-        self._l1_coefficient = l1_coefficient
+        self._lambda_coefficient = tf.constant(lambda_coefficient)
+        self._l1_coefficient = tf.constant(l1_coefficient)
 
     def __call__(self, x):
-        # --- compute (Wt * W) - I
+        # --- compute (Wt * W)
         wt_w = wt_x_w(x)
 
         # frobenius norm
@@ -130,8 +137,8 @@ class SoftOrthonormalConstraintRegularizer(keras.regularizers.Regularizer):
 
     def get_config(self):
         return {
-            L1_COEFFICIENT_STR: self._l1_coefficient,
-            LAMBDA_COEFFICIENT_STR: self._lambda_coefficient
+            L1_COEFFICIENT_STR: self._l1_coefficient.numpy(),
+            LAMBDA_COEFFICIENT_STR: self._lambda_coefficient.numpy()
         }
 
 
@@ -152,18 +159,13 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
     def __init__(self,
                  lambda_coefficient: float = 1.0,
                  l1_coefficient: float = 0.001):
-        self._lambda_coefficient = lambda_coefficient
-        self._l1_coefficient = l1_coefficient
+        self._lambda_coefficient = tf.constant(lambda_coefficient)
+        self._l1_coefficient = tf.constant(l1_coefficient)
 
     def __call__(self, x):
-        # --- reshape
-        x = reshape_to_2d(x)
-
         # --- compute (Wt * W)
-        wt_w = \
-            tf.linalg.matmul(
-                tf.transpose(x, perm=(1, 0)),
-                x)
+        wt_w = wt_x_w(x)
+
         # mask diagonal
         shape = tf.shape(wt_w)[0]
         wt_w_i = tf.eye(shape)
@@ -184,8 +186,8 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
 
     def get_config(self):
         return {
-            L1_COEFFICIENT_STR: self._l1_coefficient,
-            LAMBDA_COEFFICIENT_STR: self._lambda_coefficient
+            L1_COEFFICIENT_STR: self._l1_coefficient.numpy(),
+            LAMBDA_COEFFICIENT_STR: self._lambda_coefficient.numpy()
         }
 
 
