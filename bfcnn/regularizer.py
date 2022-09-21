@@ -4,7 +4,6 @@ blocks and builders for custom regularizers
 
 # ---------------------------------------------------------------------
 
-import numpy as np
 from enum import Enum
 import tensorflow as tf
 from tensorflow import keras
@@ -29,28 +28,25 @@ REGULARIZER_ALLOWED_TYPES = \
 # ---------------------------------------------------------------------
 
 
-def reshape_to_2d(x):
-    # --- get weights rank
-    x_rank = tf.rank(x)
+def reshape_to_2d(weights):
+    def fn_2d(w):
+        return \
+            tf.transpose(
+                w, perm=(1, 0))
 
-    # --- reshape to 2d matrix
-    if x_rank == 2:
-        # dense matrix
-        x_reshaped = \
+    def fn_4d(w):
+        w_t = \
             tf.transpose(
-                x, perm=(1, 0))
-    elif x_rank == 4:
-        # cnn kernel
-        x_transpose = \
-            tf.transpose(
-                x, perm=(3, 0, 1, 2))
-        x_reshaped = \
+                w, perm=(3, 0, 1, 2))
+        return \
             tf.reshape(
-                x_transpose,
-                shape=(tf.shape(x_transpose)[0], -1))
-    else:
-        raise ValueError(f"don't know how to handle shape [{x.shape}]")
-    return x_reshaped
+                w_t,
+                shape=(tf.shape(w_t)[0], -1))
+    return \
+        tf.cond(
+            tf.rank(weights) == tf.constant(2),
+            true_fn=lambda: fn_2d(weights),
+            false_fn=lambda: fn_4d(weights))
 
 
 # ---------------------------------------------------------------------

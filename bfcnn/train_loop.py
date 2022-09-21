@@ -162,7 +162,7 @@ def train_loop(
             prune_config.get("steps", -1),
             dtype=tf.dtypes.int64,
             name="prune_steps")
-    prune_strategies = prune_config["strategies"]
+    prune_strategies = prune_config.get("strategies", None)
     if prune_strategies is None:
         use_prune = False
     elif isinstance(prune_strategies, list):
