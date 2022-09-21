@@ -10,7 +10,7 @@
     "batchnorm": true,
     "activation": "relu",
     "add_gates": false,
-    "add_sparsity": true,
+    "add_sparsity": false,
     "clip_values": false,
     "shared_model": false,
     "add_final_bn": false,
