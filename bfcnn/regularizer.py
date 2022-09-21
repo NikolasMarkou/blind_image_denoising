@@ -56,8 +56,8 @@ class RegularizationType(Enum):
     def to_string(self) -> str:
         return self.name
 
-
 # ---------------------------------------------------------------------
+
 
 def reshape_to_2d(x):
     # --- argument checking
@@ -82,6 +82,21 @@ def reshape_to_2d(x):
 # ---------------------------------------------------------------------
 
 
+def wt_x_w(weights):
+    # --- reshape
+    weights = reshape_to_2d(weights)
+
+    # --- compute (Wt * W) - I
+    wt_w = \
+        tf.linalg.matmul(
+            weights,
+            tf.transpose(weights, perm=(1, 0)))
+
+    return wt_w
+
+# ---------------------------------------------------------------------
+
+
 class SoftOrthonormalConstraintRegularizer(keras.regularizers.Regularizer):
     """
     Implements the soft orthogonality constraint as described in
@@ -99,14 +114,8 @@ class SoftOrthonormalConstraintRegularizer(keras.regularizers.Regularizer):
         self._l1_coefficient = l1_coefficient
 
     def __call__(self, x):
-        # --- reshape
-        x = reshape_to_2d(x)
-
         # --- compute (Wt * W) - I
-        wt_w = \
-            tf.linalg.matmul(
-                tf.transpose(x, perm=(1, 0)),
-                x)
+        wt_w = wt_x_w(x)
 
         # frobenius norm
         return \
