@@ -12,7 +12,10 @@ from typing import List, Tuple, Union, Dict, Iterable
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .constants import DEFAULT_BN_EPSILON, DEFAULT_BN_MOMENTUM
+from .constants import \
+    DEFAULT_BN_EPSILON, \
+    DEFAULT_BN_MOMENTUM, \
+    DEFAULT_CHANNELWISE_MULTIPLIER_L1
 from .custom_layers import \
     Multiplier, \
     RandomOnOff, \
@@ -108,7 +111,7 @@ def resnet_blocks(
             x = \
                 ChannelwiseMultiplier(
                     multiplier=1.0,
-                    regularizer=keras.regularizers.L1(1e-6),
+                    regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
                     trainable=True,
                     activation="linear")(x)
         # compute activation per channel

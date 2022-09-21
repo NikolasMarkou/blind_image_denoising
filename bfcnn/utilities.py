@@ -12,8 +12,8 @@ from typing import List, Tuple, Union, Dict, Iterable
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .constants import DEFAULT_EPSILON
 from .activations import differentiable_relu, differentiable_relu_layer
+from .constants import DEFAULT_EPSILON, DEFAULT_CHANNELWISE_MULTIPLIER_L1
 from .custom_layers import Multiplier, RandomOnOff, ChannelwiseMultiplier
 
 # ---------------------------------------------------------------------
@@ -224,11 +224,10 @@ def conv2d_wrapper(
     x = tf.keras.layers.Conv2D(**conv_params)(x)
     # learn the proper scale of the previous layer
     if channelwise_scaling:
-        # add a very small l1 penalty
         x = \
             ChannelwiseMultiplier(
                 multiplier=1.0,
-                regularizer=keras.regularizers.L1(1e-6),
+                regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
                 trainable=True,
                 activation="linear")(x)
     return x
