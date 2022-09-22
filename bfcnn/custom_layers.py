@@ -169,7 +169,7 @@ class ChannelwiseMultiplier(tf.keras.layers.Layer):
 
         self._w1 = \
             self.add_weight(
-                shape=input_shape[-1],
+                shape=[1],
                 trainable=False,
                 name="w1",
                 initializer=init_w1_fn,
