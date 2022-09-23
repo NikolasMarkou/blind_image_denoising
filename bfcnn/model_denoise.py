@@ -26,6 +26,7 @@ from .utilities import \
 from .model_unet import build_model_unet
 from .model_lunet import build_model_lunet
 from .model_resnet import build_model_resnet
+from .custom_layers import ChannelwiseMultiplier, Multiplier
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
@@ -80,6 +81,8 @@ def model_builder(
     clip_values = config.get("clip_values", False)
     add_final_bn = config.get("add_final_bn", True)
     shared_model = config.get("shared_model", False)
+    add_sparsity = config.get("add_sparsity", False)
+    add_laplacian = config.get("add_laplacian", True)
     add_concat_input = config.get("add_concat_input", False)
     input_shape = config.get("input_shape", (None, None, 3))
     output_multiplier = config.get("output_multiplier", 1.0)
@@ -87,6 +90,7 @@ def model_builder(
     final_activation = config.get("final_activation", "linear")
     kernel_regularizer = config.get("kernel_regularizer", "l1")
     add_skip_with_input = config.get("add_skip_with_input", True)
+    channelwise_scaling = config.get("channelwise_scaling", False)
     add_intermediate_results = config.get("intermediate_results", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     add_learnable_multiplier = config.get("add_learnable_multiplier", False)
@@ -128,17 +132,19 @@ def model_builder(
         add_var=add_var,
         filters=filters,
         use_bn=batchnorm,
-        add_sparsity=False,
         no_levels=no_levels,
         no_layers=no_layers,
         add_gates=add_gates,
         activation=activation,
         input_dims=input_shape,
         kernel_size=kernel_size,
+        add_sparsity=add_sparsity,
         dropout_rate=dropout_rate,
         add_final_bn=add_final_bn,
+        add_laplacian=add_laplacian,
         add_concat_input=add_concat_input,
         final_activation=final_activation,
+        channelwise_scaling=channelwise_scaling,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
         add_skip_with_input=add_skip_with_input,
@@ -153,10 +159,6 @@ def model_builder(
         model_builder_fn = build_model_lunet
     elif model_type == "resnet":
         model_builder_fn = build_model_resnet
-        model_params["add_sparsity"] = False
-    elif model_type == "sparse_resnet":
-        model_builder_fn = build_model_resnet
-        model_params["add_sparsity"] = True
     else:
         raise ValueError(
             "don't know how to build model [{0}]".format(model_type))
@@ -269,30 +271,65 @@ def model_builder(
         ]
 
     # --- add residual between models
-    # speeds up training a lot, and better results
+    # speeds up training a lot, and better results (but adds artifacts)
     if add_residual_between_models:
         previous_level = None
         current_level_output = None
         for i, x_level in reversed(list(enumerate(x_levels))):
             if previous_level is None:
                 current_level_output = denoise_models[i](x_level)
+                if shared_model and len(x_levels) > 1:
+                    current_level_output = \
+                        Multiplier(
+                            multiplier=1.0,
+                            trainable=True,
+                            regularizer=None,
+                            activation="linear")(current_level_output)
                 previous_level = current_level_output
             else:
                 previous_level = \
                     keras.layers.UpSampling2D(
                         size=(2, 2),
                         interpolation="bilinear")(previous_level)
+                # stop the signal to propagate
+                previous_level = tf.stop_gradient(previous_level)
                 current_level_input = \
-                    keras.layers.Add()(
-                        [previous_level, x_level])
-                current_level_output = denoise_models[i](current_level_input)
+                    keras.layers.Add()([previous_level, x_level])
+                current_level_input_down = \
+                    keras.layers.AveragePooling2D(
+                        pool_size=kernel_size,
+                        strides=(2, 2),
+                        padding="same")(current_level_input)
+                current_level_input_smoothed = \
+                    keras.layers.UpSampling2D(
+                        size=(2, 2),
+                        interpolation="bilinear")(current_level_input_down)
+                current_level_input = \
+                    current_level_input - current_level_input_smoothed
+                current_level_output = \
+                    denoise_models[i](current_level_input)
+                if shared_model and len(x_levels) > 1:
+                    current_level_output = \
+                        Multiplier(
+                            multiplier=1.0,
+                            trainable=True,
+                            regularizer=None,
+                            activation="linear")(current_level_output)
                 previous_level = \
                     keras.layers.Add()(
                         [previous_level, current_level_output])
             x_levels[i] = current_level_output
     else:
         for i, x_level in enumerate(x_levels):
-            x_levels[i] = denoise_models[i](x_level)
+            x_level_tmp = denoise_models[i](x_level)
+            if shared_model and len(x_levels) > 1:
+                x_level_tmp = \
+                    Multiplier(
+                        multiplier=1.0,
+                        trainable=True,
+                        regularizer=None,
+                        activation="linear")(x_level_tmp)
+            x_levels[i] = x_level_tmp
 
     # --- split intermediate results and actual results
     x_levels_intermediate = []

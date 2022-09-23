@@ -26,6 +26,12 @@ from .pyramid import \
 from .optimizer import \
     schedule_builder, \
     optimizer_builder
+from .custom_layers import \
+    GeluLayer, \
+    RandomOnOff, \
+    Multiplier, \
+    DifferentiableReluLayer, \
+    ChannelwiseMultiplier
 
 # ---------------------------------------------------------------------
 

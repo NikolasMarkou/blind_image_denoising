@@ -51,7 +51,8 @@ def visualize(
         noisy_batch,
         prediction_batch,
         random_batch=None,
-        test_batch=None,
+        test_input_batch=None,
+        test_output_batch=None,
         visualization_number: int = 3):
     """
     Prepare images and add them to tensorboard
@@ -89,11 +90,17 @@ def visualize(
             max_outputs=visualization_number)
 
     # --- test
-    if test_batch is not None:
+    if test_input_batch is not None:
         tf.summary.image(
-            name="test",
+            name="test_input",
             step=global_step,
-            data=test_batch / 255,
+            data=test_input_batch / 255,
+            max_outputs=visualization_number)
+    if test_output_batch is not None:
+        tf.summary.image(
+            name="test_output",
+            step=global_step,
+            data=test_output_batch / 255,
             max_outputs=visualization_number)
 
 # ---------------------------------------------------------------------

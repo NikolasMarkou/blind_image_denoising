@@ -12,9 +12,9 @@ from typing import List, Tuple, Union, Dict, Iterable
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .constants import EPSILON_DEFAULT
-from .custom_layers import TrainableMultiplier, RandomOnOff
 from .activations import differentiable_relu, differentiable_relu_layer
+from .constants import DEFAULT_EPSILON, DEFAULT_CHANNELWISE_MULTIPLIER_L1
+from .custom_layers import Multiplier, RandomOnOff, ChannelwiseMultiplier
 
 # ---------------------------------------------------------------------
 
@@ -42,7 +42,7 @@ def load_image(
     x = tf.keras.preprocessing.image.img_to_array(x)
     x = np.array([x])
     if normalize:
-        x = ((x / 255.0) * 2.0) - 1.0
+        x = layer_normalize((x, 0.0, 255.0))
     return x
 
 # ---------------------------------------------------------------------
@@ -197,17 +197,15 @@ def conv2d_wrapper(
         input_layer,
         conv_params: Dict,
         bn_params: Dict = None,
-        zero_center_total: bool = False,
-        zero_center_channel: bool = False):
+        channelwise_scaling: bool = False):
     """
     wraps a conv2d with a preceding normalizer
 
     :param input_layer: the layer to operate on
     :param conv_params: conv2d parameters
     :param bn_params: batchnorm parameters, None to disable bn
-    :param zero_center_total: if True center the batch to zero mean
-    :param zero_center_channel: if True center each channel to zero mean
-    :return:
+    :param channelwise_scaling: if True add a learnable point-wise depthwise scaling conv2d at the end
+    :return: transformed input
     """
     # --- argument checking
     if input_layer is None:
@@ -220,13 +218,56 @@ def conv2d_wrapper(
 
     # --- perform the transformations
     x = input_layer
-    if zero_center_total:
-        x = x - tf.reduce_mean(x, axis=[1, 2, 3], keepdims=True)
-    if zero_center_channel:
-        x = x - tf.reduce_mean(x, axis=[1, 2], keepdims=True)
     if use_bn:
         x = tf.keras.layers.BatchNormalization(**bn_params)(x)
+    # ideally this should be orthonormal
     x = tf.keras.layers.Conv2D(**conv_params)(x)
+    # learn the proper scale of the previous layer
+    if channelwise_scaling:
+        x = \
+            ChannelwiseMultiplier(
+                multiplier=1.0,
+                regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
+                trainable=True,
+                activation="linear")(x)
+    return x
+
+# ---------------------------------------------------------------------
+
+
+def dense_wrapper(
+        input_layer,
+        dense_params: Dict,
+        bn_params: Dict = None,
+        elementwise_params: Dict = None):
+    """
+    wraps a dense layer with a preceding normalizer
+
+    :param input_layer: the layer to operate on
+    :param dense_params: dense parameters
+    :param bn_params: batchnorm parameters, None to disable bn
+    :param elementwise_params: if True add a learnable elementwise scaling
+    :return: transformed input
+    """
+    # --- argument checking
+    if input_layer is None:
+        raise ValueError("input_layer cannot be None")
+    if dense_params is None:
+        raise ValueError("dense_params cannot be None")
+
+    # --- prepare arguments
+    use_bn = bn_params is not None
+    use_elementwise = elementwise_params is not None
+
+    # --- perform the transformations
+    x = input_layer
+    if use_bn:
+        x = tf.keras.layers.BatchNormalization(**bn_params)(x)
+    # ideally this should be orthonormal
+    x = tf.keras.layers.Dense(**dense_params)(x)
+    # learn the proper scale of the previous layer
+    if use_elementwise:
+        x = ChannelwiseMultiplier(**elementwise_params)(x)
     return x
 
 # ---------------------------------------------------------------------
@@ -253,7 +294,7 @@ def learnable_per_channel_multiplier_layer(
         kernel = np.zeros(shape)
         for i in range(shape[2]):
             kernel[:, :, i, 0] = \
-                np.random.normal(scale=EPSILON_DEFAULT, loc=0.0)
+                np.random.normal(scale=DEFAULT_EPSILON, loc=0.0)
         return kernel
     x = \
         tf.keras.layers.DepthwiseConv2D(
@@ -321,7 +362,7 @@ def mean_variance_local(
 def mean_sigma_local(
         input_layer,
         kernel_size: Tuple[int, int] = (5, 5),
-        epsilon: float = EPSILON_DEFAULT):
+        epsilon: float = DEFAULT_EPSILON):
     """
     calculate window mean per channel and window sigma per channel
 
@@ -346,7 +387,7 @@ def mean_sigma_local(
 def mean_sigma_global(
         input_layer,
         axis: List[int] = [1, 2, 3],
-        sigma_epsilon: float = EPSILON_DEFAULT):
+        sigma_epsilon: float = DEFAULT_EPSILON):
     """
     Create a global mean sigma per channel
 
@@ -380,86 +421,38 @@ def mean_sigma_global(
 
 def sparse_block(
         input_layer,
-        bn_params: Dict = None,
-        threshold_sigma: float = 1.0,
-        max_value: float = None,
-        symmetric: bool = True,
-        per_channel_sparsity: bool = False):
+        threshold_sigma: float = 1.0):
     """
-    Create sparsity in an input layer
+    create sparsity in an input layer (keeps only positive)
 
     :param input_layer:
-    :param bn_params: batch norm parameters
-    :param threshold_sigma: sparsity of the results
-    :param max_value: max allowed value
-    :param symmetric: if true allow negative values else zero them off
-    :param per_channel_sparsity: if true perform sparsity on per channel level
+    :param threshold_sigma: sparsity of the results (0 -> 50% sparsity)
 
     :return: sparse results
     """
     # --- argument checking
     if threshold_sigma < 0:
         raise ValueError("threshold_sigma must be >= 0")
-    if max_value is not None and max_value < 0:
-        raise ValueError("max_value must be >= 0")
-    if max_value is not None and threshold_sigma > max_value:
-        raise ValueError("threshold_sigma must be <= max_value")
-    use_bn = bn_params is not None
 
-    # --- function building
-    def func_norm(args):
-        x, mean_x, sigma_x = args
-        return (x - mean_x) / sigma_x
+    x = input_layer
 
-    def func_abs_sign(args):
-        y = args
-        y_abs = tf.abs(y)
-        y_sign = tf.sign(y)
-        return y_abs, y_sign
+    # --- batch normalization
+    x_bn = \
+        tf.keras.layers.BatchNormalization(
+            center=False)(x)
 
-    # --- computation is relu((mean-x)/sigma) with custom threshold
-    # compute axis to perform mean/sigma calculation on
-    if use_bn:
-        # learnable model
-        x_bn = \
-            tf.keras.layers.BatchNormalization(
-                **bn_params)(input_layer)
-    else:
-        # not learnable model
-        shape = tf.keras.backend.int_shape(input_layer)
-        int_shape = len(shape)
-        k = 1
-        if per_channel_sparsity:
-            k = 2
-        axis = list([i + 1 for i in range(max(int_shape - k, 1))])
-        mean, sigma = \
-            mean_sigma_global(
-                input_layer,
-                axis=axis)
-        x_bn = \
-            tf.keras.layers.Lambda(func_norm, trainable=False)([
-                input_layer, mean, sigma])
+    # --- threshold based on normalization
+    # keep only positive above threshold
 
-    # ---
-    if symmetric:
-        x_abs, x_sign = \
-            tf.keras.layers.Lambda(func_abs_sign, trainable=False)(x_bn)
-        x_relu = \
-            differentiable_relu(
-                input_layer=x_abs,
-                threshold=threshold_sigma,
-                max_value=max_value)
-        x_result = \
-            tf.keras.layers.Multiply()([
-                x_relu,
-                x_sign,
-            ])
-    else:
-        x_result = \
-            differentiable_relu(
-                input_layer=x_bn,
-                threshold=threshold_sigma,
-                max_value=max_value)
+    x_binary = \
+        tf.nn.relu(tf.sign(x_bn - threshold_sigma))
+
+    # --- zero out values below the threshold
+    x_result = \
+        tf.keras.layers.Multiply()([
+            x_binary,
+            x,
+        ])
 
     return x_result
 

@@ -14,12 +14,12 @@
     "shared_model": false,
     "output_multiplier": 1.0,
     "local_normalization": -1,
-    "kernel_regularizer": "l1",
     "final_activation": "tanh",
     "add_skip_with_input": false,
     "add_residual_between_models": false,
     "input_shape": ["?", "?", 1],
-    "kernel_initializer": "glorot_normal"
+    "kernel_initializer": "glorot_normal",
+    "kernel_regularizer": "l1"
   },
   "train": {
     "epochs": 50,
@@ -55,17 +55,10 @@
     }
   },
   "loss": {
-    "hinge": 2.5,
+    "hinge": 2.0,
+    "cutoff": 255.0,
     "mae_multiplier": 1.0,
-    "regularization": 0.01,
-    "nae_multiplier": 10.0,
-    "input_shape": ["?", "?", 1],
-    "pyramid": {
-      "levels": 4,
-      "type": "gaussian",
-      "xy_max": [1.0, 1.0],
-      "kernel_size": [5, 5]
-    }
+    "regularization": 0.01
   },
   "dataset": {
     "batch_size": 16,

@@ -1,35 +1,31 @@
 {
   "model_denoise": {
     "filters": 16,
-    "no_layers": 10,
+    "no_layers": 12,
     "min_value": 0,
     "add_var": false,
     "max_value": 255,
     "kernel_size": 5,
     "type": "resnet",
     "batchnorm": true,
+    "activation": "relu",
     "add_gates": false,
-    "activation": "elu",
-    "clip_values": true,
-    "shared_model": true,
+    "clip_values": false,
+    "shared_model": false,
+    "add_final_bn": false,
     "output_multiplier": 1.0,
     "local_normalization": -1,
-    "kernel_regularizer": "l1",
     "final_activation": "tanh",
     "add_skip_with_input": false,
-    "add_residual_between_models": true,
+    "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
-    "pyramid": {
-      "levels": 3,
-      "type": "laplacian",
-      "xy_max": [1.0, 1.0],
-      "kernel_size": [3, 3]
-    }
+    "kernel_regularizer": "l1"
   },
-  "train": {
+   "train": {
     "epochs": 50,
     "total_steps": -1,
+    "use_test_images": true,
     "checkpoints_to_keep": 3,
     "checkpoint_every": 10000,
     "visualization_number": 4,
@@ -43,7 +39,7 @@
         "type": "exponential_decay",
         "config": {
           "decay_rate": 0.9,
-          "decay_steps": 20000,
+          "decay_steps": 40000,
           "learning_rate": 0.001
         }
       }
@@ -54,17 +50,17 @@
         "type": "minimum_threshold_shrinkage",
         "config": {
           "shrinkage": 0.75,
-          "minimum_threshold": 0.000005,
-          "shrinkage_threshold": 0.00001
+          "minimum_threshold":   0.00005,
+          "shrinkage_threshold": 0.0001
         }
       }]
     }
   },
   "loss": {
-    "hinge": 1.0,
+    "hinge": 2.0,
+    "cutoff": 255.0,
     "mae_multiplier": 1.0,
-    "regularization": 0.01,
-    "nae_multiplier": 10.0
+    "regularization": 0.01
   },
   "dataset": {
     "batch_size": 16,
@@ -86,7 +82,24 @@
       {
         "dataset_shape": [256, 768],
         "directory": "/media/data1_4tb/datasets/KITTI/data/depth/raw_image_values/"
+      },
+      {
+        "dataset_shape": [512, 512],
+        "directory": "/media/data1_4tb/datasets/Megadepth/"
+      },
+      {
+        "dataset_shape": [360, 640],
+        "directory": "/media/data1_4tb/datasets/bdd_data/train/"
+      },
+      {
+        "dataset_shape": [512, 512],
+        "directory": "/media/data1_4tb/datasets/WIDER/WIDER_train/"
+      },
+      {
+        "dataset_shape": [512, 512],
+        "directory": "/media/data1_4tb/datasets/WFLW/images/"
       }
     ]
   }
 }
+

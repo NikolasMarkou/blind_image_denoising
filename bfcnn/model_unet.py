@@ -12,9 +12,9 @@ from typing import List, Tuple, Union, Dict, Iterable
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .constants import EPSILON_DEFAULT
 from .model_resnet import resnet_blocks
-from .custom_layers import TrainableMultiplier, RandomOnOff
+from .custom_layers import Multiplier, RandomOnOff
+from .constants import DEFAULT_BN_EPSILON, DEFAULT_BN_MOMENTUM
 from .activations import differentiable_relu, differentiable_relu_layer
 from .utilities import \
     sparse_block, \
@@ -175,16 +175,13 @@ def build_model_unet(
     bn_params = dict(
         center=use_bias,
         scale=True,
-        momentum=0.999,
-        epsilon=1e-4
+        momentum=DEFAULT_BN_MOMENTUM,
+        epsilon=DEFAULT_BN_EPSILON
     )
 
     # this make it 68% sparse
     sparse_params = dict(
-        symmetric=True,
-        max_value=3.0,
         threshold_sigma=1.0,
-        per_channel_sparsity=False
     )
 
     base_conv_params = dict(
@@ -345,7 +342,7 @@ def build_model_unet(
         # learnable multiplier
         if add_learnable_multiplier:
             output_layer = \
-                TrainableMultiplier(**multiplier_params)(output_layer)
+                Multiplier(**multiplier_params)(output_layer)
 
         # cap it off to limit values
         output_layer = \

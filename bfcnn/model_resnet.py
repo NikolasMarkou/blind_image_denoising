@@ -12,11 +12,18 @@ from typing import List, Tuple, Union, Dict, Iterable
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .constants import EPSILON_DEFAULT
-from .custom_layers import TrainableMultiplier, RandomOnOff
+from .constants import \
+    DEFAULT_BN_EPSILON, \
+    DEFAULT_BN_MOMENTUM, \
+    DEFAULT_CHANNELWISE_MULTIPLIER_L1
+from .custom_layers import \
+    Multiplier, \
+    RandomOnOff, \
+    ChannelwiseMultiplier
 from .activations import differentiable_relu, differentiable_relu_layer
 from .utilities import \
     sparse_block, \
+    dense_wrapper, \
     conv2d_wrapper, \
     mean_sigma_local, \
     mean_sigma_global
@@ -32,8 +39,10 @@ def resnet_blocks(
         third_conv_params: Dict,
         bn_params: Dict = None,
         gate_params: Dict = None,
+        sparse_params: Dict = None,
         dropout_params: Dict = None,
         multiplier_params: Dict = None,
+        channelwise_scaling: bool = False,
         **kwargs):
     """
     Create a series of residual network blocks
@@ -44,9 +53,11 @@ def resnet_blocks(
     :param second_conv_params: the parameters of the middle conv
     :param third_conv_params: the parameters of the third conv
     :param bn_params: batch normalization parameters
+    :param sparse_params: sparse parameters
     :param gate_params: gate optional parameters
     :param dropout_params: dropout optional parameters
     :param multiplier_params: learnable optional parameters
+    :param channelwise_scaling: if True add a learnable point-wise depthwise scaling conv2d
 
     :return: filtered input_layer
     """
@@ -55,43 +66,63 @@ def resnet_blocks(
         raise ValueError("input_layer must be none")
     if no_layers < 0:
         raise ValueError("no_layers must be >= 0")
-    use_bn = bn_params is not None
     use_gate = gate_params is not None
     use_dropout = dropout_params is not None
+    use_sparsity = sparse_params is not None
     use_multiplier = multiplier_params is not None
 
-    def dense_wrapper():
-        return \
-            tf.keras.layers.Dense(
-                use_bias=False,
-                activation="relu",
-                units=third_conv_params["filters"],
-                kernel_regularizer=third_conv_params.get("kernel_regularizer", "l1"),
-                kernel_initializer=third_conv_params.get("kernel_initializer", "glorot_normal"))
+    elementwise_params = dict(
+        multiplier=1.0,
+        regularizer="l1",
+        activation="relu"
+    )
+
+    dense_params = dict(
+        use_bias=False,
+        activation="relu",
+        units=third_conv_params["filters"],
+        kernel_regularizer=third_conv_params.get("kernel_regularizer", "l1"),
+        kernel_initializer=third_conv_params.get("kernel_initializer", "glorot_normal")
+    )
 
     # --- setup resnet
     x = input_layer
 
-    if use_gate:
-        g = tf.keras.layers.GlobalAveragePooling2D()(input_layer)
-        if use_bn:
-            g = tf.keras.layers.BatchNormalization(**bn_params)(g)
-        g = dense_wrapper()(g)
-
     # --- create several number of residual blocks
     for i in range(no_layers):
         previous_layer = x
-        x = conv2d_wrapper(x, conv_params=first_conv_params, bn_params=bn_params)
-        x = conv2d_wrapper(x, conv_params=second_conv_params, bn_params=bn_params)
-        x = conv2d_wrapper(x, conv_params=third_conv_params, bn_params=bn_params)
+        x = conv2d_wrapper(input_layer=x,
+                           conv_params=first_conv_params,
+                           bn_params=None,
+                           channelwise_scaling=False)
+        x = conv2d_wrapper(input_layer=x,
+                           conv_params=second_conv_params,
+                           bn_params=bn_params,
+                           channelwise_scaling=False)
+        x = conv2d_wrapper(input_layer=x,
+                           conv_params=third_conv_params,
+                           bn_params=bn_params,
+                           channelwise_scaling=False)
+        if use_sparsity:
+            x = sparse_block(x, **sparse_params)
+        # learn the proper scale of the previous layer
+        if channelwise_scaling:
+            # add a very small l1 penalty
+            x = \
+                ChannelwiseMultiplier(
+                    multiplier=1.0,
+                    regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
+                    trainable=True,
+                    activation="linear")(x)
         # compute activation per channel
         if use_gate:
-            y0 = tf.keras.layers.GlobalAveragePooling2D()(x)
-            y0 = y0 * (1.0 - 0.9 * g)
-            if use_bn:
-                y0 = tf.keras.layers.BatchNormalization(**bn_params)(y0)
-            y = dense_wrapper()(y0)
-            g = g + y0
+            y = tf.keras.layers.GlobalAveragePooling2D()(x)
+            y = \
+                dense_wrapper(
+                    input_layer=y,
+                    bn_params=bn_params,
+                    dense_params=dense_params,
+                    elementwise_params=elementwise_params)
             # if x < -2.5: return 0
             # if x > 2.5: return 1
             # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
@@ -101,7 +132,7 @@ def resnet_blocks(
             x = tf.keras.layers.Multiply()([x, y])
         # optional multiplier
         if use_multiplier:
-            x = TrainableMultiplier(**multiplier_params)(x)
+            x = Multiplier(**multiplier_params)(x)
         if use_dropout:
             x = RandomOnOff(**dropout_params)(x)
         # skip connection
@@ -124,6 +155,7 @@ def build_model_resnet(
         kernel_initializer="glorot_normal",
         channel_index: int = 2,
         dropout_rate: float = -1,
+        channelwise_scaling: bool = False,
         add_skip_with_input: bool = True,
         add_sparsity: bool = False,
         add_gates: bool = False,
@@ -150,6 +182,7 @@ def build_model_resnet(
     :param use_bias: use bias
     :param kernel_regularizer: Kernel weight regularizer
     :param kernel_initializer: Kernel weight initializer
+    :param channelwise_scaling: if True for each full convolutional kernel add a scaling depthwise
     :param add_skip_with_input: if true skip with input
     :param add_sparsity: if true add sparsity layer
     :param add_gates: if true add gate layer
@@ -170,16 +203,13 @@ def build_model_resnet(
     bn_params = dict(
         center=use_bias,
         scale=True,
-        momentum=0.999,
-        epsilon=1e-4
+        momentum=DEFAULT_BN_MOMENTUM,
+        epsilon=DEFAULT_BN_EPSILON
     )
 
     # this make it 68% sparse
     sparse_params = dict(
-        symmetric=True,
-        max_value=3.0,
         threshold_sigma=1.0,
-        per_channel_sparsity=False
     )
 
     base_conv_params = dict(
@@ -187,7 +217,7 @@ def build_model_resnet(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation="linear",
+        activation=activation,
         kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
@@ -234,7 +264,7 @@ def build_model_resnet(
         padding="same",
         use_bias=use_bias,
         # this must be the same as the base
-        activation="linear",
+        activation=activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -264,7 +294,9 @@ def build_model_resnet(
 
     resnet_params = dict(
         bn_params=None,
+        sparse_params=None,
         no_layers=no_layers,
+        channelwise_scaling=channelwise_scaling,
         first_conv_params=first_conv_params,
         second_conv_params=second_conv_params,
         third_conv_params=third_conv_params,
@@ -275,7 +307,7 @@ def build_model_resnet(
 
     # make it linear so it gets sparse afterwards
     if add_sparsity:
-        base_conv_params["activation"] = "linear"
+        resnet_params["sparse_params"] = sparse_params
 
     if add_gates:
         resnet_params["gate_params"] = gate_params
@@ -303,14 +335,12 @@ def build_model_resnet(
         x = tf.keras.layers.Concatenate()([x, x_var])
 
     # add base layer
-    x = tf.keras.layers.Conv2D(**base_conv_params)(x)
-
-    if add_sparsity:
-        x = \
-            sparse_block(
-                input_layer=x,
-                bn_params=None,
-                **sparse_params)
+    x = \
+        conv2d_wrapper(
+            input_layer=x,
+            bn_params=None,
+            conv_params=base_conv_params,
+            channelwise_scaling=channelwise_scaling)
 
     # add resnet blocks
     x = \
@@ -336,13 +366,16 @@ def build_model_resnet(
     # --- output to original channels / projection
     if add_projection_to_input:
         output_layer = \
-            tf.keras.layers.Conv2D(
-                **final_conv_params)(output_layer)
+            conv2d_wrapper(
+                input_layer=output_layer,
+                bn_params=None,
+                conv_params=final_conv_params,
+                channelwise_scaling=channelwise_scaling)
 
         # learnable multiplier
         if add_learnable_multiplier:
             output_layer = \
-                TrainableMultiplier(**multiplier_params)(output_layer)
+                Multiplier(**multiplier_params)(output_layer)
 
         # cap it off to limit values
         output_layer = \

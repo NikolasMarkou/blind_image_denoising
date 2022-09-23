@@ -10,6 +10,8 @@ __license__ = "MIT"
 
 import os
 import time
+
+import numpy as np
 import tensorflow as tf
 from pathlib import Path
 from typing import Union, Dict
@@ -21,9 +23,9 @@ from typing import Union, Dict
 from .constants import *
 from .visualize import visualize
 from .custom_logger import logger
-from .utilities import load_config
 from .loss import loss_function_builder
 from .optimizer import optimizer_builder
+from .utilities import load_config, load_image
 from .model_denoise import model_builder as model_denoise_builder
 from .pruning import prune_function_builder, PruneStrategy, get_conv2d_weights
 from .dataset import \
@@ -31,7 +33,9 @@ from .dataset import \
     DATASET_TESTING_FN_STR, \
     DATASET_FN_STR, \
     AUGMENTATION_FN_STR
+# ---------------------------------------------------------------------
 
+CURRENT_DIRECTORY = os.path.realpath(os.path.dirname(__file__))
 
 # ---------------------------------------------------------------------
 
@@ -123,6 +127,28 @@ def train_loop(
     random_batch_size = \
         [visualization_number] + \
         train_config.get("random_batch_size", [128, 128, 3])
+    # test images
+    use_test_images = train_config.get("use_test_images", False)
+    test_images = []
+    if use_test_images:
+        images_directory = os.path.join(CURRENT_DIRECTORY, "images")
+        for image_filename in os.listdir(images_directory):
+            # create full image path
+            image_path = os.path.join(images_directory, image_filename)
+            # check if current path is a file
+            if os.path.isfile(image_path):
+                image = \
+                    load_image(
+                        path=image_path,
+                        color_mode="rgb",
+                        target_size=(512, 512),
+                        normalize=True)
+                test_images.append(image)
+        test_images = \
+            np.concatenate(
+                test_images,
+                axis=0)
+
     # --- prune strategy
     prune_config = \
         train_config.get("prune", {"strategies": []})
@@ -136,7 +162,7 @@ def train_loop(
             prune_config.get("steps", -1),
             dtype=tf.dtypes.int64,
             name="prune_steps")
-    prune_strategies = prune_config["strategies"]
+    prune_strategies = prune_config.get("strategies", None)
     if prune_strategies is None:
         use_prune = False
     elif isinstance(prune_strategies, list):
@@ -188,6 +214,30 @@ def train_loop(
         filepath=os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR),
         include_optimizer=False)
 
+    # --- test image
+    def denoise_test_batch():
+        x_noisy = \
+            tf.random.truncated_normal(
+                seed=0,
+                mean=0.0,
+                stddev=0.25,
+                shape=test_images.shape) + \
+            test_images
+        x_noisy = \
+            tf.clip_by_value(
+                x_noisy,
+                clip_value_min=-0.5,
+                clip_value_max=+0.5)
+        x_noisy_denormalized = \
+            denormalizer(
+                x_noisy,
+                training=False)
+        x_denoised = \
+            denoiser(x_noisy, training=False)
+        x_denoised_denormalized = \
+            denormalizer(x_denoised, training=False)
+        return x_noisy_denormalized, x_denoised_denormalized
+
     # --- create random image and iterate through the model
     def create_random_batch():
         x_iteration = 0
@@ -233,31 +283,36 @@ def train_loop(
         if inverse_pyramid is not None:
             @tf.function
             def denoise_fn(x):
+                # denoised decomposition
                 x0 = \
                     denoiser_decomposition(
                         x,
                         training=True)
+                # denoised merged
                 x1 = \
                     inverse_pyramid(
                         x0,
                         training=False)
+                # denoised denormalized
                 x2 = \
                     denormalizer(x1, training=False)
                 return x0, x1, x2
         else:
             @tf.function
             def denoise_fn(x):
-                x2 = \
+                # denoised decomposition
+                x0 = None
+                # denoised merged
+                x1 = \
                     denoiser(
                         x,
                         training=True)
-                x1 = \
-                    denormalizer(x2, training=False)
-                x0 = None
-                return x0, x1, None
+                # denoised denormalized
+                x2 = \
+                    denormalizer(x1, training=False)
+                return x0, x1, x2
 
         # ---
-
         while global_epoch < global_total_epochs:
             logger.info("epoch: {0}, step: {1}".format(
                 int(global_epoch), int(global_step)))
@@ -279,8 +334,10 @@ def train_loop(
                 noisy_batch = augmentation_fn(input_batch)
 
                 # normalize input and noisy batch
-                normalized_input_batch = normalizer(input_batch, training=False)
-                normalized_noisy_batch = normalizer(noisy_batch, training=False)
+                normalized_input_batch = \
+                    normalizer(input_batch, training=False)
+                normalized_noisy_batch = \
+                    normalizer(noisy_batch, training=False)
 
                 if pyramid is not None:
                     # split input image into pyramid levels
@@ -299,7 +356,7 @@ def train_loop(
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
-                    denoised_batch_decomposition, \
+                    _, \
                     denoised_batch, \
                     denormalized_denoised_batch = \
                         denoise_fn(normalized_noisy_batch)
@@ -310,10 +367,7 @@ def train_loop(
                             input_batch=input_batch,
                             noisy_batch=noisy_batch,
                             model_losses=denoiser.losses,
-                            prediction_batch=denormalized_denoised_batch,
-                            prediction_batch_decomposition=denoised_batch_decomposition,
-                            input_batch_decomposition=normalized_input_batch_decomposition
-                        )
+                            prediction_batch=denormalized_denoised_batch)
 
                     # use the gradient tape to automatically retrieve
                     # the gradients of the trainable variables
@@ -331,29 +385,34 @@ def train_loop(
                 # --- add loss summaries for tensorboard
                 for name, key in [
                     ("loss/mae", MAE_LOSS_STR),
+                    ("loss/kl_loss", KL_LOSS_STR),
                     ("loss/total", MEAN_TOTAL_LOSS_STR),
+                    ("quality/nae_noise", NAE_NOISE_STR),
                     ("loss/nae", NAE_PREDICTION_LOSS_STR),
+                    ("quality/signal_to_noise_ratio", SNR_STR),
                     ("loss/regularization", REGULARIZATION_LOSS_STR),
-                    ("loss/mae_decomposition", MAE_DECOMPOSITION_LOSS_STR),
-                    ("quality/nae_noise", "nae_noise"),
-                    ("quality/signal_to_noise_ratio", "snr"),
                     ("quality/nae_improvement", NAE_IMPROVEMENT_QUALITY_STR)
                 ]:
-                    if key not in loss_map:
-                        continue
-                    tf.summary.scalar(
-                        name=name,
-                        data=loss_map[key],
-                        step=global_step)
+                    if key in loss_map:
+                        tf.summary.scalar(
+                            name=name,
+                            data=loss_map[key],
+                            step=global_step)
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
+                    test_input_batch = None
+                    test_output_batch = None
                     random_batch = create_random_batch()
+                    if use_test_images:
+                        test_input_batch, test_output_batch = denoise_test_batch()
                     visualize(
                         global_step=global_step,
                         input_batch=input_batch,
                         noisy_batch=noisy_batch,
                         random_batch=random_batch,
+                        test_input_batch=test_input_batch,
+                        test_output_batch=test_output_batch,
                         prediction_batch=denormalized_denoised_batch,
                         visualization_number=visualization_number)
                     # add weight visualization
@@ -385,10 +444,13 @@ def train_loop(
 
                 # --- check if it is time to save a checkpoint
                 if checkpoint_every > 0:
-                    if (global_step % checkpoint_every == 0):
+                    if global_step % checkpoint_every == 0:
                         logger.info("checkpoint at step: {0}".format(
                             int(global_step)))
                         manager.save()
+                        # save model so we can visualize it easier
+                        denoiser.save(
+                            os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR))
 
                 # --- keep time of steps per second
                 stop_time = time.time()

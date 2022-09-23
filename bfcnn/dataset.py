@@ -29,6 +29,7 @@ def dataset_builder(
     # crop image from dataset
     input_shape = config["input_shape"]
     color_mode = config.get("color_mode", "rgb")
+
     # ---
     inputs = config["inputs"]
     # directory to load data from
@@ -55,6 +56,7 @@ def dataset_builder(
     subsample_size = config.get("subsample_size", -1)
     # in radians
     random_rotate = tf.constant(config.get("random_rotate", 0.0))
+    use_random_rotate = tf.constant(random_rotate > 0.0)
     # if true randomly invert
     random_invert = tf.constant(config.get("random_invert", False))
     # if true randomly invert upside down image
@@ -65,6 +67,9 @@ def dataset_builder(
     multiplicative_noise = config.get("multiplicative_noise", [])
     # quantization value, -1 disabled, otherwise 2, 4, 8
     quantization = tf.constant(config.get("quantization", -1))
+    # min/max scale
+    min_scale = tf.constant(config.get("min_scale", 0.25))
+    max_scale = tf.constant(config.get("max_scale", 1.0))
     # whether to crop or not
     random_crop = dataset_shape[0][0:2] != input_shape[0:2]
     random_crop = tf.constant(random_crop)
@@ -95,17 +100,26 @@ def dataset_builder(
     additional_noise = tf.constant(additional_noise, dtype=tf.float32)
     multiplicative_noise = tf.constant(multiplicative_noise, dtype=tf.float32)
 
+    # --- set random seed to get the same result
+    tf.random.set_seed(0)
+
     # --- define generator function from directory
     if directory:
         dataset = [
-            tf.keras.preprocessing.image_dataset_from_directory(
+            tf.keras.utils.image_dataset_from_directory(
                 directory=d,
-                image_size=s,
-                shuffle=True,
+                labels=None,
                 label_mode=None,
-                batch_size=batch_size,
+                class_names=None,
                 color_mode=color_mode,
-                interpolation="bilinear")
+                batch_size=batch_size,
+                shuffle=True,
+                image_size=s,
+                seed=0,
+                validation_split=None,
+                subset=None,
+                interpolation="bilinear",
+                crop_to_aspect_ratio=True)
             for d, s in zip(directory, dataset_shape)
         ]
 
@@ -115,69 +129,84 @@ def dataset_builder(
     def input_batch_augmentations(input_batch):
         input_shape_inference = tf.shape(input_batch)
 
-        # --- convert to float32
-        input_batch = tf.cast(input_batch, dtype=tf.dtypes.float32)
-
         # --- crop randomly
         if random_crop:
+            # pick random number
+            random_numbers = \
+                tf.random.uniform(
+                    shape=(1,),
+                    minval=min_scale,
+                    maxval=max_scale,
+                    dtype=tf.dtypes.float32,
+                )
+            crop_width = \
+                tf.cast(
+                    tf.round(
+                        random_numbers[0] *
+                        tf.cast(input_shape_inference[1], tf.float32)),
+                    dtype=tf.int32)
+            crop_height = \
+                tf.cast(
+                    tf.round(
+                        random_numbers[0] *
+                        tf.cast(input_shape_inference[2], tf.float32)),
+                    dtype=tf.int32)
+            crop_size = \
+                tf.math.minimum(
+                    x=crop_width,
+                    y=crop_height)
+            # crop
             input_batch = \
                 tf.image.random_crop(
                     value=input_batch,
                     size=(
                         input_shape_inference[0],
-                        input_shape[0],
-                        input_shape[1],
+                        crop_size,
+                        crop_size,
                         input_shape_inference[3])
                 )
-            input_shape_inference = tf.shape(input_batch)
+
+        # --- resize to input_shape
+        input_batch = \
+            tf.image.resize(
+                images=input_batch,
+                size=(input_shape[0], input_shape[1]))
+        input_shape_inference = tf.shape(input_batch)
 
         # --- flip left right
-        if random_left_right:
-            if tf.random.uniform(()) > 0.5:
-                input_batch = \
-                    tf.image.flip_left_right(input_batch)
+        if random_left_right and tf.random.uniform(()) > 0.5:
+            input_batch = \
+                tf.image.flip_left_right(input_batch)
 
         # --- flip up down
-        if random_up_down:
-            if tf.random.uniform(()) > 0.5:
-                input_batch = \
-                    tf.image.flip_up_down(input_batch)
+        if random_up_down and tf.random.uniform(()) > 0.5:
+            input_batch = \
+                tf.image.flip_up_down(input_batch)
 
         # --- randomly rotate input
-        if random_rotate > 0.0:
-            if tf.random.uniform(()) > 0.5:
-                angles = \
-                    tf.random.uniform(
-                        dtype=tf.float32,
-                        minval=-random_rotate,
-                        maxval=random_rotate,
-                        shape=(input_shape_inference[0],))
-                input_batch = \
-                    tfa.image.rotate(
-                        angles=angles,
-                        images=input_batch,
-                        fill_mode="reflect",
-                        interpolation="bilinear")
+        if use_random_rotate and tf.random.uniform(()) > 0.5:
+            angles = \
+                tf.random.uniform(
+                    dtype=tf.float32,
+                    minval=-random_rotate,
+                    maxval=random_rotate,
+                    shape=(input_shape_inference[0],))
+            input_batch = \
+                tfa.image.rotate(
+                    angles=angles,
+                    images=input_batch,
+                    fill_mode="reflect",
+                    interpolation="bilinear")
 
         # --- random invert colors
-        if random_invert:
-            if tf.random.uniform(()) > 0.5:
-                input_batch = max_value - (input_batch - min_value)
-
-        # --- clip values within boundaries
-        if clip_value:
-            input_batch = \
-                tf.clip_by_value(
-                    input_batch,
-                    clip_value_min=min_value,
-                    clip_value_max=max_value)
-
-        # --- round values to nearest integer
-        if round_values:
-            input_batch = tf.round(input_batch)
+        if random_invert and tf.random.uniform(()) > 0.5:
+            input_batch = max_value - (input_batch - min_value)
 
         # --- convert to float32
-        return input_batch
+        return \
+            tf.cast(
+                input_batch,
+                dtype=tf.dtypes.float32)
 
     # --- define augmentation function
     def augmentation(input_batch):

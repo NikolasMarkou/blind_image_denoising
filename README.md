@@ -132,11 +132,21 @@ input_tensor = \
 denoised_tensor = denoiser_model(input_tensor)
 ```
 
+## Designing the best possible denoiser
+1. Add a small hinge at the MAE loss. 2 (from 255) seems to work very good
+2. Multiscale models work better, 3-4 scales is ideal. LUnet seems to perform very well.
+3. Soft-Orthogonal regularization provides better generalization, but it's slower to train.
+4. Squeeze-and-Excite provides a small boost without many additional parameters.
+5. Avoid Batch Normalization at the end.
+6. Residual learning (learning the noise) trains faster and gives better metrics 
+   but may give out artifacts, so better avoid it.
+All these options are supported in the configuration.
+
 ## Model types
 We have used traditional (bias free) architectures.
 * resnet
 * resnet with sparse constraint
-* resnet with on/off per resnet block gates 
+* resnet with on/off per resnet block gates
 * all the above models with multi-scale processing
 
 ## Multi-Scale
@@ -195,6 +205,7 @@ This forces a soft ortho-normal constraint on the kernels.
 
 #### [Soft Orthogonal Regularization](bfcnn/regularizer.py)
 Custom regularization that forces a soft orthogonal constraint on the kernels while still allowing the kernels to grow independently or shrink to almost zero.
+
 
 
 ## References

@@ -1,9 +1,4 @@
-import os
-import json
-import itertools
-import numpy as np
 import tensorflow as tf
-from pathlib import Path
 from tensorflow import keras
 from typing import List, Tuple, Union, Dict, Iterable
 
@@ -12,15 +7,10 @@ from typing import List, Tuple, Union, Dict, Iterable
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .constants import EPSILON_DEFAULT
+from .custom_layers import Multiplier
 from .model_resnet import resnet_blocks
-from .custom_layers import TrainableMultiplier, RandomOnOff
-from .activations import differentiable_relu, differentiable_relu_layer
-from .utilities import \
-    sparse_block, \
-    conv2d_wrapper, \
-    mean_sigma_local, \
-    mean_sigma_global
+from .utilities import conv2d_wrapper, mean_sigma_local
+from .constants import DEFAULT_BN_EPSILON, DEFAULT_BN_MOMENTUM
 
 # ---------------------------------------------------------------------
 
@@ -29,6 +19,7 @@ def lunet_blocks(
         input_layer,
         no_levels: int,
         no_layers: int,
+        base_conv_params: Dict,
         first_conv_params: Dict,
         second_conv_params: Dict,
         third_conv_params: Dict,
@@ -36,6 +27,7 @@ def lunet_blocks(
         gate_params: Dict = None,
         dropout_params: Dict = None,
         multiplier_params: Dict = None,
+        add_laplacian: bool = True,
         **kwargs):
     """
     Create a lunet block
@@ -50,39 +42,45 @@ def lunet_blocks(
 
     level_x = input_layer
     levels_x = []
+    strides = (2, 2)
     kernel_size = (3, 3)
-
-    for level in range(0, no_levels - 1):
-        level_x_down = \
-            keras.layers.AveragePooling2D(
-                pool_size=kernel_size,
-                strides=(2, 2),
-                padding="same")(level_x)
-        level_x_smoothed = \
-            keras.layers.UpSampling2D(
-                size=(2, 2),
-                interpolation="bilinear")(level_x_down)
-        level_x_diff = level_x - level_x_smoothed
-        level_x = level_x_down
-        levels_x.append(level_x_diff)
-    levels_x.append(level_x)
+    interpolation = "bilinear"
+    if add_laplacian:
+        for level in range(0, no_levels - 1):
+            level_x_down = \
+                keras.layers.AveragePooling2D(
+                    pool_size=kernel_size,
+                    strides=strides,
+                    padding="same")(level_x)
+            level_x_smoothed = \
+                keras.layers.UpSampling2D(
+                    size=strides,
+                    interpolation=interpolation)(level_x_down)
+            level_x_diff = level_x - level_x_smoothed
+            level_x = level_x_down
+            levels_x.append(level_x_diff)
+        levels_x.append(level_x)
+    else:
+        levels_x.append(level_x)
+        for level in range(0, no_levels - 1):
+            level_x = \
+                keras.layers.AveragePooling2D(
+                    pool_size=kernel_size,
+                    strides=strides,
+                    padding="same")(level_x)
+            levels_x.append(level_x)
 
     # --- upside
     x = None
     for level_x in reversed(levels_x):
+        level_x = \
+            conv2d_wrapper(
+                level_x,
+                conv_params=base_conv_params,
+                bn_params=None)
         if x is None:
             x = level_x
-            x = \
-                conv2d_wrapper(
-                    x,
-                    conv_params=first_conv_params,
-                    bn_params=None)
         else:
-            level_x = \
-                conv2d_wrapper(
-                    level_x,
-                    conv_params=first_conv_params,
-                    bn_params=None)
             level_x = \
                 resnet_blocks(
                     input_layer=level_x,
@@ -97,15 +95,10 @@ def lunet_blocks(
                 )
             x = \
                 tf.keras.layers.UpSampling2D(
-                    size=(2, 2),
-                    interpolation="bilinear")(x)
+                    size=strides,
+                    interpolation=interpolation)(x)
             x = \
-                tf.keras.layers.Concatenate()([x, level_x])
-            x = \
-                conv2d_wrapper(
-                    x,
-                    conv_params=first_conv_params,
-                    bn_params=bn_params)
+                tf.keras.layers.Add()([x, level_x])
         x = \
             resnet_blocks(
                 input_layer=x,
@@ -147,6 +140,7 @@ def build_model_lunet(
         add_learnable_multiplier: bool = False,
         add_projection_to_input: bool = True,
         add_concat_input: bool = False,
+        add_laplacian: bool = True,
         name="lunet",
         **kwargs) -> keras.Model:
     """
@@ -174,6 +168,7 @@ def build_model_lunet(
     :param add_learnable_multiplier:
     :param add_projection_to_input: if true project to input tensor channel number
     :param add_concat_input: if true concat input to intermediate before projecting
+    :param add_laplacian: if true each level of lunet is a laplacian, if false a gaussian
     :param name: name of the model
     :return: unet model
     """
@@ -185,27 +180,8 @@ def build_model_lunet(
     bn_params = dict(
         center=use_bias,
         scale=True,
-        momentum=0.999,
-        epsilon=1e-4
-    )
-
-    # this make it 68% sparse
-    sparse_params = dict(
-        symmetric=True,
-        max_value=3.0,
-        threshold_sigma=1.0,
-        per_channel_sparsity=False
-    )
-
-    base_conv_params = dict(
-        filters=filters,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation="linear",
-        kernel_size=kernel_size,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
+        momentum=DEFAULT_BN_MOMENTUM,
+        epsilon=DEFAULT_BN_EPSILON
     )
 
     gate_params = dict(
@@ -219,13 +195,24 @@ def build_model_lunet(
         kernel_initializer=kernel_initializer
     )
 
-    first_conv_params = dict(
-        kernel_size=1,
+    base_conv_params = dict(
+        kernel_size=3,
         filters=filters,
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
         activation=activation,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer,
+    )
+
+    first_conv_params = dict(
+        filters=filters,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation=activation,
+        kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
     )
@@ -249,7 +236,7 @@ def build_model_lunet(
         padding="same",
         use_bias=use_bias,
         # this must be the same as the base
-        activation="linear",
+        activation=activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -281,6 +268,8 @@ def build_model_lunet(
         no_levels=no_levels,
         no_layers=no_layers,
         bn_params=bn_params,
+        add_laplacian=add_laplacian,
+        base_conv_params=base_conv_params,
         first_conv_params=first_conv_params,
         second_conv_params=second_conv_params,
         third_conv_params=third_conv_params,
@@ -345,7 +334,7 @@ def build_model_lunet(
         # learnable multiplier
         if add_learnable_multiplier:
             output_layer = \
-                TrainableMultiplier(**multiplier_params)(output_layer)
+                Multiplier(**multiplier_params)(output_layer)
 
         # cap it off to limit values
         output_layer = \

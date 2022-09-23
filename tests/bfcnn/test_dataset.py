@@ -128,7 +128,6 @@ def test_dataset_builder_build(config):
     assert bfcnn.dataset.AUGMENTATION_FN_STR in dataset_results
 
     for input_batch in dataset_results[bfcnn.dataset.DATASET_FN_STR]:
-        #input_batch = input_batch.numpy()
         assert input_batch.shape[0] <= config["batch_size"]
         assert input_batch.shape[1] == config["input_shape"][0]
         assert input_batch.shape[2] == config["input_shape"][1]

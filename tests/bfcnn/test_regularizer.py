@@ -26,6 +26,94 @@ from bfcnn.regularizer import SoftOrthonormalConstraintRegularizer
         (4, 4, 4, 16),
         (8, 8, 8, 32)
     ])
+def test_4d_reshape_to_2d(shape):
+    x_random = \
+        tf.random.uniform(
+            dtype=tf.float32,
+            minval=-1,
+            maxval=+1,
+            shape=shape)
+    x_reshaped = bfcnn.regularizer.reshape_to_2d(x_random)
+    assert x_reshaped.shape[0] == shape[3]
+    assert x_reshaped.shape[1] == (shape[0] * shape[1] * shape[2])
+
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "shape", [
+        (3, 2),
+        (1, 4),
+        (2, 8),
+        (4, 16),
+        (8, 32)
+    ])
+def test_4d_reshape_to_2d(shape):
+    x_random = \
+        tf.random.uniform(
+            dtype=tf.float32,
+            minval=-1,
+            maxval=+1,
+            shape=shape)
+    x_reshaped = bfcnn.regularizer.reshape_to_2d(x_random)
+    assert x_reshaped.shape[0] == shape[1]
+    assert x_reshaped.shape[1] == shape[0]
+
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "shape", [
+        (5, 5, 3, 2),
+        (1, 1, 1, 4),
+        (2, 2, 2, 8),
+        (4, 4, 4, 16),
+        (8, 8, 8, 32)
+    ])
+def test_4d_wt_x_w(shape):
+    x_random = \
+        tf.random.uniform(
+            dtype=tf.float32,
+            minval=-1,
+            maxval=+1,
+            shape=shape)
+    wt_w = bfcnn.regularizer.wt_x_w(x_random)
+    assert wt_w.shape[0] == shape[3]
+    assert wt_w.shape[1] == shape[3]
+
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "shape", [
+        (3, 2),
+        (1, 4),
+        (2, 8),
+        (4, 16),
+        (8, 32)
+    ])
+def test_2d_wt_x_w(shape):
+    x_random = \
+        tf.random.uniform(
+            dtype=tf.float32,
+            minval=-1,
+            maxval=+1,
+            shape=shape)
+    wt_w = bfcnn.regularizer.wt_x_w(x_random)
+    assert wt_w.shape[0] == shape[1]
+    assert wt_w.shape[1] == shape[1]
+
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "shape", [
+        (5, 5, 3, 2),
+        (1, 1, 1, 4),
+        (2, 2, 2, 8),
+        (4, 4, 4, 16),
+        (8, 8, 8, 32)
+    ])
 def test_create_4d_soft_orthogonal_constraint(shape):
     x_random = \
         tf.random.uniform(
