@@ -27,32 +27,35 @@ REGULARIZER_ALLOWED_TYPES = \
 
 # ---------------------------------------------------------------------
 
+@tf.function(
+    input_signature=[tf.TensorSpec(shape=(None, None), dtype=tf.float32)])
+def reshape_2d_to_2d(w: tf.Tensor):
+    return tf.transpose(w, perm=(1, 0))
 
-def reshape_to_2d(weights):
-    def fn_2d(w):
-        return \
-            tf.transpose(
-                w, perm=(1, 0))
 
-    def fn_4d(w):
-        w_t = \
-            tf.transpose(
-                w, perm=(3, 0, 1, 2))
-        return \
-            tf.reshape(
-                w_t,
-                shape=(tf.shape(w_t)[0], -1))
+@tf.function(
+    input_signature=[tf.TensorSpec(shape=(None, None, None, None), dtype=tf.float32)])
+def reshape_4d_to_2d(w: tf.Tensor) -> tf.Tensor:
+    w_t = \
+        tf.transpose(
+            w, perm=(3, 0, 1, 2))
     return \
-        tf.cond(
-            tf.rank(weights) == tf.constant(2),
-            true_fn=lambda: fn_2d(weights),
-            false_fn=lambda: fn_4d(weights))
+        tf.reshape(
+            w_t,
+            shape=(tf.shape(w_t)[0], -1))
 
+
+def reshape_to_2d(weights: tf.Tensor) -> tf.Tensor:
+    if tf.rank(weights) == tf.constant(2):
+        return reshape_2d_to_2d(weights)
+    if tf.rank(weights) == tf.constant(4):
+        return reshape_4d_to_2d(weights)
+    return weights
 
 # ---------------------------------------------------------------------
 
 
-def wt_x_w(weights):
+def wt_x_w(weights: tf.Tensor) -> tf.Tensor:
     # --- reshape
     wt = reshape_to_2d(weights)
 
@@ -64,6 +67,35 @@ def wt_x_w(weights):
 
     return wt_w
 
+
+@tf.function(
+    input_signature=[tf.TensorSpec(shape=(None, None, None, None), dtype=tf.float32)])
+def wt_x_w_4d(weights: tf.Tensor) -> tf.Tensor:
+    # --- reshape
+    wt = reshape_4d_to_2d(weights)
+
+    # --- compute (Wt * W)
+    wt_w = \
+        tf.linalg.matmul(
+            wt,
+            tf.transpose(wt, perm=(1, 0)))
+
+    return wt_w
+
+
+@tf.function(
+    input_signature=[tf.TensorSpec(shape=(None, None), dtype=tf.float32)])
+def wt_x_w_2d(weights: tf.Tensor) -> tf.Tensor:
+    # --- reshape
+    wt = reshape_2d_to_2d(weights)
+
+    # --- compute (Wt * W)
+    wt_w = \
+        tf.linalg.matmul(
+            wt,
+            tf.transpose(wt, perm=(1, 0)))
+
+    return wt_w
 
 # ---------------------------------------------------------------------
 
@@ -118,7 +150,12 @@ class SoftOrthonormalConstraintRegularizer(keras.regularizers.Regularizer):
 
     def __call__(self, x):
         # --- compute (Wt * W)
-        wt_w = wt_x_w(x)
+        if tf.rank(x) == 2:
+            wt_w = wt_x_w_2d(x)
+        elif tf.rank(x) == 4:
+            wt_w = wt_x_w_4d(x)
+        else:
+            raise ValueError(f"don't know how to handle this type of tensor [{x}]")
 
         # frobenius norm
         return \
@@ -157,6 +194,7 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
                  l1_coefficient: float = 0.001):
         self._lambda_coefficient = tf.constant(lambda_coefficient)
         self._l1_coefficient = tf.constant(l1_coefficient)
+
 
     def __call__(self, x):
         # --- compute (Wt * W)
