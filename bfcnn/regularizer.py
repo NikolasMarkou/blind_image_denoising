@@ -159,7 +159,8 @@ class SoftOrthonormalConstraintRegularizer(keras.regularizers.Regularizer):
         elif tf.rank(x) == 4:
             wt_w = wt_x_w_4d(x)
         else:
-            raise ValueError(f"don't know how to handle this type of tensor [{x}]")
+            raise ValueError(
+                f"don't know how to handle this type of tensor [{x}]")
 
         # frobenius norm
         return \
@@ -206,7 +207,8 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
         elif tf.rank(x) == 4:
             wt_w = wt_x_w_4d(x)
         else:
-            raise ValueError(f"don't know how to handle this type of tensor [{x}]")
+            raise ValueError(
+                f"don't know how to handle this type of tensor [{x}]")
 
         # --- mask diagonal
         wt_w_masked = \
