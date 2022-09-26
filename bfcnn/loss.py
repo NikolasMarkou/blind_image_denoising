@@ -1,7 +1,5 @@
 r"""Constructs the loss function of the blind image denoising"""
 
-# ---------------------------------------------------------------------
-
 import tensorflow as tf
 from tensorflow import keras
 from typing import List, Dict, Callable

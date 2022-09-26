@@ -1,11 +1,3 @@
-# ---------------------------------------------------------------------
-
-__author__ = "Nikolas Markou"
-__version__ = "1.0.0"
-__license__ = "MIT"
-
-# ---------------------------------------------------------------------
-
 import abc
 import tensorflow as tf
 from tensorflow import keras

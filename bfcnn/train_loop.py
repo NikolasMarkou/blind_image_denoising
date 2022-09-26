@@ -1,13 +1,3 @@
-r"""Constructs model, inputs, and training environment."""
-
-# ---------------------------------------------------------------------
-
-__author__ = "Nikolas Markou"
-__version__ = "1.0.0"
-__license__ = "MIT"
-
-# ---------------------------------------------------------------------
-
 import os
 import time
 

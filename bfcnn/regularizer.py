@@ -195,17 +195,20 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
         self._lambda_coefficient = tf.constant(lambda_coefficient)
         self._l1_coefficient = tf.constant(l1_coefficient)
 
-
     def __call__(self, x):
         # --- compute (Wt * W)
-        wt_w = wt_x_w(x)
+        if tf.rank(x) == 2:
+            wt_w = wt_x_w_2d(x)
+        elif tf.rank(x) == 4:
+            wt_w = wt_x_w_4d(x)
+        else:
+            raise ValueError(f"don't know how to handle this type of tensor [{x}]")
 
-        # mask diagonal
+        # --- mask diagonal
         shape = tf.shape(wt_w)[0]
         wt_w_i = tf.eye(shape)
-        wt_w_mask = tf.ones(shape) - wt_w_i
-        wt_w_masked = tf.math.multiply(wt_w, wt_w_mask)
-        wt_w_diag = tf.square(tf.math.multiply(wt_w, wt_w_i))
+        wt_w_masked = tf.math.multiply(wt_w, 1.0 - wt_w_i)
+        wt_w_diag = tf.math.multiply(wt_w, wt_w_i)
 
         # frobenius norm
         return \
