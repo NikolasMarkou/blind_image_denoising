@@ -12,7 +12,6 @@ from typing import List, Tuple, Union, Dict, Iterable
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .model_resnet import resnet_blocks
 from .custom_layers import Multiplier, RandomOnOff
 from .constants import DEFAULT_BN_EPSILON, DEFAULT_BN_MOMENTUM
 from .activations import differentiable_relu, differentiable_relu_layer
@@ -21,6 +20,7 @@ from .utilities import \
     conv2d_wrapper, \
     mean_sigma_local, \
     mean_sigma_global
+from .model_blocks import resnet_blocks
 
 # ---------------------------------------------------------------------
 

@@ -8,7 +8,7 @@ from typing import List, Tuple, Union, Dict, Iterable
 
 from .custom_logger import logger
 from .custom_layers import Multiplier
-from .model_resnet import resnet_blocks
+from .model_blocks import resnet_blocks
 from .utilities import conv2d_wrapper, mean_sigma_local
 from .constants import DEFAULT_BN_EPSILON, DEFAULT_BN_MOMENTUM
 

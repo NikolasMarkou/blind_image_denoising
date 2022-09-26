@@ -184,10 +184,6 @@ that expands the effective receptive field without the need to add many more lay
 
 ![](images/readme/gaussian_decomposition_lena.png "Gaussian Decomposition Lena")
 
-#### [Noise estimation model Multi-Scale mixer](bfcnn/model_noise_estimation.py)
-Our addition (not in the paper) is a noise estimation model that
-decides the contribution of each layer when mixing them back in.
-
 #### [Squeeze and Excite with residual](bfcnn/utilities.py)
 Every resnet block has the option to include a residual squeeze and excite element (not in the paper) to it.
 
