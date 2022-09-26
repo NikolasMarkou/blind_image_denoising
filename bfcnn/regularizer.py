@@ -28,13 +28,17 @@ REGULARIZER_ALLOWED_TYPES = \
 # ---------------------------------------------------------------------
 
 @tf.function(
-    input_signature=[tf.TensorSpec(shape=(None, None), dtype=tf.float32)])
+    input_signature=[
+        tf.TensorSpec(shape=(None, None),
+                      dtype=tf.float32)])
 def reshape_2d_to_2d(w: tf.Tensor):
     return tf.transpose(w, perm=(1, 0))
 
 
 @tf.function(
-    input_signature=[tf.TensorSpec(shape=(None, None, None, None), dtype=tf.float32)])
+    input_signature=[
+        tf.TensorSpec(shape=(None, None, None, None),
+                      dtype=tf.float32)])
 def reshape_4d_to_2d(w: tf.Tensor) -> tf.Tensor:
     w_t = \
         tf.transpose(
@@ -205,10 +209,8 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
             raise ValueError(f"don't know how to handle this type of tensor [{x}]")
 
         # --- mask diagonal
-        shape = tf.shape(wt_w)[0]
-        wt_w_i = tf.eye(shape)
-        wt_w_masked = tf.math.multiply(wt_w, 1.0 - wt_w_i)
-        wt_w_diag = tf.math.multiply(wt_w, wt_w_i)
+        wt_w_masked = \
+            tf.math.multiply(wt_w, 1.0 - tf.eye(tf.shape(wt_w)[0]))
 
         # frobenius norm
         return \
@@ -219,7 +221,7 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
                         axis=(0, 1),
                         keepdims=False)) + \
             self._l1_coefficient * \
-            tf.reduce_sum(wt_w_diag, axis=None, keepdims=False)
+            tf.reduce_sum(tf.abs(wt_w), axis=None, keepdims=False)
 
     def get_config(self):
         return {
