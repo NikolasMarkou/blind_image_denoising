@@ -323,20 +323,8 @@ def train_loop(
                 # augment data
                 noisy_batch = augmentation_fn(input_batch)
 
-                # normalize input and noisy batch
-                normalized_input_batch = \
-                    normalizer(input_batch, training=False)
                 normalized_noisy_batch = \
                     normalizer(noisy_batch, training=False)
-
-                if pyramid is not None:
-                    # split input image into pyramid levels
-                    normalized_input_batch_decomposition = \
-                        pyramid(
-                            normalized_input_batch,
-                            training=False)
-                else:
-                    normalized_input_batch_decomposition = None
 
                 # Open a GradientTape to record the operations run
                 # during the forward pass,

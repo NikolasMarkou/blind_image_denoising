@@ -138,7 +138,7 @@ def resnet_blocks(
         sparse_params: Dict = None,
         dropout_params: Dict = None,
         multiplier_params: Dict = None,
-        channelwise_scaling: bool = False,
+        channelwise_params: Dict = None,
         **kwargs):
     """
     Create a series of residual network blocks
@@ -153,7 +153,7 @@ def resnet_blocks(
     :param gate_params: gate optional parameters
     :param dropout_params: dropout optional parameters
     :param multiplier_params: learnable optional parameters
-    :param channelwise_scaling: if True add a learnable point-wise depthwise scaling conv2d
+    :param channelwise_params: if True add a learnable point-wise depthwise scaling conv2d
 
     :return: filtered input_layer
     """
@@ -162,10 +162,13 @@ def resnet_blocks(
         raise ValueError("input_layer must be none")
     if no_layers < 0:
         raise ValueError("no_layers must be >= 0")
+
+    # --- set variables
     use_gate = gate_params is not None
     use_dropout = dropout_params is not None
     use_sparsity = sparse_params is not None
     use_multiplier = multiplier_params is not None
+    use_channelwise = channelwise_params is not None
 
     elementwise_params = dict(
         multiplier=1.0,
@@ -181,37 +184,36 @@ def resnet_blocks(
         kernel_initializer=third_conv_params.get("kernel_initializer", "glorot_normal")
     )
 
-    # --- setup resnet
+    # --- setup resnet along with its variants
     x = input_layer
 
     # --- create several number of residual blocks
     for i in range(no_layers):
         previous_layer = x
-        x = conv2d_wrapper(input_layer=x,
-                           conv_params=copy.deepcopy(first_conv_params),
-                           bn_params=None,
-                           channelwise_scaling=False)
 
+        if first_conv_params is not None:
+            x = conv2d_wrapper(input_layer=x,
+                               conv_params=copy.deepcopy(first_conv_params),
+                               bn_params=None,
+                               channelwise_scaling=False)
+
+        if second_conv_params is not None:
+            x = conv2d_wrapper(input_layer=x,
+                               conv_params=copy.deepcopy(second_conv_params),
+                               bn_params=bn_params,
+                               channelwise_scaling=False)
+        if third_conv_params is not None:
+            x = conv2d_wrapper(input_layer=x,
+                               conv_params=copy.deepcopy(third_conv_params),
+                               bn_params=bn_params,
+                               channelwise_scaling=False)
         if use_sparsity:
             x = sparse_block(x, **sparse_params)
 
-        x = conv2d_wrapper(input_layer=x,
-                           conv_params=copy.deepcopy(second_conv_params),
-                           bn_params=bn_params,
-                           channelwise_scaling=False)
-        x = conv2d_wrapper(input_layer=x,
-                           conv_params=copy.deepcopy(third_conv_params),
-                           bn_params=bn_params,
-                           channelwise_scaling=False)
         # learn the proper scale of the previous layer
-        if channelwise_scaling:
-            # add a very small l1 penalty
-            x = \
-                ChannelwiseMultiplier(
-                    multiplier=1.0,
-                    regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
-                    trainable=True,
-                    activation="relu")(x)
+        if use_channelwise:
+            x = ChannelwiseMultiplier(**channelwise_params)(x)
+
         # compute activation per channel
         if use_gate:
             y = tf.keras.layers.GlobalAveragePooling2D()(x)

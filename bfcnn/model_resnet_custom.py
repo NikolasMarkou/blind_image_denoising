@@ -25,7 +25,7 @@ from .model_blocks import resnet_blocks
 # ---------------------------------------------------------------------
 
 
-def build_model_resnet(
+def build_model_resnet_custom(
         input_dims,
         no_layers: int,
         kernel_size: int,
@@ -140,6 +140,7 @@ def build_model_resnet(
     )
 
     third_conv_params = dict(
+        groups=2,
         kernel_size=1,
         filters=filters,
         strides=(1, 1),

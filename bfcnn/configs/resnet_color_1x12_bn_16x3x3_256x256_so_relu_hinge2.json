@@ -1,26 +1,34 @@
 {
   "model_denoise": {
     "filters": 16,
-    "no_layers": 18,
+    "no_layers": 12,
     "min_value": 0,
     "add_var": false,
     "max_value": 255,
-    "kernel_size": 5,
+    "kernel_size": 7,
     "type": "resnet",
     "batchnorm": true,
     "activation": "relu",
     "add_gates": false,
+    "add_sparsity": false,
     "clip_values": false,
     "shared_model": false,
     "add_final_bn": false,
     "output_multiplier": 1.0,
     "local_normalization": -1,
     "final_activation": "tanh",
+    "channelwise_scaling": true,
     "add_skip_with_input": false,
     "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
-    "kernel_regularizer": "l1"
+    "kernel_regularizer": {
+      "type": "soft_orthonormal",
+      "config": {
+        "lambda_coefficient": 0.1,
+        "l1_coefficient": 0.01
+      }
+    }
   },
    "train": {
     "epochs": 50,
@@ -43,17 +51,6 @@
           "learning_rate": 0.001
         }
       }
-    },
-    "prune": {
-      "start_epoch": 1,
-      "strategies": [{
-        "type": "minimum_threshold_shrinkage",
-        "config": {
-          "shrinkage": 0.75,
-          "minimum_threshold":   0.00005,
-          "shrinkage_threshold": 0.0001
-        }
-      }]
     }
   },
   "loss": {
