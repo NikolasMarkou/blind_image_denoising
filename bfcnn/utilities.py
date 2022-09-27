@@ -11,9 +11,9 @@ from typing import List, Tuple, Union, Dict, Iterable
 # local imports
 # ---------------------------------------------------------------------
 
+from .constants import *
 from .custom_logger import logger
 from .activations import differentiable_relu, differentiable_relu_layer
-from .constants import DEFAULT_EPSILON, DEFAULT_CHANNELWISE_MULTIPLIER_L1
 from .custom_layers import Multiplier, RandomOnOff, ChannelwiseMultiplier
 
 # ---------------------------------------------------------------------
@@ -198,7 +198,9 @@ def conv2d_wrapper(
         conv_params: Dict,
         bn_params: Dict = None,
         pre_activation: str = None,
-        channelwise_scaling: bool = False):
+        use_depthwise_conv: bool = False,
+        channelwise_scaling: bool = False,
+        multiplier_scaling: bool = False):
     """
     wraps a conv2d with a preceding normalizer
 
@@ -206,7 +208,11 @@ def conv2d_wrapper(
     :param conv_params: conv2d parameters
     :param bn_params: batchnorm parameters, None to disable bn
     :param pre_activation: activation after the batchnorm, None to disable
-    :param channelwise_scaling: if True add a learnable point-wise depthwise scaling conv2d at the end
+    :param use_depthwise_conv: if true use depthwise convolution,
+    :param channelwise_scaling:
+    if True add a learnable channel wise scaling at the end
+    : param multiplier_scaling:
+    if True add a learnable single scale at the end en
     :return: transformed input
     """
     # --- argument checking
@@ -219,20 +225,33 @@ def conv2d_wrapper(
     use_bn = bn_params is not None
     use_pre_activation = pre_activation is not None
 
-    # --- perform the transformations
+    # --- perform batchnorm and preactivation
     x = input_layer
+
     if use_bn:
         x = tf.keras.layers.BatchNormalization(**bn_params)(x)
     if use_pre_activation:
         x = tf.keras.layers.Activation(pre_activation)(x)
-    # ideally this should be orthonormal
-    x = tf.keras.layers.Conv2D(**conv_params)(x)
-    # learn the proper scale of the previous layer
+
+    # --- convolution
+    if use_depthwise_conv:
+        x = tf.keras.layers.DepthwiseConv2D(**conv_params)(x)
+    else:
+        x = tf.keras.layers.Conv2D(**conv_params)(x)
+
+    # --- learn the proper scale of the previous layer
     if channelwise_scaling:
         x = \
             ChannelwiseMultiplier(
                 multiplier=1.0,
                 regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
+                trainable=True,
+                activation="linear")(x)
+    if multiplier_scaling:
+        x = \
+            Multiplier(
+                multiplier=1.0,
+                regularizer=keras.regularizers.L1(DEFAULT_MULTIPLIER_L1),
                 trainable=True,
                 activation="linear")(x)
     return x
@@ -274,52 +293,6 @@ def dense_wrapper(
     if use_elementwise:
         x = ChannelwiseMultiplier(**elementwise_params)(x)
     return x
-
-# ---------------------------------------------------------------------
-
-
-def learnable_per_channel_multiplier_layer(
-        input_layer,
-        multiplier: float = 1.0,
-        activation: str = "linear",
-        kernel_regularizer: str = "l1",
-        trainable: bool = True):
-    """
-    Constant learnable multiplier layer
-
-    :param input_layer: input layer to be multiplied
-    :param multiplier: multiplication constant
-    :param activation: activation after the filter (linear by default)
-    :param kernel_regularizer: regularize kernel weights (None by default)
-    :param trainable: whether this layer is trainable or not
-    :return: multiplied input_layer
-    """
-    # --- initialise to set kernel to required value
-    def kernel_init(shape, dtype):
-        kernel = np.zeros(shape)
-        for i in range(shape[2]):
-            kernel[:, :, i, 0] = \
-                np.random.normal(scale=DEFAULT_EPSILON, loc=0.0)
-        return kernel
-    x = \
-        tf.keras.layers.DepthwiseConv2D(
-            kernel_size=1,
-            padding="same",
-            strides=(1, 1),
-            use_bias=False,
-            depth_multiplier=1,
-            trainable=trainable,
-            activation=activation,
-            kernel_initializer=kernel_init,
-            depthwise_initializer=kernel_init,
-            kernel_regularizer=kernel_regularizer)(input_layer)
-    # different scenarios
-    if multiplier == 0.0:
-        return x
-    if multiplier == 1.0:
-        return input_layer + x
-    return (multiplier * input_layer) + x
-
 
 # ---------------------------------------------------------------------
 
@@ -431,7 +404,14 @@ def sparse_block(
     create sparsity in an input layer (keeps only positive)
 
     :param input_layer:
-    :param threshold_sigma: sparsity of the results (0 -> 50% sparsity)
+    :param threshold_sigma: sparsity of the results (assuming negative values in input)
+    -3 -> 0.1% sparsity
+    -2 -> 2.3% sparsity
+    -1 -> 15.9% sparsity
+    0  -> 50% sparsity
+    +1 -> 84.1% sparsity
+    +2 -> 97.7% sparsity
+    +3 -> 99.9% sparsity
 
     :return: sparse results
     """
