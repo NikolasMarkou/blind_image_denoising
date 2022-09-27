@@ -1,3 +1,9 @@
+r"""train a bfcnn model"""
+
+__author__ = "Nikolas Markou"
+__version__ = "1.0.0"
+__license__ = "MIT"
+
 import os
 import sys
 import argparse
