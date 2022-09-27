@@ -7,10 +7,7 @@ from typing import List, Tuple, Union, Dict, Iterable
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .constants import \
-    DEFAULT_BN_EPSILON, \
-    DEFAULT_BN_MOMENTUM, \
-    DEFAULT_CHANNELWISE_MULTIPLIER_L1
+from .constants import *
 from .custom_layers import \
     Multiplier, \
     RandomOnOff, \
@@ -23,7 +20,7 @@ from .utilities import \
 # ---------------------------------------------------------------------
 
 
-def resnet_blocks_original(
+def resnet(
         input_layer,
         no_layers: int,
         first_conv_params: Dict,
@@ -77,7 +74,7 @@ def resnet_blocks_original(
 # ---------------------------------------------------------------------
 
 
-def resnet_blocks_full_preactivation(
+def resnet_full_preactivation(
         input_layer,
         no_layers: int,
         first_conv_params: Dict,
@@ -235,5 +232,37 @@ def resnet_blocks(
         # skip connection
         x = tf.keras.layers.Add()([x, previous_layer])
     return x
+
+# ---------------------------------------------------------------------
+
+
+def builder(input_layer, config: Dict):
+    # --- argument checking
+    if config is None:
+        raise ValueError("config cannot be None")
+
+    # --- get type and params
+    block_type = config.get(TYPE_STR, None).lower()
+    block_params = config.get(CONFIG_STR, {})
+
+    # --- select block
+    fn = None
+    if block_type == "resnet":
+        fn = resnet
+    elif block_type == "resnet_full_preactivation":
+        fn = resnet_full_preactivation
+    elif block_type == "resnext":
+        raise NotImplementedError("not implemented yet")
+    elif block_type == "convnext":
+        raise NotImplementedError("not implemented yet")
+    elif block_type == "mobilenet_v1":
+        raise NotImplementedError("not implemented yet")
+    elif block_type == "mobilenet_v2":
+        raise NotImplementedError("not implemented yet")
+    elif block_type == "mobilenet_v3":
+        raise NotImplementedError("not implemented yet")
+
+    # --- build it
+    return fn(input_layer=input_layer, **block_params)
 
 # ---------------------------------------------------------------------

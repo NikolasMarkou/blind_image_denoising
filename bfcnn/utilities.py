@@ -1,10 +1,10 @@
 import os
 import json
-import keras
 import itertools
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
+from tensorflow import keras
 from typing import List, Tuple, Union, Dict, Iterable
 
 # ---------------------------------------------------------------------
@@ -209,10 +209,10 @@ def conv2d_wrapper(
     :param bn_params: batchnorm parameters, None to disable bn
     :param pre_activation: activation after the batchnorm, None to disable
     :param use_depthwise_conv: if true use depthwise convolution,
-    :param channelwise_scaling:
-    if True add a learnable channel wise scaling at the end
-    : param multiplier_scaling:
-    if True add a learnable single scale at the end en
+    :param channelwise_scaling: if True add a learnable
+    channel wise scaling at the end
+    :param multiplier_scaling: if True add a learnable
+    single scale at the end
     :return: transformed input
     """
     # --- argument checking
@@ -224,7 +224,7 @@ def conv2d_wrapper(
     # --- prepare arguments
     use_bn = bn_params is not None
     use_pre_activation = pre_activation is not None
-
+    
     # --- perform batchnorm and preactivation
     x = input_layer
 
@@ -246,14 +246,14 @@ def conv2d_wrapper(
                 multiplier=1.0,
                 regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
                 trainable=True,
-                activation="linear")(x)
+                activation="relu")(x)
     if multiplier_scaling:
         x = \
             Multiplier(
                 multiplier=1.0,
                 regularizer=keras.regularizers.L1(DEFAULT_MULTIPLIER_L1),
                 trainable=True,
-                activation="linear")(x)
+                activation="relu")(x)
     return x
 
 # ---------------------------------------------------------------------
