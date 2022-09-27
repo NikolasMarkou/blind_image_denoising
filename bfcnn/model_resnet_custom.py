@@ -20,7 +20,7 @@ from .custom_layers import \
 from .utilities import \
     conv2d_wrapper, \
     mean_sigma_local
-from .model_blocks import resnet_blocks
+from .model_blocks import resnet_blocks_full
 
 # ---------------------------------------------------------------------
 
@@ -227,7 +227,7 @@ def build_model_resnet_custom(
 
     # add resnet blocks
     x = \
-        resnet_blocks(
+        resnet_blocks_full(
             input_layer=x,
             **resnet_params)
 

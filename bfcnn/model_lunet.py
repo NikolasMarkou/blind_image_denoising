@@ -8,7 +8,7 @@ from typing import List, Tuple, Union, Dict, Iterable
 
 from .custom_logger import logger
 from .custom_layers import Multiplier
-from .model_blocks import resnet_blocks
+from .model_blocks import resnet_blocks_full
 from .utilities import conv2d_wrapper, mean_sigma_local
 from .constants import DEFAULT_BN_EPSILON, DEFAULT_BN_MOMENTUM
 
@@ -82,7 +82,7 @@ def lunet_blocks(
             x = level_x
         else:
             level_x = \
-                resnet_blocks(
+                resnet_blocks_full(
                     input_layer=level_x,
                     no_layers=no_layers,
                     first_conv_params=first_conv_params,
@@ -100,7 +100,7 @@ def lunet_blocks(
             x = \
                 tf.keras.layers.Add()([x, level_x])
         x = \
-            resnet_blocks(
+            resnet_blocks_full(
                 input_layer=x,
                 no_layers=no_layers,
                 first_conv_params=first_conv_params,

@@ -20,7 +20,7 @@ from .utilities import \
     conv2d_wrapper, \
     mean_sigma_local, \
     mean_sigma_global
-from .model_blocks import resnet_blocks
+from .model_blocks import resnet_blocks_full
 
 # ---------------------------------------------------------------------
 
@@ -61,7 +61,7 @@ def unet_blocks(
                     conv_params=first_conv_params,
                     bn_params=None)
         x = \
-            resnet_blocks(
+            resnet_blocks_full(
                 input_layer=x,
                 no_layers=no_layers,
                 first_conv_params=first_conv_params,
@@ -97,7 +97,7 @@ def unet_blocks(
                 conv_params=first_conv_params,
                 bn_params=None)
         x = \
-            resnet_blocks(
+            resnet_blocks_full(
                 input_layer=x,
                 no_layers=no_layers,
                 first_conv_params=first_conv_params,

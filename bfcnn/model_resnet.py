@@ -12,15 +12,10 @@ from typing import List, Tuple, Union, Dict, Iterable
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .constants import \
-    DEFAULT_BN_EPSILON, \
-    DEFAULT_BN_MOMENTUM
-from .custom_layers import \
-    Multiplier
-from .utilities import \
-    conv2d_wrapper, \
-    mean_sigma_local
-from .model_blocks import resnet_blocks
+from .constants import *
+from .custom_layers import Multiplier
+from .model_blocks import resnet_blocks_full
+from .utilities import conv2d_wrapper, mean_sigma_local
 
 # ---------------------------------------------------------------------
 
@@ -100,7 +95,7 @@ def build_model_resnet(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation=activation,
+        activation="linear",
         kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
@@ -146,7 +141,7 @@ def build_model_resnet(
         padding="same",
         use_bias=use_bias,
         # this must be the same as the base
-        activation=activation,
+        activation="linear",
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -174,11 +169,18 @@ def build_model_resnet(
         rate=dropout_rate
     )
 
+    channelwise_params = dict(
+        multiplier=1.0,
+        regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
+        trainable=True,
+        activation="relu"
+    )
+
     resnet_params = dict(
         bn_params=None,
         sparse_params=None,
         no_layers=no_layers,
-        channelwise_scaling=channelwise_scaling,
+        channelwise_params=channelwise_params,
         first_conv_params=first_conv_params,
         second_conv_params=second_conv_params,
         third_conv_params=third_conv_params,
@@ -199,6 +201,9 @@ def build_model_resnet(
 
     if dropout_rate != -1:
         resnet_params["dropout_params"] = dropout_params
+
+    if channelwise_scaling:
+        resnet_params["channelwise_params"] = channelwise_params
 
     # --- build model
     # set input
@@ -226,7 +231,7 @@ def build_model_resnet(
 
     # add resnet blocks
     x = \
-        resnet_blocks(
+        resnet_blocks_full(
             input_layer=x,
             **resnet_params)
 
