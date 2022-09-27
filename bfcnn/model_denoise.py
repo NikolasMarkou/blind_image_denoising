@@ -18,7 +18,7 @@ from .utilities import \
 from .model_unet import build_model_unet
 from .model_lunet import build_model_lunet
 from .model_resnet import build_model_resnet
-from .custom_layers import ChannelwiseMultiplier, Multiplier
+from .custom_layers import Multiplier
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model

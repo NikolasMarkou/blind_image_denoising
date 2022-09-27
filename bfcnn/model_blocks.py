@@ -1,3 +1,5 @@
+import copy
+
 import tensorflow as tf
 from tensorflow import keras
 from typing import List, Tuple, Union, Dict, Iterable
@@ -186,19 +188,21 @@ def resnet_blocks(
     for i in range(no_layers):
         previous_layer = x
         x = conv2d_wrapper(input_layer=x,
-                           conv_params=first_conv_params,
+                           conv_params=copy.deepcopy(first_conv_params),
                            bn_params=None,
                            channelwise_scaling=False)
-        x = conv2d_wrapper(input_layer=x,
-                           conv_params=second_conv_params,
-                           bn_params=bn_params,
-                           channelwise_scaling=False)
-        x = conv2d_wrapper(input_layer=x,
-                           conv_params=third_conv_params,
-                           bn_params=bn_params,
-                           channelwise_scaling=False)
+
         if use_sparsity:
             x = sparse_block(x, **sparse_params)
+
+        x = conv2d_wrapper(input_layer=x,
+                           conv_params=copy.deepcopy(second_conv_params),
+                           bn_params=bn_params,
+                           channelwise_scaling=False)
+        x = conv2d_wrapper(input_layer=x,
+                           conv_params=copy.deepcopy(third_conv_params),
+                           bn_params=bn_params,
+                           channelwise_scaling=False)
         # learn the proper scale of the previous layer
         if channelwise_scaling:
             # add a very small l1 penalty
@@ -207,7 +211,7 @@ def resnet_blocks(
                     multiplier=1.0,
                     regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
                     trainable=True,
-                    activation="linear")(x)
+                    activation="relu")(x)
         # compute activation per channel
         if use_gate:
             y = tf.keras.layers.GlobalAveragePooling2D()(x)
@@ -215,7 +219,7 @@ def resnet_blocks(
                 dense_wrapper(
                     input_layer=y,
                     bn_params=bn_params,
-                    dense_params=dense_params,
+                    dense_params=copy.deepcopy(dense_params),
                     elementwise_params=elementwise_params)
             # if x < -2.5: return 0
             # if x > 2.5: return 1
