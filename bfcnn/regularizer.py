@@ -192,7 +192,7 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
 
 class ErfRegularizer(keras.regularizers.Regularizer):
     """
-    Helps expand the effective receptive field
+    give incentive to expand the effective receptive field
     """
 
     def __init__(self,
