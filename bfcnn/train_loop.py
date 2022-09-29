@@ -414,7 +414,7 @@ def train_loop(
                         name="decomposition",
                         step=global_step,
                         data=decompose_image / 255,
-                        max_outputs=visualization_number)
+                        max_outputs=None)
 
                 # --- prune conv2d
                 if use_prune and (global_epoch >= prune_start_epoch) and \
