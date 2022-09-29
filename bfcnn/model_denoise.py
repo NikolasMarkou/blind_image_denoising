@@ -81,7 +81,6 @@ def model_builder(
     kernel_regularizer = config.get("kernel_regularizer", "l1")
     add_skip_with_input = config.get("add_skip_with_input", True)
     channelwise_scaling = config.get("channelwise_scaling", False)
-    add_intermediate_results = config.get("intermediate_results", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     add_learnable_multiplier = config.get("add_learnable_multiplier", False)
     add_residual_between_models = config.get("add_residual_between_models", False)
@@ -133,7 +132,7 @@ def model_builder(
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
         add_skip_with_input=add_skip_with_input,
-        add_intermediate_results=add_intermediate_results,
+        add_intermediate_results=True,
         add_learnable_multiplier=add_learnable_multiplier,
     )
 
@@ -216,12 +215,12 @@ def model_builder(
     if add_residual_between_models:
         previous_level = None
         current_level_output = None
+        current_level_intermediate_output = None
         for i, x_level in reversed(list(enumerate(x_levels))):
             if previous_level is None:
-                current_level_output = denoise_models[i](x_level)
-                if shared_model and len(x_levels) > 1:
-                    current_level_output = \
-                        Multiplier(**multiplier_params)(current_level_output)
+                x_level_tmp = denoise_models[i](x_level)
+                current_level_output = x_level_tmp[0]
+                current_level_intermediate_output = x_level_tmp[1]
                 previous_level = current_level_output
             else:
                 previous_level = \
@@ -236,85 +235,73 @@ def model_builder(
                     keras.layers.UpSampling2D(**upsampling_params)(current_level_input_down)
                 current_level_input = \
                     current_level_input - current_level_input_smoothed
-                current_level_output = \
+                x_level_tmp = \
                     denoise_models[i](current_level_input)
-                if shared_model and len(x_levels) > 1:
-                    current_level_output = \
-                        Multiplier(**multiplier_params)(current_level_output)
+                current_level_output = x_level_tmp[0]
+                current_level_intermediate_output = x_level_tmp[1]
                 previous_level = \
                     keras.layers.Add()(
                         [previous_level, current_level_output])
-            x_levels[i] = current_level_output
+            x_levels[i] = [
+                current_level_output,
+                current_level_intermediate_output
+            ]
     else:
         for i, x_level in enumerate(x_levels):
-            x_level_tmp = denoise_models[i](x_level)
-            if shared_model and len(x_levels) > 1:
-                x_level_tmp = \
-                    Multiplier(**multiplier_params)(x_level_tmp)
-            x_levels[i] = x_level_tmp
+            x_levels[i] = denoise_models[i](x_level)
 
     # --- split intermediate results and actual results
-    x_levels_intermediate = []
-    if add_intermediate_results:
-        for i, x_level in enumerate(x_levels):
-            x_levels_intermediate += x_level[1::]
-        x_levels = [
-            x_level[0]
-            for i, x_level in enumerate(x_levels)
-        ]
+    x_levels_intermediate = [
+        x_level[1::]
+        for i, x_level in enumerate(x_levels)
+    ]
+    x_levels_output = [
+        x_level[0]
+        for i, x_level in enumerate(x_levels)
+    ]
 
     # --- optional multiplier to help saturation
     if output_multiplier is not None and \
             output_multiplier != 1:
-        x_levels = [
+        x_levels_output = [
             x_level * output_multiplier
-            for x_level in x_levels
+            for x_level in x_levels_output
         ]
 
     # --- clip levels to [-0.5, +0.5]
     if clip_values:
-        for i, x_level in enumerate(x_levels):
+        for i, x_level in enumerate(x_levels_output):
             x_levels[i] = \
                 tf.clip_by_value(
                     t=x_level,
                     clip_value_min=-0.5,
                     clip_value_max=+0.5)
 
-    # --- keep model before merging (this is for better training)
-    model_denoise_decomposition = \
-        keras.Model(
-            inputs=input_layer,
-            outputs=x_levels,
-            name=f"{model_type}_denoiser_decomposition")
-
     # --- merge levels together
     if use_pyramid:
         x_result = \
-            model_inverse_pyramid(x_levels)
+            model_inverse_pyramid(x_levels_output)
     else:
-        x_result = x_levels[0]
+        x_result = x_levels_output[0]
 
     # name output
     output_layer = \
         keras.layers.Layer(name="output_tensor")(
             x_result)
 
-    # add intermediate results
-    output_layers = [output_layer]
-    if add_intermediate_results:
-        x_levels_intermediate = [
-            keras.layers.Layer(
-                name=f"intermediate_tensor_{i}")(x_level_intermediate)
-            for i, x_level_intermediate in enumerate(x_levels_intermediate)
-        ]
-        output_layers = output_layers + x_levels_intermediate
-
     # --- wrap and name model
     model_denoise = \
         keras.Model(
             inputs=input_layer,
-            outputs=output_layers,
+            outputs=output_layer,
             name=f"{model_type}_denoiser")
+
+    # --- keep model before merging (this is for better training)
+    model_denoise_decomposition = \
+        keras.Model(
+            inputs=input_layer,
+            outputs=x_levels_intermediate,
+            name=f"{model_type}_denoiser_decomposition")
 
     return \
         BuilderResults(

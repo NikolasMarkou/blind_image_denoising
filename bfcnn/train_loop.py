@@ -236,8 +236,6 @@ def train_loop(
 
         return x_noisy_denormalized, x_denoised_denormalized
 
-
-
     # --- create random image and iterate through the model
     def create_random_batch():
         x_iteration = 0
