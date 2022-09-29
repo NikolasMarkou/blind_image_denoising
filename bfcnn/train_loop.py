@@ -1,6 +1,5 @@
 import os
 import time
-
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
@@ -226,7 +225,16 @@ def train_loop(
             denoiser(x_noisy, training=False)
         x_denoised_denormalized = \
             denormalizer(x_denoised, training=False)
+
         return x_noisy_denormalized, x_denoised_denormalized
+
+    # --- decompose image
+    def decompose_test_batch():
+        x_tmp = test_images[0, :, :, :]
+        x_tmp = tf.expand_dims(x_tmp, axis=0)
+        x_tmp = denoiser_decomposition(x_tmp, training=False)
+        x_tmp = tf.transpose(x_tmp, perm=(3, 1, 2, 0))
+        return x_tmp
 
     # --- create random image and iterate through the model
     def create_random_batch():
@@ -270,37 +278,17 @@ def train_loop(
             checkpoint.restore(manager.latest_checkpoint).expect_partial()
 
         # --- define denoise fn
-        if inverse_pyramid is not None:
-            @tf.function
-            def denoise_fn(x):
-                # denoised decomposition
-                x0 = \
-                    denoiser_decomposition(
-                        x,
-                        training=True)
-                # denoised merged
-                x1 = \
-                    inverse_pyramid(
-                        x0,
-                        training=False)
-                # denoised denormalized
-                x2 = \
-                    denormalizer(x1, training=False)
-                return x0, x1, x2
-        else:
-            @tf.function
-            def denoise_fn(x):
-                # denoised decomposition
-                x0 = None
-                # denoised merged
-                x1 = \
-                    denoiser(
-                        x,
-                        training=True)
-                # denoised denormalized
-                x2 = \
-                    denormalizer(x1, training=False)
-                return x0, x1, x2
+        @tf.function
+        def denoise_fn(x_input):
+            # denoised merged
+            x_denoised = \
+                denoiser(
+                    x_input,
+                    training=True)
+            # denoised denormalized
+            x_denoised_denormalized = \
+                denormalizer(x_denoised, training=False)
+            return x_denoised, x_denoised_denormalized
 
         # ---
         while global_epoch < global_total_epochs:
@@ -334,9 +322,7 @@ def train_loop(
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
-                    _, \
-                    denoised_batch, \
-                    denormalized_denoised_batch = \
+                    denoised_batch, denormalized_denoised_batch = \
                         denoise_fn(normalized_noisy_batch)
 
                     # compute the loss value for this mini-batch
@@ -381,33 +367,29 @@ def train_loop(
                 if (global_step % visualization_every) == 0:
                     test_input_batch = None
                     test_output_batch = None
-                    random_batch = create_random_batch()
                     if use_test_images:
                         test_input_batch, test_output_batch = denoise_test_batch()
                     visualize(
                         global_step=global_step,
                         input_batch=input_batch,
                         noisy_batch=noisy_batch,
-                        random_batch=random_batch,
+                        random_batch=create_random_batch(),
                         test_input_batch=test_input_batch,
                         test_output_batch=test_output_batch,
                         prediction_batch=denormalized_denoised_batch,
                         visualization_number=visualization_number)
                     # add weight visualization
-                    weights = \
-                        get_conv2d_weights(
-                            model=denoiser)
                     tf.summary.histogram(
-                        data=weights,
+                        data=get_conv2d_weights(model=denoiser),
                         step=global_step,
                         buckets=weight_buckets,
                         name="training/weights")
 
                     # --- prediction error distribution
                     input_prediction_error = \
-                        (input_batch - denormalized_denoised_batch) / 255
-                    input_prediction_error = \
-                        tf.reshape(input_prediction_error, shape=[-1])
+                        tf.reshape(
+                            tensor=(input_batch - denormalized_denoised_batch) / 255,
+                            shape=[-1])
                     tf.summary.histogram(
                         data=input_prediction_error,
                         step=global_step,

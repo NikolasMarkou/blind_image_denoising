@@ -12,9 +12,7 @@ from .custom_logger import logger
 from .utilities import \
     input_shape_fixer, \
     build_normalize_model, \
-    build_denormalize_model, \
-    mean_sigma_local, \
-    mean_sigma_global
+    build_denormalize_model
 from .model_unet import build_model_unet
 from .model_lunet import build_model_lunet
 from .model_resnet import build_model_resnet
@@ -22,7 +20,7 @@ from .custom_layers import Multiplier
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
-from .constants import CONFIG_STR, TYPE_STR
+from .constants import *
 from .regularizer import builder as regularizer_builder
 
 # ---------------------------------------------------------------------
@@ -36,7 +34,8 @@ BuilderResults = namedtuple(
         "denormalizer",
         "pyramid",
         "inverse_pyramid"
-     })
+    })
+
 
 # ---------------------------------------------------------------------
 
@@ -78,7 +77,6 @@ def model_builder(
     add_concat_input = config.get("add_concat_input", False)
     input_shape = config.get("input_shape", (None, None, 3))
     output_multiplier = config.get("output_multiplier", 1.0)
-    local_normalization = config.get("local_normalization", -1)
     final_activation = config.get("final_activation", "linear")
     kernel_regularizer = config.get("kernel_regularizer", "l1")
     add_skip_with_input = config.get("add_skip_with_input", True)
@@ -87,12 +85,7 @@ def model_builder(
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     add_learnable_multiplier = config.get("add_learnable_multiplier", False)
     add_residual_between_models = config.get("add_residual_between_models", False)
-
     use_pyramid = pyramid_config is not None
-    use_local_normalization = local_normalization > 0
-    use_global_normalization = local_normalization == 0
-    use_normalization = use_local_normalization or use_global_normalization
-    local_normalization_kernel = (local_normalization, local_normalization)
     input_shape = input_shape_fixer(input_shape)
 
     # --- argument checking
@@ -155,15 +148,7 @@ def model_builder(
         raise ValueError(
             "don't know how to build model [{0}]".format(model_type))
 
-    def func_sigma_norm(args):
-        y, mean_y, sigma_y = args
-        return (y - mean_y) / sigma_y
-
-    def func_sigma_denorm(args):
-        y, mean_y, sigma_y = args
-        return (y * sigma_y) + mean_y
-
-    # build pyramid / inverse pyramid
+    # --- build pyramid / inverse pyramid
     if use_pyramid:
         logger.info(f"building pyramid: [{pyramid_config}]")
         model_pyramid = \
@@ -188,60 +173,11 @@ def model_builder(
             name="input_tensor")
     x = input_layer
 
-    # define normalization/denormalization layers
-    local_normalization_layer = \
-        keras.layers.Lambda(
-            name="local_normalization",
-            function=func_sigma_norm,
-            trainable=False)
-    local_denormalization_layer = \
-        keras.layers.Lambda(
-            name="local_denormalization",
-            function=func_sigma_denorm,
-            trainable=False)
-    global_normalization_layer = \
-        keras.layers.Lambda(
-            name="global_normalization",
-            function=func_sigma_norm,
-            trainable=False)
-    global_denormalization_layer = \
-        keras.layers.Lambda(
-            name="global_denormalization",
-            function=func_sigma_denorm,
-            trainable=False)
-
     # --- run inference
     if use_pyramid:
         x_levels = model_pyramid(x, training=False)
     else:
         x_levels = [x]
-
-    # --- local/global normalization cap
-    means = []
-    sigmas = []
-
-    if use_normalization:
-        for i, x_level in enumerate(x_levels):
-            mean, sigma = None, None
-            if use_local_normalization:
-                mean, sigma = \
-                    mean_sigma_local(
-                        input_layer=x_level,
-                        kernel_size=local_normalization_kernel)
-                x_level = \
-                    local_normalization_layer(
-                        [x_level, mean, sigma])
-            if use_global_normalization:
-                mean, sigma = \
-                    mean_sigma_global(
-                        input_layer=x_level,
-                        axis=[1, 2])
-                x_level = \
-                    global_normalization_layer(
-                        [x_level, mean, sigma])
-            means.append(mean)
-            sigmas.append(sigma)
-            x_levels[i] = x_level
 
     logger.info("pyramid produces [{0}] scales".format(len(x_levels)))
 
@@ -264,6 +200,19 @@ def model_builder(
 
     # --- add residual between models
     # speeds up training a lot, and better results (but adds artifacts)
+    multiplier_params = \
+        dict(multiplier=1.0,
+             trainable=True,
+             regularizer="l1",
+             activation="linear")
+    upsampling_params = \
+        dict(size=(2, 2),
+             interpolation="bilinear")
+    downsampling_params = \
+        dict(pool_size=kernel_size,
+             strides=(2, 2),
+             padding="same")
+
     if add_residual_between_models:
         previous_level = None
         current_level_output = None
@@ -272,41 +221,26 @@ def model_builder(
                 current_level_output = denoise_models[i](x_level)
                 if shared_model and len(x_levels) > 1:
                     current_level_output = \
-                        Multiplier(
-                            multiplier=1.0,
-                            trainable=True,
-                            regularizer=None,
-                            activation="linear")(current_level_output)
+                        Multiplier(**multiplier_params)(current_level_output)
                 previous_level = current_level_output
             else:
                 previous_level = \
-                    keras.layers.UpSampling2D(
-                        size=(2, 2),
-                        interpolation="bilinear")(previous_level)
+                    keras.layers.UpSampling2D(**upsampling_params)(previous_level)
                 # stop the signal to propagate
                 previous_level = tf.stop_gradient(previous_level)
                 current_level_input = \
                     keras.layers.Add()([previous_level, x_level])
                 current_level_input_down = \
-                    keras.layers.AveragePooling2D(
-                        pool_size=kernel_size,
-                        strides=(2, 2),
-                        padding="same")(current_level_input)
+                    keras.layers.AveragePooling2D(**downsampling_params)(current_level_input)
                 current_level_input_smoothed = \
-                    keras.layers.UpSampling2D(
-                        size=(2, 2),
-                        interpolation="bilinear")(current_level_input_down)
+                    keras.layers.UpSampling2D(**upsampling_params)(current_level_input_down)
                 current_level_input = \
                     current_level_input - current_level_input_smoothed
                 current_level_output = \
                     denoise_models[i](current_level_input)
                 if shared_model and len(x_levels) > 1:
                     current_level_output = \
-                        Multiplier(
-                            multiplier=1.0,
-                            trainable=True,
-                            regularizer=None,
-                            activation="linear")(current_level_output)
+                        Multiplier(**multiplier_params)(current_level_output)
                 previous_level = \
                     keras.layers.Add()(
                         [previous_level, current_level_output])
@@ -316,11 +250,7 @@ def model_builder(
             x_level_tmp = denoise_models[i](x_level)
             if shared_model and len(x_levels) > 1:
                 x_level_tmp = \
-                    Multiplier(
-                        multiplier=1.0,
-                        trainable=True,
-                        regularizer=None,
-                        activation="linear")(x_level_tmp)
+                    Multiplier(**multiplier_params)(x_level_tmp)
             x_levels[i] = x_level_tmp
 
     # --- split intermediate results and actual results
@@ -340,19 +270,6 @@ def model_builder(
             x_level * output_multiplier
             for x_level in x_levels
         ]
-
-    # --- local/global denormalization cap
-    if use_normalization:
-        for i, x_level in enumerate(x_levels):
-            if use_local_normalization:
-                x_level = \
-                    local_denormalization_layer(
-                        [x_level, means[i], sigmas[i]])
-            if use_global_normalization:
-                x_level = \
-                    global_denormalization_layer(
-                        [x_level, means[i], sigmas[i]])
-            x_levels[i] = x_level
 
     # --- clip levels to [-0.5, +0.5]
     if clip_values:
@@ -399,13 +316,15 @@ def model_builder(
             outputs=output_layers,
             name=f"{model_type}_denoiser")
 
-    return BuilderResults(
-        denoiser=model_denoise,
-        denoiser_decomposition=model_denoise_decomposition,
-        normalizer=model_normalize,
-        denormalizer=model_denormalize,
-        pyramid=model_pyramid,
-        inverse_pyramid=model_inverse_pyramid)
+    return \
+        BuilderResults(
+            pyramid=model_pyramid,
+            denoiser=model_denoise,
+            normalizer=model_normalize,
+            denormalizer=model_denormalize,
+            inverse_pyramid=model_inverse_pyramid,
+            denoiser_decomposition=model_denoise_decomposition)
+
 
 # ---------------------------------------------------------------------
 
@@ -475,6 +394,7 @@ class DenoisingInferenceModule(tf.Module, abc.ABC):
     @abc.abstractmethod
     def __call__(self, input_tensor):
         pass
+
 
 # ---------------------------------------------------------------------
 

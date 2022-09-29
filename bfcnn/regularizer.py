@@ -4,6 +4,7 @@ blocks and builders for custom regularizers
 
 # ---------------------------------------------------------------------
 
+import numpy as np
 from enum import Enum
 import tensorflow as tf
 from tensorflow import keras
@@ -11,19 +12,9 @@ from typing import Dict, Tuple, Union, List, Any
 
 # ---------------------------------------------------------------------
 
+from .constants import *
 from .custom_logger import logger
-from .constants import CONFIG_STR, TYPE_STR
-
-# ---------------------------------------------------------------------
-
-# define file constants
-REGULARIZERS_STR = "regularizers"
-L1_COEFFICIENT_STR = "l1_coefficient"
-DIAG_COEFFICIENT_STR = "diag_coefficient"
-LAMBDA_COEFFICIENT_STR = "lambda_coefficient"
-REGULARIZER_ALLOWED_TYPES = \
-    Union[str, Dict, keras.regularizers.Regularizer]
-
+from .utilities import gaussian_kernel
 
 # ---------------------------------------------------------------------
 
@@ -84,9 +75,11 @@ class RegularizationType(Enum):
 
     L1L2 = 2
 
-    SOFT_ORTHONORMAL = 3
+    ERF = 3
 
-    SOFT_ORTHOGONAL = 4
+    SOFT_ORTHONORMAL = 4
+
+    SOFT_ORTHOGONAL = 5
 
     @staticmethod
     def from_string(type_str: str) -> "RegularizationType":
@@ -194,6 +187,52 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
             LAMBDA_COEFFICIENT_STR: self._lambda_coefficient.numpy()
         }
 
+# ---------------------------------------------------------------------
+
+
+class ErfRegularizer(keras.regularizers.Regularizer):
+    """
+    Helps expand the effective receptive field
+    """
+
+    def __init__(self,
+                 l1_coefficient: float = 0.01,
+                 l2_coefficient: float = 0.01,
+                 nsig: Tuple[float, float] = (1.0, 1.0)):
+        self._l1_coefficient = tf.constant(l1_coefficient)
+        self._l2_coefficient = tf.constant(l2_coefficient)
+        self._nsig = nsig
+
+    @tf.function
+    def __call__(self, x):
+        # get kernel weights shape
+        shape = x.shape[0:2]
+        # build gaussian kernel
+        gaussian_weights = \
+            tf.constant(
+                gaussian_kernel(
+                    size=shape,
+                    nsig=self._nsig,
+                    dtype=np.float32))
+        gaussian_weights = \
+            tf.expand_dims(gaussian_weights, axis=2)
+        gaussian_weights = \
+            tf.expand_dims(gaussian_weights, axis=3)
+        # weight kernels
+        x = tf.multiply(x, gaussian_weights)
+
+        return \
+            self._l1_coefficient * \
+            tf.reduce_sum(tf.abs(x), axis=None, keepdims=False) + \
+            self._l2_coefficient * \
+            tf.reduce_sum(tf.pow(x, 2.0), axis=None, keepdims=False)
+
+    def get_config(self):
+        return {
+            NSIG_COEFFICIENT_STR: self._nsig,
+            L1_COEFFICIENT_STR: self._l1_coefficient.numpy(),
+            L2_COEFFICIENT_STR: self._l2_coefficient.numpy()
+        }
 
 # ---------------------------------------------------------------------
 
@@ -225,7 +264,6 @@ class RegularizerMixer(keras.regularizers.Regularizer):
                 regularizer in self._regularizers
             ]
         }
-
 
 # ---------------------------------------------------------------------
 
@@ -268,6 +306,8 @@ def builder_helper(
         regularizer = keras.regularizers.L1(**regularizer_params)
     elif regularizer_type == RegularizationType.L2:
         regularizer = keras.regularizers.L2(**regularizer_params)
+    elif regularizer_type == RegularizationType.ERF:
+        regularizer = ErfRegularizer(**regularizer_params)
     elif regularizer_type == RegularizationType.L1L2:
         regularizer = keras.regularizers.L1L2(**regularizer_params)
     elif regularizer_type == RegularizationType.SOFT_ORTHONORMAL:
