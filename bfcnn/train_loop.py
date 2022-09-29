@@ -411,7 +411,7 @@ def train_loop(
                     decompose_image = decompose_fn(decompose_image)
                     decompose_image = tf.transpose(decompose_image, perm=(3, 1, 2, 0))
                     tf.summary.image(
-                        name="decomposition",
+                        name="test_decomposition",
                         step=global_step,
                         data=decompose_image / 255,
                         max_outputs=None)
