@@ -291,10 +291,7 @@ def train_loop(
         # --- define decompose fn
         @tf.function
         def decompose_fn(x_input):
-            x_decomposed = denoiser_decomposition(x_input, training=False)
-            # decomposed denormalized
-            x_decomposed = denormalizer(x_decomposed, training=False)
-            return x_decomposed
+            return denoiser_decomposition(x_input, training=False)
 
         # ---
         while global_epoch < global_total_epochs:
@@ -412,7 +409,7 @@ def train_loop(
                     tf.summary.image(
                         name="test_decomposition",
                         step=global_step,
-                        data=decompose_image / 255,
+                        data=decompose_image,
                         max_outputs=16)
 
                 # --- prune conv2d
