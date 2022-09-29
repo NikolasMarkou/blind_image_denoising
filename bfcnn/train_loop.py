@@ -236,12 +236,7 @@ def train_loop(
 
         return x_noisy_denormalized, x_denoised_denormalized
 
-    # --- decompose image
-    def decompose_fn(x_input):
-        x_tmp = denoiser_decomposition(x_input, training=False)
-        # decomposed denormalized
-        x_tmp = denormalizer(x_tmp, training=False)
-        return x_tmp
+
 
     # --- create random image and iterate through the model
     def create_random_batch():
@@ -288,14 +283,18 @@ def train_loop(
         @tf.function
         def denoise_fn(x_input):
             # denoised merged
-            x_denoised = \
-                denoiser(
-                    x_input,
-                    training=True)
+            x_denoised = denoiser(x_input, training=True)
             # denoised denormalized
-            x_denoised_denormalized = \
-                denormalizer(x_denoised, training=False)
+            x_denoised_denormalized = denormalizer(x_denoised, training=False)
             return x_denoised, x_denoised_denormalized
+
+        # --- define decompose fn
+        @tf.function
+        def decompose_fn(x_input):
+            x_decomposed = denoiser_decomposition(x_input, training=False)
+            # decomposed denormalized
+            x_decomposed = denormalizer(x_decomposed, training=False)
+            return x_decomposed
 
         # ---
         while global_epoch < global_total_epochs:
@@ -408,14 +407,13 @@ def train_loop(
                         (global_step % decomposition_every) == 0:
                     decompose_image = test_images[0, :, :, :]
                     decompose_image = tf.expand_dims(decompose_image, axis=0)
-                    decompose_image = tf.image.resize(decompose_image, size=(128, 128))
                     decompose_image = decompose_fn(decompose_image)
                     decompose_image = tf.transpose(decompose_image, perm=(3, 1, 2, 0))
                     tf.summary.image(
                         name="test_decomposition",
                         step=global_step,
                         data=decompose_image / 255,
-                        max_outputs=32)
+                        max_outputs=16)
 
                 # --- prune conv2d
                 if use_prune and (global_epoch >= prune_start_epoch) and \
