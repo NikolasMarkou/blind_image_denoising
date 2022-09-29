@@ -301,11 +301,11 @@ def train_loop(
             # --- pruning strategy
             if use_prune and (global_epoch >= prune_start_epoch):
                 logger.info(f"pruning weights at step [{int(global_step)}]")
-                denoiser_decomposition = \
-                    prune_fn(model=denoiser_decomposition)
+                denoiser = \
+                    prune_fn(model=denoiser)
 
             model_denoise_weights = \
-                denoiser_decomposition.trainable_weights
+                denoiser.trainable_weights
 
             # --- iterate over the batches of the dataset
             for input_batch in dataset:
@@ -404,12 +404,12 @@ def train_loop(
                         (global_step % decomposition_every) == 0:
                     decompose_image = test_images[0, :, :, :]
                     decompose_image = tf.expand_dims(decompose_image, axis=0)
-                    decompose_image = decompose_fn(decompose_image)
-                    decompose_image = tf.transpose(decompose_image, perm=(3, 1, 2, 0))
+                    decomposed_image = decompose_fn(decompose_image)
+                    decomposed_image = tf.transpose(decomposed_image, perm=(3, 1, 2, 0))
                     tf.summary.image(
-                        name="test_decomposition",
+                        name="test_output_decomposition",
                         step=global_step,
-                        data=decompose_image,
+                        data=decomposed_image,
                         max_outputs=16)
 
                 # --- prune conv2d
