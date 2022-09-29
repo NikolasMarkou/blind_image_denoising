@@ -403,12 +403,13 @@ def train_loop(
                     decompose_image = test_images[0, :, :, :]
                     decompose_image = tf.expand_dims(decompose_image, axis=0)
                     decomposed_image = decompose_fn(decompose_image)
-                    decomposed_image = tf.transpose(decomposed_image, perm=(3, 1, 2, 0))
-                    tf.summary.image(
-                        name="test_output_decomposition",
-                        step=global_step,
-                        data=decomposed_image,
-                        max_outputs=16)
+                    for i, d in enumerate(decomposed_image):
+                        d = tf.transpose(d, perm=(3, 1, 2, 0))
+                        tf.summary.image(
+                            name=f"test_output_decomposition_{i}",
+                            step=global_step,
+                            data=d,
+                            max_outputs=16)
 
                 # --- prune conv2d
                 if use_prune and (global_epoch >= prune_start_epoch) and \
