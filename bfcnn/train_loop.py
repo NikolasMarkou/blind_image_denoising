@@ -22,9 +22,11 @@ from .dataset import \
     DATASET_TESTING_FN_STR, \
     DATASET_FN_STR, \
     AUGMENTATION_FN_STR
+
 # ---------------------------------------------------------------------
 
 CURRENT_DIRECTORY = os.path.realpath(os.path.dirname(__file__))
+
 
 # ---------------------------------------------------------------------
 
@@ -109,6 +111,12 @@ def train_loop(
             name="visualization_every")
     # how many visualizations to show
     visualization_number = train_config.get("visualization_number", 5)
+    # how many steps to make a decomposition
+    decomposition_every = \
+        tf.constant(
+            train_config.get("decomposition_every", 1000),
+            dtype=tf.dtypes.int64,
+            name="decomposition_every")
     # how many times the random batch will be iterated
     random_batch_iterations = \
         train_config.get("random_batch_iterations", 1)
@@ -229,11 +237,10 @@ def train_loop(
         return x_noisy_denormalized, x_denoised_denormalized
 
     # --- decompose image
-    def decompose_test_batch():
-        x_tmp = test_images[0, :, :, :]
-        x_tmp = tf.expand_dims(x_tmp, axis=0)
-        x_tmp = denoiser_decomposition(x_tmp, training=False)
-        x_tmp = tf.transpose(x_tmp, perm=(3, 1, 2, 0))
+    def decompose_fn(x_input):
+        x_tmp = denoiser_decomposition(x_input, training=False)
+        # decomposed denormalized
+        x_tmp = denormalizer(x_tmp, training=False)
         return x_tmp
 
     # --- create random image and iterate through the model
@@ -396,21 +403,34 @@ def train_loop(
                         buckets=error_buckets,
                         name="training/error_distribution")
 
+                # --- add image decomposition
+                if decomposition_every > 0 and \
+                        (global_step % decomposition_every) == 0:
+                    decompose_image = test_images[0, :, :, :]
+                    decompose_image = tf.expand_dims(decompose_image, axis=0)
+                    decompose_image = decompose_fn(decompose_image)
+                    decompose_image = tf.transpose(decompose_image, axis=(3, 0, 1, 2))
+                    tf.summary.image(
+                        name="decomposition",
+                        step=global_step,
+                        data=decompose_image / 255,
+                        max_outputs=visualization_number)
+
+                # --- prune conv2d
                 if use_prune and (global_epoch >= prune_start_epoch) and \
                         (int(prune_steps) != -1) and (global_step % prune_steps == 0):
                     logger.info(f"pruning weights at step [{int(global_step)}]")
-                    denoiser = \
-                        prune_fn(model=denoiser)
+                    denoiser = prune_fn(model=denoiser)
 
                 # --- check if it is time to save a checkpoint
-                if checkpoint_every > 0:
-                    if global_step % checkpoint_every == 0:
-                        logger.info("checkpoint at step: {0}".format(
-                            int(global_step)))
-                        manager.save()
-                        # save model so we can visualize it easier
-                        denoiser.save(
-                            os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR))
+                if checkpoint_every > 0 and \
+                        (global_step % checkpoint_every == 0):
+                    logger.info("checkpoint at step: {0}".format(
+                        int(global_step)))
+                    manager.save()
+                    # save model so we can visualize it easier
+                    denoiser.save(
+                        os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR))
 
                 # --- keep time of steps per second
                 stop_time = time.time()

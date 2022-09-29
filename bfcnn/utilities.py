@@ -1,6 +1,8 @@
 import os
 import json
 import itertools
+from enum import Enum
+
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
@@ -225,14 +227,39 @@ def coords_layer(
 # ---------------------------------------------------------------------
 
 
+class ConvType(Enum):
+    CONV2D = 0
+
+    CONV2D_DEPTHWISE = 1
+
+    CONV2D_TRANSPOSE = 2
+
+    @staticmethod
+    def from_string(type_str: str) -> "ConvType":
+        # --- argument checking
+        if type_str is None:
+            raise ValueError("type_str must not be null")
+        if not isinstance(type_str, str):
+            raise ValueError("type_str must be string")
+        type_str = type_str.strip().upper()
+        if len(type_str) <= 0:
+            raise ValueError("stripped type_str must not be empty")
+
+        # --- clean string and get
+        return ConvType[type_str]
+
+    def to_string(self) -> str:
+        return self.name
+
+
 def conv2d_wrapper(
         input_layer,
         conv_params: Dict,
         bn_params: Dict = None,
         pre_activation: str = None,
-        use_depthwise_conv: bool = False,
         channelwise_scaling: bool = False,
-        multiplier_scaling: bool = False):
+        multiplier_scaling: bool = False,
+        conv_type: Union[ConvType, str] = ConvType.CONV2D):
     """
     wraps a conv2d with a preceding normalizer
 
@@ -240,11 +267,10 @@ def conv2d_wrapper(
     :param conv_params: conv2d parameters
     :param bn_params: batchnorm parameters, None to disable bn
     :param pre_activation: activation after the batchnorm, None to disable
-    :param use_depthwise_conv: if true use depthwise convolution,
-    :param channelwise_scaling: if True add a learnable
-    channel wise scaling at the end
-    :param multiplier_scaling: if True add a learnable
-    single scale at the end
+    :param conv_type: if true use depthwise convolution,
+    :param channelwise_scaling: if True add a learnable channel wise scaling at the end
+    :param multiplier_scaling: if True add a learnable single scale at the end
+
     :return: transformed input
     """
     # --- argument checking
@@ -256,7 +282,9 @@ def conv2d_wrapper(
     # --- prepare arguments
     use_bn = bn_params is not None
     use_pre_activation = pre_activation is not None
-    
+    if isinstance(conv_type, str):
+        conv_type = ConvType.from_string(conv_type)
+
     # --- perform batchnorm and preactivation
     x = input_layer
 
@@ -266,10 +294,14 @@ def conv2d_wrapper(
         x = tf.keras.layers.Activation(pre_activation)(x)
 
     # --- convolution
-    if use_depthwise_conv:
-        x = tf.keras.layers.DepthwiseConv2D(**conv_params)(x)
-    else:
+    if conv_type == ConvType.CONV2D:
         x = tf.keras.layers.Conv2D(**conv_params)(x)
+    elif conv_type == ConvType.CONV2D_DEPTHWISE:
+        x = tf.keras.layers.DepthwiseConv2D(**conv_params)(x)
+    elif conv_type == ConvType.CONV2D_TRANSPOSE:
+        x = tf.keras.layers.Conv2DTranspose(**conv_params)(x)
+    else:
+        raise ValueError(f"don't know how to handle this [{conv_type}]")
 
     # --- learn the proper scale of the previous layer
     if channelwise_scaling:

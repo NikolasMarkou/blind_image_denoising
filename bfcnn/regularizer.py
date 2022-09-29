@@ -18,6 +18,7 @@ from .utilities import gaussian_kernel
 
 # ---------------------------------------------------------------------
 
+
 @tf.function(
     input_signature=[
         tf.TensorSpec(shape=(None, None),

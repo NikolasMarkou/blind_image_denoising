@@ -1,4 +1,5 @@
 import copy
+from enum import Enum
 
 import tensorflow as tf
 from tensorflow import keras
@@ -15,12 +16,38 @@ from .custom_layers import \
     RandomOnOff, \
     ChannelwiseMultiplier
 from .utilities import \
+    ConvType, \
     sparse_block, \
     dense_wrapper, \
     conv2d_wrapper
 
 
 # ---------------------------------------------------------------------
+
+
+class ExpandType(Enum):
+    SAME = 0
+
+    COMPRESS = 1
+
+    EXPAND = 2
+
+    @staticmethod
+    def from_string(type_str: str) -> "ExpandType":
+        # --- argument checking
+        if type_str is None:
+            raise ValueError("type_str must not be null")
+        if not isinstance(type_str, str):
+            raise ValueError("type_str must be string")
+        type_str = type_str.strip().upper()
+        if len(type_str) <= 0:
+            raise ValueError("stripped type_str must not be empty")
+
+        # --- clean string and get
+        return ExpandType[type_str]
+
+    def to_string(self) -> str:
+        return self.name
 
 
 def resnet_blocks_full(
@@ -36,6 +63,7 @@ def resnet_blocks_full(
         multiplier_params: Dict = None,
         channelwise_params: Dict = None,
         post_addition_activation: str = None,
+        expand_type: ExpandType = ExpandType.SAME,
         **kwargs):
     """
     Create a series of residual network blocks
@@ -52,6 +80,7 @@ def resnet_blocks_full(
     :param multiplier_params: learnable optional parameters
     :param channelwise_params: if True add a learnable point-wise depthwise scaling conv2d
     :param post_addition_activation: activation after the residual addition, None to disable
+    :param expand_type: whether to keep same size, compress or expand
 
     :return: filtered input_layer
     """
@@ -141,6 +170,39 @@ def resnet_blocks_full(
             # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
             y = tf.keras.activations.hard_sigmoid(y)
             x = tf.keras.layers.Multiply()([x, y])
+
+        # fix x dimensions and previous layers
+        if expand_type == ExpandType.COMPRESS:
+            expand_conv_params = copy.deepcopy(third_conv_params)
+            expand_conv_params["strides"] = (2, 2)
+            x = conv2d_wrapper(input_layer=x,
+                               conv_params=copy.deepcopy(third_conv_params),
+                               bn_params=bn_params,
+                               conv_type=ConvType.CONV2D,
+                               channelwise_scaling=False)
+            previous_layer = \
+                tf.keras.layers.MaxPooling2D(
+                    pool_size=(3, 3),
+                    strides=(2, 2),
+                    padding="valid")
+        elif expand_type == ExpandType.EXPAND:
+            expand_conv_params = copy.deepcopy(third_conv_params)
+            expand_conv_params["dilation_rate"] = (2, 2)
+            x = conv2d_wrapper(input_layer=x,
+                               conv_params=copy.deepcopy(third_conv_params),
+                               bn_params=bn_params,
+                               conv_type=ConvType.CONV2D_TRANSPOSE,
+                               channelwise_scaling=False)
+            previous_layer = \
+                tf.keras.layers.UpSampling2D(
+                    size=(2, 2),
+                    interpolation="nearest")
+        elif expand_type == ExpandType.SAME:
+            # do nothing
+            pass
+        else:
+            raise ValueError(f"dont know how to handle [{expand_type}]")
+
         # optional channelwise multiplier
         if use_channelwise:
             x = ChannelwiseMultiplier(**channelwise_params)(x)
@@ -149,6 +211,7 @@ def resnet_blocks_full(
             x = Multiplier(**multiplier_params)(x)
         if use_dropout:
             x = RandomOnOff(**dropout_params)(x)
+
         # skip connection
         x = tf.keras.layers.Add()([x, previous_layer])
         # optional post addition activation
@@ -156,6 +219,56 @@ def resnet_blocks_full(
             x = tf.keras.layers.Activation(post_addition_activation)(x)
     return x
 
+
+# ---------------------------------------------------------------------
+
+def resnet_compress_expand_full(
+        input_layer,
+        no_layers: int,
+        **kwargs):
+    """
+    Create a series of residual network blocks
+
+    :param input_layer: the input layer to perform on
+    :param no_layers: how many residual network blocks to add
+
+    :return: filtered input_layer
+    """
+    # --- argument check
+    if input_layer is None:
+        raise ValueError("input_layer must be none")
+    if no_layers <= 0:
+        raise ValueError("no_layers must be > 0")
+
+    # --- setup resnet along with its variants
+    x = input_layer
+
+    # compress
+    for i in range(no_layers):
+        if i+1 % 3 == 0:
+            expand_type = ExpandType.COMPRESS
+        else:
+            expand_type = ExpandType.SAME
+        x = \
+            resnet_blocks_full(
+                input_layer=x,
+                no_layers=1,
+                expand_type=expand_type,
+                **kwargs)
+
+    # expand
+    for i in range(no_layers):
+        if i+1 % 3 == 0:
+            expand_type = ExpandType.EXPAND
+        else:
+            expand_type = ExpandType.SAME
+        x = \
+            resnet_blocks_full(
+                input_layer=x,
+                no_layers=1,
+                expand_type=expand_type,
+                **kwargs)
+    return x
 
 # ---------------------------------------------------------------------
 
