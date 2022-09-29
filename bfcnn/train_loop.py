@@ -408,13 +408,14 @@ def train_loop(
                         (global_step % decomposition_every) == 0:
                     decompose_image = test_images[0, :, :, :]
                     decompose_image = tf.expand_dims(decompose_image, axis=0)
+                    decompose_image = tf.image.resize(decompose_image, size=(128, 128))
                     decompose_image = decompose_fn(decompose_image)
                     decompose_image = tf.transpose(decompose_image, perm=(3, 1, 2, 0))
                     tf.summary.image(
                         name="test_decomposition",
                         step=global_step,
                         data=decompose_image / 255,
-                        max_outputs=None)
+                        max_outputs=32)
 
                 # --- prune conv2d
                 if use_prune and (global_epoch >= prune_start_epoch) and \
