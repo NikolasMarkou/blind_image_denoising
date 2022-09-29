@@ -1,3 +1,11 @@
+r"""export a bfcnn model"""
+
+__author__ = "Nikolas Markou"
+__version__ = "1.0.0"
+__license__ = "MIT"
+
+# ---------------------------------------------------------------------
+
 import os
 import sys
 import argparse
@@ -65,7 +73,7 @@ def main(args):
             test_model=args.test_model)
     else:
         raise ValueError(
-            f"don't know how to handle type [{args.model_type}")
+            f"don't know how to handle type [{args.model_type}]")
 
     return 0
 
