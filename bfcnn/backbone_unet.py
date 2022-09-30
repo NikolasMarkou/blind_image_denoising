@@ -1,23 +1,32 @@
-import keras
+import os
+import json
+import itertools
 import numpy as np
 import tensorflow as tf
+from pathlib import Path
+from tensorflow import keras
 from typing import List, Tuple, Union, Dict, Iterable
 
 # ---------------------------------------------------------------------
 # local imports
 # ---------------------------------------------------------------------
 
-from .constants import *
 from .custom_logger import logger
-from .custom_layers import Multiplier
-from .model_blocks import resnet_blocks_full
-from .utilities import conv2d_wrapper, mean_sigma_local
+from .custom_layers import Multiplier, RandomOnOff
+from .constants import DEFAULT_BN_EPSILON, DEFAULT_BN_MOMENTUM
+from .utilities import \
+    sparse_block, \
+    conv2d_wrapper, \
+    mean_sigma_local, \
+    mean_sigma_global
+from .model_blocks import resnet_blocks_full, unet_blocks
 
 # ---------------------------------------------------------------------
 
 
-def build_model_resnet(
+def builder(
         input_dims,
+        no_levels: int,
         no_layers: int,
         kernel_size: int,
         filters: int,
@@ -29,28 +38,26 @@ def build_model_resnet(
         kernel_initializer="glorot_normal",
         channel_index: int = 2,
         dropout_rate: float = -1,
-        channelwise_scaling: bool = False,
-        conv_depthwise: bool = False,
         add_skip_with_input: bool = True,
         add_sparsity: bool = False,
         add_gates: bool = False,
         add_var: bool = False,
-        add_initial_bn: bool = False,
         add_final_bn: bool = False,
         add_intermediate_results: bool = False,
         add_learnable_multiplier: bool = False,
         add_projection_to_input: bool = True,
         add_concat_input: bool = False,
-        name="resnet",
+        name="unet",
         **kwargs) -> keras.Model:
     """
-    builds a resnet model
+    builds a u-net model
 
     :param input_dims: Models input dimensions
-    :param no_layers: Number of resnet layers
+    :param no_levels: Number of unet layers
+    :param no_layers: Number of resnet layers per unet level
     :param kernel_size: kernel size of the conv layers
     :param filters: number of filters per convolutional layer
-    :param activation: activation of the convolutional layers
+    :param activation: intermediate activation
     :param final_activation: activation of the final layer
     :param channel_index: Index of the channel in dimensions
     :param dropout_rate: probability of resnet block shutting off
@@ -58,23 +65,20 @@ def build_model_resnet(
     :param use_bias: use bias
     :param kernel_regularizer: Kernel weight regularizer
     :param kernel_initializer: Kernel weight initializer
-    :param channelwise_scaling: if True for each full convolutional kernel add a scaling depthwise
-    :param conv_depthwise: if True set the middle convolution as depthwise
     :param add_skip_with_input: if true skip with input
     :param add_sparsity: if true add sparsity layer
     :param add_gates: if true add gate layer
     :param add_var: if true add variance for each block
-    :param add_initial_bn: add a batch norm before the resnet blocks
     :param add_final_bn: add a batch norm after the resnet blocks
     :param add_intermediate_results: if true output results before projection
     :param add_learnable_multiplier:
     :param add_projection_to_input: if true project to input tensor channel number
     :param add_concat_input: if true concat input to intermediate before projecting
     :param name: name of the model
-    :return: resnet model
+    :return: unet model
     """
     # --- logging
-    logger.info("building resnet")
+    logger.info("building unet backbone")
     logger.info(f"parameters not used: {kwargs}")
 
     # --- setup parameters
@@ -123,31 +127,19 @@ def build_model_resnet(
         kernel_initializer=kernel_initializer,
     )
 
-    if conv_depthwise:
-        second_conv_params = dict(
-            kernel_size=3,
-            depth_multiplier=2,
-            strides=(1, 1),
-            padding="same",
-            use_bias=use_bias,
-            activation=activation,
-            depthwise_regularizer=kernel_regularizer,
-            depthwise_initializer=kernel_initializer
-        )
-    else:
-        second_conv_params = dict(
-            kernel_size=3,
-            groups=2,
-            filters=filters * 2,
-            strides=(1, 1),
-            padding="same",
-            use_bias=use_bias,
-            activation=activation,
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer
-        )
+    second_conv_params = dict(
+        kernel_size=3,
+        filters=filters * 2,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation=activation,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
 
     third_conv_params = dict(
+        groups=2,
         kernel_size=1,
         filters=filters,
         strides=(1, 1),
@@ -182,41 +174,27 @@ def build_model_resnet(
         rate=dropout_rate
     )
 
-    channelwise_params = dict(
-        multiplier=1.0,
-        regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
-        trainable=True,
-        activation="relu"
-    )
-
-    resnet_params = dict(
-        bn_params=None,
-        sparse_params=None,
+    unet_params = dict(
+        no_levels=no_levels,
         no_layers=no_layers,
-        channelwise_params=channelwise_params,
+        bn_params=bn_params,
         first_conv_params=first_conv_params,
         second_conv_params=second_conv_params,
         third_conv_params=third_conv_params,
     )
 
-    if use_bn:
-        resnet_params["bn_params"] = bn_params
-
     # make it linear so it gets sparse afterwards
     if add_sparsity:
-        resnet_params["sparse_params"] = sparse_params
+        base_conv_params["activation"] = "linear"
 
     if add_gates:
-        resnet_params["gate_params"] = gate_params
+        unet_params["gate_params"] = gate_params
 
     if add_learnable_multiplier:
-        resnet_params["multiplier_params"] = multiplier_params
+        unet_params["multiplier_params"] = multiplier_params
 
     if dropout_rate != -1:
-        resnet_params["dropout_params"] = dropout_params
-
-    if channelwise_scaling:
-        resnet_params["channelwise_params"] = channelwise_params
+        unet_params["dropout_params"] = dropout_params
 
     # --- build model
     # set input
@@ -235,20 +213,20 @@ def build_model_resnet(
         x = tf.keras.layers.Concatenate()([x, x_var])
 
     # add base layer
-    x = \
-        conv2d_wrapper(
-            input_layer=x,
-            bn_params=None,
-            conv_params=base_conv_params,
-            channelwise_scaling=None)
-    if add_initial_bn:
-        x = tf.keras.layers.BatchNormalization(**bn_params)(x)
+    x = tf.keras.layers.Conv2D(**base_conv_params)(x)
 
-    # add resnet blocks
+    if add_sparsity:
+        x = \
+            sparse_block(
+                input_layer=x,
+                bn_params=None,
+                **sparse_params)
+
+    # add unet blocks
     x = \
-        resnet_blocks_full(
+        unet_blocks(
             input_layer=x,
-            **resnet_params)
+            **unet_params)
 
     # optional batch norm
     if add_final_bn:
@@ -262,17 +240,14 @@ def build_model_resnet(
         x = tf.keras.layers.Concatenate()([x, y_tmp])
 
     # --- output layer branches here,
-    # cap it off to limit values
+    # to allow space for intermediate results
     output_layer = x
 
     # --- output to original channels / projection
     if add_projection_to_input:
         output_layer = \
-            conv2d_wrapper(
-                input_layer=output_layer,
-                bn_params=None,
-                conv_params=final_conv_params,
-                channelwise_scaling=channelwise_params)
+            tf.keras.layers.Conv2D(
+                **final_conv_params)(output_layer)
 
         # learnable multiplier
         if add_learnable_multiplier:
@@ -309,5 +284,3 @@ def build_model_resnet(
             outputs=output_layers)
 
 # ---------------------------------------------------------------------
-
-

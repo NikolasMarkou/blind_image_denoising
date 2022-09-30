@@ -13,9 +13,9 @@ from .utilities import \
     input_shape_fixer, \
     build_normalize_model, \
     build_denormalize_model
-from .model_unet import build_model_unet
-from .model_lunet import build_model_lunet
-from .model_resnet import build_model_resnet
+from .backbone_unet import builder as builder_unet
+from .backbone_lunet import builder as builder_lunet
+from .backbone_resnet import builder as builder_resnet
 from .custom_layers import Multiplier
 from .pyramid import \
     build_pyramid_model, \
@@ -136,13 +136,12 @@ def model_builder(
         add_learnable_multiplier=add_learnable_multiplier,
     )
 
-    model_builder_fn = None
     if model_type == "unet":
-        model_builder_fn = build_model_unet
+        backbone_builder = builder_unet
     elif model_type == "lunet":
-        model_builder_fn = build_model_lunet
+        backbone_builder = builder_lunet
     elif model_type == "resnet":
-        model_builder_fn = build_model_resnet
+        backbone_builder = builder_resnet
     else:
         raise ValueError(
             "don't know how to build model [{0}]".format(model_type))
@@ -192,14 +191,14 @@ def model_builder(
     if shared_model:
         logger.info("building shared model")
         resnet_model = \
-            model_builder_fn(
+            backbone_builder(
                 name="level_shared",
                 **model_params)
         denoise_models = [resnet_model] * len(x_levels)
     else:
         logger.info("building per scale model")
         denoise_models = [
-            model_builder_fn(
+            backbone_builder(
                 name=f"level_{i}",
                 **model_params)
             for i in range(len(x_levels))

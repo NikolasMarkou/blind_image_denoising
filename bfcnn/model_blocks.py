@@ -379,6 +379,197 @@ def resnet_full_preactivation(
 # ---------------------------------------------------------------------
 
 
+def unet_blocks(
+        input_layer,
+        no_levels: int,
+        no_layers: int,
+        first_conv_params: Dict,
+        second_conv_params: Dict,
+        third_conv_params: Dict,
+        bn_params: Dict = None,
+        gate_params: Dict = None,
+        dropout_params: Dict = None,
+        multiplier_params: Dict = None,
+        **kwargs):
+    """
+    Create a unet block
+
+    :return: filtered input_layer
+    """
+    # --- argument check
+    if input_layer is None:
+        raise ValueError("input_layer must be none")
+    if no_layers < 0:
+        raise ValueError("no_layers_per_level must be >= 0")
+
+    # --- setup unet
+    x = input_layer
+    levels_x = []
+
+    # --- downside
+    for i in range(no_levels):
+        if i > 0:
+            x = \
+                conv2d_wrapper(
+                    x,
+                    conv_params=first_conv_params,
+                    bn_params=None)
+        x = \
+            resnet_blocks_full(
+                input_layer=x,
+                no_layers=no_layers,
+                first_conv_params=first_conv_params,
+                second_conv_params=second_conv_params,
+                third_conv_params=third_conv_params,
+                bn_params=bn_params,
+                gate_params=gate_params,
+                dropout_params=dropout_params,
+                multiplier_params=multiplier_params
+            )
+        levels_x.append(x)
+        x = \
+            keras.layers.AveragePooling2D(
+                pool_size=(3, 3),
+                strides=(2, 2),
+                padding="same")(x)
+
+    # --- upside
+    x = None
+    for level_x in reversed(levels_x):
+        if x is None:
+            x = level_x
+        else:
+            x = \
+                tf.keras.layers.UpSampling2D(
+                    size=(2, 2),
+                    interpolation="bilinear")(x)
+            x = \
+                tf.keras.layers.Concatenate()([x, level_x])
+        x = \
+            conv2d_wrapper(
+                x,
+                conv_params=first_conv_params,
+                bn_params=None)
+        x = \
+            resnet_blocks_full(
+                input_layer=x,
+                no_layers=no_layers,
+                first_conv_params=first_conv_params,
+                second_conv_params=second_conv_params,
+                third_conv_params=third_conv_params,
+                bn_params=bn_params,
+                gate_params=gate_params,
+                dropout_params=dropout_params,
+                multiplier_params=multiplier_params
+            )
+
+    return x
+
+# ---------------------------------------------------------------------
+
+
+def lunet_blocks(
+        input_layer,
+        no_levels: int,
+        no_layers: int,
+        base_conv_params: Dict,
+        first_conv_params: Dict,
+        second_conv_params: Dict,
+        third_conv_params: Dict,
+        bn_params: Dict = None,
+        gate_params: Dict = None,
+        dropout_params: Dict = None,
+        multiplier_params: Dict = None,
+        add_laplacian: bool = True,
+        **kwargs):
+    """
+    Create a lunet block
+
+    :return: filtered input_layer
+    """
+    # --- argument check
+    if input_layer is None:
+        raise ValueError("input_layer must be none")
+    if no_layers < 0:
+        raise ValueError("no_layers_per_level must be >= 0")
+
+    level_x = input_layer
+    levels_x = []
+    strides = (2, 2)
+    kernel_size = (3, 3)
+    interpolation = "bilinear"
+    if add_laplacian:
+        for level in range(0, no_levels - 1):
+            level_x_down = \
+                keras.layers.AveragePooling2D(
+                    pool_size=kernel_size,
+                    strides=strides,
+                    padding="same")(level_x)
+            level_x_smoothed = \
+                keras.layers.UpSampling2D(
+                    size=strides,
+                    interpolation=interpolation)(level_x_down)
+            level_x_diff = level_x - level_x_smoothed
+            level_x = level_x_down
+            levels_x.append(level_x_diff)
+        levels_x.append(level_x)
+    else:
+        levels_x.append(level_x)
+        for level in range(0, no_levels - 1):
+            level_x = \
+                keras.layers.AveragePooling2D(
+                    pool_size=kernel_size,
+                    strides=strides,
+                    padding="same")(level_x)
+            levels_x.append(level_x)
+
+    # --- upside
+    x = None
+    for level_x in reversed(levels_x):
+        level_x = \
+            conv2d_wrapper(
+                level_x,
+                conv_params=base_conv_params,
+                bn_params=None)
+        if x is None:
+            x = level_x
+        else:
+            level_x = \
+                resnet_blocks_full(
+                    input_layer=level_x,
+                    no_layers=no_layers,
+                    first_conv_params=first_conv_params,
+                    second_conv_params=second_conv_params,
+                    third_conv_params=third_conv_params,
+                    bn_params=bn_params,
+                    gate_params=gate_params,
+                    dropout_params=dropout_params,
+                    multiplier_params=multiplier_params
+                )
+            x = \
+                tf.keras.layers.UpSampling2D(
+                    size=strides,
+                    interpolation=interpolation)(x)
+            x = \
+                tf.keras.layers.Add()([x, level_x])
+        x = \
+            resnet_blocks_full(
+                input_layer=x,
+                no_layers=no_layers,
+                first_conv_params=first_conv_params,
+                second_conv_params=second_conv_params,
+                third_conv_params=third_conv_params,
+                bn_params=bn_params,
+                gate_params=gate_params,
+                dropout_params=dropout_params,
+                multiplier_params=multiplier_params
+            )
+
+    return x
+
+# ---------------------------------------------------------------------
+
+
 def renderer(
         signals: List[tf.Tensor],
         masks: List[tf.Tensor]):

@@ -1,9 +1,4 @@
-import os
-import json
-import itertools
-import numpy as np
 import tensorflow as tf
-from pathlib import Path
 from tensorflow import keras
 from typing import List, Tuple, Union, Dict, Iterable
 
@@ -12,109 +7,15 @@ from typing import List, Tuple, Union, Dict, Iterable
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .custom_layers import Multiplier, RandomOnOff
+from .custom_layers import Multiplier
+from .utilities import conv2d_wrapper, mean_sigma_local
+from .model_blocks import resnet_blocks_full, lunet_blocks
 from .constants import DEFAULT_BN_EPSILON, DEFAULT_BN_MOMENTUM
-from .activations import differentiable_relu, differentiable_relu_layer
-from .utilities import \
-    sparse_block, \
-    conv2d_wrapper, \
-    mean_sigma_local, \
-    mean_sigma_global
-from .model_blocks import resnet_blocks_full
 
 # ---------------------------------------------------------------------
 
 
-def unet_blocks(
-        input_layer,
-        no_levels: int,
-        no_layers: int,
-        first_conv_params: Dict,
-        second_conv_params: Dict,
-        third_conv_params: Dict,
-        bn_params: Dict = None,
-        gate_params: Dict = None,
-        dropout_params: Dict = None,
-        multiplier_params: Dict = None,
-        **kwargs):
-    """
-    Create a unet block
-
-    :return: filtered input_layer
-    """
-    # --- argument check
-    if input_layer is None:
-        raise ValueError("input_layer must be none")
-    if no_layers < 0:
-        raise ValueError("no_layers_per_level must be >= 0")
-
-    # --- setup unet
-    x = input_layer
-    levels_x = []
-
-    # --- downside
-    for i in range(no_levels):
-        if i > 0:
-            x = \
-                conv2d_wrapper(
-                    x,
-                    conv_params=first_conv_params,
-                    bn_params=None)
-        x = \
-            resnet_blocks_full(
-                input_layer=x,
-                no_layers=no_layers,
-                first_conv_params=first_conv_params,
-                second_conv_params=second_conv_params,
-                third_conv_params=third_conv_params,
-                bn_params=bn_params,
-                gate_params=gate_params,
-                dropout_params=dropout_params,
-                multiplier_params=multiplier_params
-            )
-        levels_x.append(x)
-        x = \
-            keras.layers.AveragePooling2D(
-                pool_size=(3, 3),
-                strides=(2, 2),
-                padding="same")(x)
-
-    # --- upside
-    x = None
-    for level_x in reversed(levels_x):
-        if x is None:
-            x = level_x
-        else:
-            x = \
-                tf.keras.layers.UpSampling2D(
-                    size=(2, 2),
-                    interpolation="bilinear")(x)
-            x = \
-                tf.keras.layers.Concatenate()([x, level_x])
-        x = \
-            conv2d_wrapper(
-                x,
-                conv_params=first_conv_params,
-                bn_params=None)
-        x = \
-            resnet_blocks_full(
-                input_layer=x,
-                no_layers=no_layers,
-                first_conv_params=first_conv_params,
-                second_conv_params=second_conv_params,
-                third_conv_params=third_conv_params,
-                bn_params=bn_params,
-                gate_params=gate_params,
-                dropout_params=dropout_params,
-                multiplier_params=multiplier_params
-            )
-
-    return x
-
-# ---------------------------------------------------------------------
-
-
-def build_model_unet(
+def builder(
         input_dims,
         no_levels: int,
         no_layers: int,
@@ -137,10 +38,11 @@ def build_model_unet(
         add_learnable_multiplier: bool = False,
         add_projection_to_input: bool = True,
         add_concat_input: bool = False,
-        name="unet",
+        add_laplacian: bool = True,
+        name="lunet",
         **kwargs) -> keras.Model:
     """
-    builds a u-net model
+    builds a lu-net model
 
     :param input_dims: Models input dimensions
     :param no_levels: Number of unet layers
@@ -164,11 +66,12 @@ def build_model_unet(
     :param add_learnable_multiplier:
     :param add_projection_to_input: if true project to input tensor channel number
     :param add_concat_input: if true concat input to intermediate before projecting
+    :param add_laplacian: if true each level of lunet is a laplacian, if false a gaussian
     :param name: name of the model
     :return: unet model
     """
     # --- logging
-    logger.info("building unet")
+    logger.info("building lunet backbone")
     logger.info(f"parameters not used: {kwargs}")
 
     # --- setup parameters
@@ -177,22 +80,6 @@ def build_model_unet(
         scale=True,
         momentum=DEFAULT_BN_MOMENTUM,
         epsilon=DEFAULT_BN_EPSILON
-    )
-
-    # this make it 68% sparse
-    sparse_params = dict(
-        threshold_sigma=1.0,
-    )
-
-    base_conv_params = dict(
-        filters=filters,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation="linear",
-        kernel_size=kernel_size,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
     )
 
     gate_params = dict(
@@ -206,13 +93,24 @@ def build_model_unet(
         kernel_initializer=kernel_initializer
     )
 
-    first_conv_params = dict(
-        kernel_size=1,
+    base_conv_params = dict(
+        kernel_size=3,
         filters=filters,
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
         activation=activation,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer,
+    )
+
+    first_conv_params = dict(
+        filters=filters,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation=activation,
+        kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
     )
@@ -236,7 +134,7 @@ def build_model_unet(
         padding="same",
         use_bias=use_bias,
         # this must be the same as the base
-        activation="linear",
+        activation=activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -264,10 +162,12 @@ def build_model_unet(
         rate=dropout_rate
     )
 
-    unet_params = dict(
+    lunet_params = dict(
         no_levels=no_levels,
         no_layers=no_layers,
         bn_params=bn_params,
+        add_laplacian=add_laplacian,
+        base_conv_params=base_conv_params,
         first_conv_params=first_conv_params,
         second_conv_params=second_conv_params,
         third_conv_params=third_conv_params,
@@ -278,13 +178,13 @@ def build_model_unet(
         base_conv_params["activation"] = "linear"
 
     if add_gates:
-        unet_params["gate_params"] = gate_params
+        lunet_params["gate_params"] = gate_params
 
     if add_learnable_multiplier:
-        unet_params["multiplier_params"] = multiplier_params
+        lunet_params["multiplier_params"] = multiplier_params
 
     if dropout_rate != -1:
-        unet_params["dropout_params"] = dropout_params
+        lunet_params["dropout_params"] = dropout_params
 
     # --- build model
     # set input
@@ -302,21 +202,11 @@ def build_model_unet(
                 kernel_size=(5, 5))
         x = tf.keras.layers.Concatenate()([x, x_var])
 
-    # add base layer
-    x = tf.keras.layers.Conv2D(**base_conv_params)(x)
-
-    if add_sparsity:
-        x = \
-            sparse_block(
-                input_layer=x,
-                bn_params=None,
-                **sparse_params)
-
-    # add unet blocks
+    # add lunet blocks
     x = \
-        unet_blocks(
+        lunet_blocks(
             input_layer=x,
-            **unet_params)
+            **lunet_params)
 
     # optional batch norm
     if add_final_bn:
