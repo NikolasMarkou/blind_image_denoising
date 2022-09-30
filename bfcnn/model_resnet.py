@@ -26,6 +26,7 @@ def build_model_resnet(
         kernel_size: int,
         filters: int,
         activation: str = "relu",
+        intermediate_activation: str = "tanh",
         final_activation: str = "linear",
         use_bn: bool = True,
         use_bias: bool = False,
@@ -52,7 +53,8 @@ def build_model_resnet(
     :param no_layers: Number of resnet layers
     :param kernel_size: kernel size of the conv layers
     :param filters: number of filters per convolutional layer
-    :param activation: intermediate activation
+    :param activation: activation of the convolutional layers
+    :param intermediate_activation: activation of the intermediate results
     :param final_activation: activation of the final layer
     :param channel_index: Index of the channel in dimensions
     :param dropout_rate: probability of resnet block shutting off
@@ -247,7 +249,11 @@ def build_model_resnet(
         x = tf.keras.layers.Concatenate()([x, y_tmp])
 
     # --- output layer branches here,
-    # to allow space for intermediate results
+    # cap it off to limit values
+    x = \
+        tf.keras.layers.Activation(
+            activation=intermediate_activation)(x)
+
     output_layer = x
 
     # --- output to original channels / projection

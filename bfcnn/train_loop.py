@@ -404,7 +404,7 @@ def train_loop(
                     decompose_image = tf.expand_dims(decompose_image, axis=0)
                     decompose_image = tf.image.resize(decompose_image, size=(128, 128))
                     decomposed_image = decompose_fn(decompose_image)
-                    decomposed_image = (tf.nn.sigmoid(decomposed_image) + 1.0) / 2
+                    decomposed_image = (decomposed_image + 1.0) / 2
                     for i, d in enumerate(decomposed_image):
                         d = tf.transpose(d, perm=(3, 1, 2, 0))
                         tf.summary.image(
