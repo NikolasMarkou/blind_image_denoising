@@ -10,13 +10,13 @@ from typing import Dict, List, Tuple
 
 from .custom_logger import logger
 from .utilities import \
+    conv2d_wrapper, \
     input_shape_fixer, \
     build_normalize_model, \
     build_denormalize_model
 from .backbone_unet import builder as builder_unet
 from .backbone_lunet import builder as builder_lunet
 from .backbone_resnet import builder as builder_resnet
-from .custom_layers import Multiplier
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
@@ -57,12 +57,14 @@ def model_builder(
 
     # --- argument parsing
     model_type = config[TYPE_STR]
+
     filters = config.get("filters", 32)
     no_levels = config.get("no_levels", 1)
     add_var = config.get("add_var", False)
     no_layers = config.get("no_layers", 5)
     min_value = config.get("min_value", 0)
     max_value = config.get("max_value", 255)
+    use_bias = config.get("use_bias", False)
     batchnorm = config.get("batchnorm", True)
     kernel_size = config.get("kernel_size", 3)
     add_gates = config.get("add_gates", False)
@@ -70,6 +72,7 @@ def model_builder(
     dropout_rate = config.get("dropout_rate", -1)
     activation = config.get("activation", "relu")
     clip_values = config.get("clip_values", True)
+    channel_index = config.get("channel_index", 2)
     add_final_bn = config.get("add_final_bn", True)
     shared_model = config.get("shared_model", False)
     add_sparsity = config.get("add_sparsity", False)
@@ -98,6 +101,25 @@ def model_builder(
     kernel_regularizer = \
         regularizer_builder(kernel_regularizer)
 
+    final_conv_params = dict(
+        kernel_size=1,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        # this must be linear because it is capped later
+        activation="linear",
+        filters=input_shape[channel_index],
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
+    channelwise_params = dict(
+        multiplier=1.0,
+        regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
+        trainable=True,
+        activation="relu"
+    )
+
     # --- build normalize denormalize models
     model_normalize = \
         build_normalize_model(
@@ -110,6 +132,8 @@ def model_builder(
             input_dims=input_shape,
             min_value=min_value,
             max_value=max_value)
+
+
 
     # --- build denoise model
     model_params = dict(
@@ -194,84 +218,38 @@ def model_builder(
             backbone_builder(
                 name="level_shared",
                 **model_params)
-        denoise_models = [resnet_model] * len(x_levels)
+        backbone_models = [resnet_model] * len(x_levels)
     else:
         logger.info("building per scale model")
-        denoise_models = [
+        backbone_models = [
             backbone_builder(
                 name=f"level_{i}",
                 **model_params)
             for i in range(len(x_levels))
         ]
 
-    # --- add residual between models
-    # speeds up training a lot, and better results (but adds artifacts)
-    upsampling_params = \
-        dict(size=(2, 2),
-             interpolation="bilinear")
-    downsampling_params = \
-        dict(pool_size=kernel_size,
-             strides=(2, 2),
-             padding="same")
+    for i, x_level in enumerate(x_levels):
+        x_levels[i] = backbone_models[i](x_level)
 
-    if add_residual_between_models:
-        previous_level = None
-        for i, x_level in reversed(list(enumerate(x_levels))):
-            if previous_level is None:
-                x_level_tmp = denoise_models[i](x_level)
-                current_level_output = x_level_tmp[0]
-                current_level_intermediate_output = x_level_tmp[1]
-                previous_level = current_level_output
-            else:
-                previous_level = \
-                    keras.layers.UpSampling2D(**upsampling_params)(previous_level)
-                # stop the signal to propagate
-                previous_level = tf.stop_gradient(previous_level)
-                current_level_input = \
-                    keras.layers.Add()([previous_level, x_level])
-                current_level_input_down = \
-                    keras.layers.AveragePooling2D(**downsampling_params)(current_level_input)
-                current_level_input_smoothed = \
-                    keras.layers.UpSampling2D(**upsampling_params)(current_level_input_down)
-                current_level_input = \
-                    current_level_input - current_level_input_smoothed
-                x_level_tmp = \
-                    denoise_models[i](current_level_input)
-                current_level_output = x_level_tmp[0]
-                current_level_intermediate_output = x_level_tmp[1]
-                previous_level = \
-                    keras.layers.Add()(
-                        [previous_level, current_level_output])
-            x_levels[i] = [
-                current_level_output,
-                current_level_intermediate_output
-            ]
-    else:
-        for i, x_level in enumerate(x_levels):
-            x_levels[i] = denoise_models[i](x_level)
-
-    # --- split intermediate results and actual results
-    x_levels_output = [
-        x_level[0]
-        for i, x_level in enumerate(x_levels)
-    ]
-    x_levels_intermediate = [
-        x_level[1::]
-        for i, x_level in enumerate(x_levels)
-    ]
+    # --- keep model before projection to output
+    model_denoise_decomposition = \
+        keras.Model(
+            inputs=input_layer,
+            outputs=x_levels,
+            name=f"{model_type}_denoiser_decomposition")
 
     # --- optional multiplier to help saturation
     if output_multiplier is not None and \
             output_multiplier != 1:
-        x_levels_output = [
+        x_levels = [
             x_level * output_multiplier
-            for x_level in x_levels_output
+            for x_level in x_levels
         ]
 
     # --- clip levels to [-0.5, +0.5]
     if clip_values:
-        for i, x_level in enumerate(x_levels_output):
-            x_levels_output[i] = \
+        for i, x_level in enumerate(x_levels):
+            x_levels[i] = \
                 tf.clip_by_value(
                     t=x_level,
                     clip_value_min=-0.5,
@@ -280,14 +258,22 @@ def model_builder(
     # --- merge levels together
     if use_pyramid:
         x_result = \
-            model_inverse_pyramid(x_levels_output)
+            model_inverse_pyramid(x_levels)
     else:
-        x_result = x_levels_output[0]
+        x_result = x_levels[0]
 
-    # name output
     x_result = \
-        keras.layers.Layer(name="output_tensor")(
-            x_result)
+        conv2d_wrapper(
+            input_layer=x_result,
+            bn_params=None,
+            conv_params=final_conv_params,
+            channelwise_scaling=channelwise_params)
+
+    # cap it off to limit values
+    x_result = \
+        tf.keras.layers.Activation(
+            name="output_tensor",
+            activation=final_activation)(x_result)
 
     # --- wrap and name model
     model_denoise = \
@@ -295,13 +281,6 @@ def model_builder(
             inputs=input_layer,
             outputs=x_result,
             name=f"{model_type}_denoiser")
-
-    # --- keep model before merging (this is for better training)
-    model_denoise_decomposition = \
-        keras.Model(
-            inputs=input_layer,
-            outputs=x_levels_intermediate,
-            name=f"{model_type}_denoiser_decomposition")
 
     return \
         BuilderResults(

@@ -40,7 +40,7 @@ current_dir = pathlib.Path(__file__).parent.resolve()
 configs_dir = current_dir / "configs"
 
 configs = [
-    load_config(str(c))
+    (os.path.basename(str(c)), load_config(str(c)))
     for c in configs_dir.glob("*.json")
 ]
 

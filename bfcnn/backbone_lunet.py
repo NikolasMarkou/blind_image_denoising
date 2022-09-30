@@ -1,16 +1,13 @@
 import tensorflow as tf
-from tensorflow import keras
-from typing import List, Tuple, Union, Dict, Iterable
 
 # ---------------------------------------------------------------------
 # local imports
 # ---------------------------------------------------------------------
 
+from .constants import *
 from .custom_logger import logger
-from .custom_layers import Multiplier
+from .model_blocks import lunet_blocks
 from .utilities import conv2d_wrapper, mean_sigma_local
-from .model_blocks import resnet_blocks_full, lunet_blocks
-from .constants import DEFAULT_BN_EPSILON, DEFAULT_BN_MOMENTUM
 
 # ---------------------------------------------------------------------
 
@@ -22,21 +19,15 @@ def builder(
         kernel_size: int,
         filters: int,
         activation: str = "relu",
-        final_activation: str = "linear",
         use_bn: bool = True,
         use_bias: bool = False,
         kernel_regularizer="l1",
         kernel_initializer="glorot_normal",
-        channel_index: int = 2,
         dropout_rate: float = -1,
-        add_skip_with_input: bool = True,
         add_sparsity: bool = False,
         add_gates: bool = False,
         add_var: bool = False,
         add_final_bn: bool = False,
-        add_intermediate_results: bool = False,
-        add_learnable_multiplier: bool = False,
-        add_projection_to_input: bool = True,
         add_concat_input: bool = False,
         add_laplacian: bool = True,
         name="lunet",
@@ -139,25 +130,6 @@ def builder(
         kernel_initializer=kernel_initializer
     )
 
-    final_conv_params = dict(
-        kernel_size=1,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        # this must be linear because it is capped later
-        activation="linear",
-        filters=input_dims[channel_index],
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
-    multiplier_params = dict(
-        multiplier=1.0,
-        trainable=True,
-        regularizer="l1",
-        activation="linear"
-    )
-
     dropout_params = dict(
         rate=dropout_rate
     )
@@ -179,9 +151,6 @@ def builder(
 
     if add_gates:
         lunet_params["gate_params"] = gate_params
-
-    if add_learnable_multiplier:
-        lunet_params["multiplier_params"] = multiplier_params
 
     if dropout_rate != -1:
         lunet_params["dropout_params"] = dropout_params
@@ -220,47 +189,14 @@ def builder(
         x = tf.keras.layers.Concatenate()([x, y_tmp])
 
     # --- output layer branches here,
-    # to allow space for intermediate results
-    output_layer = x
-
-    # --- output to original channels / projection
-    if add_projection_to_input:
-        output_layer = \
-            tf.keras.layers.Conv2D(
-                **final_conv_params)(output_layer)
-
-        # learnable multiplier
-        if add_learnable_multiplier:
-            output_layer = \
-                Multiplier(**multiplier_params)(output_layer)
-
-        # cap it off to limit values
-        output_layer = \
-            tf.keras.layers.Activation(
-                activation=final_activation)(output_layer)
-
-    # --- skip with input layer
-    if add_skip_with_input:
-        # TODO add mixer here
-        # low noise performs better with skip input
-        # high noise performs better with direct reconstruction
-        output_layer = \
-            tf.keras.layers.Add()([output_layer, y])
-
     output_layer = \
-        tf.keras.layers.Layer(name="output_tensor")(output_layer)
-
-    # return intermediate results if flag is turned on
-    output_layers = [output_layer]
-    if add_intermediate_results:
-        output_layers.append(
-            tf.keras.layers.Layer(name="intermediate_tensor")(x))
+        tf.keras.layers.Layer(name="intermediate_output")(x)
 
     return \
         tf.keras.Model(
             name=name,
             trainable=True,
             inputs=input_layer,
-            outputs=output_layers)
+            outputs=output_layer)
 
 # ---------------------------------------------------------------------

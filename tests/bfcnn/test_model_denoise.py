@@ -1,11 +1,7 @@
-import keras
-import pytest
-
 import os
 import sys
-import numpy as np
-
-from .constants import *
+import pytest
+from tensorflow import keras
 
 sys.path.append(os.getcwd() + "/../")
 
@@ -15,12 +11,13 @@ sys.path.append(os.getcwd() + "/../")
 
 import bfcnn
 
-
 # ---------------------------------------------------------------------
+
 
 @pytest.mark.parametrize(
     "config", bfcnn.configs)
 def test_model_builder(config):
+    config = config[1]
     models = bfcnn.model_builder(config=config["model_denoise"])
 
     # denoise

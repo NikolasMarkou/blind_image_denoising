@@ -1,24 +1,12 @@
-import os
-import json
-import itertools
-import numpy as np
 import tensorflow as tf
-from pathlib import Path
-from tensorflow import keras
-from typing import List, Tuple, Union, Dict, Iterable
 
 # ---------------------------------------------------------------------
 # local imports
 # ---------------------------------------------------------------------
 
+from .constants import *
 from .custom_logger import logger
-from .custom_layers import Multiplier, RandomOnOff
-from .constants import DEFAULT_BN_EPSILON, DEFAULT_BN_MOMENTUM
-from .utilities import \
-    sparse_block, \
-    conv2d_wrapper, \
-    mean_sigma_local, \
-    mean_sigma_global
+from .utilities import conv2d_wrapper, mean_sigma_local
 from .model_blocks import resnet_blocks_full, unet_blocks
 
 # ---------------------------------------------------------------------
@@ -31,21 +19,18 @@ def builder(
         kernel_size: int,
         filters: int,
         activation: str = "relu",
-        final_activation: str = "linear",
         use_bn: bool = True,
         use_bias: bool = False,
         kernel_regularizer="l1",
         kernel_initializer="glorot_normal",
         channel_index: int = 2,
         dropout_rate: float = -1,
-        add_skip_with_input: bool = True,
         add_sparsity: bool = False,
         add_gates: bool = False,
         add_var: bool = False,
+        add_initial_bn: bool = False,
         add_final_bn: bool = False,
-        add_intermediate_results: bool = False,
         add_learnable_multiplier: bool = False,
-        add_projection_to_input: bool = True,
         add_concat_input: bool = False,
         name="unet",
         **kwargs) -> keras.Model:
@@ -58,21 +43,17 @@ def builder(
     :param kernel_size: kernel size of the conv layers
     :param filters: number of filters per convolutional layer
     :param activation: intermediate activation
-    :param final_activation: activation of the final layer
     :param channel_index: Index of the channel in dimensions
     :param dropout_rate: probability of resnet block shutting off
     :param use_bn: Use Batch Normalization
     :param use_bias: use bias
     :param kernel_regularizer: Kernel weight regularizer
     :param kernel_initializer: Kernel weight initializer
-    :param add_skip_with_input: if true skip with input
     :param add_sparsity: if true add sparsity layer
     :param add_gates: if true add gate layer
     :param add_var: if true add variance for each block
     :param add_final_bn: add a batch norm after the resnet blocks
-    :param add_intermediate_results: if true output results before projection
     :param add_learnable_multiplier:
-    :param add_projection_to_input: if true project to input tensor channel number
     :param add_concat_input: if true concat input to intermediate before projecting
     :param name: name of the model
     :return: unet model
@@ -213,14 +194,14 @@ def builder(
         x = tf.keras.layers.Concatenate()([x, x_var])
 
     # add base layer
-    x = tf.keras.layers.Conv2D(**base_conv_params)(x)
-
-    if add_sparsity:
-        x = \
-            sparse_block(
-                input_layer=x,
-                bn_params=None,
-                **sparse_params)
+    x = \
+        conv2d_wrapper(
+            input_layer=x,
+            bn_params=None,
+            conv_params=base_conv_params,
+            channelwise_scaling=None)
+    if add_initial_bn:
+        x = tf.keras.layers.BatchNormalization(**bn_params)(x)
 
     # add unet blocks
     x = \
@@ -240,47 +221,14 @@ def builder(
         x = tf.keras.layers.Concatenate()([x, y_tmp])
 
     # --- output layer branches here,
-    # to allow space for intermediate results
-    output_layer = x
-
-    # --- output to original channels / projection
-    if add_projection_to_input:
-        output_layer = \
-            tf.keras.layers.Conv2D(
-                **final_conv_params)(output_layer)
-
-        # learnable multiplier
-        if add_learnable_multiplier:
-            output_layer = \
-                Multiplier(**multiplier_params)(output_layer)
-
-        # cap it off to limit values
-        output_layer = \
-            tf.keras.layers.Activation(
-                activation=final_activation)(output_layer)
-
-    # --- skip with input layer
-    if add_skip_with_input:
-        # TODO add mixer here
-        # low noise performs better with skip input
-        # high noise performs better with direct reconstruction
-        output_layer = \
-            tf.keras.layers.Add()([output_layer, y])
-
     output_layer = \
-        tf.keras.layers.Layer(name="output_tensor")(output_layer)
-
-    # return intermediate results if flag is turned on
-    output_layers = [output_layer]
-    if add_intermediate_results:
-        output_layers.append(
-            tf.keras.layers.Layer(name="intermediate_tensor")(x))
+        tf.keras.layers.Layer(name="intermediate_output")(x)
 
     return \
         tf.keras.Model(
             name=name,
             trainable=True,
             inputs=input_layer,
-            outputs=output_layers)
+            outputs=output_layer)
 
 # ---------------------------------------------------------------------
