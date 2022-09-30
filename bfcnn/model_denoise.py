@@ -69,7 +69,7 @@ def model_builder(
     pyramid_config = config.get("pyramid", None)
     dropout_rate = config.get("dropout_rate", -1)
     activation = config.get("activation", "relu")
-    clip_values = config.get("clip_values", False)
+    clip_values = config.get("clip_values", True)
     add_final_bn = config.get("add_final_bn", True)
     shared_model = config.get("shared_model", False)
     add_sparsity = config.get("add_sparsity", False)
