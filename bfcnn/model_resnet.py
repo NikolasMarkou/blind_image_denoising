@@ -150,7 +150,7 @@ def build_model_resnet(
         # this must be linear because it is capped later
         activation="linear",
         filters=input_dims[channel_index],
-        kernel_regularizer=kernel_regularizer,
+        kernel_regularizer="l2",
         kernel_initializer=kernel_initializer
     )
 
@@ -255,7 +255,7 @@ def build_model_resnet(
                 input_layer=output_layer,
                 bn_params=None,
                 conv_params=final_conv_params,
-                channelwise_scaling=channelwise_scaling)
+                channelwise_scaling=None)
 
         # learnable multiplier
         if add_learnable_multiplier:
