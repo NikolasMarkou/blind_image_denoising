@@ -407,7 +407,7 @@ def train_loop(
                     decomposed_image = (tf.nn.tanh(decomposed_image) + 1.0) / 2.0
                     decomposed_image = tf.transpose(decomposed_image, perm=(3, 1, 2, 0))
                     tf.summary.image(
-                        name=f"test_output_decomposition_{i}",
+                        name=f"test_output_decomposition_0",
                         step=global_step,
                         data=decomposed_image,
                         max_outputs=12)
