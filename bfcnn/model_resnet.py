@@ -11,8 +11,8 @@ from typing import List, Tuple, Union, Dict, Iterable
 # local imports
 # ---------------------------------------------------------------------
 
-from .custom_logger import logger
 from .constants import *
+from .custom_logger import logger
 from .custom_layers import Multiplier
 from .model_blocks import resnet_blocks_full
 from .utilities import conv2d_wrapper, mean_sigma_local
