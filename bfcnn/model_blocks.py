@@ -376,6 +376,28 @@ def resnet_full_preactivation(
         x = tf.keras.layers.Add()([x, previous_layer])
     return x
 
+# ---------------------------------------------------------------------
+
+
+def renderer(
+        signals: List[tf.Tensor],
+        masks: List[tf.Tensor]):
+    # accumulated mask and signal
+    acc_signal = None
+
+    for i in range(len(signals)):
+        signal = signals[i]
+        mask = masks[i]
+
+        if acc_signal is None:
+            acc_signal = tf.multiply(signal, mask)
+        else:
+            acc_signal = \
+                tf.multiply(signal, mask) + \
+                tf.multiply(acc_signal, 1.0 - mask)
+
+    return acc_signal
+
 
 # ---------------------------------------------------------------------
 

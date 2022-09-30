@@ -1,10 +1,6 @@
-import os
-import json
 import keras
-import itertools
 import numpy as np
 import tensorflow as tf
-from pathlib import Path
 from typing import List, Tuple, Union, Dict, Iterable
 
 # ---------------------------------------------------------------------
@@ -146,6 +142,18 @@ def build_model_resnet(
         kernel_initializer=kernel_initializer
     )
 
+    intermediate_conv_params = dict(
+        kernel_size=1,
+        filters=filters,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        # this must be the same as the base
+        activation="tanh",
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
     final_conv_params = dict(
         kernel_size=1,
         strides=(1, 1),
@@ -248,6 +256,12 @@ def build_model_resnet(
 
     # --- output layer branches here,
     # cap it off to limit values
+    x = conv2d_wrapper(
+        input_layer=x,
+        bn_params=None,
+        conv_params=intermediate_conv_params,
+        channelwise_scaling=channelwise_scaling)
+
     output_layer = x
 
     # --- output to original channels / projection
