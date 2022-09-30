@@ -259,14 +259,15 @@ def model_builder(
             x_levels[i] = denoise_models[i](x_level)
 
     # --- split intermediate results and actual results
-    x_levels_intermediate = [
-        x_level[1::]
-        for i, x_level in enumerate(x_levels)
-    ]
     x_levels_output = [
         x_level[0]
         for i, x_level in enumerate(x_levels)
     ]
+    x_levels_intermediate = [
+        x_level[1::]
+        for i, x_level in enumerate(x_levels)
+    ]
+    x_levels = None
 
     # --- optional multiplier to help saturation
     if output_multiplier is not None and \
@@ -279,7 +280,7 @@ def model_builder(
     # --- clip levels to [-0.5, +0.5]
     if clip_values:
         for i, x_level in enumerate(x_levels_output):
-            x_levels[i] = \
+            x_levels_output[i] = \
                 tf.clip_by_value(
                     t=x_level,
                     clip_value_min=-0.5,
