@@ -244,8 +244,6 @@ def build_model_resnet(
 
     # --- output layer branches here,
     # cap it off to limit values
-    x = tf.tanh(x)
-
     output_layer = x
 
     # --- output to original channels / projection
