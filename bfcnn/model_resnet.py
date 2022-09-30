@@ -121,13 +121,13 @@ def build_model_resnet(
 
     second_conv_params = dict(
         kernel_size=3,
-        filters=filters * 2,
+        depth_multiplier=2,
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
         activation=activation,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
+        depthwise_regularizer=kernel_regularizer,
+        depthwise_initializer=kernel_initializer
     )
 
     third_conv_params = dict(

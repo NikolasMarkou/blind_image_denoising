@@ -284,6 +284,10 @@ def conv2d_wrapper(
     use_pre_activation = pre_activation is not None
     if isinstance(conv_type, str):
         conv_type = ConvType.from_string(conv_type)
+    if "depth_multiplier" in conv_params:
+        if conv_type != ConvType.CONV2D_DEPTHWISE:
+            logger.info("Changing conv_type to CONV2D_DEPTHWISE because it contains depth_multiplier argument")
+        conv_type = ConvType.CONV2D_DEPTHWISE
 
     # --- perform batchnorm and preactivation
     x = input_layer
