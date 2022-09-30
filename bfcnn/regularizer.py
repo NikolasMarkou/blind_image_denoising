@@ -208,6 +208,11 @@ class ErfRegularizer(keras.regularizers.Regularizer):
     def __call__(self, x):
         # get kernel weights shape
         shape = x.shape[0:2]
+
+        # ERF doesnt apply to 1x1 convolutions
+        if shape[0] == 1 and shape[1] == 1:
+            return tf.constant(0.0, dtype=tf.float32)
+
         # build gaussian kernel
         gaussian_weights = \
             tf.constant(
