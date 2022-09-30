@@ -167,7 +167,7 @@ def build_model_resnet(
         # this must be linear because it is capped later
         activation="linear",
         filters=input_dims[channel_index],
-        kernel_regularizer="l2",
+        kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
 
