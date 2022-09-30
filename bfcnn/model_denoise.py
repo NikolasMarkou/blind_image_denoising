@@ -207,11 +207,6 @@ def model_builder(
 
     # --- add residual between models
     # speeds up training a lot, and better results (but adds artifacts)
-    multiplier_params = \
-        dict(multiplier=1.0,
-             trainable=True,
-             regularizer="l1",
-             activation="linear")
     upsampling_params = \
         dict(size=(2, 2),
              interpolation="bilinear")
@@ -222,8 +217,6 @@ def model_builder(
 
     if add_residual_between_models:
         previous_level = None
-        current_level_output = None
-        current_level_intermediate_output = None
         for i, x_level in reversed(list(enumerate(x_levels))):
             if previous_level is None:
                 x_level_tmp = denoise_models[i](x_level)
@@ -267,7 +260,6 @@ def model_builder(
         x_level[1::]
         for i, x_level in enumerate(x_levels)
     ]
-    x_levels = None
 
     # --- optional multiplier to help saturation
     if output_multiplier is not None and \
@@ -294,7 +286,7 @@ def model_builder(
         x_result = x_levels_output[0]
 
     # name output
-    output_layer = \
+    x_result = \
         keras.layers.Layer(name="output_tensor")(
             x_result)
 
@@ -302,7 +294,7 @@ def model_builder(
     model_denoise = \
         keras.Model(
             inputs=input_layer,
-            outputs=output_layer,
+            outputs=x_result,
             name=f"{model_type}_denoiser")
 
     # --- keep model before merging (this is for better training)
