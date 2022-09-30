@@ -133,8 +133,6 @@ def model_builder(
             min_value=min_value,
             max_value=max_value)
 
-
-
     # --- build denoise model
     model_params = dict(
         add_var=add_var,
