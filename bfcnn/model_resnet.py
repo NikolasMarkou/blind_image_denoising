@@ -30,10 +30,12 @@ def build_model_resnet(
         channel_index: int = 2,
         dropout_rate: float = -1,
         channelwise_scaling: bool = False,
+        conv_depthwise: bool = False,
         add_skip_with_input: bool = True,
         add_sparsity: bool = False,
         add_gates: bool = False,
         add_var: bool = False,
+        add_initial_bn: bool = False,
         add_final_bn: bool = False,
         add_intermediate_results: bool = False,
         add_learnable_multiplier: bool = False,
@@ -57,10 +59,12 @@ def build_model_resnet(
     :param kernel_regularizer: Kernel weight regularizer
     :param kernel_initializer: Kernel weight initializer
     :param channelwise_scaling: if True for each full convolutional kernel add a scaling depthwise
+    :param conv_depthwise: if True set the middle convolution as depthwise
     :param add_skip_with_input: if true skip with input
     :param add_sparsity: if true add sparsity layer
     :param add_gates: if true add gate layer
     :param add_var: if true add variance for each block
+    :param add_initial_bn: add a batch norm before the resnet blocks
     :param add_final_bn: add a batch norm after the resnet blocks
     :param add_intermediate_results: if true output results before projection
     :param add_learnable_multiplier:
@@ -119,16 +123,29 @@ def build_model_resnet(
         kernel_initializer=kernel_initializer,
     )
 
-    second_conv_params = dict(
-        kernel_size=3,
-        depth_multiplier=2,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation=activation,
-        depthwise_regularizer=kernel_regularizer,
-        depthwise_initializer=kernel_initializer
-    )
+    if conv_depthwise:
+        second_conv_params = dict(
+            kernel_size=3,
+            depth_multiplier=2,
+            strides=(1, 1),
+            padding="same",
+            use_bias=use_bias,
+            activation=activation,
+            depthwise_regularizer=kernel_regularizer,
+            depthwise_initializer=kernel_initializer
+        )
+    else:
+        second_conv_params = dict(
+            kernel_size=3,
+            groups=2,
+            filters=filters * 2,
+            strides=(1, 1),
+            padding="same",
+            use_bias=use_bias,
+            activation=activation,
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer
+        )
 
     third_conv_params = dict(
         kernel_size=1,
@@ -224,7 +241,7 @@ def build_model_resnet(
             bn_params=None,
             conv_params=base_conv_params,
             channelwise_scaling=None)
-    if use_bn:
+    if add_initial_bn:
         x = tf.keras.layers.BatchNormalization(**bn_params)(x)
 
     # add resnet blocks
