@@ -172,6 +172,14 @@ def model_builder(
             name="input_tensor")
     x = input_layer
 
+    # --- clip levels to [-0.5, +0.5]
+    if clip_values:
+        x = \
+            tf.clip_by_value(
+                t=x,
+                clip_value_min=-0.5,
+                clip_value_max=+0.5)
+
     # --- run inference
     if use_pyramid:
         x_levels = model_pyramid(x, training=False)

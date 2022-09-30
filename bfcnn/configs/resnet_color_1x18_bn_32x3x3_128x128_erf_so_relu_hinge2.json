@@ -1,7 +1,7 @@
 {
   "model_denoise": {
     "filters": 32,
-    "no_layers": 12,
+    "no_layers": 18,
     "min_value": 0,
     "add_var": false,
     "max_value": 255,
@@ -69,7 +69,7 @@
     "regularization": 0.01
   },
   "dataset": {
-    "batch_size": 8,
+    "batch_size": 16,
     "min_value": 0,
     "max_value": 255,
     "clip_value": true,
@@ -81,7 +81,7 @@
     "random_up_down": true,
     "color_mode": "rgb",
     "random_left_right": true,
-    "input_shape": [256, 256, 3],
+    "input_shape": [128, 128, 3],
     "multiplicative_noise": [0.05, 0.1, 0.2],
     "additional_noise": [1, 5, 10, 20, 40, 60, 80],
     "inputs": [
