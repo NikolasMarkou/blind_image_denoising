@@ -255,7 +255,7 @@ def build_model_resnet(
                 input_layer=output_layer,
                 bn_params=None,
                 conv_params=final_conv_params,
-                channelwise_scaling=None)
+                channelwise_scaling=channelwise_params)
 
         # learnable multiplier
         if add_learnable_multiplier:
