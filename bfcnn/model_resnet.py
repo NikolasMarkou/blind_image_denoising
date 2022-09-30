@@ -223,7 +223,9 @@ def build_model_resnet(
             input_layer=x,
             bn_params=None,
             conv_params=base_conv_params,
-            channelwise_scaling=channelwise_scaling)
+            channelwise_scaling=None)
+    if use_bn:
+        x = tf.keras.layers.BatchNormalization(**bn_params)(x)
 
     # add resnet blocks
     x = \
