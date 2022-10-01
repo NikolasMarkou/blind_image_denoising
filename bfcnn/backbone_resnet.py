@@ -6,7 +6,7 @@ import tensorflow as tf
 
 from .constants import *
 from .custom_logger import logger
-from .model_blocks import resnet_blocks_full
+from .backbone_blocks import resnet_blocks_full
 from .utilities import conv2d_wrapper, mean_sigma_local
 
 # ---------------------------------------------------------------------
