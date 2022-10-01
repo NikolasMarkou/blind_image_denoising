@@ -59,8 +59,8 @@ def model_builder(
 
     # --- argument parsing
     model_type = config[TYPE_STR]
-
     filters = config.get("filters", 32)
+    groups = config.get("groups", 4)
     no_levels = config.get("no_levels", 1)
     add_var = config.get("add_var", False)
     no_layers = config.get("no_layers", 5)
@@ -108,14 +108,14 @@ def model_builder(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation="relu",
-        filters=input_shape[channel_index] * 4,
+        activation=activation,
+        filters=input_shape[channel_index] * groups,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
 
     final_conv_params = dict(
-        groups=4,
+        groups=groups,
         kernel_size=1,
         strides=(1, 1),
         padding="same",
