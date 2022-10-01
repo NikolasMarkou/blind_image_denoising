@@ -11,7 +11,7 @@ from typing import List, Union, Tuple, Dict
 from .constants import *
 from .custom_logger import logger
 from .utilities import load_config
-from .model_denoise import model_builder, module_denoiser_builder
+from .model_denoiser import model_builder, module_builder
 
 # ---------------------------------------------------------------------
 
@@ -115,7 +115,7 @@ def export_model(
     input_shape = dataset_config["input_shape"]
     no_channels = input_shape[2]
     denoising_module = \
-        module_denoiser_builder(
+        module_builder(
             cast_to_uint8=True,
             model_denoise=denoiser,
             model_normalize=normalizer,

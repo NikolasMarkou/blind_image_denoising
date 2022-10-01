@@ -14,8 +14,8 @@ from typing import Union
 # ---------------------------------------------------------------------
 
 from .train_loop import train_loop
-from .export_model_denoise import export_model
-from .model_denoise import model_builder
+from .export_model_denoiser import export_model
+from .model_denoiser import model_builder
 from .utilities import \
     logger, load_config, load_image
 from .pyramid import \

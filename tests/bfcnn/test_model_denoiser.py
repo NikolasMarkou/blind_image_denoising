@@ -1,6 +1,7 @@
 import os
 import sys
 import pytest
+import tensorflow as tf
 from tensorflow import keras
 
 sys.path.append(os.getcwd() + "/../")
@@ -26,5 +27,14 @@ def test_model_builder(config):
     assert isinstance(models.normalizer, keras.Model)
     # denormalize
     assert isinstance(models.denormalizer, keras.Model)
+
+    # export
+    module = \
+        bfcnn.model_denoiser.module_builder(
+            model_denoise=models.denoiser,
+            model_normalize=models.normalizer,
+            model_denormalize=models.denormalizer)
+
+    assert isinstance(module, tf.Module)
 
 # ---------------------------------------------------------------------

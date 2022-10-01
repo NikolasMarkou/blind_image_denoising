@@ -15,7 +15,7 @@ from enum import Enum
 # local imports
 # ---------------------------------------------------------------------
 
-from .export_model_denoise import export_model as export_model_denoise
+from .export_model_denoiser import export_model as export_model_denoise
 from .export_model_decomposition import export_model as export_model_decomposition
 
 # ---------------------------------------------------------------------

@@ -15,7 +15,7 @@ from .custom_logger import logger
 from .loss import loss_function_builder
 from .optimizer import optimizer_builder
 from .utilities import load_config, load_image
-from .model_denoise import model_builder as model_denoise_builder
+from .model_denoiser import model_builder as model_denoise_builder
 from .pruning import prune_function_builder, PruneStrategy, get_conv2d_weights
 from .dataset import \
     dataset_builder, \
@@ -197,12 +197,10 @@ def train_loop(
         tf.summary.trace_off()
 
     # get each model
-    pyramid = models.pyramid
     denoiser = models.denoiser
     normalizer = models.normalizer
     denormalizer = models.denormalizer
-    inverse_pyramid = models.inverse_pyramid
-    denoiser_decomposition = models.denoiser_decomposition
+    denoiser_decomposition = models.backbone
 
     # summary of model
     denoiser.summary(print_fn=logger.info)
@@ -411,14 +409,6 @@ def train_loop(
                         step=global_step,
                         data=decomposed_image,
                         max_outputs=12)
-                    # for i, d in enumerate(decomposed_image):
-                    #     d = (tf.nn.tanh(d) + 1.0) / 2.0
-                    #     d = tf.transpose(d, perm=(3, 1, 2, 0))
-                    #     tf.summary.image(
-                    #         name=f"test_output_decomposition_{i}",
-                    #         step=global_step,
-                    #         data=d,
-                    #         max_outputs=12)
 
                 # --- prune conv2d
                 if use_prune and (global_epoch >= prune_start_epoch) and \

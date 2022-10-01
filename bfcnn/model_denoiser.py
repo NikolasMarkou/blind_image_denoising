@@ -29,11 +29,12 @@ BuilderResults = namedtuple(
     "BuilderResults",
     {
         "denoiser",
-        "denoiser_decomposition",
+        "backbone",
         "normalizer",
         "denormalizer",
         "pyramid",
-        "inverse_pyramid"
+        "inverse_pyramid",
+        "denoiser_head"
     })
 
 
@@ -43,7 +44,7 @@ BuilderResults = namedtuple(
 def model_builder(
         config: Dict) -> BuilderResults:
     """
-    Reads a configuration and returns 5 models,
+    Reads a configuration and returns 6 models,
 
     :param config: configuration dictionary
     :return:
@@ -51,6 +52,7 @@ def model_builder(
         normalize model,
         denormalize model,
         pyramid model,
+        denoiser_head model,
         inverse pyramid model
     """
     logger.info("building model with config [{0}]".format(config))
@@ -262,13 +264,6 @@ def model_builder(
         for i, x_level in enumerate(x_levels):
             x_levels[i] = backbone_models[i](x_level)
 
-    # --- keep model before projection to output
-    model_denoise_decomposition = \
-        keras.Model(
-            inputs=input_layer,
-            outputs=x_levels,
-            name=f"{model_type}_denoiser_decomposition")
-
     # --- optional multiplier to help saturation
     if output_multiplier is not None and \
             output_multiplier != 1:
@@ -288,14 +283,28 @@ def model_builder(
 
     # --- merge levels together
     if use_pyramid:
-        x_result = \
+        x_backbone_output = \
             model_inverse_pyramid(x_levels)
     else:
-        x_result = x_levels[0]
+        x_backbone_output = x_levels[0]
 
-    x_result = \
+    # --- keep model before projection to output
+    model_backbone = \
+        keras.Model(
+            inputs=input_layer,
+            outputs=x_backbone_output,
+            name=f"{model_type}_backbone")
+
+    # --- define denoise here
+    denoise_input_layer = \
+        keras.Input(
+            shape=(None, None, filters),
+            name="input_tensor")
+    x = denoise_input_layer
+
+    x = \
         conv2d_wrapper(
-            input_layer=x_result,
+            input_layer=x,
             bn_params=None,
             conv_params=final_conv_params,
             channelwise_scaling=channelwise_params)
@@ -304,23 +313,31 @@ def model_builder(
     x_result = \
         tf.keras.layers.Activation(
             name="output_tensor",
-            activation=final_activation)(x_result)
+            activation=final_activation)(x)
 
-    # --- wrap and name model
-    model_denoise = \
+    # --- wrap and name denoiser head
+    model_denoiser_head = \
+        keras.Model(
+            inputs=denoise_input_layer,
+            outputs=x_result,
+            name=f"{model_type}_denoiser_head")
+
+    # --- wrap and name denoiser
+    model_denoiser = \
         keras.Model(
             inputs=input_layer,
-            outputs=x_result,
+            outputs=model_denoiser_head(x_backbone_output),
             name=f"{model_type}_denoiser")
 
     return \
         BuilderResults(
             pyramid=model_pyramid,
-            denoiser=model_denoise,
+            denoiser=model_denoiser,
+            backbone=model_backbone,
             normalizer=model_normalize,
             denormalizer=model_denormalize,
-            inverse_pyramid=model_inverse_pyramid,
-            denoiser_decomposition=model_denoise_decomposition)
+            denoiser_head=model_denoiser_head,
+            inverse_pyramid=model_inverse_pyramid)
 
 
 # ---------------------------------------------------------------------
@@ -392,7 +409,6 @@ class DenoisingInferenceModule(tf.Module, abc.ABC):
     def __call__(self, input_tensor):
         pass
 
-
 # ---------------------------------------------------------------------
 
 
@@ -444,11 +460,10 @@ class DenoisingInferenceModule3Channel(DenoisingInferenceModule):
 # ---------------------------------------------------------------------
 
 
-def module_denoiser_builder(
+def module_builder(
         model_denoise: keras.Model = None,
         model_normalize: keras.Model = None,
         model_denormalize: keras.Model = None,
-        training_channels: int = 1,
         cast_to_uint8: bool = True) -> DenoisingInferenceModule:
     """
     builds a module for denoising.
@@ -456,15 +471,19 @@ def module_denoiser_builder(
     :param model_denoise: denoising model to use for inference.
     :param model_normalize: model that normalizes the input
     :param model_denormalize: model that denormalizes the output
-    :param training_channels: how many color channels were used in training
     :param cast_to_uint8: cast output to uint8
 
     :return: denoiser module
     """
     logger.info(
         f"building denoising module with "
-        f"training_channels:{training_channels}, "
         f"cast_to_uint8:{cast_to_uint8}")
+
+    # --- argument checking
+    # TODO
+
+    training_channels = \
+        model_denoise.input_shape[-1]
 
     if training_channels == 1:
         return \
