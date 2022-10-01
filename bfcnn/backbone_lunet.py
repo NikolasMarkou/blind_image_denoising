@@ -41,21 +41,15 @@ def builder(
     :param kernel_size: kernel size of the conv layers
     :param filters: number of filters per convolutional layer
     :param activation: intermediate activation
-    :param final_activation: activation of the final layer
-    :param channel_index: Index of the channel in dimensions
     :param dropout_rate: probability of resnet block shutting off
     :param use_bn: Use Batch Normalization
     :param use_bias: use bias
     :param kernel_regularizer: Kernel weight regularizer
     :param kernel_initializer: Kernel weight initializer
-    :param add_skip_with_input: if true skip with input
     :param add_sparsity: if true add sparsity layer
     :param add_gates: if true add gate layer
     :param add_var: if true add variance for each block
     :param add_final_bn: add a batch norm after the resnet blocks
-    :param add_intermediate_results: if true output results before projection
-    :param add_learnable_multiplier:
-    :param add_projection_to_input: if true project to input tensor channel number
     :param add_concat_input: if true concat input to intermediate before projecting
     :param add_laplacian: if true each level of lunet is a laplacian, if false a gaussian
     :param name: name of the model

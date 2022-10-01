@@ -113,6 +113,18 @@ def model_builder(
         kernel_initializer=kernel_initializer
     )
 
+    residual_conv_params = dict(
+        kernel_size=3,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        # this must be linear because it is capped later
+        activation="linear",
+        filters=input_shape[channel_index],
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
     channelwise_params = dict(
         multiplier=1.0,
         regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
@@ -153,8 +165,6 @@ def model_builder(
         channelwise_scaling=channelwise_scaling,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
-        add_skip_with_input=add_skip_with_input,
-        add_intermediate_results=True,
         add_learnable_multiplier=add_learnable_multiplier,
     )
 
@@ -225,9 +235,32 @@ def model_builder(
                 **model_params)
             for i in range(len(x_levels))
         ]
+    upsampling_params = \
+        dict(size=(2, 2),
+             interpolation="bilinear")
 
-    for i, x_level in enumerate(x_levels):
-        x_levels[i] = backbone_models[i](x_level)
+    if add_residual_between_models:
+        previous_level = None
+        for i, x_level in reversed(list(enumerate(x_levels))):
+            if previous_level is None:
+                current_level_output = backbone_models[i](x_level)
+            else:
+                previous_level = \
+                    keras.layers.UpSampling2D(
+                        **upsampling_params)(previous_level)
+                previous_level = \
+                    conv2d_wrapper(
+                        input_layer=previous_level,
+                        conv_params=residual_conv_params,
+                        channelwise_scaling=True)
+                current_level_input = \
+                    keras.layers.Add()([previous_level, x_level])
+                current_level_output = backbone_models[i](current_level_input)
+            previous_level = current_level_output
+            x_levels[i] = current_level_output
+    else:
+        for i, x_level in enumerate(x_levels):
+            x_levels[i] = backbone_models[i](x_level)
 
     # --- keep model before projection to output
     model_denoise_decomposition = \

@@ -53,7 +53,6 @@ def builder(
     :param add_gates: if true add gate layer
     :param add_var: if true add variance for each block
     :param add_final_bn: add a batch norm after the resnet blocks
-    :param add_learnable_multiplier:
     :param add_concat_input: if true concat input to intermediate before projecting
     :param name: name of the model
     :return: unet model
@@ -68,11 +67,6 @@ def builder(
         scale=True,
         momentum=DEFAULT_BN_MOMENTUM,
         epsilon=DEFAULT_BN_EPSILON
-    )
-
-    # this make it 68% sparse
-    sparse_params = dict(
-        threshold_sigma=1.0,
     )
 
     base_conv_params = dict(
@@ -132,25 +126,6 @@ def builder(
         kernel_initializer=kernel_initializer
     )
 
-    final_conv_params = dict(
-        kernel_size=1,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        # this must be linear because it is capped later
-        activation="linear",
-        filters=input_dims[channel_index],
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
-    multiplier_params = dict(
-        multiplier=1.0,
-        trainable=True,
-        regularizer="l1",
-        activation="linear"
-    )
-
     dropout_params = dict(
         rate=dropout_rate
     )
@@ -170,9 +145,6 @@ def builder(
 
     if add_gates:
         unet_params["gate_params"] = gate_params
-
-    if add_learnable_multiplier:
-        unet_params["multiplier_params"] = multiplier_params
 
     if dropout_rate != -1:
         unet_params["dropout_params"] = dropout_params
