@@ -105,7 +105,7 @@ def model_builder(
 
     intermediate_conv_params = dict(
         groups=groups,
-        kernel_size=3,
+        kernel_size=1,
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
