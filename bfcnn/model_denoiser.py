@@ -103,7 +103,19 @@ def model_builder(
     kernel_regularizer = \
         regularizer_builder(kernel_regularizer)
 
+    intermediate_conv_params = dict(
+        kernel_size=3,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation="relu",
+        filters=input_shape[channel_index] * 4,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
     final_conv_params = dict(
+        groups=4,
         kernel_size=1,
         strides=(1, 1),
         padding="same",
@@ -224,11 +236,11 @@ def model_builder(
     # --- shared or separate models
     if shared_model:
         logger.info("building shared model")
-        resnet_model = \
+        backbone_model = \
             backbone_builder(
                 name="level_shared",
                 **model_params)
-        backbone_models = [resnet_model] * len(x_levels)
+        backbone_models = [backbone_model] * len(x_levels)
     else:
         logger.info("building per scale model")
         backbone_models = [
@@ -301,6 +313,13 @@ def model_builder(
             shape=(None, None, filters),
             name="input_tensor")
     x = denoise_input_layer
+
+    x = \
+        conv2d_wrapper(
+            input_layer=x,
+            bn_params=None,
+            conv_params=intermediate_conv_params,
+            channelwise_scaling=channelwise_params)
 
     x = \
         conv2d_wrapper(
