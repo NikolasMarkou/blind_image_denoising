@@ -122,6 +122,7 @@ def model_builder(
         use_bias=use_bias,
         # this must be linear because it is capped later
         activation="linear",
+        groups=input_shape[channel_index],
         filters=input_shape[channel_index],
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
