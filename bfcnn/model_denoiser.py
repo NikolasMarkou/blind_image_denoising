@@ -104,6 +104,7 @@ def model_builder(
         regularizer_builder(kernel_regularizer)
 
     intermediate_conv_params = dict(
+        groups=groups,
         kernel_size=3,
         strides=(1, 1),
         padding="same",
@@ -115,7 +116,6 @@ def model_builder(
     )
 
     final_conv_params = dict(
-        groups=groups,
         kernel_size=1,
         strides=(1, 1),
         padding="same",
