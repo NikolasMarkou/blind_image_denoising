@@ -17,7 +17,7 @@
     "output_multiplier": 1.0,
     "local_normalization": -1,
     "final_activation": "tanh",
-    "channelwise_scaling": true,
+    "channelwise_scaling": false,
     "add_skip_with_input": false,
     "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
