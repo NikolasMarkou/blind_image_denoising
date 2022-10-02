@@ -107,12 +107,12 @@ def resnet_blocks_full(
     if use_gate:
         pool_bias = gate_params.get("bias", 2.5)
         pool_type = gate_params.get("pool_type", "avg")
-        pool_size = gate_params.get("pool_size", (32, 32))
+        pool_size = gate_params.get("pool_size", (16, 16))
 
         pool_params = dict(
             pool_size=pool_size,
             padding="same",
-            strides=None
+            strides=(1, 1)
         )
 
         if pool_type == "max":

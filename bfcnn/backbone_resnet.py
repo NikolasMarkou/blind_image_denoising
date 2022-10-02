@@ -31,6 +31,7 @@ def builder(
         add_initial_bn: bool = False,
         add_final_bn: bool = False,
         add_concat_input: bool = False,
+        add_selector: bool = False,
         name="resnet",
         **kwargs) -> keras.Model:
     """
@@ -153,12 +154,13 @@ def builder(
         activation="relu"
     )
 
+    selector_params = dict()
+
     resnet_params = dict(
         bn_params=None,
         sparse_params=None,
         no_layers=no_layers,
-        # TODO testing this, remove afterwards
-        selector_params=dict(),
+        selector_params=None,
         channelwise_params=channelwise_params,
         first_conv_params=first_conv_params,
         second_conv_params=second_conv_params,
@@ -171,6 +173,9 @@ def builder(
     # make it linear so it gets sparse afterwards
     if add_sparsity:
         resnet_params["sparse_params"] = sparse_params
+
+    if add_selector:
+        resnet_params["selector_params"] = selector_params
 
     if add_gates:
         resnet_params["gate_params"] = gate_params
