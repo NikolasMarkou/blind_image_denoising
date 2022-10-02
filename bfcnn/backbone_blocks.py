@@ -605,12 +605,7 @@ def renderer(
 
     return acc_signal
 
-
-
-
-
-
-
+# ---------------------------------------------------------------------
 
 
 def selector_mixer_block(
@@ -664,40 +659,15 @@ def selector_mixer_block(
     y = conv2d_wrapper(input_layer=y,
                        conv_params=copy.deepcopy(selector_params),
                        bn_params=None,
-                       channelwise_scaling=True)
+                       channelwise_scaling=False)
     # if x < -2.5: return 0
     # if x > 2.5: return 1
     # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
-    y = tf.sigmoid(pool_bias - y)
+    y = tf.keras.activations.hard_sigmoid(pool_bias - y)
 
     return \
         tf.keras.layers.Multiply()([input_1_layer, y]) + \
         tf.keras.layers.Multiply()([input_2_layer, 1.0 - y])
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # ---------------------------------------------------------------------
 
