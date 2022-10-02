@@ -340,7 +340,7 @@ def model_builder(
         keras.Model(
             inputs=denoise_input_layer,
             outputs=x_result,
-            name=f"{model_type}_denoiser_head")
+            name=f"denoiser_head")
 
     # --- wrap and name denoiser
     model_denoiser = \
