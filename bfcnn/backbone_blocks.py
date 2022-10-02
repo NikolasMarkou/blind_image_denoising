@@ -637,7 +637,7 @@ def selector_mixer_block(
     pool_params = dict(
         pool_size=pool_size,
         padding="same",
-        strides=None
+        strides=(1, 1)
     )
 
     if pool_type == "max":
