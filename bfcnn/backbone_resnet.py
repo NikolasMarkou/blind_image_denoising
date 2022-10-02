@@ -157,6 +157,8 @@ def builder(
         bn_params=None,
         sparse_params=None,
         no_layers=no_layers,
+        # TODO testing this, remove afterwards
+        selector_params=dict(),
         channelwise_params=channelwise_params,
         first_conv_params=first_conv_params,
         second_conv_params=second_conv_params,

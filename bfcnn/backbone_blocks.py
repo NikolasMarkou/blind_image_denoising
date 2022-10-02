@@ -60,6 +60,7 @@ def resnet_blocks_full(
         gate_params: Dict = None,
         sparse_params: Dict = None,
         dropout_params: Dict = None,
+        selector_params: Dict = None,
         multiplier_params: Dict = None,
         channelwise_params: Dict = None,
         post_addition_activation: str = None,
@@ -77,7 +78,8 @@ def resnet_blocks_full(
     :param sparse_params: sparse parameters
     :param gate_params: gate optional parameters
     :param dropout_params: dropout optional parameters
-    :param multiplier_params: learnable optional parameters
+    :param selector_params: selector mixer optional parameters
+    :param multiplier_params: learnable multiplier optional parameters
     :param channelwise_params: if True add a learnable point-wise depthwise scaling conv2d
     :param post_addition_activation: activation after the residual addition, None to disable
     :param expand_type: whether to keep same size, compress or expand
@@ -94,6 +96,7 @@ def resnet_blocks_full(
     use_gate = gate_params is not None
     use_dropout = dropout_params is not None
     use_sparsity = sparse_params is not None
+    use_selector = selector_params is not None
     use_multiplier = multiplier_params is not None
     use_channelwise = channelwise_params is not None
     use_post_addition_activation = post_addition_activation is not None
@@ -102,6 +105,7 @@ def resnet_blocks_full(
     # followed by dense layer, because we are using this on large images
     # global averaging looses too much information
     if use_gate:
+        pool_bias = gate_params.get("bias", 2.5)
         pool_type = gate_params.get("pool_type", "avg")
         pool_size = gate_params.get("pool_size", (32, 32))
 
@@ -118,7 +122,7 @@ def resnet_blocks_full(
         else:
             raise ValueError(f"not valid pool_type [{pool_type}[")
 
-        squeeze_excite_params = dict(
+        gate_conv_params = dict(
             kernel_size=1,
             strides=(1, 1),
             padding="same",
@@ -162,13 +166,13 @@ def resnet_blocks_full(
         if use_gate:
             y = pool(**pool_params)(x)
             y = conv2d_wrapper(input_layer=y,
-                               conv_params=copy.deepcopy(squeeze_excite_params),
+                               conv_params=copy.deepcopy(gate_conv_params),
                                bn_params=None,
                                channelwise_scaling=True)
             # if x < -2.5: return 0
             # if x > 2.5: return 1
             # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
-            y = tf.keras.activations.hard_sigmoid(y)
+            y = tf.keras.activations.hard_sigmoid(pool_bias - y)
             x = tf.keras.layers.Multiply()([x, y])
 
         # fix x dimensions and previous layers
@@ -212,8 +216,20 @@ def resnet_blocks_full(
         if use_dropout:
             x = RandomOnOff(**dropout_params)(x)
 
-        # skip connection
-        x = tf.keras.layers.Add()([x, previous_layer])
+        # skip connector or selector mixer
+        if use_selector:
+            x = \
+                selector_mixer_block(
+                    input_1_layer=previous_layer,
+                    input_2_layer=x,
+                    selector_layer=x,
+                    filters=third_conv_params["filters"],
+                    kernel_regularizer=third_conv_params.get("kernel_regularizer", "l1"),
+                    kernel_initializer=third_conv_params.get("kernel_initializer", "glorot_normal"),
+                    selector_params=selector_params)
+        else:
+            # skip connection
+            x = tf.keras.layers.Add()([x, previous_layer])
         # optional post addition activation
         if use_post_addition_activation:
             x = tf.keras.layers.Activation(post_addition_activation)(x)
@@ -588,6 +604,100 @@ def renderer(
                 tf.multiply(acc_signal, 1.0 - mask)
 
     return acc_signal
+
+
+
+
+
+
+
+
+
+def selector_mixer_block(
+        input_1_layer,
+        input_2_layer,
+        selector_layer,
+        filters: int,
+        selector_params: Dict = None,
+        kernel_regularizer: str = "l1",
+        kernel_initializer: str = "glorot_normal",
+        **kwargs):
+    """
+
+    :return: filtered input_layer
+    """
+    # --- set variables
+    # out squeeze and excite gating does not use global avg
+    # followed by dense layer, because we are using this on large images
+    # global averaging looses too much information
+    pool_bias = selector_params.get("bias", 2.5)
+    pool_type = selector_params.get("pool_type", "avg")
+    pool_size = selector_params.get("pool_size", (16, 16))
+
+    pool_params = dict(
+        pool_size=pool_size,
+        padding="same",
+        strides=None
+    )
+
+    if pool_type == "max":
+        pool = tf.keras.layers.MaxPooling2D
+    elif pool_type == "avg":
+        pool = tf.keras.layers.AveragePooling2D
+    else:
+        raise ValueError(f"not valid pool_type [{pool_type}[")
+
+    selector_params = dict(
+        kernel_size=1,
+        strides=(1, 1),
+        padding="same",
+        use_bias=False,
+        filters=filters,
+        activation="relu",
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer)
+
+    # --- setup resnet along with its variants
+    x = selector_layer
+
+    y = pool(**pool_params)(x)
+    y = conv2d_wrapper(input_layer=y,
+                       conv_params=copy.deepcopy(selector_params),
+                       bn_params=None,
+                       channelwise_scaling=True)
+    # if x < -2.5: return 0
+    # if x > 2.5: return 1
+    # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
+    y = tf.sigmoid(pool_bias - y)
+
+    return \
+        tf.keras.layers.Multiply()([input_1_layer, y]) + \
+        tf.keras.layers.Multiply()([input_2_layer, 1.0 - y])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # ---------------------------------------------------------------------
 
