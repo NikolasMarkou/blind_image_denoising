@@ -16,6 +16,7 @@ from .constants import *
 from .custom_logger import logger
 from .utilities import gaussian_kernel
 
+
 # ---------------------------------------------------------------------
 
 
@@ -50,6 +51,7 @@ def reshape_to_2d(weights: tf.Tensor) -> tf.Tensor:
         return reshape_4d_to_2d(weights)
     return weights
 
+
 # ---------------------------------------------------------------------
 
 
@@ -65,6 +67,7 @@ def wt_x_w(weights: tf.Tensor) -> tf.Tensor:
             tf.transpose(wt, perm=(1, 0)))
 
     return wt_w
+
 
 # ---------------------------------------------------------------------
 
@@ -115,29 +118,48 @@ class SoftOrthonormalConstraintRegularizer(keras.regularizers.Regularizer):
 
     def __init__(self,
                  lambda_coefficient: float = 1.0,
-                 l1_coefficient: float = 0.001):
-        self._lambda_coefficient = tf.constant(lambda_coefficient)
-        self._l1_coefficient = tf.constant(l1_coefficient)
+                 l1_coefficient: float = 0.01,
+                 l2_coefficient: float = 0.00):
+        self._lambda_coefficient = tf.constant(lambda_coefficient, dtype=tf.float32)
+        self._l1_coefficient = tf.constant(l1_coefficient, dtype=tf.float32)
+        self._l2_coefficient = tf.constant(l2_coefficient, dtype=tf.float32)
 
     @tf.function
     def __call__(self, x):
         # --- compute (Wt * W)
         wt_w = wt_x_w(x)
 
-        # frobenius norm
-        return \
-            self._lambda_coefficient * \
-            tf.square(
-                tf.norm(wt_w - tf.eye(tf.shape(wt_w)[0]),
-                        ord="fro",
-                        axis=(0, 1),
-                        keepdims=False)) + \
-            self._l1_coefficient * \
-            tf.reduce_sum(tf.abs(wt_w), axis=None, keepdims=False)
+        # --- init result
+        result = tf.constant(0.0, dtype=tf.float32)
+
+        # --- frobenius norm
+        if self._lambda_coefficient > 0.0:
+            result += \
+                self._lambda_coefficient * \
+                tf.square(
+                    tf.norm(wt_w,
+                            ord="fro",
+                            axis=(0, 1),
+                            keepdims=False))
+
+        # --- l1 on Wt_W
+        if self._l1_coefficient > 0.0:
+            result += \
+                self._l1_coefficient * \
+                tf.reduce_sum(tf.abs(wt_w), axis=None, keepdims=False)
+
+        # --- l2 on Wt_W
+        if self._l2_coefficient > 0.0:
+            result += \
+                self._l2_coefficient * \
+                tf.reduce_sum(tf.pow(wt_w, 2.0), axis=None, keepdims=False)
+
+        return result
 
     def get_config(self):
         return {
             L1_COEFFICIENT_STR: self._l1_coefficient.numpy(),
+            L2_COEFFICIENT_STR: self._l2_coefficient.numpy(),
             LAMBDA_COEFFICIENT_STR: self._lambda_coefficient.numpy()
         }
 
@@ -158,9 +180,11 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
 
     def __init__(self,
                  lambda_coefficient: float = 1.0,
-                 l1_coefficient: float = 0.001):
-        self._lambda_coefficient = tf.constant(lambda_coefficient)
-        self._l1_coefficient = tf.constant(l1_coefficient)
+                 l1_coefficient: float = 0.01,
+                 l2_coefficient: float = 0.00):
+        self._lambda_coefficient = tf.constant(lambda_coefficient, dtype=tf.float32)
+        self._l1_coefficient = tf.constant(l1_coefficient, dtype=tf.float32)
+        self._l2_coefficient = tf.constant(l2_coefficient, dtype=tf.float32)
 
     @tf.function
     def __call__(self, x):
@@ -171,22 +195,40 @@ class SoftOrthogonalConstraintRegularizer(keras.regularizers.Regularizer):
         wt_w_masked = \
             tf.math.multiply(wt_w, 1.0 - tf.eye(tf.shape(wt_w)[0]))
 
-        # frobenius norm
-        return \
-            self._lambda_coefficient * \
-            tf.square(
-                tf.norm(wt_w_masked,
-                        ord="fro",
-                        axis=(0, 1),
-                        keepdims=False)) + \
-            self._l1_coefficient * \
-            tf.reduce_sum(tf.abs(wt_w), axis=None, keepdims=False)
+        # --- init result
+        result = tf.constant(0.0, dtype=tf.float32)
+
+        # --- frobenius norm
+        if self._lambda_coefficient > 0.0:
+            result += \
+                self._lambda_coefficient * \
+                tf.square(
+                    tf.norm(wt_w_masked,
+                            ord="fro",
+                            axis=(0, 1),
+                            keepdims=False))
+
+        # --- l1 on Wt_W
+        if self._l1_coefficient > 0.0:
+            result += \
+                self._l1_coefficient * \
+                tf.reduce_sum(tf.abs(wt_w_masked), axis=None, keepdims=False)
+
+        # --- l2 on Wt_W
+        if self._l2_coefficient > 0.0:
+            result += \
+                self._l2_coefficient * \
+                tf.reduce_sum(tf.pow(wt_w_masked, 2.0), axis=None, keepdims=False)
+
+        return result
 
     def get_config(self):
         return {
             L1_COEFFICIENT_STR: self._l1_coefficient.numpy(),
+            L2_COEFFICIENT_STR: self._l2_coefficient.numpy(),
             LAMBDA_COEFFICIENT_STR: self._lambda_coefficient.numpy()
         }
+
 
 # ---------------------------------------------------------------------
 
@@ -198,20 +240,16 @@ class ErfRegularizer(keras.regularizers.Regularizer):
 
     def __init__(self,
                  l1_coefficient: float = 0.01,
-                 l2_coefficient: float = 0.01,
+                 l2_coefficient: float = 0.00,
                  nsig: Tuple[float, float] = (1.0, 1.0)):
-        self._l1_coefficient = tf.constant(l1_coefficient)
-        self._l2_coefficient = tf.constant(l2_coefficient)
+        self._l1_coefficient = tf.constant(l1_coefficient, dtype=tf.float32)
+        self._l2_coefficient = tf.constant(l2_coefficient, dtype=tf.float32)
         self._nsig = nsig
 
     @tf.function
     def __call__(self, x):
         # get kernel weights shape
         shape = x.shape[0:2]
-
-        # ERF doesnt apply to 1x1 convolutions
-        if shape[0] == 1 and shape[1] == 1:
-            return tf.constant(0.0, dtype=tf.float32)
 
         # build gaussian kernel
         gaussian_weights = \
@@ -227,11 +265,22 @@ class ErfRegularizer(keras.regularizers.Regularizer):
         # weight kernels
         x = tf.multiply(x, gaussian_weights)
 
-        return \
-            self._l1_coefficient * \
-            tf.reduce_sum(tf.abs(x), axis=None, keepdims=False) + \
-            self._l2_coefficient * \
-            tf.reduce_sum(tf.pow(x, 2.0), axis=None, keepdims=False)
+        # --- init result
+        result = tf.constant(0.0, dtype=tf.float32)
+
+        # --- l1 norm
+        if self._l1_coefficient > 0.0:
+            result += \
+                self._l1_coefficient * \
+                tf.reduce_sum(tf.abs(x), axis=None, keepdims=False)
+
+        # --- l2 norm
+        if self._l2_coefficient > 0.0:
+            result += \
+                self._l2_coefficient * \
+                tf.reduce_sum(tf.pow(x, 2.0), axis=None, keepdims=False)
+
+        return result
 
     def get_config(self):
         return {
@@ -239,6 +288,7 @@ class ErfRegularizer(keras.regularizers.Regularizer):
             L1_COEFFICIENT_STR: self._l1_coefficient.numpy(),
             L2_COEFFICIENT_STR: self._l2_coefficient.numpy()
         }
+
 
 # ---------------------------------------------------------------------
 
@@ -270,6 +320,7 @@ class RegularizerMixer(keras.regularizers.Regularizer):
                 regularizer in self._regularizers
             ]
         }
+
 
 # ---------------------------------------------------------------------
 
