@@ -84,11 +84,13 @@ def model_builder(
     output_multiplier = config.get("output_multiplier", 1.0)
     final_activation = config.get("final_activation", "linear")
     kernel_regularizer = config.get("kernel_regularizer", "l1")
+    backbone_activation = config.get("backbone_activation", None)
     add_skip_with_input = config.get("add_skip_with_input", True)
     channelwise_scaling = config.get("channelwise_scaling", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     add_learnable_multiplier = config.get("add_learnable_multiplier", False)
     add_residual_between_models = config.get("add_residual_between_models", False)
+
     use_pyramid = pyramid_config is not None
     input_shape = input_shape_fixer(input_shape)
 
@@ -301,6 +303,11 @@ def model_builder(
     else:
         x_backbone_output = x_levels[0]
 
+    if backbone_activation is not None:
+        x_backbone_output = \
+            tf.keras.layers.Activation(
+                backbone_activation)(x_backbone_output)
+
     # --- keep model before projection to output
     model_backbone = \
         keras.Model(
@@ -334,6 +341,11 @@ def model_builder(
         tf.keras.layers.Activation(
             name="output_tensor",
             activation=final_activation)(x)
+
+    if add_skip_with_input:
+        x_result = \
+            tf.keras.layers.Substract(
+                name="skip_input")([x_result, input_layer])
 
     # --- wrap and name denoiser head
     model_denoiser_head = \
