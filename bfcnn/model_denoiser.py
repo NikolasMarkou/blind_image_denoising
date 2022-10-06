@@ -178,7 +178,6 @@ def model_builder(
         add_final_bn=add_final_bn,
         add_laplacian=add_laplacian,
         add_concat_input=add_concat_input,
-        final_activation=final_activation,
         channelwise_scaling=channelwise_scaling,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,

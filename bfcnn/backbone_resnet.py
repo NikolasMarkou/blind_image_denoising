@@ -55,6 +55,7 @@ def builder(
     :param add_initial_bn: add a batch norm before the resnet blocks
     :param add_final_bn: add a batch norm after the resnet blocks
     :param add_concat_input: if true concat input to intermediate before projecting
+    :param add_selector: if true add a selector block in skip connections
     :param name: name of the model
     :return: resnet model
     """
