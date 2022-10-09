@@ -384,17 +384,6 @@ def train_loop(
                         buckets=weight_buckets,
                         name="training/weights")
 
-                    # --- prediction error distribution
-                    input_prediction_error = \
-                        tf.reshape(
-                            tensor=(input_batch - denormalized_denoised_batch) / 255,
-                            shape=[-1])
-                    tf.summary.histogram(
-                        data=input_prediction_error,
-                        step=global_step,
-                        buckets=error_buckets,
-                        name="training/error_distribution")
-
                 # --- add image decomposition
                 if decomposition_every > 0 and \
                         (global_step % decomposition_every) == 0:

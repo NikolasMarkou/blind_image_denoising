@@ -623,6 +623,8 @@ def selector_mixer_block(
         kernel_initializer: str = "glorot_normal",
         **kwargs):
     """
+    from 2 input layers,
+    select a combination of the 2 with bias on the first one
 
     :return: filtered input_layer
     """
