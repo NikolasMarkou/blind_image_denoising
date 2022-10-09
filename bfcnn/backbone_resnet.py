@@ -25,6 +25,7 @@ def builder(
         dropout_rate: float = -1,
         channelwise_scaling: bool = False,
         conv_depthwise: bool = False,
+        stop_gradient: bool = False,
         add_sparsity: bool = False,
         add_gates: bool = False,
         add_var: bool = False,
@@ -49,6 +50,7 @@ def builder(
     :param kernel_initializer: Kernel weight initializer
     :param channelwise_scaling: if True for each full convolutional kernel add a scaling depthwise
     :param conv_depthwise: if True set the middle convolution as depthwise
+    :param stop_gradient: if True stop gradients in each resnet block
     :param add_sparsity: if true add sparsity layer
     :param add_gates: if true add gate layer
     :param add_var: if true add variance for each block
@@ -57,6 +59,7 @@ def builder(
     :param add_concat_input: if true concat input to intermediate before projecting
     :param add_selector: if true add a selector block in skip connections
     :param name: name of the model
+
     :return: resnet model
     """
     # --- logging
@@ -162,6 +165,7 @@ def builder(
         sparse_params=None,
         no_layers=no_layers,
         selector_params=None,
+        stop_gradient=stop_gradient,
         channelwise_params=channelwise_params,
         first_conv_params=first_conv_params,
         second_conv_params=second_conv_params,

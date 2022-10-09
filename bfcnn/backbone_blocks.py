@@ -65,6 +65,7 @@ def resnet_blocks_full(
         channelwise_params: Dict = None,
         post_addition_activation: str = None,
         expand_type: ExpandType = ExpandType.SAME,
+        stop_gradient: bool = False,
         **kwargs):
     """
     Create a series of residual network blocks
@@ -83,7 +84,8 @@ def resnet_blocks_full(
     :param channelwise_params: if True add a learnable point-wise depthwise scaling conv2d
     :param post_addition_activation: activation after the residual addition, None to disable
     :param expand_type: whether to keep same size, compress or expand
-
+    :param stop_gradient: if True, stop gradient before the branch
+    
     :return: filtered input_layer
     """
     # --- argument check
@@ -139,6 +141,9 @@ def resnet_blocks_full(
     # create a series of residual blocks
     for i in range(no_layers):
         previous_layer = x
+
+        if stop_gradient:
+            x = tf.stop_gradient(x)
 
         if first_conv_params is not None:
             x = conv2d_wrapper(input_layer=x,

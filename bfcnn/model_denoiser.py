@@ -28,15 +28,16 @@ from .regularizer import builder as regularizer_builder
 BuilderResults = namedtuple(
     "BuilderResults",
     {
+        "pyramid",
+        "superres",
         "denoiser",
         "backbone",
         "normalizer",
         "denormalizer",
-        "pyramid",
+        "superres_head",
+        "denoiser_head",
         "inverse_pyramid",
-        "denoiser_head"
     })
-
 
 # ---------------------------------------------------------------------
 
@@ -79,6 +80,7 @@ def model_builder(
     shared_model = config.get("shared_model", False)
     add_sparsity = config.get("add_sparsity", False)
     add_laplacian = config.get("add_laplacian", True)
+    stop_gradient = config.get("stop_gradient", False)
     add_concat_input = config.get("add_concat_input", False)
     input_shape = config.get("input_shape", (None, None, 3))
     output_multiplier = config.get("output_multiplier", 1.0)
@@ -105,7 +107,7 @@ def model_builder(
     kernel_regularizer = \
         regularizer_builder(kernel_regularizer)
 
-    intermediate_conv_params = dict(
+    denoise_intermediate_conv_params = dict(
         groups=groups,
         kernel_size=1,
         strides=(1, 1),
@@ -117,7 +119,7 @@ def model_builder(
         kernel_initializer=kernel_initializer
     )
 
-    final_conv_params = dict(
+    denoise_final_conv_params = dict(
         kernel_size=1,
         strides=(1, 1),
         padding="same",
@@ -149,6 +151,43 @@ def model_builder(
         activation="relu"
     )
 
+    superres_expand_conv_params = dict(
+        groups=groups,
+        kernel_size=3,
+        padding="valid",
+        use_bias=use_bias,
+        dilation_rate=(2, 2),
+        activation=activation,
+        filters=filters * groups,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
+    superres_intermediate_conv_params = dict(
+        groups=groups,
+        kernel_size=3,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation=activation,
+        filters=input_shape[channel_index] * groups,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
+    superres_final_conv_params = dict(
+        kernel_size=1,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        # this must be linear because it is capped later
+        activation="linear",
+        groups=input_shape[channel_index],
+        filters=input_shape[channel_index],
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
     # --- build normalize denormalize models
     model_normalize = \
         build_normalize_model(
@@ -177,10 +216,11 @@ def model_builder(
         dropout_rate=dropout_rate,
         add_final_bn=add_final_bn,
         add_laplacian=add_laplacian,
+        stop_gradient=stop_gradient,
         add_concat_input=add_concat_input,
-        channelwise_scaling=channelwise_scaling,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
+        channelwise_scaling=channelwise_scaling,
         add_learnable_multiplier=add_learnable_multiplier,
     )
 
@@ -314,7 +354,7 @@ def model_builder(
             outputs=x_backbone_output,
             name=f"{model_type}_backbone")
 
-    # --- define denoise here
+    # --- define denoiser here
     denoise_input_layer = \
         keras.Input(
             shape=(None, None, filters),
@@ -325,14 +365,14 @@ def model_builder(
         conv2d_wrapper(
             input_layer=x,
             bn_params=None,
-            conv_params=intermediate_conv_params,
+            conv_params=denoise_intermediate_conv_params,
             channelwise_scaling=channelwise_params)
 
     x = \
         conv2d_wrapper(
             input_layer=x,
             bn_params=None,
-            conv_params=final_conv_params,
+            conv_params=denoise_final_conv_params,
             channelwise_scaling=channelwise_params)
 
     # cap it off to limit values
@@ -346,28 +386,79 @@ def model_builder(
             tf.keras.layers.Substract(
                 name="skip_input")([x_result, input_layer])
 
-    # --- wrap and name denoiser head
+    # wrap and name denoiser head
     model_denoiser_head = \
         keras.Model(
             inputs=denoise_input_layer,
             outputs=x_result,
             name=f"denoiser_head")
 
-    # --- wrap and name denoiser
+    # wrap and name denoiser
     model_denoiser = \
         keras.Model(
             inputs=input_layer,
             outputs=model_denoiser_head(x_backbone_output),
             name=f"{model_type}_denoiser")
 
+    # --- define super resolution here
+    superres_input_layer = \
+        keras.Input(
+            shape=(None, None, filters),
+            name="input_tensor")
+    x = superres_input_layer
+
+    x = \
+        conv2d_wrapper(
+            input_layer=x,
+            bn_params=None,
+            conv_params=superres_expand_conv_params,
+            channelwise_scaling=channelwise_params)
+
+    x = \
+        conv2d_wrapper(
+            input_layer=x,
+            bn_params=None,
+            conv_params=superres_intermediate_conv_params,
+            channelwise_scaling=channelwise_params)
+
+    x = \
+        conv2d_wrapper(
+            input_layer=x,
+            bn_params=None,
+            conv_params=superres_final_conv_params,
+            channelwise_scaling=channelwise_params)
+
+    # cap it off to limit values
+    x_result = \
+        tf.keras.layers.Activation(
+            name="output_tensor",
+            activation=final_activation)(x)
+
+    # wrap and name superres head
+    model_superres_head = \
+        keras.Model(
+            inputs=superres_input_layer,
+            outputs=x_result,
+            name=f"superres_head")
+
+    # wrap and name superres
+    model_superres = \
+        keras.Model(
+            inputs=input_layer,
+            outputs=model_superres_head(x_backbone_output),
+            name=f"{model_type}_superres")
+
+    # ---
     return \
         BuilderResults(
             pyramid=model_pyramid,
             denoiser=model_denoiser,
+            superres=model_superres,
             backbone=model_backbone,
             normalizer=model_normalize,
             denormalizer=model_denormalize,
             denoiser_head=model_denoiser_head,
+            superres_head=model_superres_head,
             inverse_pyramid=model_inverse_pyramid)
 
 

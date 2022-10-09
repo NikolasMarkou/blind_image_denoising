@@ -26,16 +26,16 @@
           {
               "type": "erf",
               "config": {
-                  "l2_coefficient": 0.0,
-                  "l1_coefficient": 0.01
+                  "l1_coefficient": 0.01,
+                  "l2_coefficient": 0.0
               }
           },
           {
               "type": "soft_orthonormal",
               "config": {
                   "lambda_coefficient": 0.1,
-                  "l2_coefficient": 0.0,
-                  "l1_coefficient": 0.001
+                  "l1_coefficient": 0.001,
+                  "l2_coefficient": 0.0
               }
           }
       ]

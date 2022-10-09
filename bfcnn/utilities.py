@@ -282,12 +282,19 @@ def conv2d_wrapper(
     # --- prepare arguments
     use_bn = bn_params is not None
     use_pre_activation = pre_activation is not None
+    # TODO restructure this
     if isinstance(conv_type, str):
         conv_type = ConvType.from_string(conv_type)
     if "depth_multiplier" in conv_params:
         if conv_type != ConvType.CONV2D_DEPTHWISE:
-            logger.info("Changing conv_type to CONV2D_DEPTHWISE because it contains depth_multiplier argument")
+            logger.info("Changing conv_type to CONV2D_DEPTHWISE because it contains depth_multiplier argument "
+                        f"[conv_params[\'depth_multiplier\']={conv_params['depth_multiplier']}]")
         conv_type = ConvType.CONV2D_DEPTHWISE
+    if "dilation_rate" in conv_params:
+        if conv_type != ConvType.CONV2D_TRANSPOSE:
+            logger.info("Changing conv_type to CONV2D_TRANSPOSE because it contains dilation argument "
+                        f"[conv_params[\'dilation_rate\']={conv_params['dilation_rate']}]")
+        conv_type = ConvType.CONV2D_TRANSPOSE
 
     # --- perform batchnorm and preactivation
     x = input_layer
