@@ -50,6 +50,17 @@ several types of noise and then try to recover the original image
 * normally distributed additive noise (same per channel / different same per channel)
 * normally distributed multiplicative noise (same per channel / different same per channel)
 
+
+## Pretrained models
+
+Currently we have 3 pretrained models:
+* [resnet_color_1x6_bn_16x3x3_256x256_l1_relu](bfcnn/pretrained/resnet_color_1x6_bn_16x3x3_256x256_l1_relu)
+* [resnet_color_1x12_bn_16x3x3_256x256_l1_relu](bfcnn/pretrained/resnet_color_1x12_bn_16x3x3_256x256_l1_relu)
+* [resnet_color_1x18_bn_16x3x3_256x256_l1_relu](bfcnn/pretrained/resnet_color_1x18_bn_16x3x3_256x256_l1_relu)
+They are all `resnet` variants with depths 6, 12 and 18.
+They were all trained for 20 epochs on `KITTI`, `Megadepth`, `BDD`, `WIDER` and `WFLW` datasets.
+
+
 ## Image examples
 
 The following samples are `256x256` crops from the `KITTI` dataset, 
@@ -73,15 +84,6 @@ noise (std) | MAE (noisy) | MAE (denoised) | Normal - Noisy - Denoised          
 60 |34.34|17.81|![](images/readme/bfcnn_image_7.png "normal") |
 70 |40.64|22.36|![](images/readme/bfcnn_image_8.png "normal") |
 80 |45.68|27.99|![](images/readme/bfcnn_image_9.png "normal") |
-
-## Pretrained models
-
-Currently we have 3 pretrained models:
-* [resnet_color_1x6_bn_16x3x3_256x256_l1_relu](bfcnn/pretrained/resnet_color_1x6_bn_16x3x3_256x256_l1_relu)
-* [resnet_color_1x12_bn_16x3x3_256x256_l1_relu](bfcnn/pretrained/resnet_color_1x12_bn_16x3x3_256x256_l1_relu)
-* [resnet_color_1x18_bn_16x3x3_256x256_l1_relu](bfcnn/pretrained/resnet_color_1x18_bn_16x3x3_256x256_l1_relu)
-They are all `resnet` variants with depths 6, 12 and 18.
-They were all trained for 20 epochs on `KITTI`, `Megadepth`, `BDD`, `WIDER` and `WFLW` datasets.
 
 ## How to use (from scratch)
 
