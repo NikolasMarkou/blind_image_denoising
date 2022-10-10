@@ -119,8 +119,7 @@ def export_model(
             cast_to_uint8=True,
             model_denoise=denoiser,
             model_normalize=normalizer,
-            model_denormalize=denormalizer,
-            training_channels=no_channels)
+            model_denormalize=denormalizer)
 
     # getting the concrete function traces the graph
     # and forces variables to
