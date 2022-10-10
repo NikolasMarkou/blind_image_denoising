@@ -24,6 +24,7 @@ def dataset_builder(
         config: Dict):
     # ---
     logger.info("creating dataset_builder with configuration [{0}]".format(config))
+
     # --- argument parsing
     batch_size = config["batch_size"]
     # crop image from dataset
@@ -45,12 +46,15 @@ def dataset_builder(
         dataset_shape.append(config.get("dataset_shape", [256, 256]))
     else:
         raise ValueError("dont know how to handle anything else than list and dict")
+
     # --- clip values to min max
     min_value = config.get("min_value", 0)
     max_value = config.get("max_value", 255)
     clip_value = tf.constant(config.get("clip_value", True))
+
     # --- if true round values
     round_values = tf.constant(config.get("round_values", True))
+
     # --- dataset augmentation
     random_blur = tf.constant(config.get("random_blur", False))
     subsample_size = config.get("subsample_size", -1)
@@ -74,7 +78,7 @@ def dataset_builder(
     random_crop = dataset_shape[0][0:2] != input_shape[0:2]
     random_crop = tf.constant(random_crop)
 
-    # build noise options
+    # --- build noise options
     noise_choices = []
     if len(additional_noise) > 0:
         noise_choices.append(0)
@@ -96,7 +100,7 @@ def dataset_builder(
     else:
         quantization = 1
 
-    noise_choices = tf.constant(noise_choices)
+    noise_choices = tf.constant(noise_choices, dtype=tf.int64)
     additional_noise = tf.constant(additional_noise, dtype=tf.float32)
     multiplicative_noise = tf.constant(multiplicative_noise, dtype=tf.float32)
 
@@ -122,33 +126,38 @@ def dataset_builder(
                 crop_to_aspect_ratio=True)
             for d, s in zip(directory, dataset_shape)
         ]
-
     else:
         raise ValueError("don't know how to handle non directory datasets")
 
-    def input_batch_augmentations(input_batch):
+    @tf.function(
+        input_signature=[
+            tf.TensorSpec(shape=[None, None, None, None], dtype=tf.float32)])
+    def geometric_augmentations_fn(
+            input_batch: tf.Tensor) -> tf.Tensor:
+        """
+        perform all the geometric augmentations
+        """
         input_shape_inference = tf.shape(input_batch)
 
         # --- crop randomly
         if random_crop:
             # pick random number
-            random_numbers = \
+            random_number = \
                 tf.random.uniform(
                     shape=(1,),
                     minval=min_scale,
                     maxval=max_scale,
-                    dtype=tf.dtypes.float32,
-                )
+                    dtype=tf.dtypes.float32)[0]
             crop_width = \
                 tf.cast(
                     tf.round(
-                        random_numbers[0] *
+                        random_number *
                         tf.cast(input_shape_inference[1], tf.float32)),
                     dtype=tf.int32)
             crop_height = \
                 tf.cast(
                     tf.round(
-                        random_numbers[0] *
+                        random_number *
                         tf.cast(input_shape_inference[2], tf.float32)),
                     dtype=tf.int32)
             crop_size = \
@@ -171,7 +180,6 @@ def dataset_builder(
             tf.image.resize(
                 images=input_batch,
                 size=(input_shape[0], input_shape[1]))
-        input_shape_inference = tf.shape(input_batch)
 
         # --- flip left right
         if random_left_right and tf.random.uniform(()) > 0.5:
@@ -202,14 +210,17 @@ def dataset_builder(
         if random_invert and tf.random.uniform(()) > 0.5:
             input_batch = max_value - (input_batch - min_value)
 
-        # --- convert to float32
-        return \
-            tf.cast(
-                input_batch,
-                dtype=tf.dtypes.float32)
+        return input_batch
 
     # --- define augmentation function
-    def augmentation(input_batch):
+    @tf.function(
+        input_signature=[
+            tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], None], dtype=tf.float32)])
+    def noise_augmentations_fn(
+            input_batch: tf.Tensor) -> tf.Tensor:
+        """
+        perform all the noise augmentations
+        """
         # --- copy input batch
         noisy_batch = tf.identity(input_batch)
         input_shape_inference = tf.shape(noisy_batch)
@@ -217,26 +228,29 @@ def dataset_builder(
         # --- random select noise type
         noise_type = \
             random_choice(noise_choices, size=1)[0]
+        additional_noise_std = \
+            random_choice(additional_noise, size=1)[0]
+        multiplicative_noise_std = \
+            random_choice(multiplicative_noise, size=1)[0]
 
         logger.info(f"noise_type: {noise_type}")
 
-        if noise_type == 0:
+        if noise_type == tf.constant(0, dtype=tf.int64):
             # additional noise
-            noise_std = random_choice(additional_noise, size=1)[0]
             if tf.random.uniform(()) > 0.5:
                 # channel independent noise
                 noisy_batch = \
                     noisy_batch + \
                     tf.random.truncated_normal(
                         mean=0,
-                        stddev=noise_std,
+                        stddev=additional_noise_std,
                         shape=input_shape_inference)
             else:
                 # channel dependent noise
                 tmp_noisy_batch = \
                     tf.random.truncated_normal(
                         mean=0,
-                        stddev=noise_std,
+                        stddev=additional_noise_std,
                         shape=(input_shape_inference[0],
                                input_shape[0],
                                input_shape[1],
@@ -255,24 +269,22 @@ def dataset_builder(
                             image=noisy_batch,
                             sigma=1,
                             filter_shape=(3, 3))
-        elif noise_type == 1:
+        elif noise_type == tf.constant(1, dtype=tf.int64):
             # multiplicative noise
-            noise_std = \
-                random_choice(multiplicative_noise, size=1)[0]
             if tf.random.uniform(()) > 0.5:
                 # channel independent noise
                 noisy_batch = \
                     noisy_batch * \
                     tf.random.truncated_normal(
                         mean=1,
-                        stddev=noise_std,
+                        stddev=multiplicative_noise_std,
                         shape=input_shape_inference)
             else:
                 # channel dependent noise
                 tmp_noisy_batch = \
                     tf.random.truncated_normal(
                         mean=1,
-                        stddev=noise_std,
+                        stddev=multiplicative_noise_std,
                         shape=(input_shape_inference[0],
                                input_shape[0],
                                input_shape[1],
@@ -292,7 +304,7 @@ def dataset_builder(
                             image=noisy_batch,
                             sigma=1,
                             filter_shape=(3, 3))
-        elif noise_type == 2:
+        elif noise_type == tf.constant(2, dtype=tf.int64):
             # subsample
             stride = (subsample_size, subsample_size)
             noisy_batch = \
@@ -302,7 +314,7 @@ def dataset_builder(
             noisy_batch = \
                 keras.layers.UpSampling2D(
                     size=stride)(noisy_batch)
-        elif noise_type == 3:
+        elif noise_type == tf.constant(3, dtype=tf.int64):
             # quantize values
             noisy_batch = tf.round(noisy_batch / quantization)
             noisy_batch = noisy_batch * quantization
@@ -329,7 +341,7 @@ def dataset_builder(
     # --- create the dataset
     result = dict()
 
-    result[AUGMENTATION_FN_STR] = augmentation
+    result[AUGMENTATION_FN_STR] = noise_augmentations_fn
 
     # dataset produces the dataset with basic geometric distortions
     if len(dataset) == 0:
@@ -337,12 +349,12 @@ def dataset_builder(
     elif len(dataset) == 1:
         result[DATASET_FN_STR] = \
             dataset[0].map(
-                map_func=input_batch_augmentations,
+                map_func=geometric_augmentations_fn,
                 num_parallel_calls=tf.data.AUTOTUNE).prefetch(2)
     else:
         result[DATASET_FN_STR] = \
             tf.data.Dataset.sample_from_datasets(dataset).map(
-                map_func=input_batch_augmentations,
+                map_func=geometric_augmentations_fn,
                 num_parallel_calls=tf.data.AUTOTUNE).prefetch(2)
 
     return result
