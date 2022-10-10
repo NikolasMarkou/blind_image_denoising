@@ -65,7 +65,7 @@ They were all trained for 20 epochs on `KITTI`, `Megadepth`, `BDD`, `WIDER` and 
 ## Image examples
 
 The following samples are `256x256` crops from the `KITTI` dataset, 
-denoised using the `resnet_color_laplacian_3x5_non_shared_bn_16x3x3_128x128_residual` model.
+denoised using the `resnet_color_1x18_bn_16x3x3_256x256_l1_relu` model.
 
 We add truncated normal noise with different standard deviations and calculate the 
 `Mean Absolute Error (MAE)` both for the noisy images, and the denoised images. 
