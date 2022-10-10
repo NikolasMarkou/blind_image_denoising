@@ -1,15 +1,7 @@
-# ---------------------------------------------------------------------
-
-__author__ = "Nikolas Markou"
-__version__ = "1.0.0"
-__license__ = "MIT"
-
-# ---------------------------------------------------------------------
-
-import keras
 import numpy as np
 from typing import List
 import tensorflow as tf
+from tensorflow import keras
 
 # ---------------------------------------------------------------------
 # local imports

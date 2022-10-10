@@ -1,16 +1,5 @@
-r"""Constructs model, inputs, and training environment."""
-
-# ---------------------------------------------------------------------
-
-__author__ = "Nikolas Markou"
-__version__ = "1.0.0"
-__license__ = "MIT"
-
-# ---------------------------------------------------------------------
-
 import os
 import time
-
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
@@ -26,16 +15,18 @@ from .custom_logger import logger
 from .loss import loss_function_builder
 from .optimizer import optimizer_builder
 from .utilities import load_config, load_image
-from .model_denoise import model_builder as model_denoise_builder
+from .model_denoiser import model_builder as model_denoise_builder
 from .pruning import prune_function_builder, PruneStrategy, get_conv2d_weights
 from .dataset import \
     dataset_builder, \
     DATASET_TESTING_FN_STR, \
     DATASET_FN_STR, \
     AUGMENTATION_FN_STR
+
 # ---------------------------------------------------------------------
 
 CURRENT_DIRECTORY = os.path.realpath(os.path.dirname(__file__))
+
 
 # ---------------------------------------------------------------------
 
@@ -120,6 +111,12 @@ def train_loop(
             name="visualization_every")
     # how many visualizations to show
     visualization_number = train_config.get("visualization_number", 5)
+    # how many steps to make a decomposition
+    decomposition_every = \
+        tf.constant(
+            train_config.get("decomposition_every", 1000),
+            dtype=tf.dtypes.int64,
+            name="decomposition_every")
     # how many times the random batch will be iterated
     random_batch_iterations = \
         train_config.get("random_batch_iterations", 1)
@@ -200,12 +197,10 @@ def train_loop(
         tf.summary.trace_off()
 
     # get each model
-    pyramid = models.pyramid
     denoiser = models.denoiser
     normalizer = models.normalizer
     denormalizer = models.denormalizer
-    inverse_pyramid = models.inverse_pyramid
-    denoiser_decomposition = models.denoiser_decomposition
+    denoiser_decomposition = models.backbone
 
     # summary of model
     denoiser.summary(print_fn=logger.info)
@@ -236,6 +231,7 @@ def train_loop(
             denoiser(x_noisy, training=False)
         x_denoised_denormalized = \
             denormalizer(x_denoised, training=False)
+
         return x_noisy_denormalized, x_denoised_denormalized
 
     # --- create random image and iterate through the model
@@ -280,37 +276,18 @@ def train_loop(
             checkpoint.restore(manager.latest_checkpoint).expect_partial()
 
         # --- define denoise fn
-        if inverse_pyramid is not None:
-            @tf.function
-            def denoise_fn(x):
-                # denoised decomposition
-                x0 = \
-                    denoiser_decomposition(
-                        x,
-                        training=True)
-                # denoised merged
-                x1 = \
-                    inverse_pyramid(
-                        x0,
-                        training=False)
-                # denoised denormalized
-                x2 = \
-                    denormalizer(x1, training=False)
-                return x0, x1, x2
-        else:
-            @tf.function
-            def denoise_fn(x):
-                # denoised decomposition
-                x0 = None
-                # denoised merged
-                x1 = \
-                    denoiser(
-                        x,
-                        training=True)
-                # denoised denormalized
-                x2 = \
-                    denormalizer(x1, training=False)
-                return x0, x1, x2
+        @tf.function
+        def denoise_fn(x_input):
+            # denoised merged
+            x_denoised = denoiser(x_input, training=True)
+            # denoised denormalized
+            x_denoised_denormalized = denormalizer(x_denoised, training=False)
+            return x_denoised, x_denoised_denormalized
+
+        # --- define decompose fn
+        @tf.function
+        def decompose_fn(x_input):
+            return denoiser_decomposition(x_input, training=False)
 
         # ---
         while global_epoch < global_total_epochs:
@@ -320,11 +297,11 @@ def train_loop(
             # --- pruning strategy
             if use_prune and (global_epoch >= prune_start_epoch):
                 logger.info(f"pruning weights at step [{int(global_step)}]")
-                denoiser_decomposition = \
-                    prune_fn(model=denoiser_decomposition)
+                denoiser = \
+                    prune_fn(model=denoiser)
 
             model_denoise_weights = \
-                denoiser_decomposition.trainable_weights
+                denoiser.trainable_weights
 
             # --- iterate over the batches of the dataset
             for input_batch in dataset:
@@ -333,20 +310,8 @@ def train_loop(
                 # augment data
                 noisy_batch = augmentation_fn(input_batch)
 
-                # normalize input and noisy batch
-                normalized_input_batch = \
-                    normalizer(input_batch, training=False)
                 normalized_noisy_batch = \
                     normalizer(noisy_batch, training=False)
-
-                if pyramid is not None:
-                    # split input image into pyramid levels
-                    normalized_input_batch_decomposition = \
-                        pyramid(
-                            normalized_input_batch,
-                            training=False)
-                else:
-                    normalized_input_batch_decomposition = None
 
                 # Open a GradientTape to record the operations run
                 # during the forward pass,
@@ -356,9 +321,7 @@ def train_loop(
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
-                    _, \
-                    denoised_batch, \
-                    denormalized_denoised_batch = \
+                    denoised_batch, denormalized_denoised_batch = \
                         denoise_fn(normalized_noisy_batch)
 
                     # compute the loss value for this mini-batch
@@ -403,54 +366,54 @@ def train_loop(
                 if (global_step % visualization_every) == 0:
                     test_input_batch = None
                     test_output_batch = None
-                    random_batch = create_random_batch()
                     if use_test_images:
                         test_input_batch, test_output_batch = denoise_test_batch()
                     visualize(
                         global_step=global_step,
                         input_batch=input_batch,
                         noisy_batch=noisy_batch,
-                        random_batch=random_batch,
+                        random_batch=create_random_batch(),
                         test_input_batch=test_input_batch,
                         test_output_batch=test_output_batch,
                         prediction_batch=denormalized_denoised_batch,
                         visualization_number=visualization_number)
                     # add weight visualization
-                    weights = \
-                        get_conv2d_weights(
-                            model=denoiser)
                     tf.summary.histogram(
-                        data=weights,
+                        data=get_conv2d_weights(model=denoiser),
                         step=global_step,
                         buckets=weight_buckets,
                         name="training/weights")
 
-                    # --- prediction error distribution
-                    input_prediction_error = \
-                        (input_batch - denormalized_denoised_batch) / 255
-                    input_prediction_error = \
-                        tf.reshape(input_prediction_error, shape=[-1])
-                    tf.summary.histogram(
-                        data=input_prediction_error,
+                # --- add image decomposition
+                if decomposition_every > 0 and \
+                        (global_step % decomposition_every) == 0:
+                    test_image = test_images[0, :, :, :]
+                    test_image = tf.expand_dims(test_image, axis=0)
+                    test_image = tf.image.resize(test_image, size=(128, 128))
+                    decomposed_image = decompose_fn(test_image)
+                    decomposed_image = (tf.nn.tanh(decomposed_image) + 1.0) / 2.0
+                    decomposed_image = tf.transpose(decomposed_image, perm=(3, 1, 2, 0))
+                    tf.summary.image(
+                        name=f"test_output_decomposition_0",
                         step=global_step,
-                        buckets=error_buckets,
-                        name="training/error_distribution")
+                        data=decomposed_image,
+                        max_outputs=12)
 
+                # --- prune conv2d
                 if use_prune and (global_epoch >= prune_start_epoch) and \
                         (int(prune_steps) != -1) and (global_step % prune_steps == 0):
                     logger.info(f"pruning weights at step [{int(global_step)}]")
-                    denoiser = \
-                        prune_fn(model=denoiser)
+                    denoiser = prune_fn(model=denoiser)
 
                 # --- check if it is time to save a checkpoint
-                if checkpoint_every > 0:
-                    if global_step % checkpoint_every == 0:
-                        logger.info("checkpoint at step: {0}".format(
-                            int(global_step)))
-                        manager.save()
-                        # save model so we can visualize it easier
-                        denoiser.save(
-                            os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR))
+                if checkpoint_every > 0 and \
+                        (global_step % checkpoint_every == 0):
+                    logger.info("checkpoint at step: {0}".format(
+                        int(global_step)))
+                    manager.save()
+                    # save model so we can visualize it easier
+                    denoiser.save(
+                        os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR))
 
                 # --- keep time of steps per second
                 stop_time = time.time()

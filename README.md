@@ -136,9 +136,10 @@ denoised_tensor = denoiser_model(input_tensor)
 1. Add a small hinge at the MAE loss. 2 (from 255) seems to work very good
 2. Multiscale models work better, 3-4 scales is ideal. LUnet seems to perform very well.
 3. Soft-Orthogonal regularization provides better generalization, but it's slower to train.
-4. Squeeze-and-Excite provides a small boost without many additional parameters.
-5. Avoid Batch Normalization at the end.
-6. Residual learning (learning the noise) trains faster and gives better metrics 
+4. Effective Receptive Field regularization provides better generalization, but it's slower to train.
+5. Squeeze-and-Excite provides a small boost without many additional parameters.
+6. Avoid Batch Normalization at the end.
+7. Residual learning (learning the noise) trains faster and gives better metrics 
    but may give out artifacts, so better avoid it.
 All these options are supported in the configuration.
 
@@ -184,10 +185,6 @@ that expands the effective receptive field without the need to add many more lay
 
 ![](images/readme/gaussian_decomposition_lena.png "Gaussian Decomposition Lena")
 
-#### [Noise estimation model Multi-Scale mixer](bfcnn/model_noise_estimation.py)
-Our addition (not in the paper) is a noise estimation model that
-decides the contribution of each layer when mixing them back in.
-
 #### [Squeeze and Excite with residual](bfcnn/utilities.py)
 Every resnet block has the option to include a residual squeeze and excite element (not in the paper) to it.
 
@@ -206,7 +203,8 @@ This forces a soft ortho-normal constraint on the kernels.
 #### [Soft Orthogonal Regularization](bfcnn/regularizer.py)
 Custom regularization that forces a soft orthogonal constraint on the kernels while still allowing the kernels to grow independently or shrink to almost zero.
 
-
+#### [Effective Receptive Field Regularization](bfcnn/regularizer.py)
+Custom regularization that gives incentive to convolutional kernels to have higher weights away from the center
 
 ## References
 1. [Robust and interpretable blind image denoising via bias-free convolutional neural networks](https://arxiv.org/abs/1906.05478)

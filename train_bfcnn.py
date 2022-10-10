@@ -1,11 +1,8 @@
 r"""train a bfcnn model"""
-# ---------------------------------------------------------------------
 
 __author__ = "Nikolas Markou"
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 __license__ = "MIT"
-
-# ---------------------------------------------------------------------
 
 import os
 import sys
@@ -48,7 +45,6 @@ def main(args):
         os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
         os.environ["TF_ENABLE_CUDNN_TENSOR_OP_MATH_FP32"] = "1"
         os.environ["TF_ENABLE_CUBLAS_TENSOR_OP_MATH_FP32"] = "1"
-        os.environ["TF_ENABLE_CUDNN_RNN_TENSOR_OP_MATH_FP32"] = "1"
 
     return \
         subprocess.check_call([

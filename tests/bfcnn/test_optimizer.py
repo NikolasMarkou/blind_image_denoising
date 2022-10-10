@@ -1,12 +1,11 @@
-import pytest
-
 import os
 import sys
-import numpy as np
+import pytest
+from tensorflow import keras
+
+sys.path.append(os.getcwd() + "/../")
 
 # ---------------------------------------------------------------------
-
-from .constants import *
 
 sys.path.append(os.getcwd() + "/../")
 
@@ -22,6 +21,7 @@ import bfcnn
 @pytest.mark.parametrize(
     "config", bfcnn.configs)
 def test_optimizer_builder(config):
+    config = config[1]
     optimizer, learning_rate = \
         bfcnn.optimizer_builder(config=config["train"]["optimizer"])
     assert optimizer is not None

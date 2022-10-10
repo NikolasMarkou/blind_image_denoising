@@ -1,8 +1,8 @@
 r"""build weight pruning strategies"""
 
-import keras
 import numpy as np
 from enum import Enum
+from tensorflow import keras
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from typing import Dict, Callable, List, Tuple, Union

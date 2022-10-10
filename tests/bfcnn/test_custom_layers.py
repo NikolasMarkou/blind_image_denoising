@@ -52,7 +52,7 @@ def test_multiplier_layer(units):
     result = model(np.random.normal(size=(10, 256)), training=False)
     assert result.shape == (10, units)
 
-    assert len(layer.weights) == 1
+    assert len(layer.weights) == 2
     assert layer.weights[0].numpy().shape == (1, )
 
 # ---------------------------------------------------------------------
@@ -92,7 +92,7 @@ def test_channelwise_multiplier_layer_on_dense(units):
     result = model(np.random.normal(size=(10, 256)), training=False)
     assert result.shape == (10, units)
 
-    assert len(layer.weights) == 1
+    assert len(layer.weights) == 2
     assert layer.weights[0].numpy().shape == (units,)
 
 # ---------------------------------------------------------------------
@@ -134,7 +134,7 @@ def test_channelwise_multiplier_layer_on_conv2d(filters):
     result = model(np.random.normal(size=(10, 32, 32, 1)), training=False)
     assert result.shape == (10, 32, 32, filters)
 
-    assert len(layer.weights) == 1
+    assert len(layer.weights) == 2
     assert layer.weights[0].numpy().shape == (filters,)
 
 # ---------------------------------------------------------------------

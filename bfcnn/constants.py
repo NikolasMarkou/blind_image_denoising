@@ -1,6 +1,12 @@
+from typing import Union, Dict
+from tensorflow import keras
+
+# ---------------------------------------------------------------------
+
 DEFAULT_EPSILON = 0.0001
 DEFAULT_BN_EPSILON = 1e-4
 DEFAULT_BN_MOMENTUM = 0.99
+DEFAULT_MULTIPLIER_L1 = 1e-3
 DEFAULT_CHANNELWISE_MULTIPLIER_L1 = 1e-3
 
 TYPE_STR = "type"
@@ -23,3 +29,14 @@ MAE_VARIANCE_LOSS_STR = "mae_variance_loss"
 REGULARIZATION_LOSS_STR = "regularization_loss"
 NAE_IMPROVEMENT_QUALITY_STR = "nae_improvement"
 MAE_DECOMPOSITION_LOSS_STR = "mae_decomposition_loss"
+
+# define file constants
+NSIG_COEFFICIENT_STR = "nsig"
+REGULARIZERS_STR = "regularizers"
+L1_COEFFICIENT_STR = "l1_coefficient"
+L2_COEFFICIENT_STR = "l2_coefficient"
+DIAG_COEFFICIENT_STR = "diag_coefficient"
+LAMBDA_COEFFICIENT_STR = "lambda_coefficient"
+REGULARIZER_ALLOWED_TYPES = Union[str, Dict, keras.regularizers.Regularizer]
+
+# ---------------------------------------------------------------------

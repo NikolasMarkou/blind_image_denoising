@@ -2,9 +2,20 @@
 # Deployment files only (models and utilities)
 # ---------------------------------------------------------------------
 
+import os
+import re
 import setuptools
 
 # ---------------------------------------------------------------------
+
+BASE_DIR = os.path.dirname(__file__)
+VERSION_RE = re.compile(r'''__version__ = ['"]([0-9.]+)['"]''')
+
+
+def get_version():
+    init = open(os.path.join(BASE_DIR, "bfcnn", "__init__.py")).read()
+    return VERSION_RE.search(init).group(1)
+
 
 with open("README.md") as f:
     readme = f.read()
@@ -16,7 +27,7 @@ with open("LICENSE") as f:
 
 setuptools.setup(
     name="bfcnn",
-    version="1.1.0",
+    version=get_version(),
     python_requires=">=3.6",
     description="Bias Free Convolutional Neural Network "
                 "for blind image denoising",

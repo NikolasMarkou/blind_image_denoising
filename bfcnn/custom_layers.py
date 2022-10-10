@@ -5,11 +5,6 @@ from tensorflow import keras
 
 # ---------------------------------------------------------------------
 
-from .regularizer import builder, REGULARIZER_ALLOWED_TYPES
-
-
-# ---------------------------------------------------------------------
-
 
 class BinaryEntropyActivityRegularizer(tf.keras.layers.Layer):
     def __init__(self,
@@ -65,7 +60,7 @@ class BinaryEntropyActivityRegularizer(tf.keras.layers.Layer):
 class Multiplier(tf.keras.layers.Layer):
     def __init__(self,
                  multiplier: float = 1.0,
-                 regularizer: REGULARIZER_ALLOWED_TYPES = None,
+                 regularizer: Any = None,
                  trainable: bool = True,
                  activation: Any = "linear",
                  name=None,
@@ -136,7 +131,7 @@ class ChannelwiseMultiplier(tf.keras.layers.Layer):
 
     def __init__(self,
                  multiplier: float = 1.0,
-                 regularizer: REGULARIZER_ALLOWED_TYPES = None,
+                 regularizer: Any = None,
                  trainable: bool = True,
                  activation: Any = "linear",
                  name=None,
@@ -244,7 +239,7 @@ class RandomOnOff(tf.keras.layers.Layer):
 class GeluLayer(tf.keras.layers.Layer):
     def __init__(self,
                  trainable: bool = True,
-                 regularizer: REGULARIZER_ALLOWED_TYPES = None,
+                 regularizer: Any = None,
                  name=None,
                  **kwargs):
         super(GeluLayer, self).__init__(
@@ -304,7 +299,7 @@ class DifferentiableReluLayer(tf.keras.layers.Layer):
                  threshold: float = 0.0,
                  max_value: float = 6.0,
                  multiplier: float = 10.0,
-                 regularizer: REGULARIZER_ALLOWED_TYPES = None,
+                 regularizer: Any = None,
                  name=None,
                  **kwargs):
         """

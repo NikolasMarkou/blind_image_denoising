@@ -4,13 +4,13 @@ blocks and builders for pyramid handling
 
 import numpy as np
 from enum import Enum
-import tensorflow as tf
 from tensorflow import keras
 from typing import Dict, Tuple, Union, List
 
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
+from .utilities import gaussian_kernel
 from .constants import CONFIG_STR, TYPE_STR
 
 # ---------------------------------------------------------------------
@@ -51,33 +51,6 @@ def gaussian_filter_layer(
 
     :return: convolutional layer
     """
-
-    # define the 2d gaussian initialization kernel
-    def gaussian_kernel(
-            size: Tuple[int, int],
-            nsig: Tuple[float, float]) -> np.ndarray:
-        """
-        builds a 2D Gaussian kernel array
-
-        :param size: size of of the grid
-        :param nsig: max value out of the gaussian on the xy axis
-        :return: 2d gaussian grid
-        """
-        assert len(nsig) == 2
-        assert len(size) == 2
-        kern1d = [
-            np.linspace(
-                start=-np.abs(nsig[i]),
-                stop=np.abs(nsig[i]),
-                num=size[i],
-                endpoint=True)
-            for i in range(2)
-        ]
-        x, y = np.meshgrid(kern1d[0], kern1d[1])
-        d = np.sqrt(x * x + y * y)
-        sigma, mu = 1.0, 0.0
-        g = np.exp(-((d - mu) ** 2 / (2.0 * (sigma ** 2))))
-        return g / g.sum()
 
     # initialise to set kernel to required value
     def kernel_init(shape, dtype):
