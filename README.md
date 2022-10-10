@@ -57,6 +57,7 @@ Currently we have 3 pretrained models:
 * [resnet_color_1x6_bn_16x3x3_256x256_l1_relu](bfcnn/pretrained/resnet_color_1x6_bn_16x3x3_256x256_l1_relu)
 * [resnet_color_1x12_bn_16x3x3_256x256_l1_relu](bfcnn/pretrained/resnet_color_1x12_bn_16x3x3_256x256_l1_relu)
 * [resnet_color_1x18_bn_16x3x3_256x256_l1_relu](bfcnn/pretrained/resnet_color_1x18_bn_16x3x3_256x256_l1_relu)
+
 They are all `resnet` variants with depths 6, 12 and 18.
 They were all trained for 20 epochs on `KITTI`, `Megadepth`, `BDD`, `WIDER` and `WFLW` datasets.
 
