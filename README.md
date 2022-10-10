@@ -50,10 +50,22 @@ several types of noise and then try to recover the original image
 * normally distributed additive noise (same per channel / different same per channel)
 * normally distributed multiplicative noise (same per channel / different same per channel)
 
+
+## Pretrained models
+
+Currently we have 3 pretrained models:
+* [resnet_color_1x6_bn_16x3x3_256x256_l1_relu](bfcnn/pretrained/resnet_color_1x6_bn_16x3x3_256x256_l1_relu)
+* [resnet_color_1x12_bn_16x3x3_256x256_l1_relu](bfcnn/pretrained/resnet_color_1x12_bn_16x3x3_256x256_l1_relu)
+* [resnet_color_1x18_bn_16x3x3_256x256_l1_relu](bfcnn/pretrained/resnet_color_1x18_bn_16x3x3_256x256_l1_relu)
+
+They are all `resnet` variants with depths 6, 12 and 18.
+They were all trained for 20 epochs on `KITTI`, `Megadepth`, `BDD`, `WIDER` and `WFLW` datasets.
+
+
 ## Image examples
 
 The following samples are `256x256` crops from the `KITTI` dataset, 
-denoised using the `resnet_color_laplacian_3x5_non_shared_bn_16x3x3_128x128_residual` model.
+denoised using the `resnet_color_1x18_bn_16x3x3_256x256_l1_relu` model.
 
 We add truncated normal noise with different standard deviations and calculate the 
 `Mean Absolute Error (MAE)` both for the noisy images, and the denoised images. 
@@ -73,7 +85,6 @@ noise (std) | MAE (noisy) | MAE (denoised) | Normal - Noisy - Denoised          
 60 |34.34|17.81|![](images/readme/bfcnn_image_7.png "normal") |
 70 |40.64|22.36|![](images/readme/bfcnn_image_8.png "normal") |
 80 |45.68|27.99|![](images/readme/bfcnn_image_9.png "normal") |
-
 
 ## How to use (from scratch)
 
@@ -102,10 +113,12 @@ python -m bfcnn.export \
 
 ## How to use (pretrained)
 
-Use any of the pretrained models included in the package:
-* [resnet_color_1x5_non_shared_bn_16x3x3_128x128](bfcnn/pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128)
-* [resnet_color_1x5_non_shared_bn_16x3x3_128x128_skip_input](bfcnn/pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128_skip_input)
-* [resnet_color_laplacian_2x5_non_shared_bn_16x3x3_128x128_skip_input](bfcnn/pretrained/resnet_color_laplacian_2x5_non_shared_bn_16x3x3_128x128_skip_input)
+Use any of the pretrained models included in the package.
+
+* [resnet_color_1x6_bn_16x3x3_256x256_l1_relu](bfcnn/pretrained/resnet_color_1x6_bn_16x3x3_256x256_l1_relu)
+* [resnet_color_1x12_bn_16x3x3_256x256_l1_relu](bfcnn/pretrained/resnet_color_1x12_bn_16x3x3_256x256_l1_relu)
+* [resnet_color_1x18_bn_16x3x3_256x256_l1_relu](bfcnn/pretrained/resnet_color_1x18_bn_16x3x3_256x256_l1_relu)
+
 
 ```python
 import bfcnn
@@ -114,7 +127,7 @@ import tensorflow as tf
 # load model
 denoiser_model = \
     bfcnn.load_model(
-        "resnet_color_1x5_non_shared_bn_16x3x3_128x128")
+        "resnet_color_1x6_bn_16x3x3_256x256_l1_relu")
 
 # create random tensor
 input_tensor = \
