@@ -26,7 +26,7 @@
       "type": "erf",
       "config": {
           "l2_coefficient": 0.00,
-          "l1_coefficient": 0.01
+          "l1_coefficient": 0.05
       }
     }
   },
