@@ -40,7 +40,7 @@ This paper provides excellent results
 
 ![](images/readme/bfcnn_noisy_1.png "single channel bias free denoising")
 
-which can also be completely interpretable as a mask per pixel
+The bias-free nature of the model means that it is completely interpretable as a weighted mask per pixel for each pixel as shown below.
 
 ![](images/readme/bfcnn_noisy_2.png "pixel smoothing interpretability")
 
