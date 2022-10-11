@@ -16,7 +16,7 @@ ___
 # Blind Image Denoising
 
 ## Target
-The target is to create a series of:
+My target is to create a series of:
 
 * interpretable
 * multi scale
@@ -27,6 +27,8 @@ models that performs denoising on an input (grayscale or colored) image.
 
 The bias-free nature of the model allows for easy interpretation and use as prior
 for hard inverse problems.
+
+The idea is that denoising is a task orthogonal to most medium/high level computer vision tasks and should performed always by a fast, independently trained, bias free network. 
 
 ## Interpretation 
 Interpretation comes naturally by implementing the CVPR 2020 paper : 
