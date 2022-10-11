@@ -15,11 +15,13 @@ ___
 
 # Blind Image Denoising
 
+The idea is that denoising is a task orthogonal to most medium/high level computer vision tasks and should performed always by a fast, independently trained, bias free network. 
+
 ## Target
 My target is to create a series of:
 
-* interpretable
 * multi scale
+* interpretable
 * high performance
 * low memory footprint
  
@@ -28,7 +30,6 @@ models that performs denoising on an input (grayscale or colored) image.
 The bias-free nature of the model allows for easy interpretation and use as prior
 for hard inverse problems.
 
-The idea is that denoising is a task orthogonal to most medium/high level computer vision tasks and should performed always by a fast, independently trained, bias free network. 
 
 ## Interpretation 
 Interpretation comes naturally by implementing the CVPR 2020 paper : 
