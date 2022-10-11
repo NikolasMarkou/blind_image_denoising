@@ -54,26 +54,21 @@ setuptools.setup(
     package_data={
         "bfcnn": [
             "configs/*.json",
-            # resnet_color_1x5_non_shared_bn_16x3x3_128x128
-            "pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128/model.tflite",
-            "pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128/pipeline.json",
-            "pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128/saved_model/saved_model.pb",
-            "pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128/saved_model/variables/**",
-            # resnet_color_1x5_non_shared_bn_16x3x3_128x128_skip_input
-            "pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128_skip_input/model.tflite",
-            "pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128_skip_input/pipeline.json",
-            "pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128_skip_input/saved_model/saved_model.pb",
-            "pretrained/resnet_color_1x5_non_shared_bn_16x3x3_128x128_skip_input/saved_model/variables/**",
-            # resnet_color_laplacian_2x5_non_shared_bn_16x3x3_128x128_skip_input
-            "pretrained/resnet_color_laplacian_2x5_non_shared_bn_16x3x3_128x128_skip_input/model.tflite",
-            "pretrained/resnet_color_laplacian_2x5_non_shared_bn_16x3x3_128x128_skip_input/pipeline.json",
-            "pretrained/resnet_color_laplacian_2x5_non_shared_bn_16x3x3_128x128_skip_input/saved_model/saved_model.pb",
-            "pretrained/resnet_color_laplacian_2x5_non_shared_bn_16x3x3_128x128_skip_input/saved_model/variables/**",
-            # resnet_color_laplacian_3x5_non_shared_bn_16x3x3_128x128_skip_input
-            "pretrained/resnet_color_laplacian_3x5_non_shared_bn_16x3x3_128x128_skip_input/model.tflite",
-            "pretrained/resnet_color_laplacian_3x5_non_shared_bn_16x3x3_128x128_skip_input/pipeline.json",
-            "pretrained/resnet_color_laplacian_3x5_non_shared_bn_16x3x3_128x128_skip_input/saved_model/saved_model.pb",
-            "pretrained/resnet_color_laplacian_3x5_non_shared_bn_16x3x3_128x128_skip_input/saved_model/variables/**"
+            # resnet_color_1x6_bn_16x3x3_256x256_l1_relu
+            "pretrained/resnet_color_1x6_bn_16x3x3_256x256_l1_relu/model.tflite",
+            "pretrained/resnet_color_1x6_bn_16x3x3_256x256_l1_relu/pipeline.json",
+            "pretrained/resnet_color_1x6_bn_16x3x3_256x256_l1_relu/saved_model/saved_model.pb",
+            "pretrained/resnet_color_1x6_bn_16x3x3_256x256_l1_relu/saved_model/variables/**",
+            # resnet_color_1x12_bn_16x3x3_256x256_l1_relu
+            "pretrained/resnet_color_1x12_bn_16x3x3_256x256_l1_relu/model.tflite",
+            "pretrained/resnet_color_1x12_bn_16x3x3_256x256_l1_relu/pipeline.json",
+            "pretrained/resnet_color_1x12_bn_16x3x3_256x256_l1_relu/saved_model/saved_model.pb",
+            "pretrained/resnet_color_1x12_bn_16x3x3_256x256_l1_relu/saved_model/variables/**",
+            # resnet_color_1x18_bn_16x3x3_256x256_l1_relu
+            "pretrained/resnet_color_1x18_bn_16x3x3_256x256_l1_relu/model.tflite",
+            "pretrained/resnet_color_1x18_bn_16x3x3_256x256_l1_relu/pipeline.json",
+            "pretrained/resnet_color_1x18_bn_16x3x3_256x256_l1_relu/saved_model/saved_model.pb",
+            "pretrained/resnet_color_1x18_bn_16x3x3_256x256_l1_relu/saved_model/variables/**"
         ]
     },
 )
