@@ -15,7 +15,7 @@ ___
 
 # Blind Image Denoising
 
-The idea is that denoising is a task orthogonal to most medium/high level computer vision tasks and should always be performed beforehand by a fast, independently trained, bias free network. This would enable any medium/high level vision network to focus on its main task.
+The idea is that denoising is a task orthogonal to most medium/high level computer vision tasks and should always be performed beforehand by a fast, independently trained, bias free network. This would enable any medium/high level vision networks to focus on their main task.
 
 ## Target
 My target is to create a series of:
