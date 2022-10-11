@@ -229,6 +229,8 @@ Custom regularization that gives incentive to convolutional kernels to have high
 4. [Can We Gain More from Orthogonality Regularizations in Training Deep CNNs?](https://arxiv.org/abs/1810.09102)
 5. [Squeeze-and-Excitation Networks](https://arxiv.org/abs/1709.01507)
 
+## Special Thanks
+I would like to thank Pantelis Georgiades and Alexandros Georgiou from the [Cyprus Institute ](https://www.cyi.ac.cy/) for doing precious hyperparameter search for me on their super computer. Their help accelerated my project enormously.
 
 
 
