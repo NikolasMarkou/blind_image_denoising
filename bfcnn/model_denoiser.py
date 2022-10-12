@@ -81,6 +81,7 @@ def model_builder(
     add_sparsity = config.get("add_sparsity", False)
     add_laplacian = config.get("add_laplacian", True)
     stop_gradient = config.get("stop_gradient", False)
+    add_initial_bn = config.get("add_initial_bn", False)
     add_concat_input = config.get("add_concat_input", False)
     input_shape = config.get("input_shape", (None, None, 3))
     output_multiplier = config.get("output_multiplier", 1.0)
@@ -217,6 +218,7 @@ def model_builder(
         add_final_bn=add_final_bn,
         add_laplacian=add_laplacian,
         stop_gradient=stop_gradient,
+        add_initial_bn=add_initial_bn,
         add_concat_input=add_concat_input,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,

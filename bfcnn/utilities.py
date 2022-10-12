@@ -443,13 +443,13 @@ def mean_sigma_local(
 def mean_sigma_global(
         input_layer,
         axis: List[int] = [1, 2, 3],
-        sigma_epsilon: float = DEFAULT_EPSILON):
+        epsilon: float = DEFAULT_EPSILON):
     """
     Create a global mean sigma per channel
 
     :param input_layer:
     :param axis:
-    :param sigma_epsilon: small number to add for robust sigma calculation
+    :param epsilon: small number to add for robust sigma calculation
     :return:
     """
     # --- argument checking
@@ -459,29 +459,27 @@ def mean_sigma_global(
     if len(shape) != 4:
         raise ValueError("input_layer must be a 4d tensor")
 
-    # --- compute mean and sigma
-    def func(x):
-        mean = tf.keras.backend.mean(x, axis=axis, keepdims=True)
-        diff_2 = tf.keras.backend.square(x - mean)
-        variance = tf.keras.backend.mean(diff_2, axis=axis, keepdims=True)
-        sigma = tf.keras.backend.sqrt(variance + sigma_epsilon)
-        return mean, sigma
+    # --- build block
+    x = input_layer
+    mean = tf.mean(x, axis=axis, keepdims=True)
+    diff_2 = tf.square(x - mean)
+    variance = tf.mean(diff_2, axis=axis, keepdims=True)
+    sigma = tf.sqrt(variance + epsilon)
+    return mean, sigma
 
-    return \
-        tf.keras.layers.Lambda(
-            function=func,
-            trainable=False)(input_layer)
 
 # ---------------------------------------------------------------------
 
 
 def sparse_block(
         input_layer,
+        bn_params: Dict = None,
         threshold_sigma: float = 1.0):
     """
     create sparsity in an input layer (keeps only positive)
 
     :param input_layer:
+    :param bn_params: batch norm parameters, leave None for disabling
     :param threshold_sigma: sparsity of the results (assuming negative values in input)
     -3 -> 0.1% sparsity
     -2 -> 2.3% sparsity
@@ -497,20 +495,27 @@ def sparse_block(
     if threshold_sigma < 0:
         raise ValueError("threshold_sigma must be >= 0")
 
+    # --- set variables
+    use_bn = bn_params is not None
+
+    # --- build sparse block
     x = input_layer
 
-    # --- batch normalization
-    x_bn = \
-        tf.keras.layers.BatchNormalization(
-            center=False)(x)
+    # normalize
+    if use_bn:
+        x_bn = \
+            tf.keras.layers.BatchNormalization(
+                **bn_params)(x)
+    else:
+        mean, sigma = mean_sigma_global(input_layer=x)
+        x_bn = (x - mean) / (sigma + DEFAULT_EPSILON)
 
-    # --- threshold based on normalization
+    # threshold based on normalization
     # keep only positive above threshold
-
     x_binary = \
         tf.nn.relu(tf.sign(x_bn - threshold_sigma))
 
-    # --- zero out values below the threshold
+    # zero out values below the threshold
     x_result = \
         tf.keras.layers.Multiply()([
             x_binary,
