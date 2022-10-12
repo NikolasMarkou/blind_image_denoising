@@ -140,6 +140,9 @@ def resnet_blocks_full(
 
     # create a series of residual blocks
     for i in range(no_layers):
+        x_1st_conv = None
+        x_2nd_conv = None
+        x_3rd_conv = None
         previous_layer = x
 
         if stop_gradient:
@@ -150,6 +153,7 @@ def resnet_blocks_full(
                                conv_params=copy.deepcopy(first_conv_params),
                                bn_params=None,
                                channelwise_scaling=False)
+            x_1st_conv = x
 
         # sparsity goes here (first conv selects the signal),
         # then sparsity picks it up, second and third conv filter it
@@ -161,11 +165,14 @@ def resnet_blocks_full(
                                conv_params=copy.deepcopy(second_conv_params),
                                bn_params=bn_params,
                                channelwise_scaling=False)
+            x_2nd_conv = x
+
         if third_conv_params is not None:
             x = conv2d_wrapper(input_layer=x,
                                conv_params=copy.deepcopy(third_conv_params),
                                bn_params=bn_params,
                                channelwise_scaling=False)
+            x_3rd_conv = x
 
         # compute activation per channel
         if use_gate:
@@ -227,7 +234,7 @@ def resnet_blocks_full(
                 selector_mixer_block(
                     input_1_layer=previous_layer,
                     input_2_layer=x,
-                    selector_layer=x,
+                    selector_layer=x_2nd_conv,
                     filters=third_conv_params["filters"],
                     kernel_regularizer=third_conv_params.get("kernel_regularizer", "l1"),
                     kernel_initializer=third_conv_params.get("kernel_initializer", "glorot_normal"),
@@ -619,6 +626,7 @@ def selector_mixer_block(
         selector_layer,
         filters: int,
         stop_gradient: bool = False,
+        bn_params: Dict = None,
         selector_params: Dict = None,
         kernel_regularizer: str = "l1",
         kernel_initializer: str = "glorot_normal",
@@ -634,8 +642,8 @@ def selector_mixer_block(
     # followed by dense layer, because we are using this on large images
     # global averaging looses too much information
     pool_bias = selector_params.get("bias", 2.5)
-    pool_type = selector_params.get("pool_type", "avg")
-    pool_size = selector_params.get("pool_size", (16, 16))
+    pool_type = selector_params.get("pool_type", "max")
+    pool_size = selector_params.get("pool_size", (7, 7))
 
     pool_params = dict(
         pool_size=pool_size,
@@ -666,11 +674,17 @@ def selector_mixer_block(
     if stop_gradient:
         x = tf.stop_gradient(x)
 
-    y = pool(**pool_params)(x)
+    if pool_size == (1, 1) or pool_size == 1:
+        y = x
+    else:
+        y = pool(**pool_params)(x)
+
+    # transformation
     y = conv2d_wrapper(input_layer=y,
                        conv_params=copy.deepcopy(selector_params),
-                       bn_params=None,
+                       bn_params=bn_params,
                        channelwise_scaling=False)
+
     # if x < -2.5: return 0
     # if x > 2.5: return 1
     # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
