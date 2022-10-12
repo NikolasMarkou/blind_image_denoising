@@ -77,6 +77,7 @@ def model_builder(
     clip_values = config.get("clip_values", True)
     channel_index = config.get("channel_index", 2)
     add_final_bn = config.get("add_final_bn", True)
+    add_selector = config.get("add_selector", False)
     shared_model = config.get("shared_model", False)
     add_sparsity = config.get("add_sparsity", False)
     add_laplacian = config.get("add_laplacian", True)
@@ -213,6 +214,7 @@ def model_builder(
         activation=activation,
         input_dims=input_shape,
         kernel_size=kernel_size,
+        add_selector=add_selector,
         add_sparsity=add_sparsity,
         dropout_rate=dropout_rate,
         add_final_bn=add_final_bn,
