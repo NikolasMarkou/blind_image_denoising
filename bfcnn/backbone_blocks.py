@@ -81,7 +81,7 @@ def resnet_blocks_full(
     :param dropout_params: dropout optional parameters
     :param selector_params: selector mixer optional parameters
     :param multiplier_params: learnable multiplier optional parameters
-    :param channelwise_params: if True add a learnable point-wise depthwise scaling conv2d
+    :param channelwise_params: if True add a learnable channelwise learnable multiplier
     :param post_addition_activation: activation after the residual addition, None to disable
     :param expand_type: whether to keep same size, compress or expand
     :param stop_gradient: if True, stop gradient before the branch
@@ -618,6 +618,7 @@ def selector_mixer_block(
         input_2_layer,
         selector_layer,
         filters: int,
+        stop_gradient: bool = False,
         selector_params: Dict = None,
         kernel_regularizer: str = "l1",
         kernel_initializer: str = "glorot_normal",
@@ -659,8 +660,11 @@ def selector_mixer_block(
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer)
 
-    # --- setup resnet along with its variants
+    # --- setup network
     x = selector_layer
+
+    if stop_gradient:
+        x = tf.stop_gradient(x)
 
     y = pool(**pool_params)(x)
     y = conv2d_wrapper(input_layer=y,
@@ -675,6 +679,56 @@ def selector_mixer_block(
     return \
         tf.keras.layers.Multiply()([input_1_layer, y]) + \
         tf.keras.layers.Multiply()([input_2_layer, 1.0 - y])
+
+# ---------------------------------------------------------------------
+
+
+def compress_expand_residual_block(
+        input_layer,
+        no_layers: int,
+        bn_params: Dict = None,
+        gate_params: Dict = None,
+        sparse_params: Dict = None,
+        dropout_params: Dict = None,
+        selector_params: Dict = None,
+        multiplier_params: Dict = None,
+        channelwise_scaling: bool = False,
+        stop_gradient: bool = False):
+    # --- argument checking
+
+    # --- set variables
+    expand_params = dict()
+    transform_params = dict()
+    compress_params = dict()
+
+    # --- build network
+    x = input_layer
+
+    for i in range(no_layers):
+
+        if stop_gradient:
+            x = tf.stop_gradient(x)
+
+        # compression conv
+        x = conv2d_wrapper(input_layer=x,
+                           conv_params=expand_params,
+                           bn_params=bn_params,
+                           channelwise_scaling=channelwise_scaling)
+
+        x = conv2d_wrapper(input_layer=x,
+                           conv_params=transform_params,
+                           bn_params=bn_params,
+                           channelwise_scaling=channelwise_scaling)
+
+        # expansion conv
+        x = conv2d_wrapper(input_layer=x,
+                           conv_params=compress_params,
+                           bn_params=bn_params,
+                           channelwise_scaling=channelwise_scaling)
+        # add residual
+        x = tf.keras.layers.Add()([input_layer, x])
+
+    return x
 
 # ---------------------------------------------------------------------
 
