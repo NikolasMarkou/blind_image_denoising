@@ -8,7 +8,7 @@
     "kernel_size": 7,
     "type": "resnet",
     "batchnorm": true,
-    "activation": "prelu",
+    "activation": "leaky_relu",
     "add_gates": false,
     "add_sparsity": false,
     "clip_values": false,
