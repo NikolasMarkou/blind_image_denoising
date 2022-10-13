@@ -106,7 +106,7 @@ def builder(
 
     first_conv_params = dict(
         kernel_size=(3, 3),
-        filters=filters,
+        filters=filters * 2,
         strides=(2, 2),
         padding="same",
         use_bias=use_bias,
@@ -129,7 +129,7 @@ def builder(
     else:
         second_conv_params = dict(
             kernel_size=1,
-            filters=filters * filter_multiplier,
+            filters=int(round(filters / 2)),
             strides=(1, 1),
             padding="same",
             use_bias=use_bias,
