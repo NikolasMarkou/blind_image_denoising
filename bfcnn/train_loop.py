@@ -347,7 +347,7 @@ def train_loop(
                         grads_and_vars=zip(grads, model_denoise_weights))
 
                     # set it back so we can iterate again
-                    if i < (max_iterations - 1):
+                    if i < (same_sample_iterations - 1):
                         denoised_batch = \
                             tf.clip_by_value(
                                 denoised_batch,
