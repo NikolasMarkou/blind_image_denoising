@@ -1,6 +1,5 @@
 import os
 import time
-import random
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
@@ -253,8 +252,6 @@ def train_loop(
             denormalizer(
                 x_random,
                 training=False)
-
-    random.setstate(0)
 
     # --- train the model
     with summary_writer.as_default():
