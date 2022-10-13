@@ -25,7 +25,7 @@
     "kernel_regularizer": "l1"
   },
    "train": {
-    "epochs": 20,
+    "epochs": 1,
     "total_steps": -1,
     "use_test_images": true,
     "checkpoints_to_keep": 3,

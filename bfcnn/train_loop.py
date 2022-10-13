@@ -348,7 +348,7 @@ def train_loop(
                                 clip_value_max=0.5)
                         noisy_batch = (denormalized_denoised_batch + noisy_batch) / 2
                         normalized_noisy_batch = (denoised_batch + normalized_noisy_batch) / 2
-                
+
                 # run one step of gradient descent by updating
                 # the value of the variables to minimize the loss.
                 optimizer.apply_gradients(
