@@ -6,7 +6,7 @@
     "add_var": false,
     "max_value": 255,
     "kernel_size": 7,
-    "type": "resnet_ce",
+    "type": "resnet",
     "batchnorm": false,
     "activation": "relu",
     "add_gates": false,
@@ -22,13 +22,7 @@
     "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
-    "kernel_regularizer": {
-        "type": "erf",
-        "config": {
-            "l1_coefficient": 0.01,
-            "l2_coefficient": 0.0
-        }
-    }
+    "kernel_regularizer": "l1"
   },
    "train": {
     "epochs": 20,
