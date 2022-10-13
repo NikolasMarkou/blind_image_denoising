@@ -310,7 +310,7 @@ def train_loop(
                 normalized_noisy_batch = \
                     normalizer(noisy_batch, training=False)
 
-                grads = []
+                grads = 0
                 for i in range(same_sample_iterations):
                     # Open a GradientTape to record the operations run
                     # during the forward pass,
@@ -334,10 +334,10 @@ def train_loop(
                         # use the gradient tape to automatically retrieve
                         # the gradients of the trainable variables
                         # with respect to the loss.
-                        grads.append(
+                        grads += \
                             tape.gradient(
                                 target=loss_map[MEAN_TOTAL_LOSS_STR],
-                                sources=model_denoise_weights))
+                                sources=model_denoise_weights)
 
                     # set it back so we can iterate again
                     if i < (same_sample_iterations - 1):
@@ -348,12 +348,11 @@ def train_loop(
                                 clip_value_max=0.5)
                         noisy_batch = (denormalized_denoised_batch + noisy_batch) / 2
                         normalized_noisy_batch = (denoised_batch + normalized_noisy_batch) / 2
-                    elif i == (same_sample_iterations - 1):
-                        for g in grads:
-                            # run one step of gradient descent by updating
-                            # the value of the variables to minimize the loss.
-                            optimizer.apply_gradients(
-                                grads_and_vars=zip(g, model_denoise_weights))
+                
+                # run one step of gradient descent by updating
+                # the value of the variables to minimize the loss.
+                optimizer.apply_gradients(
+                    grads_and_vars=zip(grads, model_denoise_weights))
 
                 # --- add loss summaries for tensorboard
                 for name, key in [
