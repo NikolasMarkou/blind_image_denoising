@@ -1,5 +1,6 @@
 import os
 import time
+import random
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
@@ -16,12 +17,8 @@ from .loss import loss_function_builder
 from .optimizer import optimizer_builder
 from .utilities import load_config, load_image
 from .model_denoiser import model_builder as model_denoise_builder
+from .dataset import dataset_builder, DATASET_FN_STR, AUGMENTATION_FN_STR
 from .pruning import prune_function_builder, PruneStrategy, get_conv2d_weights
-from .dataset import \
-    dataset_builder, \
-    DATASET_TESTING_FN_STR, \
-    DATASET_FN_STR, \
-    AUGMENTATION_FN_STR
 
 # ---------------------------------------------------------------------
 
@@ -85,6 +82,7 @@ def train_loop(
     # --- get the train configuration
     train_config = config["train"]
     epochs = train_config["epochs"]
+    same_sample_iterations = train_config.get("same_sample_iterations", 1)
     global_total_epochs = tf.Variable(
         epochs, trainable=False, dtype=tf.dtypes.int64, name="global_total_epochs")
     trace_every = train_config.get("trace_every", 100)
@@ -256,6 +254,8 @@ def train_loop(
                 x_random,
                 training=False)
 
+    random.setstate(0)
+
     # --- train the model
     with summary_writer.as_default():
         checkpoint = \
@@ -313,37 +313,48 @@ def train_loop(
                 normalized_noisy_batch = \
                     normalizer(noisy_batch, training=False)
 
-                # Open a GradientTape to record the operations run
-                # during the forward pass,
-                # which enables auto-differentiation.
-                with tf.GradientTape() as tape:
-                    # run the forward pass of the layer.
-                    # The operations that the layer applies
-                    # to its inputs are going to be recorded
-                    # on the GradientTape.
-                    denoised_batch, denormalized_denoised_batch = \
-                        denoise_fn(normalized_noisy_batch)
+                for i in range(same_sample_iterations):
+                    # Open a GradientTape to record the operations run
+                    # during the forward pass,
+                    # which enables auto-differentiation.
+                    with tf.GradientTape() as tape:
+                        # run the forward pass of the layer.
+                        # The operations that the layer applies
+                        # to its inputs are going to be recorded
+                        # on the GradientTape.
+                        denoised_batch, denormalized_denoised_batch = \
+                            denoise_fn(normalized_noisy_batch)
 
-                    # compute the loss value for this mini-batch
-                    loss_map = \
-                        loss_fn(
-                            input_batch=input_batch,
-                            noisy_batch=noisy_batch,
-                            model_losses=denoiser.losses,
-                            prediction_batch=denormalized_denoised_batch)
+                        # compute the loss value for this mini-batch
+                        loss_map = \
+                            loss_fn(
+                                input_batch=input_batch,
+                                noisy_batch=noisy_batch,
+                                model_losses=denoiser.losses,
+                                prediction_batch=denormalized_denoised_batch)
 
-                    # use the gradient tape to automatically retrieve
-                    # the gradients of the trainable variables
-                    # with respect to the loss.
-                    grads = \
-                        tape.gradient(
-                            target=loss_map[MEAN_TOTAL_LOSS_STR],
-                            sources=model_denoise_weights)
+                        # use the gradient tape to automatically retrieve
+                        # the gradients of the trainable variables
+                        # with respect to the loss.
+                        grads = \
+                            tape.gradient(
+                                target=loss_map[MEAN_TOTAL_LOSS_STR],
+                                sources=model_denoise_weights)
 
-                # run one step of gradient descent by updating
-                # the value of the variables to minimize the loss.
-                optimizer.apply_gradients(
-                    grads_and_vars=zip(grads, model_denoise_weights))
+                    # run one step of gradient descent by updating
+                    # the value of the variables to minimize the loss.
+                    optimizer.apply_gradients(
+                        grads_and_vars=zip(grads, model_denoise_weights))
+
+                    # set it back so we can iterate again
+                    if i < (max_iterations - 1):
+                        denoised_batch = \
+                            tf.clip_by_value(
+                                denoised_batch,
+                                clip_value_min=-0.5,
+                                clip_value_max=0.5)
+                        noisy_batch = (denormalized_denoised_batch + noisy_batch) / 2
+                        normalized_noisy_batch = (denoised_batch + normalized_noisy_batch) / 2
 
                 # --- add loss summaries for tensorboard
                 for name, key in [
