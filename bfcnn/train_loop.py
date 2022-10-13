@@ -310,7 +310,7 @@ def train_loop(
                 normalized_noisy_batch = \
                     normalizer(noisy_batch, training=False)
 
-                grads = 0
+                grads = None
                 for i in range(same_sample_iterations):
                     # Open a GradientTape to record the operations run
                     # during the forward pass,
@@ -334,10 +334,18 @@ def train_loop(
                         # use the gradient tape to automatically retrieve
                         # the gradients of the trainable variables
                         # with respect to the loss.
-                        grads += \
-                            tape.gradient(
-                                target=loss_map[MEAN_TOTAL_LOSS_STR],
-                                sources=model_denoise_weights)
+                        if grads is None:
+                            grads = \
+                                tape.gradient(
+                                    target=loss_map[MEAN_TOTAL_LOSS_STR],
+                                    sources=model_denoise_weights)
+                        else:
+                            tmp_grads = \
+                                tape.gradient(
+                                    target=loss_map[MEAN_TOTAL_LOSS_STR],
+                                    sources=model_denoise_weights)
+                            for i in range(len(tmp_grads)):
+                                grads[i] += tmp_grads[i]
 
                     # set it back so we can iterate again
                     if i < (same_sample_iterations - 1):
