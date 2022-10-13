@@ -105,7 +105,7 @@ def builder(
     )
 
     first_conv_params = dict(
-        kernel_size=3,
+        kernel_size=(3, 3),
         filters=filters,
         strides=(2, 2),
         padding="same",
@@ -141,9 +141,9 @@ def builder(
     third_conv_params = dict(
         kernel_size=3,
         filters=filters,
-        strides=(1, 1),
-        padding="valid",
-        dilation_rate=(2, 2),
+        padding="same",
+        strides=(2, 2),
+        dilation_rate=(1, 1),
         use_bias=use_bias,
         # this must be the same as the base
         activation=base_activation,
