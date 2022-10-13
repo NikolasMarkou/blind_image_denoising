@@ -16,7 +16,7 @@ import bfcnn
 
 
 @pytest.mark.parametrize(
-    "config", bfcnn.configs)
+    "config", bfcnn.CONFIGS)
 def test_model_builder(config):
     config = config[1]
     models = bfcnn.model_builder(config=config["model_denoise"])

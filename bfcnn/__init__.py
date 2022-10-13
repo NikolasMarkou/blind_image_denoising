@@ -39,10 +39,15 @@ current_dir = pathlib.Path(__file__).parent.resolve()
 
 configs_dir = current_dir / "configs"
 
-configs = [
+CONFIGS = [
     (os.path.basename(str(c)), load_config(str(c)))
     for c in configs_dir.glob("*.json")
 ]
+
+CONFIGS_DICT = {
+    os.path.splitext(os.path.basename(str(c)))[0]: load_config(str(c))
+    for c in configs_dir.glob("*.json")
+}
 
 # ---------------------------------------------------------------------
 
@@ -100,7 +105,7 @@ def load_model(model_path: str):
 
 
 __all__ = [
-    configs,
+    CONFIGS,
     train_loop,
     load_model,
     load_image,

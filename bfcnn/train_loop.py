@@ -344,8 +344,8 @@ def train_loop(
                                 tape.gradient(
                                     target=loss_map[MEAN_TOTAL_LOSS_STR],
                                     sources=model_denoise_weights)
-                            for i in range(len(tmp_grads)):
-                                grads[i] += tmp_grads[i]
+                            for j in range(len(tmp_grads)):
+                                grads[j] += tmp_grads[j]
 
                     # set it back so we can iterate again
                     if i < (same_sample_iterations - 1):

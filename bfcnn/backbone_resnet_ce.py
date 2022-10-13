@@ -19,6 +19,7 @@ def builder(
         filters: int,
         filter_multiplier: int = 2,
         activation: str = "relu",
+        base_activation: str = "linear",
         use_bn: bool = True,
         use_bias: bool = False,
         kernel_regularizer="l1",
@@ -34,10 +35,10 @@ def builder(
         add_final_bn: bool = False,
         add_concat_input: bool = False,
         add_selector: bool = False,
-        name="resnet",
+        name="resnet_ce",
         **kwargs) -> keras.Model:
     """
-    builds a resnet model
+    builds a resnet compress expand model
 
     :param input_dims: Models input dimensions
     :param no_layers: Number of resnet layers
@@ -86,7 +87,7 @@ def builder(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation="linear",
+        activation=base_activation,
         kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
@@ -104,9 +105,9 @@ def builder(
     )
 
     first_conv_params = dict(
-        kernel_size=1,
+        kernel_size=3,
         filters=filters,
-        strides=(1, 1),
+        strides=(2, 2),
         padding="same",
         use_bias=use_bias,
         activation=activation,
@@ -116,7 +117,7 @@ def builder(
 
     if conv_depthwise:
         second_conv_params = dict(
-            kernel_size=3,
+            kernel_size=1,
             depth_multiplier=filter_multiplier,
             strides=(1, 1),
             padding="same",
@@ -127,7 +128,7 @@ def builder(
         )
     else:
         second_conv_params = dict(
-            kernel_size=3,
+            kernel_size=1,
             filters=filters * filter_multiplier,
             strides=(1, 1),
             padding="same",
@@ -138,13 +139,14 @@ def builder(
         )
 
     third_conv_params = dict(
-        kernel_size=1,
+        kernel_size=3,
         filters=filters,
         strides=(1, 1),
-        padding="same",
+        padding="valid",
+        dilation_rate=(2, 2),
         use_bias=use_bias,
         # this must be the same as the base
-        activation="linear",
+        activation=base_activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )

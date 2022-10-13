@@ -93,6 +93,7 @@ def resnet_blocks_full(
         raise ValueError("input_layer must be none")
     if no_layers < 0:
         raise ValueError("no_layers must be >= 0")
+    bn_first_conv_params = kwargs.get("bn_first_conv_params", False)
 
     # --- set variables
     use_gate = gate_params is not None
@@ -148,12 +149,20 @@ def resnet_blocks_full(
         if stop_gradient:
             x = tf.stop_gradient(x)
 
-        if first_conv_params is not None:
+        if first_conv_params is not None and not bn_first_conv_params:
             x = conv2d_wrapper(input_layer=x,
                                conv_params=copy.deepcopy(first_conv_params),
                                bn_params=None,
                                channelwise_scaling=False)
             x_1st_conv = x
+        elif first_conv_params is not None and bn_first_conv_params:
+            x = conv2d_wrapper(input_layer=x,
+                               conv_params=copy.deepcopy(first_conv_params),
+                               bn_params=bn_params,
+                               channelwise_scaling=False)
+            x_1st_conv = x
+        else:
+            pass
 
         # sparsity goes here (first conv selects the signal),
         # then sparsity picks it up, second and third conv filter it
@@ -176,7 +185,7 @@ def resnet_blocks_full(
 
         # compute activation per channel
         if use_gate:
-            y = pool(**pool_params)(x)
+            y = pool(**pool_params)(x_2nd_conv)
             y = conv2d_wrapper(input_layer=y,
                                conv_params=copy.deepcopy(gate_conv_params),
                                bn_params=None,
@@ -628,6 +637,7 @@ def selector_mixer_block(
         stop_gradient: bool = False,
         bn_params: Dict = None,
         selector_params: Dict = None,
+        sparse_params: Dict = None,
         kernel_regularizer: str = "l1",
         kernel_initializer: str = "glorot_normal",
         **kwargs):
@@ -638,12 +648,14 @@ def selector_mixer_block(
     :return: filtered input_layer
     """
     # --- set variables
+    use_sparse = sparse_params is not None
+
     # out squeeze and excite gating does not use global avg
     # followed by dense layer, because we are using this on large images
     # global averaging looses too much information
     pool_bias = selector_params.get("bias", 2.5)
-    pool_type = selector_params.get("pool_type", "max")
-    pool_size = selector_params.get("pool_size", (7, 7))
+    pool_type = selector_params.get("pool_type", "avg")
+    pool_size = selector_params.get("pool_size", (1, 1))
 
     pool_params = dict(
         pool_size=pool_size,
@@ -678,6 +690,11 @@ def selector_mixer_block(
         y = x
     else:
         y = pool(**pool_params)(x)
+
+    if use_sparse:
+        y = sparse_block(input_layer=y,
+                         bn_params=None,
+                         threshold_sigma=1.0)
 
     # transformation
     y = conv2d_wrapper(input_layer=y,

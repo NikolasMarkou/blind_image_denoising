@@ -17,6 +17,7 @@ from .utilities import \
 from .backbone_unet import builder as builder_unet
 from .backbone_lunet import builder as builder_lunet
 from .backbone_resnet import builder as builder_resnet
+from .backbone_resnet_ce import builder as builder_resnet_ce
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
@@ -234,6 +235,8 @@ def model_builder(
         backbone_builder = builder_lunet
     elif model_type == "resnet":
         backbone_builder = builder_resnet
+    elif model_type == "resnet_ce":
+        backbone_builder = builder_resnet_ce
     else:
         raise ValueError(
             "don't know how to build model [{0}]".format(model_type))
