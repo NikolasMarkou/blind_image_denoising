@@ -262,7 +262,7 @@ def builder(
                 x,
                 clip_value_min=-1.0,
                 clip_value_max=+1.0)
-    
+
     # --- output layer branches here,
     output_layer = \
         tf.keras.layers.Layer(name="intermediate_output")(x)
