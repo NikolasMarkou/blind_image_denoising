@@ -15,7 +15,11 @@ from typing import List, Tuple, Union, Dict, Iterable
 
 from .constants import *
 from .custom_logger import logger
-from .custom_layers import Multiplier, RandomOnOff, ChannelwiseMultiplier
+from .custom_layers import \
+    Multiplier, \
+    RandomOnOff, \
+    ChannelwiseMultiplier, \
+    DifferentiableReluLayer
 
 # ---------------------------------------------------------------------
 
@@ -475,6 +479,7 @@ def sparse_block(
         input_layer,
         bn_params: Dict = None,
         threshold_sigma: float = 1.0,
+        symmetrical: bool = False,
         soft_sparse: bool = True):
     """
     create sparsity in an input layer (keeps only positive)
@@ -489,8 +494,9 @@ def sparse_block(
     +1 -> 84.1% sparsity
     +2 -> 97.7% sparsity
     +3 -> 99.9% sparsity
+    :param symmetrical: if True use abs values, if False cutoff negatives
     :param soft_sparse: if True use sigmoid, if False use relu
-    
+
     :return: sparse results
     """
     # --- argument checking
@@ -512,14 +518,15 @@ def sparse_block(
         mean, sigma = mean_sigma_global(input_layer=x)
         x_bn = (x - mean) / (sigma + DEFAULT_EPSILON)
 
+    if symmetrical:
+        x_bn = tf.abs(x_bn)
+
+    # threshold based on normalization
+    # keep only positive above threshold
     if soft_sparse:
-        # threshold based on normalization
-        # keep only positive above threshold
         x_binary = \
             tf.nn.sigmoid(x_bn - threshold_sigma)
     else:
-        # threshold based on normalization
-        # keep only positive above threshold
         x_binary = \
             tf.nn.relu(tf.sign(x_bn - threshold_sigma))
 

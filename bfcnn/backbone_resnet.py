@@ -244,11 +244,13 @@ def builder(
         if use_bn:
             x = sparse_block(
                 input_layer=x,
+                symmetrical=True,
                 bn_params=bn_params,
                 threshold_sigma=1.0)
         else:
             x = sparse_block(
                 input_layer=x,
+                symmetrical=True,
                 bn_params=None,
                 threshold_sigma=1.0)
 
