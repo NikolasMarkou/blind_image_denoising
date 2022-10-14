@@ -465,9 +465,9 @@ def mean_sigma_global(
 
     # --- build block
     x = input_layer
-    mean = tf.mean(x, axis=axis, keepdims=True)
+    mean = tf.reduce_mean(x, axis=axis, keepdims=True)
     diff_2 = tf.square(x - mean)
-    variance = tf.mean(diff_2, axis=axis, keepdims=True)
+    variance = tf.reduce_mean(diff_2, axis=axis, keepdims=True)
     sigma = tf.sqrt(variance + epsilon)
     return mean, sigma
 
