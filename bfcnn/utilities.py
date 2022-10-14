@@ -480,6 +480,7 @@ def sparse_block(
         bn_params: Dict = None,
         threshold_sigma: float = 1.0,
         symmetrical: bool = False,
+        reverse: bool = False,
         soft_sparse: bool = True):
     """
     create sparsity in an input layer (keeps only positive)
@@ -495,6 +496,7 @@ def sparse_block(
     +2 -> 97.7% sparsity
     +3 -> 99.9% sparsity
     :param symmetrical: if True use abs values, if False cutoff negatives
+    :param reverse: if True cutoff large values, if False cutoff small values
     :param soft_sparse: if True use sigmoid, if False use relu
 
     :return: sparse results
@@ -529,6 +531,10 @@ def sparse_block(
     else:
         x_binary = \
             tf.nn.relu(tf.sign(x_bn - threshold_sigma))
+
+    # focus on small values
+    if reverse:
+        x_binary = 1.0 - x_binary
 
     # zero out values below the threshold
     return \

@@ -162,11 +162,6 @@ def resnet_blocks_full(
                                channelwise_scaling=False)
             x_1st_conv = x
 
-        # sparsity goes here (first conv selects the signal),
-        # then sparsity picks it up, second and third conv filter it
-        if use_sparsity:
-            x = sparse_block(x, **sparse_params)
-
         if second_conv_params is not None:
             x = conv2d_wrapper(input_layer=x,
                                conv_params=copy.deepcopy(second_conv_params),
@@ -225,6 +220,10 @@ def resnet_blocks_full(
             pass
         else:
             raise ValueError(f"dont know how to handle [{expand_type}]")
+
+        # optional sparsity
+        if use_sparsity:
+            x = sparse_block(x, **sparse_params)
 
         # optional channelwise multiplier
         if use_channelwise:

@@ -34,6 +34,7 @@ def builder(
         add_final_bn: bool = False,
         add_concat_input: bool = False,
         add_selector: bool = False,
+        add_clip: bool = True,
         add_sparse_features: bool = False,
         name="resnet",
         **kwargs) -> keras.Model:
@@ -254,6 +255,14 @@ def builder(
                 bn_params=None,
                 threshold_sigma=1.0)
 
+    # optional clipping
+    if add_clip:
+        x = \
+            tf.clip_by_value(
+                x,
+                clip_value_min=-1.0,
+                clip_value_max=+1.0)
+    
     # --- output layer branches here,
     output_layer = \
         tf.keras.layers.Layer(name="intermediate_output")(x)

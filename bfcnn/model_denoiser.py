@@ -95,6 +95,7 @@ def model_builder(
     add_sparse_features = config.get("add_sparse_features", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     add_learnable_multiplier = config.get("add_learnable_multiplier", False)
+    final_kernel_regularization = config.get("final_kernel_regularization", "l1")
     add_residual_between_models = config.get("add_residual_between_models", False)
 
     use_pyramid = pyramid_config is not None
@@ -108,8 +109,13 @@ def model_builder(
     if kernel_size <= 0:
         raise ValueError("kernel_size must be > 0")
 
+    # regularizer for all kernels above the final ones
     kernel_regularizer = \
         regularizer_builder(kernel_regularizer)
+
+    # regularizer for the final kernel
+    final_kernel_regularization = \
+        regularizer_builder(final_kernel_regularization)
 
     denoise_intermediate_conv_params = dict(
         groups=groups,
@@ -132,7 +138,7 @@ def model_builder(
         activation="linear",
         groups=input_shape[channel_index],
         filters=input_shape[channel_index],
-        kernel_regularizer=kernel_regularizer,
+        kernel_regularizer=final_kernel_regularization,
         kernel_initializer=kernel_initializer
     )
 
@@ -188,7 +194,7 @@ def model_builder(
         activation="linear",
         groups=input_shape[channel_index],
         filters=input_shape[channel_index],
-        kernel_regularizer=kernel_regularizer,
+        kernel_regularizer=final_kernel_regularization,
         kernel_initializer=kernel_initializer
     )
 
@@ -267,14 +273,6 @@ def model_builder(
             shape=input_shape,
             name="input_tensor")
     x = input_layer
-
-    # --- clip levels to [-0.5, +0.5]
-    if clip_values:
-        x = \
-            tf.clip_by_value(
-                t=x,
-                clip_value_min=-0.5,
-                clip_value_max=+0.5)
 
     # --- run inference
     if use_pyramid:
