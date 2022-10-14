@@ -6,8 +6,8 @@ import tensorflow as tf
 
 from .constants import *
 from .custom_logger import logger
-from .backbone_blocks import resnet_blocks_full
 from .utilities import conv2d_wrapper, mean_sigma_local
+from .backbone_blocks import resnet_blocks_full, sparse_block
 
 # ---------------------------------------------------------------------
 
@@ -34,6 +34,7 @@ def builder(
         add_final_bn: bool = False,
         add_concat_input: bool = False,
         add_selector: bool = False,
+        add_sparse_features: bool = False,
         name="resnet",
         **kwargs) -> keras.Model:
     """
@@ -60,6 +61,8 @@ def builder(
     :param add_final_bn: add a batch norm after the resnet blocks
     :param add_concat_input: if true concat input to intermediate before projecting
     :param add_selector: if true add a selector block in skip connections
+    :param add_sparse_features: if true set feature map to be sparse
+
     :param name: name of the model
 
     :return: resnet model
@@ -235,6 +238,19 @@ def builder(
         if use_bn:
             y_tmp = tf.keras.layers.BatchNormalization(**bn_params)(y_tmp)
         x = tf.keras.layers.Concatenate()([x, y_tmp])
+
+    # optional sparsity, 80% per layer becomes zero
+    if add_sparse_features:
+        if use_bn:
+            x = sparse_block(
+                input_layer=x,
+                bn_params=bn_params,
+                threshold_sigma=1.0)
+        else:
+            x = sparse_block(
+                input_layer=x,
+                bn_params=None,
+                threshold_sigma=1.0)
 
     # --- output layer branches here,
     output_layer = \

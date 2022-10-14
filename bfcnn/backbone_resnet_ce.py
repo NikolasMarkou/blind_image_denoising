@@ -106,6 +106,7 @@ def builder(
 
     first_conv_params = dict(
         kernel_size=(3, 3),
+        # TODO check this
         filters=filters * 2,
         strides=(2, 2),
         padding="same",

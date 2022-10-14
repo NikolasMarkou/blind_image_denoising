@@ -161,8 +161,6 @@ def resnet_blocks_full(
                                bn_params=bn_params,
                                channelwise_scaling=False)
             x_1st_conv = x
-        else:
-            pass
 
         # sparsity goes here (first conv selects the signal),
         # then sparsity picks it up, second and third conv filter it

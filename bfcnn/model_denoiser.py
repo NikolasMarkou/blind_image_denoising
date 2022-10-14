@@ -92,6 +92,7 @@ def model_builder(
     backbone_activation = config.get("backbone_activation", None)
     add_skip_with_input = config.get("add_skip_with_input", True)
     channelwise_scaling = config.get("channelwise_scaling", False)
+    add_sparse_features = config.get("add_sparse_features", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     add_learnable_multiplier = config.get("add_learnable_multiplier", False)
     add_residual_between_models = config.get("add_residual_between_models", False)
@@ -226,6 +227,7 @@ def model_builder(
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
         channelwise_scaling=channelwise_scaling,
+        add_sparse_features=add_sparse_features,
         add_learnable_multiplier=add_learnable_multiplier,
     )
 
