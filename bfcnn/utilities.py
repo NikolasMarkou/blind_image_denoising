@@ -474,7 +474,8 @@ def mean_sigma_global(
 def sparse_block(
         input_layer,
         bn_params: Dict = None,
-        threshold_sigma: float = 1.0):
+        threshold_sigma: float = 1.0,
+        soft_sparse: bool = True):
     """
     create sparsity in an input layer (keeps only positive)
 
@@ -488,7 +489,8 @@ def sparse_block(
     +1 -> 84.1% sparsity
     +2 -> 97.7% sparsity
     +3 -> 99.9% sparsity
-
+    :param soft_sparse: if True use sigmoid, if False use relu
+    
     :return: sparse results
     """
     # --- argument checking
@@ -510,19 +512,23 @@ def sparse_block(
         mean, sigma = mean_sigma_global(input_layer=x)
         x_bn = (x - mean) / (sigma + DEFAULT_EPSILON)
 
-    # threshold based on normalization
-    # keep only positive above threshold
-    x_binary = \
-        tf.nn.relu(tf.sign(x_bn - threshold_sigma))
+    if soft_sparse:
+        # threshold based on normalization
+        # keep only positive above threshold
+        x_binary = \
+            tf.nn.sigmoid(x_bn - threshold_sigma)
+    else:
+        # threshold based on normalization
+        # keep only positive above threshold
+        x_binary = \
+            tf.nn.relu(tf.sign(x_bn - threshold_sigma))
 
     # zero out values below the threshold
-    x_result = \
+    return \
         tf.keras.layers.Multiply()([
             x_binary,
             x,
         ])
-
-    return x_result
 
 # ---------------------------------------------------------------------
 
