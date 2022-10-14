@@ -631,7 +631,7 @@ def build_denormalize_model(
     model_input = tf.keras.Input(shape=input_dims)
 
     # --- normalize input
-    # from [min_value, max_value] to [-0.5, +0.5]
+    # from [-0.5, +0.5] to [v0, v1] range
     model_output = \
         tf.keras.layers.Lambda(
             function=layer_denormalize,
