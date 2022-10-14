@@ -242,18 +242,11 @@ def builder(
 
     # optional sparsity, 80% per layer becomes zero
     if add_sparse_features:
-        if use_bn:
-            x = sparse_block(
-                input_layer=x,
-                symmetrical=True,
-                bn_params=bn_params,
-                threshold_sigma=1.0)
-        else:
-            x = sparse_block(
-                input_layer=x,
-                symmetrical=True,
-                bn_params=None,
-                threshold_sigma=1.0)
+        x = sparse_block(
+            input_layer=x,
+            symmetrical=True,
+            bn_params=None,
+            threshold_sigma=1.0)
 
     # optional clipping
     if add_clip:
