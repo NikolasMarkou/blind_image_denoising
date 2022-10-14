@@ -201,13 +201,13 @@ def model_builder(
     # --- build normalize denormalize models
     model_normalize = \
         build_normalize_model(
-            input_dims=input_shape,
+            input_dims=(None, None, None),
             min_value=min_value,
             max_value=max_value)
 
     model_denormalize = \
         build_denormalize_model(
-            input_dims=input_shape,
+            input_dims=(None, None, None),
             min_value=min_value,
             max_value=max_value)
 
