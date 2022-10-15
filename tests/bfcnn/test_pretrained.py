@@ -61,10 +61,13 @@ def test_pretrained_models(model_name):
         img_noisy = tf.cast(img_noisy, dtype=tf.float32)
         img_original = tf.cast(img_original, dtype=tf.float32)
         img_denoised = tf.cast(img_denoised, dtype=tf.float32)
+        # mae
+        mae_noisy_original = np.mean(np.abs(img_noisy - img_original), axis=None)
+        mae_denoised_original = np.mean(np.abs(img_denoised - img_original), axis=None)
         assert img_denoised.shape == img_noisy.shape
         assert img_denoised.shape == img_original.shape
-        assert np.mean(np.abs(img_noisy - img_original), axis=None) < 10
-        assert np.mean(np.abs(img_denoised - img_original), axis=None) < 5
+        assert mae_noisy_original < 10
+        assert mae_denoised_original < mae_noisy_original
 
 # ---------------------------------------------------------------------
 

@@ -81,7 +81,7 @@ def resnet_blocks_full(
     :param dropout_params: dropout optional parameters
     :param selector_params: selector mixer optional parameters
     :param multiplier_params: learnable multiplier optional parameters
-    :param channelwise_params: if True add a learnable point-wise depthwise scaling conv2d
+    :param channelwise_params: if True add a learnable channelwise learnable multiplier
     :param post_addition_activation: activation after the residual addition, None to disable
     :param expand_type: whether to keep same size, compress or expand
     :param stop_gradient: if True, stop gradient before the branch
@@ -93,6 +93,7 @@ def resnet_blocks_full(
         raise ValueError("input_layer must be none")
     if no_layers < 0:
         raise ValueError("no_layers must be >= 0")
+    bn_first_conv_params = kwargs.get("bn_first_conv_params", False)
 
     # --- set variables
     use_gate = gate_params is not None
@@ -140,36 +141,44 @@ def resnet_blocks_full(
 
     # create a series of residual blocks
     for i in range(no_layers):
+        x_1st_conv = None
+        x_2nd_conv = None
+        x_3rd_conv = None
         previous_layer = x
 
         if stop_gradient:
             x = tf.stop_gradient(x)
 
-        if first_conv_params is not None:
+        if first_conv_params is not None and not bn_first_conv_params:
             x = conv2d_wrapper(input_layer=x,
                                conv_params=copy.deepcopy(first_conv_params),
                                bn_params=None,
                                channelwise_scaling=False)
-
-        # sparsity goes here (first conv selects the signal),
-        # then sparsity picks it up, second and third conv filter it
-        if use_sparsity:
-            x = sparse_block(x, **sparse_params)
+            x_1st_conv = x
+        elif first_conv_params is not None and bn_first_conv_params:
+            x = conv2d_wrapper(input_layer=x,
+                               conv_params=copy.deepcopy(first_conv_params),
+                               bn_params=bn_params,
+                               channelwise_scaling=False)
+            x_1st_conv = x
 
         if second_conv_params is not None:
             x = conv2d_wrapper(input_layer=x,
                                conv_params=copy.deepcopy(second_conv_params),
                                bn_params=bn_params,
                                channelwise_scaling=False)
+            x_2nd_conv = x
+
         if third_conv_params is not None:
             x = conv2d_wrapper(input_layer=x,
                                conv_params=copy.deepcopy(third_conv_params),
                                bn_params=bn_params,
                                channelwise_scaling=False)
+            x_3rd_conv = x
 
         # compute activation per channel
         if use_gate:
-            y = pool(**pool_params)(x)
+            y = pool(**pool_params)(x_2nd_conv)
             y = conv2d_wrapper(input_layer=y,
                                conv_params=copy.deepcopy(gate_conv_params),
                                bn_params=None,
@@ -212,6 +221,10 @@ def resnet_blocks_full(
         else:
             raise ValueError(f"dont know how to handle [{expand_type}]")
 
+        # optional sparsity
+        if use_sparsity:
+            x = sparse_block(x, **sparse_params)
+
         # optional channelwise multiplier
         if use_channelwise:
             x = ChannelwiseMultiplier(**channelwise_params)(x)
@@ -227,7 +240,7 @@ def resnet_blocks_full(
                 selector_mixer_block(
                     input_1_layer=previous_layer,
                     input_2_layer=x,
-                    selector_layer=x,
+                    selector_layer=x_2nd_conv,
                     filters=third_conv_params["filters"],
                     kernel_regularizer=third_conv_params.get("kernel_regularizer", "l1"),
                     kernel_initializer=third_conv_params.get("kernel_initializer", "glorot_normal"),
@@ -618,7 +631,10 @@ def selector_mixer_block(
         input_2_layer,
         selector_layer,
         filters: int,
+        stop_gradient: bool = False,
+        bn_params: Dict = None,
         selector_params: Dict = None,
+        sparse_params: Dict = None,
         kernel_regularizer: str = "l1",
         kernel_initializer: str = "glorot_normal",
         **kwargs):
@@ -629,12 +645,14 @@ def selector_mixer_block(
     :return: filtered input_layer
     """
     # --- set variables
+    use_sparse = sparse_params is not None
+
     # out squeeze and excite gating does not use global avg
     # followed by dense layer, because we are using this on large images
     # global averaging looses too much information
     pool_bias = selector_params.get("bias", 2.5)
     pool_type = selector_params.get("pool_type", "avg")
-    pool_size = selector_params.get("pool_size", (16, 16))
+    pool_size = selector_params.get("pool_size", (1, 1))
 
     pool_params = dict(
         pool_size=pool_size,
@@ -659,14 +677,28 @@ def selector_mixer_block(
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer)
 
-    # --- setup resnet along with its variants
+    # --- setup network
     x = selector_layer
 
-    y = pool(**pool_params)(x)
+    if stop_gradient:
+        x = tf.stop_gradient(x)
+
+    if pool_size == (1, 1) or pool_size == 1:
+        y = x
+    else:
+        y = pool(**pool_params)(x)
+
+    if use_sparse:
+        y = sparse_block(input_layer=y,
+                         bn_params=None,
+                         threshold_sigma=1.0)
+
+    # transformation
     y = conv2d_wrapper(input_layer=y,
                        conv_params=copy.deepcopy(selector_params),
-                       bn_params=None,
+                       bn_params=bn_params,
                        channelwise_scaling=False)
+
     # if x < -2.5: return 0
     # if x > 2.5: return 1
     # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
@@ -675,6 +707,56 @@ def selector_mixer_block(
     return \
         tf.keras.layers.Multiply()([input_1_layer, y]) + \
         tf.keras.layers.Multiply()([input_2_layer, 1.0 - y])
+
+# ---------------------------------------------------------------------
+
+
+def compress_expand_residual_block(
+        input_layer,
+        no_layers: int,
+        bn_params: Dict = None,
+        gate_params: Dict = None,
+        sparse_params: Dict = None,
+        dropout_params: Dict = None,
+        selector_params: Dict = None,
+        multiplier_params: Dict = None,
+        channelwise_scaling: bool = False,
+        stop_gradient: bool = False):
+    # --- argument checking
+
+    # --- set variables
+    expand_params = dict()
+    transform_params = dict()
+    compress_params = dict()
+
+    # --- build network
+    x = input_layer
+
+    for i in range(no_layers):
+
+        if stop_gradient:
+            x = tf.stop_gradient(x)
+
+        # compression conv
+        x = conv2d_wrapper(input_layer=x,
+                           conv_params=expand_params,
+                           bn_params=bn_params,
+                           channelwise_scaling=channelwise_scaling)
+
+        x = conv2d_wrapper(input_layer=x,
+                           conv_params=transform_params,
+                           bn_params=bn_params,
+                           channelwise_scaling=channelwise_scaling)
+
+        # expansion conv
+        x = conv2d_wrapper(input_layer=x,
+                           conv_params=compress_params,
+                           bn_params=bn_params,
+                           channelwise_scaling=channelwise_scaling)
+        # add residual
+        x = tf.keras.layers.Add()([input_layer, x])
+
+    return x
 
 # ---------------------------------------------------------------------
 

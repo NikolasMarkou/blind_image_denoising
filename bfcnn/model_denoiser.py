@@ -17,6 +17,7 @@ from .utilities import \
 from .backbone_unet import builder as builder_unet
 from .backbone_lunet import builder as builder_lunet
 from .backbone_resnet import builder as builder_resnet
+from .backbone_resnet_ce import builder as builder_resnet_ce
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
@@ -77,10 +78,12 @@ def model_builder(
     clip_values = config.get("clip_values", True)
     channel_index = config.get("channel_index", 2)
     add_final_bn = config.get("add_final_bn", True)
+    add_selector = config.get("add_selector", False)
     shared_model = config.get("shared_model", False)
     add_sparsity = config.get("add_sparsity", False)
     add_laplacian = config.get("add_laplacian", True)
     stop_gradient = config.get("stop_gradient", False)
+    add_initial_bn = config.get("add_initial_bn", False)
     add_concat_input = config.get("add_concat_input", False)
     input_shape = config.get("input_shape", (None, None, 3))
     output_multiplier = config.get("output_multiplier", 1.0)
@@ -89,8 +92,10 @@ def model_builder(
     backbone_activation = config.get("backbone_activation", None)
     add_skip_with_input = config.get("add_skip_with_input", True)
     channelwise_scaling = config.get("channelwise_scaling", False)
+    add_sparse_features = config.get("add_sparse_features", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     add_learnable_multiplier = config.get("add_learnable_multiplier", False)
+    final_kernel_regularization = config.get("final_kernel_regularization", "l1")
     add_residual_between_models = config.get("add_residual_between_models", False)
 
     use_pyramid = pyramid_config is not None
@@ -104,8 +109,13 @@ def model_builder(
     if kernel_size <= 0:
         raise ValueError("kernel_size must be > 0")
 
+    # regularizer for all kernels above the final ones
     kernel_regularizer = \
         regularizer_builder(kernel_regularizer)
+
+    # regularizer for the final kernel
+    final_kernel_regularization = \
+        regularizer_builder(final_kernel_regularization)
 
     denoise_intermediate_conv_params = dict(
         groups=groups,
@@ -128,7 +138,7 @@ def model_builder(
         activation="linear",
         groups=input_shape[channel_index],
         filters=input_shape[channel_index],
-        kernel_regularizer=kernel_regularizer,
+        kernel_regularizer=final_kernel_regularization,
         kernel_initializer=kernel_initializer
     )
 
@@ -184,20 +194,20 @@ def model_builder(
         activation="linear",
         groups=input_shape[channel_index],
         filters=input_shape[channel_index],
-        kernel_regularizer=kernel_regularizer,
+        kernel_regularizer=final_kernel_regularization,
         kernel_initializer=kernel_initializer
     )
 
     # --- build normalize denormalize models
     model_normalize = \
         build_normalize_model(
-            input_dims=input_shape,
+            input_dims=(None, None, None),
             min_value=min_value,
             max_value=max_value)
 
     model_denormalize = \
         build_denormalize_model(
-            input_dims=input_shape,
+            input_dims=(None, None, None),
             min_value=min_value,
             max_value=max_value)
 
@@ -212,15 +222,18 @@ def model_builder(
         activation=activation,
         input_dims=input_shape,
         kernel_size=kernel_size,
+        add_selector=add_selector,
         add_sparsity=add_sparsity,
         dropout_rate=dropout_rate,
         add_final_bn=add_final_bn,
         add_laplacian=add_laplacian,
         stop_gradient=stop_gradient,
+        add_initial_bn=add_initial_bn,
         add_concat_input=add_concat_input,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
         channelwise_scaling=channelwise_scaling,
+        add_sparse_features=add_sparse_features,
         add_learnable_multiplier=add_learnable_multiplier,
     )
 
@@ -230,6 +243,8 @@ def model_builder(
         backbone_builder = builder_lunet
     elif model_type == "resnet":
         backbone_builder = builder_resnet
+    elif model_type == "resnet_ce":
+        backbone_builder = builder_resnet_ce
     else:
         raise ValueError(
             "don't know how to build model [{0}]".format(model_type))
@@ -258,14 +273,6 @@ def model_builder(
             shape=input_shape,
             name="input_tensor")
     x = input_layer
-
-    # --- clip levels to [-0.5, +0.5]
-    if clip_values:
-        x = \
-            tf.clip_by_value(
-                t=x,
-                clip_value_min=-0.5,
-                clip_value_max=+0.5)
 
     # --- run inference
     if use_pyramid:

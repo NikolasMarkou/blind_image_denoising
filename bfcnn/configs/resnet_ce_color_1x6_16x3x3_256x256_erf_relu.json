@@ -5,9 +5,9 @@
     "min_value": 0,
     "add_var": false,
     "max_value": 255,
-    "kernel_size": 5,
-    "type": "resnet",
-    "batchnorm": true,
+    "kernel_size": 7,
+    "type": "resnet_ce",
+    "batchnorm": false,
     "activation": "relu",
     "add_gates": false,
     "add_sparsity": false,
@@ -17,27 +17,21 @@
     "output_multiplier": 1.0,
     "local_normalization": -1,
     "final_activation": "tanh",
-    "channelwise_scaling": true,
+    "channelwise_scaling": false,
     "add_skip_with_input": false,
     "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
     "kernel_regularizer": {
-      "type": "soft_orthonormal",
-      "config": {
-        "lambda_coefficient": 0.1,
-        "l1_coefficient": 0.01
-      }
-    },
-    "pyramid": {
-      "levels": 3,
-      "type": "laplacian",
-      "xy_max": [1.0, 1.0],
-      "kernel_size": [3, 3]
+        "type": "erf",
+        "config": {
+            "l1_coefficient": 0.01,
+            "l2_coefficient": 0.0
+        }
     }
   },
    "train": {
-    "epochs": 50,
+    "epochs": 20,
     "total_steps": -1,
     "use_test_images": true,
     "checkpoints_to_keep": 3,
@@ -60,7 +54,7 @@
     }
   },
   "loss": {
-    "hinge": 2.0,
+    "hinge": 0.0,
     "cutoff": 255.0,
     "mae_multiplier": 1.0,
     "regularization": 0.01

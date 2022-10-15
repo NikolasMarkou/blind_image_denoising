@@ -6,8 +6,8 @@ import tensorflow as tf
 
 from .constants import *
 from .custom_logger import logger
+from .backbone_blocks import resnet_blocks_full
 from .utilities import conv2d_wrapper, mean_sigma_local
-from .backbone_blocks import resnet_blocks_full, sparse_block
 
 # ---------------------------------------------------------------------
 
@@ -19,6 +19,7 @@ def builder(
         filters: int,
         filter_multiplier: int = 2,
         activation: str = "relu",
+        base_activation: str = "linear",
         use_bn: bool = True,
         use_bias: bool = False,
         kernel_regularizer="l1",
@@ -34,12 +35,10 @@ def builder(
         add_final_bn: bool = False,
         add_concat_input: bool = False,
         add_selector: bool = False,
-        add_clip: bool = True,
-        add_sparse_features: bool = False,
-        name="resnet",
+        name="resnet_ce",
         **kwargs) -> keras.Model:
     """
-    builds a resnet model
+    builds a resnet compress expand model
 
     :param input_dims: Models input dimensions
     :param no_layers: Number of resnet layers
@@ -62,8 +61,6 @@ def builder(
     :param add_final_bn: add a batch norm after the resnet blocks
     :param add_concat_input: if true concat input to intermediate before projecting
     :param add_selector: if true add a selector block in skip connections
-    :param add_sparse_features: if true set feature map to be sparse
-
     :param name: name of the model
 
     :return: resnet model
@@ -90,7 +87,7 @@ def builder(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation="linear",
+        activation=base_activation,
         kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
@@ -108,9 +105,10 @@ def builder(
     )
 
     first_conv_params = dict(
-        kernel_size=1,
-        filters=filters,
-        strides=(1, 1),
+        kernel_size=(3, 3),
+        # TODO check this
+        filters=filters * 2,
+        strides=(2, 2),
         padding="same",
         use_bias=use_bias,
         activation=activation,
@@ -120,7 +118,7 @@ def builder(
 
     if conv_depthwise:
         second_conv_params = dict(
-            kernel_size=3,
+            kernel_size=1,
             depth_multiplier=filter_multiplier,
             strides=(1, 1),
             padding="same",
@@ -131,8 +129,8 @@ def builder(
         )
     else:
         second_conv_params = dict(
-            kernel_size=3,
-            filters=filters * filter_multiplier,
+            kernel_size=1,
+            filters=int(round(filters / 2)),
             strides=(1, 1),
             padding="same",
             use_bias=use_bias,
@@ -142,13 +140,14 @@ def builder(
         )
 
     third_conv_params = dict(
-        kernel_size=1,
+        kernel_size=3,
         filters=filters,
-        strides=(1, 1),
         padding="same",
+        strides=(2, 2),
+        dilation_rate=(1, 1),
         use_bias=use_bias,
         # this must be the same as the base
-        activation="linear",
+        activation=base_activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -239,22 +238,6 @@ def builder(
         if use_bn:
             y_tmp = tf.keras.layers.BatchNormalization(**bn_params)(y_tmp)
         x = tf.keras.layers.Concatenate()([x, y_tmp])
-
-    # optional sparsity, 80% per layer becomes zero
-    if add_sparse_features:
-        x = sparse_block(
-            input_layer=x,
-            symmetrical=True,
-            bn_params=None,
-            threshold_sigma=1.0)
-
-    # optional clipping
-    if add_clip:
-        x = \
-            tf.clip_by_value(
-                x,
-                clip_value_min=-0.5,
-                clip_value_max=+0.5)
 
     # --- output layer branches here,
     output_layer = \
