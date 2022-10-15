@@ -145,7 +145,7 @@ def train_loop(
         x_noisy = \
             tf.random.truncated_normal(
                 seed=0,
-                mean=0.5,
+                mean=0.0,
                 stddev=0.25,
                 shape=test_images.shape) + \
             test_images
