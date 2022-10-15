@@ -20,7 +20,7 @@ def builder(
         filters: int,
         filter_multiplier: int = 2,
         activation: str = "relu",
-        base_activation: str = "relu",
+        base_activation: str = "linear",
         use_bn: bool = True,
         use_bias: bool = False,
         kernel_regularizer="l1",
@@ -237,7 +237,7 @@ def builder(
     x = \
         conv2d_wrapper(
             input_layer=x,
-            bn_params=bn_params,
+            bn_params=None,
             conv_params=base_1_conv_params,
             channelwise_scaling=None)
 
