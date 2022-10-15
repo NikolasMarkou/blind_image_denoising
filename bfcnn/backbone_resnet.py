@@ -1,3 +1,4 @@
+import keras.layers
 import tensorflow as tf
 
 # ---------------------------------------------------------------------
@@ -19,6 +20,7 @@ def builder(
         filters: int,
         filter_multiplier: int = 2,
         activation: str = "relu",
+        base_activation: str = "relu",
         use_bn: bool = True,
         use_bias: bool = False,
         kernel_regularizer="l1",
@@ -85,13 +87,24 @@ def builder(
         threshold_sigma=1.0,
     )
 
-    base_conv_params = dict(
+    base_0_conv_params = dict(
+        filters=filters * filter_multiplier,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation=activation,
+        kernel_size=kernel_size,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
+    base_1_conv_params = dict(
         filters=filters,
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation="linear",
-        kernel_size=kernel_size,
+        activation=base_activation,
+        kernel_size=3,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -148,7 +161,7 @@ def builder(
         padding="same",
         use_bias=use_bias,
         # this must be the same as the base
-        activation="linear",
+        activation=base_activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -218,8 +231,18 @@ def builder(
         conv2d_wrapper(
             input_layer=x,
             bn_params=None,
-            conv_params=base_conv_params,
+            conv_params=base_0_conv_params,
             channelwise_scaling=None)
+
+    x = \
+        conv2d_wrapper(
+            input_layer=x,
+            bn_params=bn_params,
+            conv_params=base_1_conv_params,
+            channelwise_scaling=None)
+
+    x = keras.layers.Dropout()(x)
+
     if add_initial_bn:
         x = tf.keras.layers.BatchNormalization(**bn_params)(x)
 
@@ -253,8 +276,8 @@ def builder(
         x = \
             tf.clip_by_value(
                 x,
-                clip_value_min=-0.5,
-                clip_value_max=+0.5)
+                clip_value_min=0.0,
+                clip_value_max=1.0)
 
     # --- output layer branches here,
     output_layer = \
