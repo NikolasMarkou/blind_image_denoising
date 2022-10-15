@@ -218,8 +218,8 @@ def train_loop(
         x_noisy = \
             tf.clip_by_value(
                 x_noisy,
-                clip_value_min=-0.5,
-                clip_value_max=+0.5)
+                clip_value_min=0.0,
+                clip_value_max=1.0)
         x_noisy_denormalized = \
             denormalizer(
                 x_noisy,
@@ -408,7 +408,6 @@ def train_loop(
                     test_image = tf.expand_dims(test_image, axis=0)
                     test_image = tf.image.resize(test_image, size=(128, 128))
                     decomposed_image = decompose_fn(test_image)
-                    decomposed_image = decomposed_image + 0.5
                     decomposed_image = tf.transpose(decomposed_image, perm=(3, 1, 2, 0))
                     tf.summary.image(
                         name=f"test_output_decomposition_0",
