@@ -548,15 +548,15 @@ def sparse_block(
 
 def layer_denormalize(args):
     """
-    Convert input [0.0, +1.0] to [v0, v1] range
+    Convert input [-0.5, +0.5] to [v0, v1] range
     """
     y, v_min, v_max = args
     y_clip = \
         tf.clip_by_value(
             t=y,
-            clip_value_min=0.0,
-            clip_value_max=1.0)
-    return y_clip * (v_max - v_min) + v_min
+            clip_value_min=-0.5,
+            clip_value_max=0.5)
+    return (y_clip + 0.5) * (v_max - v_min) + v_min
 
 
 # ---------------------------------------------------------------------
@@ -564,7 +564,7 @@ def layer_denormalize(args):
 
 def layer_normalize(args):
     """
-    Convert input from [v0, v1] to [0.0, +1.0] range
+    Convert input from [v0, v1] to [-0.5, +0.5] range
     """
     y, v_min, v_max = args
     y_clip = \
@@ -572,7 +572,7 @@ def layer_normalize(args):
             t=y,
             clip_value_min=v_min,
             clip_value_max=v_max)
-    return (y_clip - v_min) / (v_max - v_min)
+    return (y_clip - v_min) / (v_max - v_min) - 0.5
 
 
 # ---------------------------------------------------------------------
