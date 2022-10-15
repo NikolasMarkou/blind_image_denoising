@@ -250,11 +250,7 @@ def builder(
 
     # optional clipping
     if add_clip:
-        x = \
-            tf.clip_by_value(
-                x,
-                clip_value_min=-0.5,
-                clip_value_max=+0.5)
+        x = tf.tanh(x) / 2
 
     # --- output layer branches here,
     output_layer = \
