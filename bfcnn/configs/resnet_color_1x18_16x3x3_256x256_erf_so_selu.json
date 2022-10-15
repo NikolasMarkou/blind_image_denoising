@@ -1,14 +1,14 @@
 {
   "model_denoise": {
     "filters": 16,
-    "no_layers": 6,
+    "no_layers": 18,
     "min_value": 0,
     "add_var": false,
     "max_value": 255,
     "kernel_size": 7,
     "type": "resnet",
-    "batchnorm": true,
-    "activation": "relu",
+    "batchnorm": false,
+    "activation": "selu",
     "add_gates": false,
     "add_sparsity": false,
     "clip_values": false,
@@ -21,8 +21,24 @@
     "add_skip_with_input": false,
     "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
-    "kernel_initializer": "glorot_normal",
-    "kernel_regularizer": "l1"
+    "kernel_initializer": "lecun_normal",
+    "kernel_regularizer": [
+          {
+              "type": "erf",
+              "config": {
+                  "l1_coefficient": 0.01,
+                  "l2_coefficient": 0.0
+              }
+          },
+          {
+              "type": "soft_orthonormal",
+              "config": {
+                  "lambda_coefficient": 0.1,
+                  "l1_coefficient": 0.001,
+                  "l2_coefficient": 0.0
+              }
+          }
+      ]
   },
    "train": {
     "epochs": 20,

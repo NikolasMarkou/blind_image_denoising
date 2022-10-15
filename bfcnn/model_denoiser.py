@@ -75,7 +75,7 @@ def model_builder(
     pyramid_config = config.get("pyramid", None)
     dropout_rate = config.get("dropout_rate", -1)
     activation = config.get("activation", "relu")
-    clip_values = config.get("clip_values", False)
+    clip_values = config.get("clip_values", True)
     channel_index = config.get("channel_index", 2)
     add_final_bn = config.get("add_final_bn", True)
     add_selector = config.get("add_selector", False)
@@ -333,14 +333,14 @@ def model_builder(
             for x_level in x_levels
         ]
 
-    # --- clip levels to [0.0, 1.0]
+    # --- clip levels to [-0.5, +0.5]
     if clip_values:
         for i, x_level in enumerate(x_levels):
             x_levels[i] = \
                 tf.clip_by_value(
                     t=x_level,
-                    clip_value_min=0.0,
-                    clip_value_max=1.0)
+                    clip_value_min=-0.5,
+                    clip_value_max=+0.5)
 
     # --- merge levels together
     if use_pyramid:

@@ -7,7 +7,7 @@
     "max_value": 255,
     "kernel_size": 7,
     "type": "resnet",
-    "batchnorm": true,
+    "batchnorm": false,
     "activation": "relu",
     "add_gates": false,
     "add_sparsity": false,

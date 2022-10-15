@@ -7,7 +7,7 @@
     "max_value": 255,
     "kernel_size": 7,
     "type": "resnet",
-    "batchnorm": true,
+    "batchnorm": false,
     "activation": "relu",
     "add_gates": false,
     "add_sparsity": false,
@@ -22,7 +22,23 @@
     "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
-    "kernel_regularizer": "l1"
+    "kernel_regularizer": [
+          {
+              "type": "erf",
+              "config": {
+                  "l1_coefficient": 0.01,
+                  "l2_coefficient": 0.0
+              }
+          },
+          {
+              "type": "soft_orthonormal",
+              "config": {
+                  "lambda_coefficient": 0.1,
+                  "l1_coefficient": 0.001,
+                  "l2_coefficient": 0.0
+              }
+          }
+      ]
   },
    "train": {
     "epochs": 20,

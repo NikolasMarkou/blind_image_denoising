@@ -17,12 +17,19 @@
     "output_multiplier": 1.0,
     "local_normalization": -1,
     "final_activation": "tanh",
+    "add_sparse_features": true,
     "channelwise_scaling": false,
     "add_skip_with_input": false,
     "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
-    "kernel_regularizer": "l1"
+    "kernel_regularizer": {
+        "type": "erf",
+        "config": {
+            "l2_coefficient": 0.00,
+            "l1_coefficient": 0.025
+        }
+    }
   },
    "train": {
     "epochs": 20,

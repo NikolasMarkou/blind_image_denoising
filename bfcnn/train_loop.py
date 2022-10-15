@@ -142,18 +142,6 @@ def train_loop(
             np.concatenate(
                 test_images,
                 axis=0)
-        x_noisy = \
-            tf.random.truncated_normal(
-                seed=0,
-                mean=0.0,
-                stddev=0.25,
-                shape=test_images.shape) + \
-            test_images
-        x_noisy = \
-            tf.clip_by_value(
-                x_noisy,
-                clip_value_min=0.0,
-                clip_value_max=1.0)
 
     # --- prune strategy
     prune_config = \
@@ -220,6 +208,18 @@ def train_loop(
 
     # --- test image
     def denoise_test_batch():
+        x_noisy = \
+            tf.random.truncated_normal(
+                seed=0,
+                mean=0.0,
+                stddev=0.25,
+                shape=test_images.shape) + \
+            test_images
+        x_noisy = \
+            tf.clip_by_value(
+                x_noisy,
+                clip_value_min=-0.5,
+                clip_value_max=+0.5)
         x_noisy_denormalized = \
             denormalizer(
                 x_noisy,
@@ -237,7 +237,7 @@ def train_loop(
         x_random = \
             tf.random.truncated_normal(
                 seed=0,
-                mean=0.5,
+                mean=0.0,
                 stddev=0.25,
                 shape=random_batch_size)
         while x_iteration < random_batch_iterations:
@@ -245,8 +245,8 @@ def train_loop(
             x_random = \
                 tf.clip_by_value(
                     x_random,
-                    clip_value_min=0.0,
-                    clip_value_max=1.0)
+                    clip_value_min=-0.5,
+                    clip_value_max=+0.5)
             x_iteration += 1
         return \
             denormalizer(
@@ -276,11 +276,9 @@ def train_loop(
         @tf.function
         def denoise_fn(x_input):
             # denoised merged
-            x_denoised = \
-                denoiser(x_input, training=True)
+            x_denoised = denoiser(x_input, training=True)
             # denoised denormalized
-            x_denoised_denormalized = \
-                denormalizer(x_denoised, training=False)
+            x_denoised_denormalized = denormalizer(x_denoised, training=False)
             return x_denoised, x_denoised_denormalized
 
         # --- define decompose fn
@@ -354,8 +352,8 @@ def train_loop(
                         denoised_batch = \
                             tf.clip_by_value(
                                 denoised_batch,
-                                clip_value_min=0.0,
-                                clip_value_max=1.0)
+                                clip_value_min=-0.5,
+                                clip_value_max=0.5)
                         noisy_batch = (denormalized_denoised_batch + noisy_batch) / 2
                         normalized_noisy_batch = (denoised_batch + normalized_noisy_batch) / 2
 
@@ -410,6 +408,7 @@ def train_loop(
                     test_image = tf.expand_dims(test_image, axis=0)
                     test_image = tf.image.resize(test_image, size=(128, 128))
                     decomposed_image = decompose_fn(test_image)
+                    decomposed_image = decomposed_image + 0.5
                     decomposed_image = tf.transpose(decomposed_image, perm=(3, 1, 2, 0))
                     tf.summary.image(
                         name=f"test_output_decomposition_0",

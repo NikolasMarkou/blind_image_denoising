@@ -1,7 +1,7 @@
 {
   "model_denoise": {
     "filters": 16,
-    "no_layers": 6,
+    "no_layers": 12,
     "min_value": 0,
     "add_var": false,
     "max_value": 255,
@@ -22,7 +22,13 @@
     "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
-    "kernel_regularizer": "l1"
+    "kernel_regularizer": {
+      "type": "erf",
+      "config": {
+          "l2_coefficient": 0.00,
+          "l1_coefficient": 0.01
+      }
+    }
   },
    "train": {
     "epochs": 20,

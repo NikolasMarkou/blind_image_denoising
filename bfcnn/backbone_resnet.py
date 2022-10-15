@@ -9,7 +9,6 @@ from .custom_logger import logger
 from .utilities import conv2d_wrapper, mean_sigma_local
 from .backbone_blocks import resnet_blocks_full, sparse_block
 
-
 # ---------------------------------------------------------------------
 
 
@@ -20,8 +19,6 @@ def builder(
         filters: int,
         filter_multiplier: int = 2,
         activation: str = "relu",
-        base_activation: str = "relu",
-        final_activation: str = "linear",
         use_bn: bool = True,
         use_bias: bool = False,
         kernel_regularizer="l1",
@@ -51,7 +48,7 @@ def builder(
     :param filter_multiplier: multiply filters in the middle conv
     :param activation: activation of the convolutional layers
     :param dropout_rate: probability of resnet block shutting off
-    :param use_bn: use batch normalization
+    :param use_bn: Use Batch Normalization
     :param use_bias: use bias
     :param kernel_regularizer: Kernel weight regularizer
     :param kernel_initializer: Kernel weight initializer
@@ -93,7 +90,7 @@ def builder(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation=base_activation,
+        activation="linear",
         kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
@@ -116,7 +113,7 @@ def builder(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation="linear",
+        activation=activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
     )
@@ -151,7 +148,7 @@ def builder(
         padding="same",
         use_bias=use_bias,
         # this must be the same as the base
-        activation=base_activation,
+        activation="linear",
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -251,20 +248,13 @@ def builder(
             bn_params=None,
             threshold_sigma=1.0)
 
-    # set final activation
-    if final_activation is not None and \
-            len(final_activation) > 0 and \
-            final_activation != "linear":
-        x = \
-            tf.keras.layers.Activation(final_activation)(x)
-
     # optional clipping
     if add_clip:
         x = \
             tf.clip_by_value(
                 x,
-                clip_value_min=0.0,
-                clip_value_max=1.0)
+                clip_value_min=-0.5,
+                clip_value_max=+0.5)
 
     # --- output layer branches here,
     output_layer = \
@@ -278,3 +268,5 @@ def builder(
             outputs=output_layer)
 
 # ---------------------------------------------------------------------
+
+
