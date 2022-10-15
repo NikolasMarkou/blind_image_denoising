@@ -276,9 +276,11 @@ def train_loop(
         @tf.function
         def denoise_fn(x_input):
             # denoised merged
-            x_denoised = denoiser(x_input, training=True)
+            x_denoised = \
+                denoiser(x_input, training=True)
             # denoised denormalized
-            x_denoised_denormalized = denormalizer(x_denoised, training=False)
+            x_denoised_denormalized = \
+                denormalizer(x_denoised, training=False)
             return x_denoised, x_denoised_denormalized
 
         # --- define decompose fn
