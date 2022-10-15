@@ -26,7 +26,7 @@
       "type": "erf",
       "config": {
           "l2_coefficient": 0.00,
-          "l1_coefficient": 0.01
+          "l1_coefficient": 0.025
       }
     }
   },
@@ -54,7 +54,7 @@
     }
   },
   "loss": {
-    "hinge": 0.0,
+    "hinge": 0.5,
     "cutoff": 255.0,
     "mae_multiplier": 1.0,
     "regularization": 0.01
