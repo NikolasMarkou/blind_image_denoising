@@ -241,8 +241,6 @@ def builder(
             conv_params=base_1_conv_params,
             channelwise_scaling=None)
 
-    x = keras.layers.Dropout()(x)
-
     if add_initial_bn:
         x = tf.keras.layers.BatchNormalization(**bn_params)(x)
 
