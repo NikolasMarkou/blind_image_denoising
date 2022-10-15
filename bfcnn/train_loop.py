@@ -246,7 +246,7 @@ def train_loop(
                 tf.clip_by_value(
                     x_random,
                     clip_value_min=0.0,
-                    clip_value_max=0.1)
+                    clip_value_max=1.0)
             x_iteration += 1
         return \
             denormalizer(
