@@ -116,7 +116,7 @@ def builder(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation=activation,
+        activation="linear",
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
     )
