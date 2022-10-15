@@ -9,6 +9,7 @@ from .custom_logger import logger
 from .utilities import conv2d_wrapper, mean_sigma_local
 from .backbone_blocks import resnet_blocks_full, sparse_block
 
+
 # ---------------------------------------------------------------------
 
 
@@ -19,7 +20,8 @@ def builder(
         filters: int,
         filter_multiplier: int = 2,
         activation: str = "relu",
-        final_activation: str = "sigmoid",
+        base_activation: str = "relu",
+        final_activation: str = "linear",
         use_bn: bool = True,
         use_bias: bool = False,
         kernel_regularizer="l1",
@@ -35,7 +37,7 @@ def builder(
         add_final_bn: bool = False,
         add_concat_input: bool = False,
         add_selector: bool = False,
-        add_clip: bool = False,
+        add_clip: bool = True,
         add_sparse_features: bool = False,
         name="resnet",
         **kwargs) -> keras.Model:
@@ -91,7 +93,7 @@ def builder(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation="linear",
+        activation=base_activation,
         kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
@@ -149,7 +151,7 @@ def builder(
         padding="same",
         use_bias=use_bias,
         # this must be the same as the base
-        activation="linear",
+        activation=base_activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -250,8 +252,11 @@ def builder(
             threshold_sigma=1.0)
 
     # set final activation
-    x = \
-        tf.keras.layers.Activation(final_activation)(x)
+    if final_activation is not None and \
+            len(final_activation) > 0 and \
+            final_activation != "linear":
+        x = \
+            tf.keras.layers.Activation(final_activation)(x)
 
     # optional clipping
     if add_clip:
@@ -273,5 +278,3 @@ def builder(
             outputs=output_layer)
 
 # ---------------------------------------------------------------------
-
-
