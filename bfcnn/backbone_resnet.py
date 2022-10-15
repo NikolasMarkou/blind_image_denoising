@@ -253,8 +253,8 @@ def builder(
         x = \
             tf.clip_by_value(
                 x,
-                clip_value_min=-0.5,
-                clip_value_max=+0.5)
+                clip_value_min=0.0,
+                clip_value_max=1.0)
 
     # --- output layer branches here,
     output_layer = \
