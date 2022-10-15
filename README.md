@@ -15,11 +15,13 @@ ___
 
 # Blind Image Denoising
 
-## Target
-The target is to create a series of:
+The idea is that denoising is a task orthogonal to most medium/high level computer vision tasks and should always be performed beforehand by a fast, independently trained, bias free network. This would enable any medium/high level vision networks to focus on their main task.
 
-* interpretable
+## Target
+My target is to create a series of:
+
 * multi scale
+* interpretable
 * high performance
 * low memory footprint
  
@@ -27,6 +29,7 @@ models that performs denoising on an input (grayscale or colored) image.
 
 The bias-free nature of the model allows for easy interpretation and use as prior
 for hard inverse problems.
+
 
 ## Interpretation 
 Interpretation comes naturally by implementing the CVPR 2020 paper : 
@@ -37,7 +40,7 @@ This paper provides excellent results
 
 ![](images/readme/bfcnn_noisy_1.png "single channel bias free denoising")
 
-which can also be completely interpretable as a mask per pixel
+The bias-free nature of the model means that it is completely interpretable as a weighted mask per pixel for each pixel as shown below.
 
 ![](images/readme/bfcnn_noisy_2.png "pixel smoothing interpretability")
 
@@ -226,6 +229,8 @@ Custom regularization that gives incentive to convolutional kernels to have high
 4. [Can We Gain More from Orthogonality Regularizations in Training Deep CNNs?](https://arxiv.org/abs/1810.09102)
 5. [Squeeze-and-Excitation Networks](https://arxiv.org/abs/1709.01507)
 
+## Special Thanks
+I would like to thank [Pantelis Georgiades](https://www.linkedin.com/in/pantelisgeor/) and Alexandros Georgiou from the [Cyprus Institute ](https://www.cyi.ac.cy/) for doing precious hyperparameter search for me on their super computer. Their help accelerated my project enormously.
 
 
 
