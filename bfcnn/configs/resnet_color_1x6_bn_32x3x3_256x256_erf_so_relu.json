@@ -1,6 +1,6 @@
 {
   "model_denoise": {
-    "filters": 16,
+    "filters": 32,
     "no_layers": 6,
     "min_value": 0,
     "add_var": false,
@@ -16,7 +16,7 @@
     "add_final_bn": false,
     "output_multiplier": 1.0,
     "local_normalization": -1,
-    "final_activation": "tanh",
+    "final_activation": "linear",
     "channelwise_scaling": false,
     "add_skip_with_input": false,
     "add_residual_between_models": false,

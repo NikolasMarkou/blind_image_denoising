@@ -32,7 +32,7 @@ def builder(
         add_final_bn: bool = False,
         add_concat_input: bool = False,
         add_selector: bool = False,
-        add_clip: bool = True,
+        add_clip: bool = False,
         add_sparse_features: bool = False,
         name="resnet",
         **kwargs) -> keras.Model:
