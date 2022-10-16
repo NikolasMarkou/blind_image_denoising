@@ -59,6 +59,7 @@ def builder(
     :param add_final_bn: add a batch norm after the resnet blocks
     :param add_concat_input: if true concat input to intermediate before projecting
     :param add_selector: if true add a selector block in skip connections
+    :param add_clip: if True squash results with a tanh activation
     :param add_sparse_features: if true set feature map to be sparse
 
     :param name: name of the model
@@ -211,10 +212,7 @@ def builder(
 
     # optional concat and mix with input
     if add_concat_input:
-        y_tmp = y
-        if use_bn:
-            y_tmp = tf.keras.layers.BatchNormalization(**bn_params)(y_tmp)
-        x = tf.keras.layers.Concatenate()([x, y_tmp])
+        x = tf.keras.layers.Concatenate()([x, y])
 
     # optional sparsity, 80% per layer becomes zero
     if add_sparse_features:
