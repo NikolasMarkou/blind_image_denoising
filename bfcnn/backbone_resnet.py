@@ -18,6 +18,7 @@ def builder(
         kernel_size: int,
         filters: int,
         activation: str = "relu",
+        base_activation: str = "linear",
         use_bn: bool = True,
         use_bias: bool = False,
         kernel_regularizer="l1",
@@ -86,7 +87,7 @@ def builder(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation="linear",
+        activation=base_activation,
         kernel_size=kernel_size,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
@@ -120,7 +121,7 @@ def builder(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation=activation,
+        activation=base_activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
