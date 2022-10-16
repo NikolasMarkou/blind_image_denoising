@@ -17,7 +17,6 @@ def builder(
         no_layers: int,
         kernel_size: int,
         filters: int,
-        filter_multiplier: int = 2,
         activation: str = "relu",
         use_bn: bool = True,
         use_bias: bool = False,
@@ -25,7 +24,6 @@ def builder(
         kernel_initializer="glorot_normal",
         dropout_rate: float = -1,
         channelwise_scaling: bool = False,
-        conv_depthwise: bool = False,
         stop_gradient: bool = False,
         add_sparsity: bool = False,
         add_gates: bool = False,
@@ -44,8 +42,7 @@ def builder(
     :param input_dims: Models input dimensions
     :param no_layers: Number of resnet layers
     :param kernel_size: kernel size of the conv layers
-    :param filters: number of filters per convolutional layer
-    :param filter_multiplier: multiply filters in the middle conv
+    :param filters: number of filters per convolutional layernv
     :param activation: activation of the convolutional layers
     :param dropout_rate: probability of resnet block shutting off
     :param use_bn: Use Batch Normalization
@@ -53,7 +50,6 @@ def builder(
     :param kernel_regularizer: Kernel weight regularizer
     :param kernel_initializer: Kernel weight initializer
     :param channelwise_scaling: if True for each full convolutional kernel add a scaling depthwise
-    :param conv_depthwise: if True set the middle convolution as depthwise
     :param stop_gradient: if True stop gradients in each resnet block
     :param add_sparsity: if true add sparsity layer
     :param add_gates: if true add gate layer
@@ -108,7 +104,7 @@ def builder(
     )
 
     first_conv_params = dict(
-        kernel_size=1,
+        kernel_size=3,
         filters=filters,
         strides=(1, 1),
         padding="same",
@@ -118,40 +114,18 @@ def builder(
         kernel_initializer=kernel_initializer,
     )
 
-    if conv_depthwise:
-        second_conv_params = dict(
-            kernel_size=3,
-            depth_multiplier=filter_multiplier,
-            strides=(1, 1),
-            padding="same",
-            use_bias=use_bias,
-            activation=activation,
-            depthwise_regularizer=kernel_regularizer,
-            depthwise_initializer=kernel_initializer
-        )
-    else:
-        second_conv_params = dict(
-            kernel_size=3,
-            filters=filters * filter_multiplier,
-            strides=(1, 1),
-            padding="same",
-            use_bias=use_bias,
-            activation=activation,
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer
-        )
-
-    third_conv_params = dict(
-        kernel_size=1,
+    second_conv_params = dict(
+        kernel_size=3,
         filters=filters,
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        # this must be the same as the base
-        activation="linear",
+        activation=activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
+
+    third_conv_params = None
 
     dropout_params = dict(
         rate=dropout_rate
@@ -220,6 +194,7 @@ def builder(
             bn_params=None,
             conv_params=base_conv_params,
             channelwise_scaling=None)
+
     if add_initial_bn:
         x = tf.keras.layers.BatchNormalization(**bn_params)(x)
 
@@ -248,9 +223,9 @@ def builder(
             bn_params=None,
             threshold_sigma=1.0)
 
-    # optional clipping
+    # optional squashing to [-1, +1]
     if add_clip:
-        x = tf.tanh(x) / 2
+        x = tf.tanh(x)
 
     # --- output layer branches here,
     output_layer = \

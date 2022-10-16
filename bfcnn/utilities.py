@@ -548,15 +548,15 @@ def sparse_block(
 
 def layer_denormalize(args):
     """
-    Convert input [-0.5, +0.5] to [v0, v1] range
+    Convert input [-1.0, +1.0] to [v0, v1] range
     """
     y, v_min, v_max = args
     y_clip = \
         tf.clip_by_value(
             t=y,
-            clip_value_min=-0.5,
-            clip_value_max=0.5)
-    return (y_clip + 0.5) * (v_max - v_min) + v_min
+            clip_value_min=-1.0,
+            clip_value_max=1.0)
+    return (y_clip + 1.0) * (v_max - v_min) + v_min
 
 
 # ---------------------------------------------------------------------
@@ -564,7 +564,7 @@ def layer_denormalize(args):
 
 def layer_normalize(args):
     """
-    Convert input from [v0, v1] to [-0.5, +0.5] range
+    Convert input from [v0, v1] to [-1.0, +1.0] range
     """
     y, v_min, v_max = args
     y_clip = \
@@ -572,7 +572,7 @@ def layer_normalize(args):
             t=y,
             clip_value_min=v_min,
             clip_value_max=v_max)
-    return (y_clip - v_min) / (v_max - v_min) - 0.5
+    return (y_clip - v_min) / (v_max - v_min) - 1.0
 
 
 # ---------------------------------------------------------------------
@@ -595,7 +595,7 @@ def build_normalize_model(
     model_input = tf.keras.Input(shape=input_dims)
 
     # --- normalize input
-    # from [min_value, max_value] to [-0.5, +0.5]
+    # from [min_value, max_value] to [-1.0, +1.0]
     model_output = \
         tf.keras.layers.Lambda(
             function=layer_normalize,
@@ -631,7 +631,7 @@ def build_denormalize_model(
     model_input = tf.keras.Input(shape=input_dims)
 
     # --- normalize input
-    # from [-0.5, +0.5] to [v0, v1] range
+    # from [-1.0, +1.0] to [v0, v1] range
     model_output = \
         tf.keras.layers.Lambda(
             function=layer_denormalize,
