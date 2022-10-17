@@ -1,3 +1,4 @@
+import copy
 import tensorflow as tf
 
 # ---------------------------------------------------------------------
@@ -6,9 +7,10 @@ import tensorflow as tf
 
 from .constants import *
 from .custom_logger import logger
-from .custom_layers import ChannelwiseMultiplier
 from .utilities import conv2d_wrapper, mean_sigma_local
+from .custom_layers import ChannelwiseMultiplier, Multiplier
 from .backbone_blocks import resnet_blocks_full, sparse_block
+
 
 # ---------------------------------------------------------------------
 
@@ -35,6 +37,7 @@ def builder(
         add_concat_input: bool = False,
         add_sparse_features: bool = False,
         add_channelwise_scaling: bool = False,
+        add_learnable_multiplier: bool = False,
         add_mean_sigma_normalization: bool = False,
         name="resnet",
         **kwargs) -> keras.Model:
@@ -54,6 +57,7 @@ def builder(
     :param kernel_regularizer: Kernel weight regularizer
     :param kernel_initializer: Kernel weight initializer
     :param add_channelwise_scaling: if True for each full convolutional kernel add a scaling depthwise
+    :param add_learnable_multiplier:
     :param stop_gradient: if True stop gradients in each resnet block
     :param add_sparsity: if true add sparsity layer
     :param add_gates: if true add gate layer
@@ -127,6 +131,20 @@ def builder(
         third_conv_params=None,
     )
 
+    channelwise_params = dict(
+        multiplier=1.0,
+        regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
+        trainable=True,
+        activation="relu"
+    )
+
+    multiplier_params = dict(
+        multiplier=1.0,
+        regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
+        trainable=True,
+        activation="relu"
+    )
+
     if use_bn:
         resnet_params["bn_params"] = bn_params
 
@@ -167,12 +185,11 @@ def builder(
 
     if add_channelwise_scaling:
         resnet_params["channelwise_params"] = \
-            dict(
-                multiplier=1.0,
-                regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
-                trainable=True,
-                activation="relu"
-            )
+            copy.deepcopy(channelwise_params)
+
+    if add_learnable_multiplier:
+        resnet_params["multiplier_params"] = \
+            copy.deepcopy(multiplier_params)
 
     # --- build model
     # set input
@@ -217,14 +234,13 @@ def builder(
                 bn_params=None,
                 threshold_sigma=1.0)
 
-    # final multiplier
+    # optional final channelwise multiplier
     if add_channelwise_scaling:
-        x = \
-            ChannelwiseMultiplier(
-                multiplier=1.0,
-                regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
-                trainable=True,
-                activation="relu")(x)
+        x = ChannelwiseMultiplier(**channelwise_params)(x)
+
+    # optional final multiplier
+    if add_learnable_multiplier:
+        x = Multiplier(**multiplier_params)(x)
 
     # optional clipping to [-1, +1]
     if add_clip:
@@ -242,5 +258,3 @@ def builder(
             outputs=output_layer)
 
 # ---------------------------------------------------------------------
-
-
