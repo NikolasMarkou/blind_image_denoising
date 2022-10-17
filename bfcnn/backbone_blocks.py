@@ -152,7 +152,7 @@ def resnet_blocks_full(
         if first_conv_params is not None and not bn_first_conv_params:
             x = conv2d_wrapper(input_layer=x,
                                conv_params=copy.deepcopy(first_conv_params),
-                               bn_params=None,
+                               bn_params=bn_params,
                                channelwise_scaling=False)
             x_1st_conv = x
         elif first_conv_params is not None and bn_first_conv_params:
