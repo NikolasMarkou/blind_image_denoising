@@ -12,13 +12,49 @@ from .constants import *
 from .custom_logger import logger
 from .delta import delta_xy_magnitude
 
+# ---------------------------------------------------------------------
+
+
+def delta(
+        x: tf.Tensor,
+        mask: tf.Tensor = None,
+        kernel_size: int = 3,
+        alpha: float = 1.0,
+        beta: float = 1.0,
+        eps: float = DEFAULT_EPSILON,
+        axis: List[int] = [1, 2, 3]):
+    """
+    Computes the delta loss of a layer
+    (alpha * (dI/dx)^2 + beta * (dI/dy)^2) ^ 0.5
+
+    :param x:
+    :param mask: pixels to ignore
+    :param kernel_size: how big the delta kernel should be
+    :param alpha: multiplier of dx
+    :param beta: multiplier of dy
+    :param eps: small value to add for stability
+    :param axis: list of axis to sum against
+    :return: delta loss
+    """
+    dd = \
+        delta_xy_magnitude(
+            input_layer=x,
+            kernel_size=kernel_size,
+            alpha=alpha,
+            beta=beta,
+            eps=eps)
+    if mask is None:
+        return tf.reduce_mean(dd, axis=axis, keepdims=False)
+    dd = dd * mask
+    valid_pixels = tf.reduce_sum(mask, axis=axis, keepdims=False) + eps
+    return tf.reduce_sum(dd, axis=axis, keepdims=False) / valid_pixels
 
 # ---------------------------------------------------------------------
 
 
 def snr(
-        original,
-        prediction,
+        original: tf.Tensor,
+        prediction: tf.Tensor,
         multiplier: float = 10.0,
         base: float = 10.0):
     """
@@ -35,6 +71,7 @@ def snr(
     d_2 = tf.reduce_sum(d_2, axis=[1, 2, 3])
     d_prediction = tf.reduce_sum(prediction, axis=[1, 2, 3])
     # mean over batch
+    # TODO check this again
     result = \
         (tf.reduce_mean(d_prediction, axis=[0]) + DEFAULT_EPSILON) / \
         (tf.reduce_mean(d_2, axis=[0]) + DEFAULT_EPSILON)
@@ -45,8 +82,8 @@ def snr(
 
 
 def mae_weighted_delta(
-        original,
-        prediction,
+        original: tf.Tensor,
+        prediction: tf.Tensor,
         hinge: float = 0.0):
     """
     Mean Absolute Error (mean over channels and batches) with weights
@@ -73,11 +110,15 @@ def mae_weighted_delta(
     d_weight = tf.abs(d_weight)
 
     # --- calculate hinged absolute diff
-    d = tf.abs(original - prediction)
-    d = keras.layers.ReLU(threshold=hinge)(d)
+    d = \
+        tf.keras.activations.relu(
+            x=tf.abs(original - prediction),
+            alpha=0.0,
+            max_value=None,
+            threshold=hinge)
 
     # --- multiply diff and weight
-    d = keras.layers.Multiply()([d, d_weight])
+    d = tf.math.multiply(d, d_weight)
 
     # --- mean over all dims
     d = tf.reduce_mean(d, axis=[1, 2, 3])
@@ -92,7 +133,7 @@ def mae_weighted_delta(
 
 
 def mae_diff(
-        error,
+        error: tf.Tensor,
         hinge: float = 0.0,
         cutoff: float = 255.0):
     """
@@ -102,10 +143,13 @@ def mae_diff(
     :param hinge: hinge value
     :param cutoff: max value
     """
-    d = tf.abs(error)
-    d = keras.layers.ReLU(threshold=hinge, max_value=cutoff)(d)
     # --- mean over all dims
-    d = tf.reduce_mean(d, axis=[1, 2, 3])
+    d = tf.reduce_mean(
+        tf.keras.activations.relu(
+            x=tf.abs(error),
+            threshold=hinge,
+            max_value=cutoff),
+        axis=[1, 2, 3])
     # mean over batch
     return tf.reduce_mean(d, axis=[0])
 
@@ -114,10 +158,9 @@ def mae_diff(
 
 
 def mae(
-        original,
-        prediction,
-        hinge: float = 0.0,
-        cutoff: float = 255.0):
+        original: tf.Tensor,
+        prediction: tf.Tensor,
+        **kwargs):
     """
     Mean Absolute Error (mean over channels and batches)
 
@@ -126,17 +169,19 @@ def mae(
     :param hinge: hinge value
     :param cutoff: max value
     """
-    error = original - prediction
-    return mae_diff(error, hinge=hinge, cutoff=cutoff)
+    return \
+        mae_diff(
+            error=(original - prediction),
+            **kwargs)
 
 
 # ---------------------------------------------------------------------
 
 
 def mse_diff(
-        error,
+        error: tf.Tensor,
         hinge: float = 0,
-        cutoff: float = 255.0):
+        cutoff: float = (255.0 * 255.0)):
     """
     Mean Square Error (mean over channels and batches)
 
@@ -144,8 +189,11 @@ def mse_diff(
     :param hinge: hinge value
     :param cutoff: max value
     """
-    d = tf.square(error)
-    d = keras.layers.ReLU(threshold=hinge, max_value=cutoff)(d)
+    d = \
+        tf.keras.activations.relu(
+            x=tf.square(error),
+            threshold=hinge,
+            max_value=cutoff)(d)
     # mean over all dims
     d = tf.reduce_mean(d, axis=[1, 2, 3])
     # mean over batch
@@ -156,10 +204,9 @@ def mse_diff(
 
 
 def mse(
-        original,
-        prediction,
-        hinge: float = 0,
-        cutoff: float = (255.0 * 255.0)):
+        original: tf.Tensor,
+        prediction: tf.Tensor,
+        **kwargs):
     """
     Mean Square Error (mean over channels and batches)
 
@@ -168,16 +215,17 @@ def mse(
     :param hinge: hinge value
     :param cutoff: max value
     """
-    error = tf.square(original - prediction)
-    return mse_diff(error=error, hinge=hinge, cutoff=cutoff)
+    return mse_diff(
+        error=tf.square(original - prediction),
+        **kwargs)
 
 
 # ---------------------------------------------------------------------
 
 
 def nae(
-        original,
-        prediction,
+        original: tf.Tensor,
+        prediction: tf.Tensor,
         hinge: float = 0):
     """
     Normalized Absolute Error
@@ -187,16 +235,14 @@ def nae(
     :param prediction: denoised image batch
     :param hinge: hinge value
     """
-    d = tf.abs(original - prediction)
-    d = keras.layers.ReLU(threshold=hinge)(d)
+    d = tf.keras.activations.relu(x=tf.abs(original - prediction), threshold=hinge)
     # sum over all dims
     d = tf.reduce_sum(d, axis=[1, 2, 3])
     d_x = tf.reduce_sum(original, axis=[1, 2, 3])
     # mean over batch
-    loss = \
+    return \
         tf.reduce_mean(d, axis=[0]) / \
         (tf.reduce_mean(d_x, axis=[0]) + DEFAULT_EPSILON)
-    return loss
 
 
 # ---------------------------------------------------------------------

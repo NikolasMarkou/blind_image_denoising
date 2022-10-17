@@ -6,6 +6,7 @@ import tensorflow as tf
 
 from .constants import *
 from .custom_logger import logger
+from .custom_layers import ChannelwiseMultiplier
 from .utilities import conv2d_wrapper, mean_sigma_local
 from .backbone_blocks import resnet_blocks_full, sparse_block
 
@@ -33,7 +34,7 @@ def builder(
         add_final_bn: bool = False,
         add_concat_input: bool = False,
         add_selector: bool = False,
-        add_clip: bool = False,
+        add_clip: bool = True,
         add_sparse_features: bool = False,
         name="resnet",
         **kwargs) -> keras.Model:
@@ -222,9 +223,21 @@ def builder(
             bn_params=None,
             threshold_sigma=1.0)
 
-    # optional squashing to [-1, +1]
+    # final multiplier
+    x = \
+        ChannelwiseMultiplier(
+            multiplier=1.0,
+            regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
+            trainable=True,
+            activation="relu")(x)
+
+    # optional clipping to [-1, +1]
     if add_clip:
-        x = tf.tanh(x)
+        x = \
+            tf.clip_by_value(
+                x,
+                clip_value_min=-1.0,
+                clip_value_max=+1.0)
 
     # --- output layer branches here,
     output_layer = \
