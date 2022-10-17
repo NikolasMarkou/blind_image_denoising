@@ -380,7 +380,7 @@ def model_builder(
             input_layer=x,
             bn_params=None,
             conv_params=denoise_final_conv_params,
-            channelwise_scaling=channelwise_params)
+            channelwise_scaling=False)
 
     # cap it off to limit values
     x_result = \
