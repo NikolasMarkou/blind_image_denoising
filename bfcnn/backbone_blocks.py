@@ -68,6 +68,7 @@ def resnet_blocks_full(
         post_addition_activation: str = None,
         expand_type: ExpandType = ExpandType.SAME,
         stop_gradient: bool = False,
+        bn_first_conv_params: bool = False,
         **kwargs):
     """
     Create a series of residual network blocks
@@ -84,11 +85,14 @@ def resnet_blocks_full(
     :param selector_params: selector mixer optional parameters
     :param multiplier_params: learnable multiplier optional parameters
     :param mean_sigma_params: mean sigma normalization parameters
-    :param channelwise_params: if True add a learnable channelwise learnable multiplier
-    :param post_addition_activation: activation after the residual addition, None to disable
+    :param channelwise_params:
+        if True add a learnable channelwise learnable multiplier
+    :param post_addition_activation:
+        activation after the residual addition, None to disable
     :param expand_type: whether to keep same size, compress or expand
     :param stop_gradient: if True, stop gradient before the branch
-    
+    :param bn_first_conv_params:
+        if True, add a BN before the first conv in residual block
     :return: filtered input_layer
     """
     # --- argument check
@@ -96,7 +100,7 @@ def resnet_blocks_full(
         raise ValueError("input_layer must be none")
     if no_layers < 0:
         raise ValueError("no_layers must be >= 0")
-    bn_first_conv_params = kwargs.get("bn_first_conv_params", False)
+
 
     # --- set variables
     use_gate = gate_params is not None
@@ -164,7 +168,7 @@ def resnet_blocks_full(
         if first_conv_params is not None and not bn_first_conv_params:
             x = conv2d_wrapper(input_layer=x,
                                conv_params=copy.deepcopy(first_conv_params),
-                               bn_params=bn_params,
+                               bn_params=None,
                                channelwise_scaling=False)
             x_1st_conv = x
         elif first_conv_params is not None and bn_first_conv_params:

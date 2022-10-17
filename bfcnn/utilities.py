@@ -481,7 +481,7 @@ def sparse_block(
         threshold_sigma: float = 1.0,
         symmetrical: bool = False,
         reverse: bool = False,
-        soft_sparse: bool = True):
+        soft_sparse: bool = False):
     """
     create sparsity in an input layer (keeps only positive)
 
