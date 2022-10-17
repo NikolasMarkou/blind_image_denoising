@@ -66,16 +66,14 @@ def snr(
     :param base: logarithm base
     """
     # mse of prediction
-    d_2 = tf.square(original - prediction)
-    # sum over all dims
-    d_2 = tf.reduce_sum(d_2, axis=[1, 2, 3])
+    d_2 = tf.reduce_sum(tf.square(original - prediction), axis=[1, 2, 3])
     d_prediction = tf.reduce_sum(prediction, axis=[1, 2, 3])
     # mean over batch
-    # TODO check this again
-    result = \
-        (tf.reduce_mean(d_prediction, axis=[0]) + DEFAULT_EPSILON) / \
-        (tf.reduce_mean(d_2, axis=[0]) + DEFAULT_EPSILON)
-    return multiplier * tf.math.log(result) / tf.math.log(base)
+    result = d_prediction / (d_2 + DEFAULT_EPSILON)
+    return \
+        tf.reduce_mean(
+             tf.math.log(result) * (multiplier / tf.math.log(base)),
+            axis=[0])
 
 
 # ---------------------------------------------------------------------
