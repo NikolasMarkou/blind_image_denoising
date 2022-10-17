@@ -91,12 +91,13 @@ def model_builder(
     kernel_regularizer = config.get("kernel_regularizer", "l1")
     backbone_activation = config.get("backbone_activation", None)
     add_skip_with_input = config.get("add_skip_with_input", True)
-    channelwise_scaling = config.get("channelwise_scaling", False)
+    add_channelwise_scaling = config.get("add_channelwise_scaling", False)
     add_sparse_features = config.get("add_sparse_features", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     add_learnable_multiplier = config.get("add_learnable_multiplier", False)
     final_kernel_regularization = config.get("final_kernel_regularization", "l1")
     add_residual_between_models = config.get("add_residual_between_models", False)
+    add_mean_sigma_normalization = config.get("add_mean_sigma_normalization", False)
 
     use_pyramid = pyramid_config is not None
     input_shape = input_shape_fixer(input_shape)
@@ -232,9 +233,10 @@ def model_builder(
         add_concat_input=add_concat_input,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
-        channelwise_scaling=channelwise_scaling,
         add_sparse_features=add_sparse_features,
+        add_channelwise_scaling=add_channelwise_scaling,
         add_learnable_multiplier=add_learnable_multiplier,
+        add_mean_sigma_normalization=add_mean_sigma_normalization,
     )
 
     if model_type == "unet":

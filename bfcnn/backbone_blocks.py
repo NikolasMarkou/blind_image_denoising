@@ -19,8 +19,9 @@ from .utilities import \
     ConvType, \
     sparse_block, \
     dense_wrapper, \
-    conv2d_wrapper
-
+    conv2d_wrapper, \
+    mean_sigma_local, \
+    mean_sigma_global
 
 # ---------------------------------------------------------------------
 
@@ -62,6 +63,7 @@ def resnet_blocks_full(
         dropout_params: Dict = None,
         selector_params: Dict = None,
         multiplier_params: Dict = None,
+        mean_sigma_params: Dict = None,
         channelwise_params: Dict = None,
         post_addition_activation: str = None,
         expand_type: ExpandType = ExpandType.SAME,
@@ -81,6 +83,7 @@ def resnet_blocks_full(
     :param dropout_params: dropout optional parameters
     :param selector_params: selector mixer optional parameters
     :param multiplier_params: learnable multiplier optional parameters
+    :param mean_sigma_params: mean sigma normalization parameters
     :param channelwise_params: if True add a learnable channelwise learnable multiplier
     :param post_addition_activation: activation after the residual addition, None to disable
     :param expand_type: whether to keep same size, compress or expand
@@ -100,6 +103,7 @@ def resnet_blocks_full(
     use_dropout = dropout_params is not None
     use_sparsity = sparse_params is not None
     use_selector = selector_params is not None
+    use_mean_sigma = mean_sigma_params is not None
     use_multiplier = multiplier_params is not None
     use_channelwise = channelwise_params is not None
     use_post_addition_activation = post_addition_activation is not None
@@ -148,6 +152,14 @@ def resnet_blocks_full(
 
         if stop_gradient:
             x = tf.stop_gradient(x)
+
+        if use_mean_sigma:
+            mean_sigma_pool_size = mean_sigma_params.get("pool_size", (11, 11))
+            x_mean, x_sigma = \
+                mean_sigma_local(
+                    input_layer=x,
+                    kernel_size=mean_sigma_pool_size)
+            x = (x - x_mean) / (x_sigma + DEFAULT_EPSILON)
 
         if first_conv_params is not None and not bn_first_conv_params:
             x = conv2d_wrapper(input_layer=x,
