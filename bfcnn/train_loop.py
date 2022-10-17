@@ -241,17 +241,14 @@ def train_loop(
                 stddev=0.25,
                 shape=random_batch_size)
         while x_iteration < random_batch_iterations:
-            x_random = denoiser(x_random, training=False)
             x_random = \
                 tf.clip_by_value(
                     x_random,
                     clip_value_min=-1.0,
                     clip_value_max=+1.0)
+            x_random = denoiser(x_random, training=False)
             x_iteration += 1
-        return \
-            denormalizer(
-                x_random,
-                training=False)
+        return denormalizer(x_random, training=False)
 
     # --- train the model
     with summary_writer.as_default():
