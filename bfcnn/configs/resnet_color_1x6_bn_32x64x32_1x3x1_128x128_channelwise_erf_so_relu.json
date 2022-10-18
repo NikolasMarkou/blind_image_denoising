@@ -10,7 +10,7 @@
     "max_value": 255,
     "type": "resnet",
     "batchnorm": true,
-    "activation": "elu",
+    "activation": "relu",
     "add_gates": false,
     "add_sparsity": false,
     "clip_values": false,
