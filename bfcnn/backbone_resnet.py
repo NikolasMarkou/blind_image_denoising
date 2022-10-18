@@ -52,7 +52,7 @@ def builder(
     :param base_activation: activation of the base layer,
         residual blocks outputs must conform to this
     :param dropout_rate: probability of resnet block shutting off
-    :param use_bn: Use Batch Normalization
+    :param use_bn: use batch normalization
     :param use_bias: use bias
     :param kernel_regularizer: Kernel weight regularizer
     :param kernel_initializer: Kernel weight initializer
@@ -68,7 +68,6 @@ def builder(
     :param add_selector: if true add a selector block in skip connections
     :param add_clip: if True squash results with a tanh activation
     :param add_sparse_features: if true set feature map to be sparse
-
     :param name: name of the model
 
     :return: resnet model
