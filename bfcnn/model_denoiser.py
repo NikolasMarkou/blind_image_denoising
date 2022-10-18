@@ -83,6 +83,8 @@ def model_builder(
     add_sparsity = config.get("add_sparsity", False)
     add_laplacian = config.get("add_laplacian", True)
     stop_gradient = config.get("stop_gradient", False)
+    block_kernels = config.get("block_kernels", (3, 3))
+    block_filters = config.get("block_filters", (32, 32))
     add_initial_bn = config.get("add_initial_bn", False)
     add_concat_input = config.get("add_concat_input", False)
     input_shape = config.get("input_shape", (None, None, 3))
@@ -227,6 +229,8 @@ def model_builder(
         add_sparsity=add_sparsity,
         dropout_rate=dropout_rate,
         add_final_bn=add_final_bn,
+        block_kernels=block_kernels,
+        block_filters=block_filters,
         add_laplacian=add_laplacian,
         stop_gradient=stop_gradient,
         add_initial_bn=add_initial_bn,

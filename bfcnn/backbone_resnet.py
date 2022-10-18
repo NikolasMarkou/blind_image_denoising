@@ -1,5 +1,6 @@
 import copy
 import tensorflow as tf
+from typing import List
 
 # ---------------------------------------------------------------------
 # local imports
@@ -20,6 +21,8 @@ def builder(
         no_layers: int,
         kernel_size: int,
         filters: int,
+        block_kernels: List[int] = [3, 3],
+        block_filters: List[int] = [32, 32],
         activation: str = "relu",
         base_activation: str = "linear",
         use_bn: bool = True,
@@ -46,8 +49,10 @@ def builder(
 
     :param input_dims: Models input dimensions
     :param no_layers: Number of resnet layers
-    :param kernel_size: kernel size of the conv layers
-    :param filters: number of filters per convolutional layer
+    :param kernel_size: kernel size of base convolutional layer
+    :param filters: filters of base convolutional layer
+    :param block_kernels: kernel size of per res-block convolutional layer
+    :param block_filters: filters per res-block convolutional layer
     :param activation: activation of the convolutional layers
     :param base_activation: activation of the base layer,
         residual blocks outputs must conform to this
@@ -76,6 +81,14 @@ def builder(
     logger.info("building resnet backbone")
     logger.info(f"parameters not used: {kwargs}")
 
+    # --- argument checking
+    if len(block_kernels) <= 0:
+        raise ValueError("len(block_kernels) must be >= 0 ")
+    if len(block_filters) <= 0:
+        raise ValueError("len(block_filters) must be >= 0 ")
+    if len(block_kernels) != len(block_filters):
+        raise ValueError("len(block_filters) must == len(block_kernels)")
+
     # --- setup parameters
     bn_params = \
         dict(
@@ -86,29 +99,7 @@ def builder(
         )
 
     base_conv_params = dict(
-        filters=filters,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation=base_activation,
         kernel_size=kernel_size,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
-    first_conv_params = dict(
-        kernel_size=3,
-        filters=filters,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation=activation,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer,
-    )
-
-    second_conv_params = dict(
-        kernel_size=3,
         filters=filters,
         strides=(1, 1),
         padding="same",
@@ -117,17 +108,32 @@ def builder(
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
+
+    convs_params = [None] * 3
+
+    for i in range(len(block_kernels)):
+        convs_params[i] = dict(
+            kernel_size=block_kernels[i],
+            filters=block_filters[i],
+            strides=(1, 1),
+            padding="same",
+            use_bias=use_bias,
+            activation=activation,
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer,
+        )
 
     resnet_params = dict(
         bn_params=None,
         sparse_params=None,
         no_layers=no_layers,
         selector_params=None,
-        stop_gradient=stop_gradient,
+        multiplier_params=None,
         channelwise_params=None,
-        first_conv_params=first_conv_params,
-        second_conv_params=second_conv_params,
-        third_conv_params=None,
+        stop_gradient=stop_gradient,
+        first_conv_params=convs_params[0],
+        second_conv_params=convs_params[1],
+        third_conv_params=convs_params[2],
     )
 
     channelwise_params = dict(
@@ -139,7 +145,7 @@ def builder(
 
     multiplier_params = dict(
         multiplier=1.0,
-        regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
+        regularizer=keras.regularizers.L1(DEFAULT_MULTIPLIER_L1),
         trainable=True,
         activation="relu"
     )
