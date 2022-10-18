@@ -28,7 +28,7 @@ def builder(
         kernel_initializer="glorot_normal",
         dropout_rate: float = -1,
         stop_gradient: bool = False,
-        add_clip: bool = True,
+        add_clip: bool = False,
         add_gates: bool = False,
         add_selector: bool = False,
         add_sparsity: bool = False,
