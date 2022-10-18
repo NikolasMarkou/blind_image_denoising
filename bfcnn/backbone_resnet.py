@@ -84,10 +84,13 @@ def builder(
     # --- argument checking
     if len(block_kernels) <= 0:
         raise ValueError("len(block_kernels) must be >= 0 ")
+    if len(block_kernels) > 3:
+        raise ValueError("len(block_kernels) must be <= 3")
     if len(block_filters) <= 0:
         raise ValueError("len(block_filters) must be >= 0 ")
     if len(block_kernels) != len(block_filters):
         raise ValueError("len(block_filters) must == len(block_kernels)")
+
 
     # --- setup parameters
     bn_params = \
@@ -111,7 +114,8 @@ def builder(
 
     convs_params = [None] * 3
 
-    for i in range(len(block_kernels)):
+    no_blocks = len(block_kernels)
+    for i in range(no_blocks):
         convs_params[i] = dict(
             kernel_size=block_kernels[i],
             filters=block_filters[i],
@@ -122,6 +126,8 @@ def builder(
             kernel_regularizer=kernel_regularizer,
             kernel_initializer=kernel_initializer,
         )
+    # set the final activation to be the same as the base activation
+    convs_params[no_blocks-1]["activation"] = base_activation
 
     resnet_params = dict(
         bn_params=None,
