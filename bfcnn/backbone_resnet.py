@@ -91,7 +91,6 @@ def builder(
     if len(block_kernels) != len(block_filters):
         raise ValueError("len(block_filters) must == len(block_kernels)")
 
-
     # --- setup parameters
     bn_params = \
         dict(
