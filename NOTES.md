@@ -9,8 +9,8 @@ resnet
 * kernels: 1x3x1
 * resolution: 256x256
 * extra: 
-  * channelwise -> turns off around 16 feature maps completely
-  * erf
+  * channelwise -> with 0.001 turns off around 16 feature maps completely
+  * erf: l1 0.025
   * relu
   * batchnorm
 * parameters: 135k
