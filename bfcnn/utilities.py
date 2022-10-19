@@ -476,12 +476,12 @@ def mean_sigma_global(
 
 
 def sparse_block(
-        input_layer,
+        input_layer: tf.Tensor,
         bn_params: Dict = None,
         threshold_sigma: float = 1.0,
         symmetrical: bool = False,
         reverse: bool = False,
-        soft_sparse: bool = False):
+        soft_sparse: bool = False) -> tf.Tensor:
     """
     create sparsity in an input layer (keeps only positive)
 
@@ -543,6 +543,30 @@ def sparse_block(
             x,
         ])
 
+# ---------------------------------------------------------------------
+
+
+def stats_2d_block(
+        input_layer: tf.Tensor) -> tf.Tensor:
+    """
+    compute the basic stats of a tensor per channel
+    """
+    x = input_layer
+    x_max = tf.reduce_max(x, axis=[1, 2], keepdims=False)
+    x_min = tf.reduce_min(x, axis=[1, 2], keepdims=False)
+    x_mean = tf.reduce_mean(x, axis=[1, 2], keepdims=True)
+    x_variance = \
+        tf.reduce_mean(
+            tf.square(x - x_mean), axis=[1, 2], keepdims=False)
+    x_sigma = tf.sqrt(x_variance + DEFAULT_EPSILON)
+    x_mean = tf.squeeze(x_mean, axis=[1, 2])
+    return \
+        tf.keras.layers.Concatenate(axis=-1)([
+            x_max,
+            x_min,
+            x_mean,
+            x_sigma
+        ])
 # ---------------------------------------------------------------------
 
 
