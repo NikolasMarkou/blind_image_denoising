@@ -1,7 +1,6 @@
 r"""Constructs the loss function of the blind image denoising"""
 
 import tensorflow as tf
-from tensorflow import keras
 from typing import List, Dict, Callable
 
 # ---------------------------------------------------------------------
@@ -11,6 +10,7 @@ from typing import List, Dict, Callable
 from .constants import *
 from .custom_logger import logger
 from .delta import delta_xy_magnitude
+
 
 # ---------------------------------------------------------------------
 
@@ -22,7 +22,7 @@ def delta(
         alpha: float = 1.0,
         beta: float = 1.0,
         eps: float = DEFAULT_EPSILON,
-        axis: List[int] = [1, 2, 3]):
+        axis: List[int] = [1, 2, 3]) -> tf.Tensor:
     """
     Computes the delta loss of a layer
     (alpha * (dI/dx)^2 + beta * (dI/dy)^2) ^ 0.5
@@ -46,8 +46,9 @@ def delta(
     if mask is None:
         return tf.reduce_mean(dd, axis=axis, keepdims=False)
     dd = dd * mask
-    valid_pixels = tf.reduce_sum(mask, axis=axis, keepdims=False) + eps
+    valid_pixels = tf.reduce_sum(mask, axis=axis, keepdims=False) + 1
     return tf.reduce_sum(dd, axis=axis, keepdims=False) / valid_pixels
+
 
 # ---------------------------------------------------------------------
 
@@ -56,7 +57,7 @@ def snr(
         original: tf.Tensor,
         prediction: tf.Tensor,
         multiplier: float = 10.0,
-        base: float = 10.0):
+        base: float = 10.0) -> tf.Tensor:
     """
     Signal-to-noise ratio expressed in dB
 
@@ -72,7 +73,7 @@ def snr(
     result = d_prediction / (d_2 + DEFAULT_EPSILON)
     return \
         tf.reduce_mean(
-             tf.math.log(result) * (multiplier / tf.math.log(base)),
+            tf.math.log(result) * (multiplier / tf.math.log(base)),
             axis=[0])
 
 
@@ -100,11 +101,10 @@ def mae_weighted_delta(
 
     d_weight = \
         original_delta / \
-        (tf.abs(tf.reduce_max(
+        (tf.reduce_max(
             input_tensor=original_delta,
             axis=[1, 2],
-            keepdims=True)) +
-         DEFAULT_EPSILON)
+            keepdims=True) + DEFAULT_EPSILON)
     d_weight = tf.abs(d_weight)
 
     # --- calculate hinged absolute diff
@@ -224,7 +224,7 @@ def mse(
 def nae(
         original: tf.Tensor,
         prediction: tf.Tensor,
-        hinge: float = 0):
+        hinge: float = 0) -> tf.Tensor:
     """
     Normalized Absolute Error
     (sum over width, height, channel and mean over batches)
@@ -233,10 +233,14 @@ def nae(
     :param prediction: denoised image batch
     :param hinge: hinge value
     """
-    d = tf.keras.activations.relu(x=tf.abs(original - prediction), threshold=hinge)
+    d = tf.keras.activations.relu(
+            x=tf.abs(original - prediction),
+            threshold=hinge)
+
     # sum over all dims
     d = tf.reduce_sum(d, axis=[1, 2, 3])
     d_x = tf.reduce_sum(original, axis=[1, 2, 3])
+
     # mean over batch
     return \
         tf.reduce_mean(d, axis=[0]) / \
@@ -263,14 +267,17 @@ def loss_function_builder(
     # --- mae
     mae_multiplier = tf.constant(config.get("mae_multiplier", 1.0))
 
+    # --- delta
+    delta_multiplier = tf.constant(config.get("delta_multiplier", 0.0))
+
     # --- regularization
     regularization_multiplier = tf.constant(config.get("regularization", 1.0))
 
     def loss_function(
-            input_batch,
-            prediction_batch,
-            noisy_batch,
-            model_losses) -> Dict:
+            input_batch: tf.Tensor,
+            prediction_batch: tf.Tensor,
+            noisy_batch: tf.Tensor,
+            model_losses: tf.Tensor) -> Dict[str, tf.Tensor]:
         """
         The loss function of the depth prediction model
 

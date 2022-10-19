@@ -91,9 +91,9 @@ DELTA_Y_LAYERS = {
 
 
 def delta(
-        input_layer,
+        input_layer: tf.Tensor,
         kernel_size: int = 3,
-        transpose: bool = False):
+        transpose: bool = False) -> tf.Tensor:
     """
     Compute delta x for each channel layer
 
@@ -111,8 +111,8 @@ def delta(
 
 
 def delta_x(
-        input_layer,
-        kernel_size: int = 3):
+        input_layer: tf.Tensor,
+        kernel_size: int = 3) -> tf.Tensor:
     """
     Compute delta x for each channel layer
 
@@ -128,8 +128,8 @@ def delta_x(
 
 
 def delta_y(
-        input_layer,
-        kernel_size: int = 3):
+        input_layer: tf.Tensor,
+        kernel_size: int = 3) -> tf.Tensor:
     """
     Compute delta y for each channel layer
 
@@ -144,11 +144,11 @@ def delta_y(
 # ---------------------------------------------------------------------
 
 def delta_xy_magnitude(
-        input_layer,
+        input_layer: tf.Tensor,
         kernel_size: int = 3,
         alpha: float = 1.0,
         beta: float = 1.0,
-        eps: float = DEFAULT_EPSILON):
+        eps: float = DEFAULT_EPSILON) -> tf.Tensor:
     """
     Computes the delta loss of a layer
     (alpha * (dI/dx)^2 + beta * (dI/dy)^2) ^ 0.5
@@ -163,11 +163,10 @@ def delta_xy_magnitude(
     """
     dx = delta_x(input_layer, kernel_size=kernel_size)
     dy = delta_y(input_layer, kernel_size=kernel_size)
-    dx = tf.square(dx)
-    dy = tf.square(dy)
     return \
         tf.sqrt(
-            tf.abs(dx * alpha + dy * beta) +
+            tf.square(dx) * alpha +
+            tf.square(dy) * beta +
             eps)
 
 # ---------------------------------------------------------------------
