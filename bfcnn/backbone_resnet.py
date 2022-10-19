@@ -62,7 +62,7 @@ def builder(
     :param kernel_regularizer: Kernel weight regularizer
     :param kernel_initializer: Kernel weight initializer
     :param add_channelwise_scaling: if True for each full convolutional kernel add a scaling depthwise
-    :param add_learnable_multiplier:
+    :param add_learnable_multiplier: if True add a learnable multiplier
     :param stop_gradient: if True stop gradients in each resnet block
     :param add_sparsity: if true add sparsity layer
     :param add_gates: if true add gate layer
