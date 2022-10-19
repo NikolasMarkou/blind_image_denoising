@@ -379,14 +379,16 @@ def model_builder(
             input_layer=x,
             bn_params=None,
             conv_params=denoise_intermediate_conv_params,
-            channelwise_scaling=channelwise_params)
+            channelwise_scaling=channelwise_params,
+            multiplier_scaling=add_learnable_multiplier)
 
     x = \
         conv2d_wrapper(
             input_layer=x,
             bn_params=None,
             conv_params=denoise_final_conv_params,
-            channelwise_scaling=False)
+            channelwise_scaling=False,
+            multiplier_scaling=False)
 
     # cap it off to limit values
     x_result = \
