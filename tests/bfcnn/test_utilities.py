@@ -119,10 +119,8 @@ def test_stats_2d_block(input_dims):
     assert len(results.shape) == 2
     assert results.shape[0] == tensor.shape[0]
     assert results.shape[1] == (tensor.shape[3] * 4)
-
     channels = input_dims[3]
 
-    print(results[0, :])
     # max
     results_max = results[0, 0]
     assert results_max < 2.0
