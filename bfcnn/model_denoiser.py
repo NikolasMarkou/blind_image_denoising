@@ -314,6 +314,9 @@ def model_builder(
             if previous_level is None:
                 current_level_output = backbone_models[i](x_level)
             else:
+                # TODO verify this
+                # previous_level = \
+                #     tf.stop_gradient(previous_level)
                 previous_level = \
                     keras.layers.UpSampling2D(
                         **upsampling_params)(previous_level)
@@ -321,7 +324,8 @@ def model_builder(
                     conv2d_wrapper(
                         input_layer=previous_level,
                         conv_params=residual_conv_params,
-                        channelwise_scaling=True)
+                        channelwise_scaling=add_channelwise_scaling,
+                        multiplier_scaling=add_learnable_multiplier)
                 current_level_input = \
                     keras.layers.Add()([previous_level, x_level])
                 current_level_output = backbone_models[i](current_level_input)
