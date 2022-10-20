@@ -24,3 +24,8 @@ results
 
 #### Notes
 indication for higher channelwise regularization
+
+## General
+
+* SoftOrthogonal works but needs to find correct parameters
+* Erf definately works
