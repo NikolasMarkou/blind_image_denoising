@@ -150,8 +150,7 @@ def model_builder(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        # this must be linear because it is capped later
-        activation="linear",
+        activation="tanh",
         filters=input_shape[channel_index],
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
@@ -327,7 +326,7 @@ def model_builder(
                         channelwise_scaling=add_channelwise_scaling,
                         multiplier_scaling=add_learnable_multiplier)
                 current_level_input = \
-                    keras.layers.Add()([previous_level, x_level])
+                    tf.keras.layers.Concatenate(axis=-1)([previous_level, x_level])
                 current_level_output = backbone_models[i](current_level_input)
             previous_level = current_level_output
             x_levels[i] = current_level_output

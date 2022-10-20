@@ -101,7 +101,6 @@ def resnet_blocks_full(
     if no_layers < 0:
         raise ValueError("no_layers must be >= 0")
 
-
     # --- set variables
     use_gate = gate_params is not None
     use_dropout = dropout_params is not None
@@ -117,29 +116,21 @@ def resnet_blocks_full(
     # global averaging looses too much information
     if use_gate:
         pool_bias = gate_params.get("bias", 2.5)
-        pool_type = gate_params.get("pool_type", "avg")
-        pool_size = gate_params.get("pool_size", (16, 16))
-
-        pool_params = dict(
-            pool_size=pool_size,
-            padding="same",
-            strides=(1, 1)
-        )
-
-        if pool_type == "max":
-            pool = tf.keras.layers.MaxPooling2D
-        elif pool_type == "avg":
-            pool = tf.keras.layers.AveragePooling2D
-        else:
-            raise ValueError(f"not valid pool_type [{pool_type}[")
-
         gate_conv_params = dict(
-            kernel_size=1,
+            kernel_size=3,
             strides=(1, 1),
             padding="same",
             use_bias=False,
-            activation="linear",
-            filters=third_conv_params["filters"],
+            activation="relu",
+            filters=third_conv_params["filters"] / 2,
+            kernel_regularizer=third_conv_params.get("kernel_regularizer", "l1"),
+            kernel_initializer=third_conv_params.get("kernel_initializer", "glorot_normal")
+        )
+
+        gate_dense_params = dict(
+            units=third_conv_params["filters"],
+            use_bias=False,
+            activation="relu",
             kernel_regularizer=third_conv_params.get("kernel_regularizer", "l1"),
             kernel_initializer=third_conv_params.get("kernel_initializer", "glorot_normal")
         )
@@ -152,6 +143,7 @@ def resnet_blocks_full(
         x_1st_conv = None
         x_2nd_conv = None
         x_3rd_conv = None
+        gate_layer = None
         previous_layer = x
 
         if stop_gradient:
@@ -171,12 +163,14 @@ def resnet_blocks_full(
                                bn_params=None,
                                channelwise_scaling=False)
             x_1st_conv = x
+            gate_layer = x_1st_conv
         elif first_conv_params is not None and bn_first_conv_params:
             x = conv2d_wrapper(input_layer=x,
                                conv_params=copy.deepcopy(first_conv_params),
                                bn_params=bn_params,
                                channelwise_scaling=False)
             x_1st_conv = x
+            gate_layer = x_1st_conv
 
         if second_conv_params is not None:
             x = conv2d_wrapper(input_layer=x,
@@ -184,21 +178,28 @@ def resnet_blocks_full(
                                bn_params=bn_params,
                                channelwise_scaling=False)
             x_2nd_conv = x
-
+            gate_layer = x_2nd_conv
+        # ---
         if third_conv_params is not None:
             x = conv2d_wrapper(input_layer=x,
                                conv_params=copy.deepcopy(third_conv_params),
                                bn_params=bn_params,
                                channelwise_scaling=False)
             x_3rd_conv = x
+            gate_layer = x_3rd_conv
 
         # compute activation per channel
         if use_gate:
-            y = pool(**pool_params)(x_2nd_conv)
-            y = conv2d_wrapper(input_layer=y,
+            y = conv2d_wrapper(input_layer=gate_layer,
                                conv_params=copy.deepcopy(gate_conv_params),
-                               bn_params=None,
-                               channelwise_scaling=True)
+                               bn_params=bn_params,
+                               channelwise_scaling=True,
+                               multiplier_scaling=True)
+            y = tf.reduce_mean(y, axis=[1, 2], keepdims=False)
+            y = tf.keras.layers.Dense(**gate_dense_params)(y)
+            y = tf.expand_dims(y, axis=2)
+            y = tf.expand_dims(y, axis=3)
+
             # if x < -2.5: return 0
             # if x > 2.5: return 1
             # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
@@ -259,8 +260,7 @@ def resnet_blocks_full(
                     selector_layer=x_2nd_conv,
                     filters=third_conv_params["filters"],
                     kernel_regularizer=third_conv_params.get("kernel_regularizer", "l1"),
-                    kernel_initializer=third_conv_params.get("kernel_initializer", "glorot_normal"),
-                    selector_params=selector_params)
+                    kernel_initializer=third_conv_params.get("kernel_initializer", "glorot_normal"))
         else:
             # skip connection
             x = tf.keras.layers.Add()([x, previous_layer])
@@ -647,10 +647,7 @@ def selector_mixer_block(
         input_2_layer,
         selector_layer,
         filters: int,
-        stop_gradient: bool = False,
         bn_params: Dict = None,
-        selector_params: Dict = None,
-        sparse_params: Dict = None,
         kernel_regularizer: str = "l1",
         kernel_initializer: str = "glorot_normal",
         **kwargs):
@@ -661,34 +658,22 @@ def selector_mixer_block(
     :return: filtered input_layer
     """
     # --- set variables
-    use_sparse = sparse_params is not None
-
     # out squeeze and excite gating does not use global avg
     # followed by dense layer, because we are using this on large images
     # global averaging looses too much information
-    pool_bias = selector_params.get("bias", 2.5)
-    pool_type = selector_params.get("pool_type", "avg")
-    pool_size = selector_params.get("pool_size", (1, 1))
-
-    pool_params = dict(
-        pool_size=pool_size,
-        padding="same",
-        strides=(1, 1)
-    )
-
-    if pool_type == "max":
-        pool = tf.keras.layers.MaxPooling2D
-    elif pool_type == "avg":
-        pool = tf.keras.layers.AveragePooling2D
-    else:
-        raise ValueError(f"not valid pool_type [{pool_type}[")
-
-    selector_params = dict(
-        kernel_size=1,
+    selector_conv_params = dict(
+        kernel_size=3,
         strides=(1, 1),
         padding="same",
         use_bias=False,
-        filters=filters,
+        filters=filters/2,
+        activation="relu",
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer)
+
+    selector_dense_params = dict(
+        units=filters,
+        use_bias=False,
         activation="relu",
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer)
@@ -696,33 +681,25 @@ def selector_mixer_block(
     # --- setup network
     x = selector_layer
 
-    if stop_gradient:
-        x = tf.stop_gradient(x)
-
-    if pool_size == (1, 1) or pool_size == 1:
-        y = x
-    else:
-        y = pool(**pool_params)(x)
-
-    if use_sparse:
-        y = sparse_block(input_layer=y,
-                         bn_params=None,
-                         threshold_sigma=1.0)
-
     # transformation
-    y = conv2d_wrapper(input_layer=y,
-                       conv_params=copy.deepcopy(selector_params),
+    x = conv2d_wrapper(input_layer=x,
+                       conv_params=copy.deepcopy(selector_conv_params),
                        bn_params=bn_params,
-                       channelwise_scaling=False)
+                       channelwise_scaling=True,
+                       multiplier_scaling=True)
+
+    x = tf.reduce_mean(x, axis=[1, 2], keepdims=False)
+
+    x = tf.keras.layers.Dense(**selector_dense_params)(x)
 
     # if x < -2.5: return 0
     # if x > 2.5: return 1
     # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
-    y = tf.keras.activations.hard_sigmoid(pool_bias - y)
+    x = tf.keras.activations.hard_sigmoid(2.5 - x)
 
     return \
-        tf.keras.layers.Multiply()([input_1_layer, y]) + \
-        tf.keras.layers.Multiply()([input_2_layer, 1.0 - y])
+        tf.keras.layers.Multiply()([input_1_layer, x]) + \
+        tf.keras.layers.Multiply()([input_2_layer, 1.0 - x])
 
 # ---------------------------------------------------------------------
 
