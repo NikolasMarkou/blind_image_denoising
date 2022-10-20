@@ -83,26 +83,29 @@ def snr(
 def mae_weighted_delta(
         original: tf.Tensor,
         prediction: tf.Tensor,
-        hinge: float = 0.0):
+        hinge: float = 0.0,
+        cutoff: float = 255.0) -> tf.Tensor:
     """
     Mean Absolute Error (mean over channels and batches) with weights
 
     :param original: original image batch
     :param prediction: denoised image batch
     :param hinge: hinge value
+    :param cutoff: max value
+
+    :return: mean absolute error weighted by delta
     """
-    original_delta = \
+    d_weight = \
         delta_xy_magnitude(
             input_layer=original,
             kernel_size=5,
             alpha=1.0,
             beta=1.0,
             eps=DEFAULT_EPSILON)
-
     d_weight = \
-        original_delta / \
+        d_weight / \
         (tf.reduce_max(
-            input_tensor=original_delta,
+            input_tensor=d_weight,
             axis=[1, 2],
             keepdims=True) + DEFAULT_EPSILON)
     d_weight = tf.abs(d_weight)
@@ -112,7 +115,7 @@ def mae_weighted_delta(
         tf.keras.activations.relu(
             x=tf.abs(original - prediction),
             alpha=0.0,
-            max_value=None,
+            max_value=cutoff,
             threshold=hinge)
 
     # --- multiply diff and weight
@@ -122,9 +125,7 @@ def mae_weighted_delta(
     d = tf.reduce_mean(d, axis=[1, 2, 3])
 
     # --- mean over batch
-    loss = tf.reduce_mean(d, axis=[0])
-
-    return loss
+    return tf.reduce_mean(d, axis=[0])
 
 
 # ---------------------------------------------------------------------
@@ -133,13 +134,15 @@ def mae_weighted_delta(
 def mae_diff(
         error: tf.Tensor,
         hinge: float = 0.0,
-        cutoff: float = 255.0):
+        cutoff: float = 255.0) -> tf.Tensor:
     """
     Mean Absolute Error (mean over channels and batches)
 
     :param error: original image batch
     :param hinge: hinge value
     :param cutoff: max value
+
+    :return: mean absolute error
     """
     # --- mean over all dims
     d = tf.reduce_mean(
@@ -268,7 +271,7 @@ def loss_function_builder(
     mae_multiplier = tf.constant(config.get("mae_multiplier", 1.0))
 
     # --- delta
-    delta_multiplier = tf.constant(config.get("delta_multiplier", 0.0))
+    use_delta = tf.constant(config.get("use_delta", False))
 
     # --- regularization
     regularization_multiplier = tf.constant(config.get("regularization", 1.0))
@@ -287,17 +290,24 @@ def loss_function_builder(
         :param model_losses: weight/regularization losses
         :return: dictionary of losses
         """
-
-        # --- mean absolute error from prediction
-        error = input_batch - prediction_batch
+        # --- actual mean absolute error (no hinge or cutoff)
         mae_actual = \
-            mae_diff(
-                error=error,
-                hinge=0)
+            mae(original=input_batch, prediction=prediction_batch, hinge=0.0, cutoff=255.0)
 
         # --- loss prediction on mae
-        mae_prediction_loss = \
-            mae_diff(error=error, hinge=hinge, cutoff=cutoff)
+        if use_delta:
+            mae_prediction_loss = \
+                mae_weighted_delta(
+                    original=input_batch,
+                    prediction=prediction_batch,
+                    hinge=hinge,
+                    cutoff=cutoff)
+        else:
+            mae_prediction_loss = \
+                mae(original=input_batch,
+                    prediction=prediction_batch,
+                    hinge=hinge,
+                    cutoff=cutoff)
 
         # ---
         nae_noise = nae(input_batch, noisy_batch)
