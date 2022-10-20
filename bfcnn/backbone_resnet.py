@@ -112,7 +112,6 @@ def builder(
     )
 
     convs_params = [None] * 3
-
     no_blocks = len(block_kernels)
     for i in range(no_blocks):
         convs_params[i] = dict(
