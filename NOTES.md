@@ -27,5 +27,7 @@ indication for higher channelwise regularization
 
 ## General
 
-* SoftOrthogonal works but needs to find correct parameters
-* Erf definately works
+* Channelwise multiplier works well but regularization needs to be an order higher than the conv layers
+* Multiplier gives slighlty better results if combined with Channelwise but regularization needs to be an order higher than Channelwise
+* SoftOrthogonal works but we need to find correct parameters and it is very slow to train
+* Erf works well by giving incentive to convolutions to spread out
