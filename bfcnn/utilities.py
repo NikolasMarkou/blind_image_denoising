@@ -17,9 +17,7 @@ from .constants import *
 from .custom_logger import logger
 from .custom_layers import \
     Multiplier, \
-    RandomOnOff, \
-    ChannelwiseMultiplier, \
-    DifferentiableReluLayer
+    ChannelwiseMultiplier
 
 # ---------------------------------------------------------------------
 
@@ -107,6 +105,17 @@ def merge_iterators(
             if value is not empty:
                 yield value
 
+# ---------------------------------------------------------------------
+
+
+def probabilistic_drop_off(
+        iterator: Iterable,
+        probability: float = 0.5):
+    for value in iterator:
+        if np.random.uniform(low=0, high=1.0, size=None) > probability:
+            yield value * 0.0
+        else:
+            yield value
 
 # ---------------------------------------------------------------------
 

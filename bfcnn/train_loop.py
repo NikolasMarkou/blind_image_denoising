@@ -14,8 +14,8 @@ from .visualize import visualize
 from .custom_logger import logger
 from .loss import loss_function_builder
 from .optimizer import optimizer_builder
-from .utilities import load_config, load_image
 from .model_denoiser import model_builder as model_denoise_builder
+from .utilities import load_config, load_image, probabilistic_drop_off
 from .dataset import dataset_builder, DATASET_FN_STR, AUGMENTATION_FN_STR
 from .pruning import prune_function_builder, PruneStrategy, get_conv2d_weights
 
@@ -81,12 +81,12 @@ def train_loop(
     # --- get the train configuration
     train_config = config["train"]
     epochs = train_config["epochs"]
+    use_probabilistic_gradient_drop_off = \
+        train_config.get("use_probabilistic_drop_off", False)
     same_sample_iterations = train_config.get("same_sample_iterations", 1)
     global_total_epochs = tf.Variable(
         epochs, trainable=False, dtype=tf.dtypes.int64, name="global_total_epochs")
-    trace_every = train_config.get("trace_every", 100)
     weight_buckets = train_config.get("weight_buckets", 100)
-    error_buckets = train_config.get("error_buckets", 255)
     total_steps = \
         tf.constant(
             train_config.get("total_steps", -1),
@@ -356,8 +356,12 @@ def train_loop(
 
                 # run one step of gradient descent by updating
                 # the value of the variables to minimize the loss.
-                optimizer.apply_gradients(
-                    grads_and_vars=zip(grads, model_denoise_weights))
+                if use_probabilistic_gradient_drop_off:
+                    optimizer.apply_gradients(
+                        grads_and_vars=zip(probabilistic_drop_off(grads), model_denoise_weights))
+                else:
+                    optimizer.apply_gradients(
+                        grads_and_vars=zip(grads, model_denoise_weights))
 
                 # --- add loss summaries for tensorboard
                 for name, key in [
