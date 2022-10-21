@@ -23,6 +23,7 @@ def builder(
         filters: int,
         block_kernels: List[int] = [3, 3],
         block_filters: List[int] = [32, 32],
+        block_groups: List[int] = None,
         block_depthwise: List[int] = None,
         activation: str = "relu",
         base_activation: str = "linear",
@@ -54,6 +55,7 @@ def builder(
     :param filters: filters of base convolutional layer
     :param block_kernels: kernel size of per res-block convolutional layer
     :param block_filters: filters per res-block convolutional layer
+    :param block_groups: groups to use pe res-block
     :param block_depthwise: depthwise multipliers per block, leave empty or full of -1 to disable
     :param activation: activation of the convolutional layers
     :param base_activation: activation of the base layer,
@@ -87,6 +89,10 @@ def builder(
     if block_depthwise is None or \
             len(block_depthwise) == 0:
         block_depthwise = [-1] * len(block_kernels)
+
+    if block_groups is None or \
+            len(block_groups) == 0:
+        block_groups = [1] * len(block_kernels)
 
     # --- argument checking
     if len(block_kernels) <= 0:
@@ -132,6 +138,7 @@ def builder(
                 padding="same",
                 use_bias=use_bias,
                 activation=activation,
+                groups=block_groups[i],
                 kernel_regularizer=kernel_regularizer,
                 kernel_initializer=kernel_initializer,
             )
@@ -143,8 +150,9 @@ def builder(
                 padding="same",
                 use_bias=use_bias,
                 activation=activation,
+                groups=block_groups[i],
                 depthwise_regularizer=kernel_regularizer,
-                bias_initializer=kernel_initializer,
+                depthwise_initializer=kernel_initializer,
             )
     # set the final activation to be the same as the base activation
     convs_params[no_blocks-1]["activation"] = base_activation

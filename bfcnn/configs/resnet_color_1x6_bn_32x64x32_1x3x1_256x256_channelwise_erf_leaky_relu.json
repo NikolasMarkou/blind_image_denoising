@@ -19,7 +19,7 @@
     "output_multiplier": 1.0,
     "final_activation": "tanh",
     "add_channelwise_scaling": true,
-    "add_learnable_multiplier": true,
+    "add_learnable_multiplier": false,
     "add_skip_with_input": false,
     "add_residual_between_models": false,
     "input_shape": ["?", "?", 3],
