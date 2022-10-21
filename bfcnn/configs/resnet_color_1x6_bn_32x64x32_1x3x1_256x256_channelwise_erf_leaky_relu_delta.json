@@ -18,7 +18,6 @@
     "add_final_bn": false,
     "output_multiplier": 1.0,
     "final_activation": "tanh",
-    "add_selector": true,
     "add_channelwise_scaling": true,
     "add_learnable_multiplier": false,
     "add_skip_with_input": false,
@@ -59,6 +58,7 @@
   "loss": {
     "hinge": 0.5,
     "cutoff": 255.0,
+    "use_delta": true,
     "mae_multiplier": 1.0,
     "regularization": 0.01
   },
