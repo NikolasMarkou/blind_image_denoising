@@ -326,7 +326,7 @@ def model_builder(
                         channelwise_scaling=add_channelwise_scaling,
                         multiplier_scaling=add_learnable_multiplier)
                 current_level_input = \
-                    tf.keras.layers.Concatenate(axis=-1)([previous_level, x_level])
+                    tf.keras.layers.Add()([previous_level, x_level])
                 current_level_output = backbone_models[i](current_level_input)
             previous_level = current_level_output
             x_levels[i] = current_level_output

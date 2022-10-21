@@ -1,6 +1,6 @@
 {
   "model_denoise": {
-    "filters": 32,
+    "filters": 16,
     "no_layers": 6,
     "kernel_size": 7,
     "block_kernels": [1, 3, 1],

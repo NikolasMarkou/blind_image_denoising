@@ -23,6 +23,7 @@ def builder(
         filters: int,
         block_kernels: List[int] = [3, 3],
         block_filters: List[int] = [32, 32],
+        block_depthwise: List[int] = None,
         activation: str = "relu",
         base_activation: str = "linear",
         use_bn: bool = True,
@@ -53,12 +54,13 @@ def builder(
     :param filters: filters of base convolutional layer
     :param block_kernels: kernel size of per res-block convolutional layer
     :param block_filters: filters per res-block convolutional layer
+    :param block_depthwise: depthwise multipliers per block, leave empty or full of -1 to disable
     :param activation: activation of the convolutional layers
     :param base_activation: activation of the base layer,
         residual blocks outputs must conform to this
     :param dropout_rate: probability of resnet block shutting off
     :param use_bn: use batch normalization
-    :param use_bias: use bias
+    :param use_bias: use bias (bias free means this should be off
     :param kernel_regularizer: Kernel weight regularizer
     :param kernel_initializer: Kernel weight initializer
     :param add_channelwise_scaling: if True for each full convolutional kernel add a scaling depthwise
@@ -81,6 +83,11 @@ def builder(
     logger.info("building resnet backbone")
     logger.info(f"parameters not used: {kwargs}")
 
+    # --- argument fixing
+    if block_depthwise is None or \
+            len(block_depthwise) == 0:
+        block_depthwise = [-1] * len(block_kernels)
+
     # --- argument checking
     if len(block_kernels) <= 0:
         raise ValueError("len(block_kernels) must be >= 0 ")
@@ -90,6 +97,9 @@ def builder(
         raise ValueError("len(block_filters) must be >= 0 ")
     if len(block_kernels) != len(block_filters):
         raise ValueError("len(block_filters) must == len(block_kernels)")
+    if block_depthwise is not None and \
+            (len(block_depthwise) != len(block_kernels)):
+        raise ValueError("len(block_depthwise) must == len(block_kernels)")
 
     # --- setup parameters
     bn_params = \
@@ -114,16 +124,28 @@ def builder(
     convs_params = [None] * 3
     no_blocks = len(block_kernels)
     for i in range(no_blocks):
-        convs_params[i] = dict(
-            kernel_size=block_kernels[i],
-            filters=block_filters[i],
-            strides=(1, 1),
-            padding="same",
-            use_bias=use_bias,
-            activation=activation,
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer,
-        )
+        if block_depthwise[i] == -1:
+            convs_params[i] = dict(
+                kernel_size=block_kernels[i],
+                filters=block_filters[i],
+                strides=(1, 1),
+                padding="same",
+                use_bias=use_bias,
+                activation=activation,
+                kernel_regularizer=kernel_regularizer,
+                kernel_initializer=kernel_initializer,
+            )
+        else:
+            convs_params[i] = dict(
+                kernel_size=block_kernels[i],
+                depth_multiplier=block_depthwise[i],
+                strides=(1, 1),
+                padding="same",
+                use_bias=use_bias,
+                activation=activation,
+                depthwise_regularizer=kernel_regularizer,
+                bias_initializer=kernel_initializer,
+            )
     # set the final activation to be the same as the base activation
     convs_params[no_blocks-1]["activation"] = base_activation
 
