@@ -1,7 +1,5 @@
-# ---------------------------------------------------------------------
-
 __author__ = "Nikolas Markou"
-__version__ = "1.0.0"
+__version__ = "2.0.1"
 __license__ = "MIT"
 
 # ---------------------------------------------------------------------
@@ -16,8 +14,8 @@ from typing import Union
 # ---------------------------------------------------------------------
 
 from .train_loop import train_loop
-from .export_model_denoise import export_model
-from .model_denoise import model_builder
+from .export_model_denoiser import export_model
+from .model_denoiser import model_builder
 from .utilities import \
     logger, load_config, load_image
 from .pyramid import \
@@ -41,10 +39,15 @@ current_dir = pathlib.Path(__file__).parent.resolve()
 
 configs_dir = current_dir / "configs"
 
-configs = [
-    load_config(str(c))
+CONFIGS = [
+    (os.path.basename(str(c)), load_config(str(c)))
     for c in configs_dir.glob("*.json")
 ]
+
+CONFIGS_DICT = {
+    os.path.splitext(os.path.basename(str(c)))[0]: load_config(str(c))
+    for c in configs_dir.glob("*.json")
+}
 
 # ---------------------------------------------------------------------
 
@@ -102,7 +105,7 @@ def load_model(model_path: str):
 
 
 __all__ = [
-    configs,
+    CONFIGS,
     train_loop,
     load_model,
     load_image,

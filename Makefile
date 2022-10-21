@@ -17,4 +17,4 @@ clean:
 	rm -rf .pytest_cache
 
 test: clean
-	pytest -sv --show-capture all
+	pytest -sv --show-capture all --disable-pytest-warnings

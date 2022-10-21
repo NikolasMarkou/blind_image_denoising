@@ -86,7 +86,23 @@ def optimizer_builder(
 
     # --- read configuration
     schedule_config = config["schedule"]
-    gradient_clipping_by_norm = config.get("gradient_clipping_by_norm", 1.0)
+
+    # --- gradient clipping configuration
+    # clip by value (every gradient independently)
+    gradient_clipvalue = \
+        config.get("gradient_clipping_by_value", None)
+    # clip by norm (every gradient independently)
+    gradient_clipnorm = \
+        config.get("gradient_clipping_by_norm_local", None)
+    # clip by norm all together
+    gradient_global_clipnorm = \
+        config.get("gradient_clipping_by_norm", None)
+
+    gradient_kwargs = dict(
+        clipvalue=gradient_clipvalue,
+        clipnorm=gradient_clipnorm,
+        global_clipnorm=gradient_global_clipnorm
+    )
 
     # --- set up schedule
     lr_schedule = \
@@ -95,7 +111,7 @@ def optimizer_builder(
     return \
         keras.optimizers.RMSprop(
             learning_rate=lr_schedule,
-            global_clipnorm=gradient_clipping_by_norm),\
+            **gradient_kwargs),\
         lr_schedule
 
 # ---------------------------------------------------------------------

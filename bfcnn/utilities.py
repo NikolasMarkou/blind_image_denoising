@@ -1,20 +1,25 @@
 import os
 import json
-import keras
 import itertools
+from enum import Enum
+
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
+from tensorflow import keras
 from typing import List, Tuple, Union, Dict, Iterable
 
 # ---------------------------------------------------------------------
 # local imports
 # ---------------------------------------------------------------------
 
+from .constants import *
 from .custom_logger import logger
-from .constants import EPSILON_DEFAULT
-from .activations import differentiable_relu, differentiable_relu_layer
-from .custom_layers import Multiplier, RandomOnOff, ChannelwiseMultiplier
+from .custom_layers import \
+    Multiplier, \
+    RandomOnOff, \
+    ChannelwiseMultiplier, \
+    DifferentiableReluLayer
 
 # ---------------------------------------------------------------------
 
@@ -42,7 +47,7 @@ def load_image(
     x = tf.keras.preprocessing.image.img_to_array(x)
     x = np.array([x])
     if normalize:
-        x = ((x / 255.0) * 2.0) - 1.0
+        x = layer_normalize((x, 0.0, 255.0))
     return x
 
 # ---------------------------------------------------------------------
@@ -102,6 +107,39 @@ def merge_iterators(
             if value is not empty:
                 yield value
 
+
+# ---------------------------------------------------------------------
+
+
+def gaussian_kernel(
+        size: Tuple[int, int],
+        nsig: Tuple[float, float],
+        dtype: np.float64) -> np.ndarray:
+    """
+    builds a 2D Gaussian kernel array
+
+    :param size: size of of the grid
+    :param nsig: max value out of the gaussian on the xy axis
+    :param dtype: number type
+    :return: 2d gaussian grid
+    """
+    assert len(nsig) == 2
+    assert len(size) == 2
+    kern1d = [
+        np.linspace(
+            start=-np.abs(nsig[i]),
+            stop=np.abs(nsig[i]),
+            num=size[i],
+            endpoint=True,
+            dtype=dtype)
+        for i in range(2)
+    ]
+    x, y = np.meshgrid(kern1d[0], kern1d[1])
+    d = np.sqrt(x * x + y * y)
+    sigma, mu = 1.0, 0.0
+    g = np.exp(-((d - mu) ** 2 / (2.0 * (sigma ** 2))))
+    return g / g.sum()
+
 # ---------------------------------------------------------------------
 
 
@@ -143,15 +181,17 @@ def normal_empirical_cdf(
 # ---------------------------------------------------------------------
 
 
-def random_choice(x, size, axis=0):
+def random_choice(
+        x: tf.Tensor,
+        size: int = 1,
+        axis: int = 0) -> tf.Tensor:
     """
     Randomly select size options from x
     """
     dim_x = tf.cast(tf.shape(x)[axis], tf.int64)
     indices = tf.range(0, dim_x, dtype=tf.int64)
     sample_index = tf.random.shuffle(indices)[:size]
-    sample = tf.gather(x, sample_index, axis=axis)
-    return sample
+    return tf.gather(x, sample_index, axis=axis)
 
 # ---------------------------------------------------------------------
 
@@ -193,18 +233,50 @@ def coords_layer(
 # ---------------------------------------------------------------------
 
 
+class ConvType(Enum):
+    CONV2D = 0
+
+    CONV2D_DEPTHWISE = 1
+
+    CONV2D_TRANSPOSE = 2
+
+    @staticmethod
+    def from_string(type_str: str) -> "ConvType":
+        # --- argument checking
+        if type_str is None:
+            raise ValueError("type_str must not be null")
+        if not isinstance(type_str, str):
+            raise ValueError("type_str must be string")
+        type_str = type_str.strip().upper()
+        if len(type_str) <= 0:
+            raise ValueError("stripped type_str must not be empty")
+
+        # --- clean string and get
+        return ConvType[type_str]
+
+    def to_string(self) -> str:
+        return self.name
+
+
 def conv2d_wrapper(
         input_layer,
         conv_params: Dict,
         bn_params: Dict = None,
-        depthwise_scaling: bool = False):
+        pre_activation: str = None,
+        channelwise_scaling: bool = False,
+        multiplier_scaling: bool = False,
+        conv_type: Union[ConvType, str] = ConvType.CONV2D):
     """
     wraps a conv2d with a preceding normalizer
 
     :param input_layer: the layer to operate on
     :param conv_params: conv2d parameters
     :param bn_params: batchnorm parameters, None to disable bn
-    :param depthwise_scaling: if True add a learnable point-wise depthwise scaling conv2d at the end
+    :param pre_activation: activation after the batchnorm, None to disable
+    :param conv_type: if true use depthwise convolution,
+    :param channelwise_scaling: if True add a learnable channel wise scaling at the end
+    :param multiplier_scaling: if True add a learnable single scale at the end
+
     :return: transformed input
     """
     # --- argument checking
@@ -215,25 +287,56 @@ def conv2d_wrapper(
 
     # --- prepare arguments
     use_bn = bn_params is not None
+    use_pre_activation = pre_activation is not None
+    # TODO restructure this
+    if isinstance(conv_type, str):
+        conv_type = ConvType.from_string(conv_type)
+    if "depth_multiplier" in conv_params:
+        if conv_type != ConvType.CONV2D_DEPTHWISE:
+            logger.info("Changing conv_type to CONV2D_DEPTHWISE because it contains depth_multiplier argument "
+                        f"[conv_params[\'depth_multiplier\']={conv_params['depth_multiplier']}]")
+        conv_type = ConvType.CONV2D_DEPTHWISE
+    if "dilation_rate" in conv_params:
+        if conv_type != ConvType.CONV2D_TRANSPOSE:
+            logger.info("Changing conv_type to CONV2D_TRANSPOSE because it contains dilation argument "
+                        f"[conv_params[\'dilation_rate\']={conv_params['dilation_rate']}]")
+        conv_type = ConvType.CONV2D_TRANSPOSE
 
-    # --- perform the transformations
+    # --- perform batchnorm and preactivation
     x = input_layer
+
     if use_bn:
         x = tf.keras.layers.BatchNormalization(**bn_params)(x)
-    # ideally this should be orthonormal
-    x = tf.keras.layers.Conv2D(**conv_params)(x)
-    # learn the proper scale of the previous layer
-    if depthwise_scaling:
-        x = tf.keras.layers.DepthwiseConv2D(
-            use_bias=False,
-            strides=(1, 1),
-            padding="same",
-            depth_multiplier=1,
-            kernel_size=(1, 1),
-            activation="linear",
-            depthwise_initializer="ones",
-            depthwise_regularizer="l1")(x)
+    if use_pre_activation:
+        x = tf.keras.layers.Activation(pre_activation)(x)
+
+    # --- convolution
+    if conv_type == ConvType.CONV2D:
+        x = tf.keras.layers.Conv2D(**conv_params)(x)
+    elif conv_type == ConvType.CONV2D_DEPTHWISE:
+        x = tf.keras.layers.DepthwiseConv2D(**conv_params)(x)
+    elif conv_type == ConvType.CONV2D_TRANSPOSE:
+        x = tf.keras.layers.Conv2DTranspose(**conv_params)(x)
+    else:
+        raise ValueError(f"don't know how to handle this [{conv_type}]")
+
+    # --- learn the proper scale of the previous layer
+    if channelwise_scaling:
+        x = \
+            ChannelwiseMultiplier(
+                multiplier=1.0,
+                regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
+                trainable=True,
+                activation="relu")(x)
+    if multiplier_scaling:
+        x = \
+            Multiplier(
+                multiplier=1.0,
+                regularizer=keras.regularizers.L1(DEFAULT_MULTIPLIER_L1),
+                trainable=True,
+                activation="relu")(x)
     return x
+
 
 # ---------------------------------------------------------------------
 
@@ -272,52 +375,6 @@ def dense_wrapper(
     if use_elementwise:
         x = ChannelwiseMultiplier(**elementwise_params)(x)
     return x
-
-# ---------------------------------------------------------------------
-
-
-def learnable_per_channel_multiplier_layer(
-        input_layer,
-        multiplier: float = 1.0,
-        activation: str = "linear",
-        kernel_regularizer: str = "l1",
-        trainable: bool = True):
-    """
-    Constant learnable multiplier layer
-
-    :param input_layer: input layer to be multiplied
-    :param multiplier: multiplication constant
-    :param activation: activation after the filter (linear by default)
-    :param kernel_regularizer: regularize kernel weights (None by default)
-    :param trainable: whether this layer is trainable or not
-    :return: multiplied input_layer
-    """
-    # --- initialise to set kernel to required value
-    def kernel_init(shape, dtype):
-        kernel = np.zeros(shape)
-        for i in range(shape[2]):
-            kernel[:, :, i, 0] = \
-                np.random.normal(scale=EPSILON_DEFAULT, loc=0.0)
-        return kernel
-    x = \
-        tf.keras.layers.DepthwiseConv2D(
-            kernel_size=1,
-            padding="same",
-            strides=(1, 1),
-            use_bias=False,
-            depth_multiplier=1,
-            trainable=trainable,
-            activation=activation,
-            kernel_initializer=kernel_init,
-            depthwise_initializer=kernel_init,
-            kernel_regularizer=kernel_regularizer)(input_layer)
-    # different scenarios
-    if multiplier == 0.0:
-        return x
-    if multiplier == 1.0:
-        return input_layer + x
-    return (multiplier * input_layer) + x
-
 
 # ---------------------------------------------------------------------
 
@@ -365,7 +422,7 @@ def mean_variance_local(
 def mean_sigma_local(
         input_layer,
         kernel_size: Tuple[int, int] = (5, 5),
-        epsilon: float = EPSILON_DEFAULT):
+        epsilon: float = DEFAULT_EPSILON):
     """
     calculate window mean per channel and window sigma per channel
 
@@ -390,13 +447,13 @@ def mean_sigma_local(
 def mean_sigma_global(
         input_layer,
         axis: List[int] = [1, 2, 3],
-        sigma_epsilon: float = EPSILON_DEFAULT):
+        epsilon: float = DEFAULT_EPSILON):
     """
     Create a global mean sigma per channel
 
     :param input_layer:
     :param axis:
-    :param sigma_epsilon: small number to add for robust sigma calculation
+    :param epsilon: small number to add for robust sigma calculation
     :return:
     """
     # --- argument checking
@@ -406,107 +463,110 @@ def mean_sigma_global(
     if len(shape) != 4:
         raise ValueError("input_layer must be a 4d tensor")
 
-    # --- compute mean and sigma
-    def func(x):
-        mean = tf.keras.backend.mean(x, axis=axis, keepdims=True)
-        diff_2 = tf.keras.backend.square(x - mean)
-        variance = tf.keras.backend.mean(diff_2, axis=axis, keepdims=True)
-        sigma = tf.keras.backend.sqrt(variance + sigma_epsilon)
-        return mean, sigma
+    # --- build block
+    x = input_layer
+    mean = tf.reduce_mean(x, axis=axis, keepdims=True)
+    diff_2 = tf.square(x - mean)
+    variance = tf.reduce_mean(diff_2, axis=axis, keepdims=True)
+    sigma = tf.sqrt(variance + epsilon)
+    return mean, sigma
 
-    return \
-        tf.keras.layers.Lambda(
-            function=func,
-            trainable=False)(input_layer)
 
 # ---------------------------------------------------------------------
 
 
 def sparse_block(
-        input_layer,
+        input_layer: tf.Tensor,
         bn_params: Dict = None,
         threshold_sigma: float = 1.0,
-        max_value: float = None,
-        symmetric: bool = True,
-        per_channel_sparsity: bool = False):
+        symmetrical: bool = False,
+        reverse: bool = False,
+        soft_sparse: bool = False) -> tf.Tensor:
     """
-    Create sparsity in an input layer
+    create sparsity in an input layer (keeps only positive)
 
     :param input_layer:
-    :param bn_params: batch norm parameters
-    :param threshold_sigma: sparsity of the results
-    :param max_value: max allowed value
-    :param symmetric: if true allow negative values else zero them off
-    :param per_channel_sparsity: if true perform sparsity on per channel level
+    :param bn_params: batch norm parameters, leave None for disabling
+    :param threshold_sigma: sparsity of the results (assuming negative values in input)
+    -3 -> 0.1% sparsity
+    -2 -> 2.3% sparsity
+    -1 -> 15.9% sparsity
+    0  -> 50% sparsity
+    +1 -> 84.1% sparsity
+    +2 -> 97.7% sparsity
+    +3 -> 99.9% sparsity
+    :param symmetrical: if True use abs values, if False cutoff negatives
+    :param reverse: if True cutoff large values, if False cutoff small values
+    :param soft_sparse: if True use sigmoid, if False use relu
 
     :return: sparse results
     """
     # --- argument checking
     if threshold_sigma < 0:
         raise ValueError("threshold_sigma must be >= 0")
-    if max_value is not None and max_value < 0:
-        raise ValueError("max_value must be >= 0")
-    if max_value is not None and threshold_sigma > max_value:
-        raise ValueError("threshold_sigma must be <= max_value")
+
+    # --- set variables
     use_bn = bn_params is not None
 
-    # --- function building
-    def func_norm(args):
-        x, mean_x, sigma_x = args
-        return (x - mean_x) / sigma_x
+    # --- build sparse block
+    x = input_layer
 
-    def func_abs_sign(args):
-        y = args
-        y_abs = tf.abs(y)
-        y_sign = tf.sign(y)
-        return y_abs, y_sign
-
-    # --- computation is relu((mean-x)/sigma) with custom threshold
-    # compute axis to perform mean/sigma calculation on
+    # normalize
     if use_bn:
-        # learnable model
         x_bn = \
             tf.keras.layers.BatchNormalization(
-                **bn_params)(input_layer)
+                **bn_params)(x)
     else:
-        # not learnable model
-        shape = tf.keras.backend.int_shape(input_layer)
-        int_shape = len(shape)
-        k = 1
-        if per_channel_sparsity:
-            k = 2
-        axis = list([i + 1 for i in range(max(int_shape - k, 1))])
-        mean, sigma = \
-            mean_sigma_global(
-                input_layer,
-                axis=axis)
-        x_bn = \
-            tf.keras.layers.Lambda(func_norm, trainable=False)([
-                input_layer, mean, sigma])
+        mean, sigma = mean_sigma_global(input_layer=x)
+        x_bn = (x - mean) / (sigma + DEFAULT_EPSILON)
 
-    # ---
-    if symmetric:
-        x_abs, x_sign = \
-            tf.keras.layers.Lambda(func_abs_sign, trainable=False)(x_bn)
-        x_relu = \
-            differentiable_relu(
-                input_layer=x_abs,
-                threshold=threshold_sigma,
-                max_value=max_value)
-        x_result = \
-            tf.keras.layers.Multiply()([
-                x_relu,
-                x_sign,
-            ])
+    if symmetrical:
+        x_bn = tf.abs(x_bn)
+
+    # threshold based on normalization
+    # keep only positive above threshold
+    if soft_sparse:
+        x_binary = \
+            tf.nn.sigmoid(x_bn - threshold_sigma)
     else:
-        x_result = \
-            differentiable_relu(
-                input_layer=x_bn,
-                threshold=threshold_sigma,
-                max_value=max_value)
+        x_binary = \
+            tf.nn.relu(tf.sign(x_bn - threshold_sigma))
 
-    return x_result
+    # focus on small values
+    if reverse:
+        x_binary = 1.0 - x_binary
 
+    # zero out values below the threshold
+    return \
+        tf.keras.layers.Multiply()([
+            x_binary,
+            x,
+        ])
+
+# ---------------------------------------------------------------------
+
+
+def stats_2d_block(
+        input_layer: tf.Tensor) -> tf.Tensor:
+    """
+    compute the basic stats of a tensor per channel
+    """
+    x = input_layer
+    x_max = tf.reduce_max(x, axis=[1, 2], keepdims=False)
+    x_min = tf.reduce_min(x, axis=[1, 2], keepdims=False)
+    x_mean = tf.reduce_mean(x, axis=[1, 2], keepdims=True)
+    x_variance = \
+        tf.reduce_mean(
+            tf.square(x - x_mean), axis=[1, 2], keepdims=False)
+    x_sigma = tf.sqrt(x_variance + DEFAULT_EPSILON)
+    x_mean = tf.squeeze(x_mean, axis=[1, 2])
+    return \
+        tf.keras.layers.Concatenate(axis=-1)([
+            x_max,
+            x_min,
+            x_mean,
+            x_sigma
+        ])
 # ---------------------------------------------------------------------
 
 
@@ -528,7 +588,7 @@ def layer_denormalize(args):
 
 def layer_normalize(args):
     """
-    Convert input from [v0, v1] to [-0.5, +0.5] range
+    Convert input from [v0, v1] to [-1.0, +1.0] range
     """
     y, v_min, v_max = args
     y_clip = \
@@ -595,7 +655,7 @@ def build_denormalize_model(
     model_input = tf.keras.Input(shape=input_dims)
 
     # --- normalize input
-    # from [min_value, max_value] to [-0.5, +0.5]
+    # from [-0.5, +0.5] to [v0, v1] range
     model_output = \
         tf.keras.layers.Lambda(
             function=layer_denormalize,

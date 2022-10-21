@@ -1,22 +1,14 @@
-# ---------------------------------------------------------------------
-
-__author__ = "Nikolas Markou"
-__version__ = "1.0.0"
-__license__ = "MIT"
-
-# ---------------------------------------------------------------------
-
-import keras
 import numpy as np
 from typing import List
 import tensorflow as tf
+from tensorflow import keras
 
 # ---------------------------------------------------------------------
 # local imports
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .constants import EPSILON_DEFAULT
+from .constants import DEFAULT_EPSILON
 
 # ---------------------------------------------------------------------
 
@@ -99,9 +91,9 @@ DELTA_Y_LAYERS = {
 
 
 def delta(
-        input_layer,
+        input_layer: tf.Tensor,
         kernel_size: int = 3,
-        transpose: bool = False):
+        transpose: bool = False) -> tf.Tensor:
     """
     Compute delta x for each channel layer
 
@@ -119,13 +111,14 @@ def delta(
 
 
 def delta_x(
-        input_layer,
-        kernel_size: int = 3):
+        input_layer: tf.Tensor,
+        kernel_size: int = 3) -> tf.Tensor:
     """
     Compute delta x for each channel layer
 
     :param input_layer: input layer to be filtered
     :param kernel_size: 2,3,4,5
+
     :return: filtered input_layer
     """
     return DELTA_X_LAYERS[kernel_size](input_layer)
@@ -135,13 +128,14 @@ def delta_x(
 
 
 def delta_y(
-        input_layer,
-        kernel_size: int = 3):
+        input_layer: tf.Tensor,
+        kernel_size: int = 3) -> tf.Tensor:
     """
     Compute delta y for each channel layer
 
     :param input_layer: input layer to be filtered
     :param kernel_size: 2,3,4,5
+
     :return: filtered input_layer
     """
     return DELTA_Y_LAYERS[kernel_size](input_layer)
@@ -150,11 +144,11 @@ def delta_y(
 # ---------------------------------------------------------------------
 
 def delta_xy_magnitude(
-        input_layer,
+        input_layer: tf.Tensor,
         kernel_size: int = 3,
         alpha: float = 1.0,
         beta: float = 1.0,
-        eps: float = EPSILON_DEFAULT):
+        eps: float = DEFAULT_EPSILON) -> tf.Tensor:
     """
     Computes the delta loss of a layer
     (alpha * (dI/dx)^2 + beta * (dI/dy)^2) ^ 0.5
@@ -164,54 +158,15 @@ def delta_xy_magnitude(
     :param alpha: multiplier of dx
     :param beta: multiplier of dy
     :param eps: small value to add for stability
+
     :return: delta magnitude on both axis
     """
     dx = delta_x(input_layer, kernel_size=kernel_size)
     dy = delta_y(input_layer, kernel_size=kernel_size)
-    dx = tf.square(dx)
-    dy = tf.square(dy)
-    dx = dx * alpha
-    dy = dy * beta
-    return tf.sqrt(tf.abs(dx + dy) + eps)
-
-
-# ---------------------------------------------------------------------
-
-
-def delta_loss(
-        input_layer,
-        mask=None,
-        kernel_size: int = 3,
-        alpha: float = 1.0,
-        beta: float = 1.0,
-        eps: float = EPSILON_DEFAULT,
-        axis: List[int] = [1, 2, 3]):
-    """
-    Computes the delta loss of a layer
-    (alpha * (dI/dx)^2 + beta * (dI/dy)^2) ^ 0.5
-
-    :param input_layer:
-    :param mask: pixels to ignore
-    :param kernel_size: how big the delta kernel should be
-    :param alpha: multiplier of dx
-    :param beta: multiplier of dy
-    :param eps: small value to add for stability
-    :param axis: list of axis to sum against
-    :return: delta loss
-    """
-    dd = \
-        delta_xy_magnitude(
-            input_layer=input_layer,
-            kernel_size=kernel_size,
-            alpha=alpha,
-            beta=beta,
-            eps=eps)
-    if mask is None:
-        return keras.backend.mean(dd, axis=axis)
-    dd = keras.layers.Multiply()([dd, mask])
-    valid_pixels = \
-        keras.backend.abs(
-            keras.backend.sum(mask, axis=axis)) + eps
-    return keras.backend.sum(dd, axis=axis) / valid_pixels
+    return \
+        tf.sqrt(
+            tf.square(dx) * alpha +
+            tf.square(dy) * beta +
+            eps)
 
 # ---------------------------------------------------------------------

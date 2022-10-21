@@ -11,7 +11,7 @@ from typing import List, Union, Tuple, Dict
 from .constants import *
 from .custom_logger import logger
 from .utilities import load_config
-from .model_denoise import model_builder, module_denoiser_builder
+from .model_denoiser import model_builder, module_builder
 from .model_decomposition import module_decomposition_builder
 # ---------------------------------------------------------------------
 

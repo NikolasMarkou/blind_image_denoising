@@ -1,4 +1,4 @@
-# ---------------------------------------------------------------------
+r"""export a bfcnn model"""
 
 __author__ = "Nikolas Markou"
 __version__ = "1.0.0"
@@ -15,7 +15,7 @@ from enum import Enum
 # local imports
 # ---------------------------------------------------------------------
 
-from .export_model_denoise import export_model as export_model_denoise
+from .export_model_denoiser import export_model as export_model_denoise
 from .export_model_decomposition import export_model as export_model_decomposition
 
 # ---------------------------------------------------------------------
@@ -73,7 +73,7 @@ def main(args):
             test_model=args.test_model)
     else:
         raise ValueError(
-            f"don't know how to handle type [{args.model_type}")
+            f"don't know how to handle type [{args.model_type}]")
 
     return 0
 
