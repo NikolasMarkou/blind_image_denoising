@@ -661,16 +661,6 @@ def selector_mixer_block(
     # out squeeze and excite gating does not use global avg
     # followed by dense layer, because we are using this on large images
     # global averaging looses too much information
-    selector_conv_params = dict(
-        kernel_size=3,
-        strides=(1, 1),
-        padding="same",
-        use_bias=False,
-        filters=filters/2,
-        activation="relu",
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer)
-
     selector_dense_params = dict(
         units=filters,
         use_bias=False,
@@ -682,12 +672,6 @@ def selector_mixer_block(
     x = selector_layer
 
     # transformation
-    x = conv2d_wrapper(input_layer=x,
-                       conv_params=copy.deepcopy(selector_conv_params),
-                       bn_params=bn_params,
-                       channelwise_scaling=True,
-                       multiplier_scaling=True)
-
     x = tf.reduce_mean(x, axis=[1, 2], keepdims=False)
 
     x = tf.keras.layers.Dense(**selector_dense_params)(x)

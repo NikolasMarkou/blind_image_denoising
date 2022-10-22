@@ -1,5 +1,16 @@
 # Technical Notes
 
+This is documentation of several experiments and various techniques
+
+## General
+
+* Channelwise multiplier works well but regularization needs to be an order higher than the conv layers
+* Multiplier gives a slightly better results if combined with Channelwise but regularization needs to be an order higher than Channelwise
+* SoftOrthogonal works, but we need to find correct parameters, it is very slow to train
+* Erf works well by giving incentive to convolutions to spread out
+* probabilistic_drop_off of gradients does not work
+* delta mae produces better edges but misses flat regions (did not run until the end)
+
 ## Performance
 
 ### resnet_color_1x6_bn_32x64x32_1x3x1_256x256_channelwise_erf_relu
@@ -25,9 +36,3 @@ results
 #### Notes
 indication for higher channelwise regularization
 
-## General
-
-* Channelwise multiplier works well but regularization needs to be an order higher than the conv layers
-* Multiplier gives slighlty better results if combined with Channelwise but regularization needs to be an order higher than Channelwise
-* SoftOrthogonal works but we need to find correct parameters and it is very slow to train
-* Erf works well by giving incentive to convolutions to spread out
