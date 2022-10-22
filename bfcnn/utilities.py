@@ -111,6 +111,13 @@ def merge_iterators(
 def probabilistic_drop_off(
         iterator: Iterable,
         probability: float = 0.5):
+    """
+    randomly zero out an element of the iterator
+
+    :param iterator:
+    :param probability: probability of an element not being affected
+    :return:
+    """
     for value in iterator:
         if np.random.uniform(low=0, high=1.0, size=None) > probability:
             yield value * 0.0
