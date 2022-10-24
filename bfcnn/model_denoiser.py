@@ -66,8 +66,7 @@ def model_builder(
     no_levels = config.get("no_levels", 1)
     add_var = config.get("add_var", False)
     no_layers = config.get("no_layers", 5)
-    min_value = config.get("min_value", 0)
-    max_value = config.get("max_value", 255)
+    value_range = config.get("value_range", (0, 255))
     use_bias = config.get("use_bias", False)
     batchnorm = config.get("batchnorm", True)
     kernel_size = config.get("kernel_size", 3)
@@ -102,6 +101,8 @@ def model_builder(
     add_residual_between_models = config.get("add_residual_between_models", False)
     add_mean_sigma_normalization = config.get("add_mean_sigma_normalization", False)
 
+    min_value = value_range[0]
+    max_value = value_range[1]
     use_pyramid = pyramid_config is not None
     input_shape = input_shape_fixer(input_shape)
 
