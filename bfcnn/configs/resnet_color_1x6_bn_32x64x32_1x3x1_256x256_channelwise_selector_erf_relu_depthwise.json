@@ -1,27 +1,20 @@
 {
   "model_denoise": {
+    "type": "resnet",
+    "value_range": [0, 255],
+    "input_shape": ["?", "?", 3],
     "filters": 32,
     "no_layers": 6,
     "kernel_size": 7,
     "block_kernels": [1, 3, 1],
     "block_filters": [32, 64, 32],
-    "add_var": false,
-    "value_range": [0, 255],
-    "type": "resnet",
+    "block_depthwise": [-1, 2, -1],
     "batchnorm": true,
     "activation": "relu",
-    "add_gates": false,
-    "add_sparsity": false,
-    "clip_values": false,
-    "shared_model": false,
-    "add_final_bn": false,
+    "add_selector": true,
     "output_multiplier": 1.0,
     "final_activation": "tanh",
     "add_channelwise_scaling": true,
-    "add_learnable_multiplier": true,
-    "add_skip_with_input": false,
-    "add_residual_between_models": true,
-    "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
     "kernel_regularizer": {
         "type": "erf",
@@ -29,11 +22,6 @@
             "l2_coefficient": 0.0,
             "l1_coefficient": 0.025
         }
-    },
-    "pyramid": {
-      "levels": 3,
-      "type": "laplacian",
-      "kernel_size": [3, 3]
     }
   },
    "train": {
