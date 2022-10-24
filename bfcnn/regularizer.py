@@ -251,19 +251,21 @@ class ErfRegularizer(keras.regularizers.Regularizer):
         # get kernel weights shape
         shape = x.shape[0:2]
 
-        # build gaussian kernel
-        gaussian_weights = \
-            tf.constant(
-                gaussian_kernel(
-                    size=shape,
-                    nsig=self._nsig,
-                    dtype=np.float32))
-        gaussian_weights = \
-            tf.expand_dims(gaussian_weights, axis=2)
-        gaussian_weights = \
-            tf.expand_dims(gaussian_weights, axis=3)
-        # weight kernels
-        x = tf.multiply(x, gaussian_weights)
+        # for shapes of (1, 1) pass by
+        if shape[0] != 1 and shape[1] != 1:
+            # build gaussian kernel
+            gaussian_weights = \
+                tf.constant(
+                    gaussian_kernel(
+                        size=shape,
+                        nsig=self._nsig,
+                        dtype=np.float32))
+            gaussian_weights = \
+                tf.expand_dims(gaussian_weights, axis=2)
+            gaussian_weights = \
+                tf.expand_dims(gaussian_weights, axis=3)
+            # weight kernels
+            x = tf.multiply(x, gaussian_weights)
 
         # --- init result
         result = tf.constant(0.0, dtype=tf.float32)
