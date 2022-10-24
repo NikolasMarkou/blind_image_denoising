@@ -92,7 +92,7 @@ def model_builder(
     final_activation = config.get("final_activation", "linear")
     kernel_regularizer = config.get("kernel_regularizer", "l1")
     backbone_activation = config.get("backbone_activation", None)
-    add_skip_with_input = config.get("add_skip_with_input", True)
+    add_skip_with_input = config.get("add_skip_with_input", False)
     add_channelwise_scaling = config.get("add_channelwise_scaling", False)
     add_sparse_features = config.get("add_sparse_features", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
@@ -404,7 +404,7 @@ def model_builder(
 
     if add_skip_with_input:
         x_result = \
-            tf.keras.layers.Substract(
+            tf.keras.layers.Subtract(
                 name="skip_input")([x_result, input_layer])
 
     # wrap and name denoiser head
