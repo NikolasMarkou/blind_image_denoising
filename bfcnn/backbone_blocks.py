@@ -685,7 +685,7 @@ def selector_mixer_block(
     x = tf.reduce_mean(x, axis=[1, 2], keepdims=False)
 
     if filters_compress is not None:
-        x = dense_wrapper(input_layer=x, dense_params=selector_dense_0_params, bn_params=False)
+        x = dense_wrapper(input_layer=x, dense_params=selector_dense_0_params, bn_params=None)
 
     x = dense_wrapper(input_layer=x, dense_params=selector_dense_1_params, bn_params=bn_params)
 
