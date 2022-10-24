@@ -67,8 +67,8 @@
   },
   "dataset": {
     "batch_size": 16,
-    "min_value": 0,
-    "max_value": 255,
+    "value_range": [0, 255],
+    "scale_range": [0.25, 1.0],
     "clip_value": true,
     "random_blur": true,
     "subsample_size": -1,
