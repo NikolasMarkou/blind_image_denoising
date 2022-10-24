@@ -74,7 +74,7 @@ def model_builder(
     pyramid_config = config.get("pyramid", None)
     dropout_rate = config.get("dropout_rate", -1)
     activation = config.get("activation", "relu")
-    clip_values = config.get("clip_values", True)
+    clip_values = config.get("clip_values", False)
     channel_index = config.get("channel_index", 2)
     add_final_bn = config.get("add_final_bn", True)
     add_selector = config.get("add_selector", False)
