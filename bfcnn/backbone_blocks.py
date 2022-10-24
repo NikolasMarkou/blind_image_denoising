@@ -258,8 +258,8 @@ def resnet_blocks_full(
                     input_1_layer=previous_layer,
                     input_2_layer=x,
                     selector_layer=x_2nd_conv,
-                    bn_params=bn_params,
-                    filters_compress=int(third_conv_params["filters"] / 4),
+                    bn_params=None,
+                    filters_compress=None,
                     filters_target=third_conv_params["filters"],
                     kernel_regularizer=third_conv_params.get("kernel_regularizer", "l1"),
                     kernel_initializer=third_conv_params.get("kernel_initializer", "glorot_normal"))
@@ -660,6 +660,10 @@ def selector_mixer_block(
 
     :return: filtered input_layer
     """
+    # --- argument checking
+    if filters_target is None:
+        raise ValueError("filters_target should not be None")
+
     # --- set variables
     # out squeeze and excite gating does not use global avg
     # followed by dense layer, because we are using this on large images
