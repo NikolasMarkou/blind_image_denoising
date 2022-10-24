@@ -258,6 +258,7 @@ def resnet_blocks_full(
                     input_1_layer=previous_layer,
                     input_2_layer=x,
                     selector_layer=x_2nd_conv,
+                    bn_params=bn_params,
                     filters_compress=int(third_conv_params["filters"] / 4),
                     filters_target=third_conv_params["filters"],
                     kernel_regularizer=third_conv_params.get("kernel_regularizer", "l1"),
@@ -684,7 +685,7 @@ def selector_mixer_block(
     x = tf.reduce_mean(x, axis=[1, 2], keepdims=False)
 
     if filters_compress is not None:
-        x = dense_wrapper(input_layer=x, dense_params=selector_dense_0_params, bn_params=bn_params)
+        x = dense_wrapper(input_layer=x, dense_params=selector_dense_0_params, bn_params=False)
 
     x = dense_wrapper(input_layer=x, dense_params=selector_dense_1_params, bn_params=bn_params)
 
