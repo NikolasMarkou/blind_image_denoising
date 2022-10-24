@@ -76,7 +76,7 @@ def model_builder(
     activation = config.get("activation", "relu")
     clip_values = config.get("clip_values", False)
     channel_index = config.get("channel_index", 2)
-    add_final_bn = config.get("add_final_bn", True)
+    add_final_bn = config.get("add_final_bn", False)
     add_selector = config.get("add_selector", False)
     shared_model = config.get("shared_model", False)
     add_sparsity = config.get("add_sparsity", False)
