@@ -10,6 +10,8 @@ This is documentation of several experiments and various techniques
 * Erf works well by giving incentive to convolutions to spread out
 * probabilistic_drop_off of gradients does not work
 * delta mae produces better edges but misses flat regions (did not run until the end)
+* ReLU seems to work best from all activations units
+
 
 ## Performance
 
