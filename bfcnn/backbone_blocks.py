@@ -258,7 +258,8 @@ def resnet_blocks_full(
                     input_1_layer=previous_layer,
                     input_2_layer=x,
                     selector_layer=x_2nd_conv,
-                    filters=third_conv_params["filters"],
+                    filters_compress=int(third_conv_params["filters"] / 4),
+                    filters_target=third_conv_params["filters"],
                     kernel_regularizer=third_conv_params.get("kernel_regularizer", "l1"),
                     kernel_initializer=third_conv_params.get("kernel_initializer", "glorot_normal"))
         else:
@@ -646,7 +647,8 @@ def selector_mixer_block(
         input_1_layer,
         input_2_layer,
         selector_layer,
-        filters: int,
+        filters_compress: int,
+        filters_target: int,
         bn_params: Dict = None,
         kernel_regularizer: str = "l1",
         kernel_initializer: str = "glorot_normal",
@@ -661,8 +663,15 @@ def selector_mixer_block(
     # out squeeze and excite gating does not use global avg
     # followed by dense layer, because we are using this on large images
     # global averaging looses too much information
-    selector_dense_params = dict(
-        units=filters,
+    selector_dense_0_params = dict(
+        units=filters_compress,
+        use_bias=False,
+        activation="relu",
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer)
+
+    selector_dense_1_params = dict(
+        units=filters_target,
         use_bias=False,
         activation="relu",
         kernel_regularizer=kernel_regularizer,
@@ -674,7 +683,10 @@ def selector_mixer_block(
     # transformation
     x = tf.reduce_mean(x, axis=[1, 2], keepdims=False)
 
-    x = tf.keras.layers.Dense(**selector_dense_params)(x)
+    if filters_compress is not None:
+        x = dense_wrapper(input_layer=x, dense_params=selector_dense_0_params, bn_params=bn_params)
+
+    x = dense_wrapper(input_layer=x, dense_params=selector_dense_1_params, bn_params=bn_params)
 
     # if x < -2.5: return 0
     # if x > 2.5: return 1
