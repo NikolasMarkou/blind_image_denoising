@@ -30,12 +30,10 @@ BuilderResults = namedtuple(
     "BuilderResults",
     {
         "pyramid",
-        "superres",
         "denoiser",
         "backbone",
         "normalizer",
         "denormalizer",
-        "superres_head",
         "denoiser_head",
         "inverse_pyramid",
     })
@@ -148,7 +146,7 @@ def model_builder(
     )
 
     residual_conv_params = dict(
-        kernel_size=3,
+        kernel_size=1,
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
@@ -163,43 +161,6 @@ def model_builder(
         regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
         trainable=True,
         activation="relu"
-    )
-
-    superres_expand_conv_params = dict(
-        groups=groups,
-        kernel_size=3,
-        padding="valid",
-        use_bias=use_bias,
-        dilation_rate=(2, 2),
-        activation=activation,
-        filters=filters * groups,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
-    superres_intermediate_conv_params = dict(
-        groups=groups,
-        kernel_size=3,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation=activation,
-        filters=input_shape[channel_index] * groups,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
-    superres_final_conv_params = dict(
-        kernel_size=1,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        # this must be linear because it is capped later
-        activation="linear",
-        groups=input_shape[channel_index],
-        filters=input_shape[channel_index],
-        kernel_regularizer=final_kernel_regularization,
-        kernel_initializer=kernel_initializer
     )
 
     # --- build normalize denormalize models
@@ -316,9 +277,6 @@ def model_builder(
             if previous_level is None:
                 current_level_output = backbone_models[i](x_level)
             else:
-                # TODO verify this
-                # previous_level = \
-                #     tf.stop_gradient(previous_level)
                 previous_level = \
                     keras.layers.UpSampling2D(
                         **upsampling_params)(previous_level)
@@ -330,6 +288,11 @@ def model_builder(
                         multiplier_scaling=add_learnable_multiplier)
                 current_level_input = \
                     tf.keras.layers.Add()([previous_level, x_level])
+                current_level_input = \
+                    tf.clip_by_value(
+                        current_level_input,
+                        clip_value_min=-0.5,
+                        clip_value_max=+0.5)
                 current_level_output = backbone_models[i](current_level_input)
             previous_level = current_level_output
             x_levels[i] = current_level_output
@@ -421,65 +384,15 @@ def model_builder(
             outputs=model_denoiser_head(x_backbone_output),
             name=f"{model_type}_denoiser")
 
-    # --- define super resolution here
-    superres_input_layer = \
-        keras.Input(
-            shape=(None, None, filters),
-            name="input_tensor")
-    x = superres_input_layer
-
-    x = \
-        conv2d_wrapper(
-            input_layer=x,
-            bn_params=None,
-            conv_params=superres_expand_conv_params,
-            channelwise_scaling=channelwise_params)
-
-    x = \
-        conv2d_wrapper(
-            input_layer=x,
-            bn_params=None,
-            conv_params=superres_intermediate_conv_params,
-            channelwise_scaling=channelwise_params)
-
-    x = \
-        conv2d_wrapper(
-            input_layer=x,
-            bn_params=None,
-            conv_params=superres_final_conv_params,
-            channelwise_scaling=channelwise_params)
-
-    # cap it off to limit values
-    x_result = \
-        tf.keras.layers.Activation(
-            name="output_tensor",
-            activation=final_activation)(x)
-
-    # wrap and name superres head
-    model_superres_head = \
-        keras.Model(
-            inputs=superres_input_layer,
-            outputs=x_result,
-            name=f"superres_head")
-
-    # wrap and name superres
-    model_superres = \
-        keras.Model(
-            inputs=input_layer,
-            outputs=model_superres_head(x_backbone_output),
-            name=f"{model_type}_superres")
-
     # ---
     return \
         BuilderResults(
             pyramid=model_pyramid,
             denoiser=model_denoiser,
-            superres=model_superres,
             backbone=model_backbone,
             normalizer=model_normalize,
             denormalizer=model_denormalize,
             denoiser_head=model_denoiser_head,
-            superres_head=model_superres_head,
             inverse_pyramid=model_inverse_pyramid)
 
 
