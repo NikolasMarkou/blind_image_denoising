@@ -302,7 +302,7 @@ def model_builder(
 
     # --- optional multiplier to help saturation
     if output_multiplier is not None and \
-            output_multiplier != 1:
+            output_multiplier != 1.0:
         x_levels = [
             x_level * output_multiplier
             for x_level in x_levels
