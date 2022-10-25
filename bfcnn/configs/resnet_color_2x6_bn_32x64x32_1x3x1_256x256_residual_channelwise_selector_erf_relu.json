@@ -61,7 +61,7 @@
   "dataset": {
     "batch_size": 16,
     "value_range": [0, 255],
-    "scale_range": [0.25, 1.0],
+    "scale_range": [0.5, 1.0],
     "clip_value": true,
     "random_blur": true,
     "subsample_size": -1,
@@ -78,6 +78,10 @@
       {
         "dataset_shape": [256, 768],
         "directory": "/media/data1_4tb/datasets/KITTI/data/depth/raw_image_values/"
+      },
+      {
+        "dataset_shape": [512, 512],
+        "directory": "/media/data1_4tb/datasets/COCO/train2017"
       },
       {
         "dataset_shape": [512, 512],
