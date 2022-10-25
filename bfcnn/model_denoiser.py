@@ -307,11 +307,11 @@ def model_builder(
                 else:
                     current_level_input = \
                         tf.keras.layers.Add()([projection_previous_level, x_level])
-                    current_level_input = \
-                        tf.clip_by_value(
-                            current_level_input,
-                            clip_value_min=-0.5,
-                            clip_value_max=+0.5)
+                current_level_input = \
+                    tf.clip_by_value(
+                        current_level_input,
+                        clip_value_min=-0.5,
+                        clip_value_max=+0.5)
                 current_level_output = backbone_models[i](current_level_input)
             previous_level = current_level_output
             x_levels[i] = current_level_output
