@@ -24,7 +24,7 @@
         }
     },
     "pyramid": {
-      "levels": 2,
+      "levels": 3,
       "type": "laplacian",
       "kernel_size": [3, 3]
     }
