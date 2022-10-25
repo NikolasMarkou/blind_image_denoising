@@ -306,7 +306,7 @@ def model_builder(
                             kernel_initializer="glorot_normal")
                 else:
                     current_level_input = \
-                        tf.keras.layers.Add()([previous_level, x_level])
+                        tf.keras.layers.Add()([projection_previous_level, x_level])
                     current_level_input = \
                         tf.clip_by_value(
                             current_level_input,
