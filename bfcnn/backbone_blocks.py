@@ -194,7 +194,7 @@ def resnet_blocks_full(
                                conv_params=copy.deepcopy(gate_conv_params),
                                bn_params=bn_params,
                                channelwise_scaling=True,
-                               multiplier_scaling=True)
+                               multiplier_scaling=False)
             y = tf.reduce_mean(y, axis=[1, 2], keepdims=False)
             y = tf.keras.layers.Dense(**gate_dense_params)(y)
             y = tf.expand_dims(y, axis=2)
@@ -689,9 +689,15 @@ def selector_mixer_block(
     x = tf.reduce_mean(x, axis=[1, 2], keepdims=False)
 
     if filters_compress is not None:
-        x = dense_wrapper(input_layer=x, dense_params=selector_dense_0_params, bn_params=None)
+        x = dense_wrapper(
+            input_layer=x,
+            dense_params=selector_dense_0_params,
+            bn_params=None)
 
-    x = dense_wrapper(input_layer=x, dense_params=selector_dense_1_params, bn_params=bn_params)
+    x = dense_wrapper(
+        input_layer=x,
+        dense_params=selector_dense_1_params,
+        bn_params=bn_params)
 
     # if x < -2.5: return 0
     # if x > 2.5: return 1
@@ -702,55 +708,6 @@ def selector_mixer_block(
         tf.keras.layers.Multiply()([input_1_layer, x]) + \
         tf.keras.layers.Multiply()([input_2_layer, 1.0 - x])
 
-# ---------------------------------------------------------------------
-
-
-def compress_expand_residual_block(
-        input_layer,
-        no_layers: int,
-        bn_params: Dict = None,
-        gate_params: Dict = None,
-        sparse_params: Dict = None,
-        dropout_params: Dict = None,
-        selector_params: Dict = None,
-        multiplier_params: Dict = None,
-        channelwise_scaling: bool = False,
-        stop_gradient: bool = False):
-    # --- argument checking
-
-    # --- set variables
-    expand_params = dict()
-    transform_params = dict()
-    compress_params = dict()
-
-    # --- build network
-    x = input_layer
-
-    for i in range(no_layers):
-
-        if stop_gradient:
-            x = tf.stop_gradient(x)
-
-        # compression conv
-        x = conv2d_wrapper(input_layer=x,
-                           conv_params=expand_params,
-                           bn_params=bn_params,
-                           channelwise_scaling=channelwise_scaling)
-
-        x = conv2d_wrapper(input_layer=x,
-                           conv_params=transform_params,
-                           bn_params=bn_params,
-                           channelwise_scaling=channelwise_scaling)
-
-        # expansion conv
-        x = conv2d_wrapper(input_layer=x,
-                           conv_params=compress_params,
-                           bn_params=bn_params,
-                           channelwise_scaling=channelwise_scaling)
-        # add residual
-        x = tf.keras.layers.Add()([input_layer, x])
-
-    return x
 
 # ---------------------------------------------------------------------
 
