@@ -11,6 +11,7 @@ This is documentation of several experiments and various techniques
 * probabilistic_drop_off of gradients does not work
 * delta mae produces better edges but misses flat regions (did not run until the end)
 * ReLU seems to work best from all activations units
+* ELU (alone) does not produce better results than ReLU but produces lesser artifacts at very high noise levels
 
 
 ## Performance
