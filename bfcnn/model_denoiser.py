@@ -18,6 +18,7 @@ from .backbone_unet import builder as builder_unet
 from .backbone_lunet import builder as builder_lunet
 from .backbone_resnet import builder as builder_resnet
 from .backbone_resnet_ce import builder as builder_resnet_ce
+from .backbone_blocks import selector_mixer_block
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
@@ -280,19 +281,37 @@ def model_builder(
                 previous_level = \
                     keras.layers.UpSampling2D(
                         **upsampling_params)(previous_level)
-                previous_level = \
+
+                projection_previous_level = \
                     conv2d_wrapper(
                         input_layer=previous_level,
                         conv_params=residual_conv_params,
                         channelwise_scaling=add_channelwise_scaling,
                         multiplier_scaling=add_learnable_multiplier)
-                current_level_input = \
-                    tf.keras.layers.Add()([previous_level, x_level])
-                current_level_input = \
+                projection_previous_level = \
                     tf.clip_by_value(
-                        current_level_input,
+                        projection_previous_level,
                         clip_value_min=-0.5,
                         clip_value_max=+0.5)
+                if add_selector:
+                    current_level_input = \
+                        selector_mixer_block(
+                            input_1_layer=x_level,
+                            input_2_layer=projection_previous_level,
+                            selector_layer=previous_level,
+                            bn_params=None,
+                            filters_compress=None,
+                            filters_target=input_shape[channel_index],
+                            kernel_regularizer="l1",
+                            kernel_initializer="glorot_normal")
+                else:
+                    current_level_input = \
+                        tf.keras.layers.Add()([previous_level, x_level])
+                    current_level_input = \
+                        tf.clip_by_value(
+                            current_level_input,
+                            clip_value_min=-0.5,
+                            clip_value_max=+0.5)
                 current_level_output = backbone_models[i](current_level_input)
             previous_level = current_level_output
             x_levels[i] = current_level_output
