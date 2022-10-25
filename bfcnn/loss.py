@@ -83,6 +83,7 @@ def snr(
 def mae_weighted_delta(
         original: tf.Tensor,
         prediction: tf.Tensor,
+        mask: tf.Tensor = tf.constant(1.0, tf.float32),
         hinge: float = 0.0,
         cutoff: float = 255.0) -> tf.Tensor:
     """
@@ -90,6 +91,7 @@ def mae_weighted_delta(
 
     :param original: original image batch
     :param prediction: denoised image batch
+    :param mask: where to focus the loss
     :param hinge: hinge value
     :param cutoff: max value
 
@@ -120,6 +122,7 @@ def mae_weighted_delta(
 
     # --- multiply diff and weight
     d = tf.math.multiply(d, d_weight)
+    d = tf.math.multiply(d, mask)
 
     # --- mean over all dims
     d = tf.reduce_mean(d, axis=[1, 2, 3])
@@ -133,24 +136,29 @@ def mae_weighted_delta(
 
 def mae_diff(
         error: tf.Tensor,
+        mask: tf.Tensor = tf.constant(1.0, tf.float32),
         hinge: float = 0.0,
         cutoff: float = 255.0) -> tf.Tensor:
     """
     Mean Absolute Error (mean over channels and batches)
 
-    :param error: original image batch
+    :param error: diff between prediction and ground truth
+    :param mask:
     :param hinge: hinge value
     :param cutoff: max value
 
     :return: mean absolute error
     """
     # --- mean over all dims
-    d = tf.reduce_mean(
-        tf.keras.activations.relu(
-            x=tf.abs(error),
-            threshold=hinge,
-            max_value=cutoff),
-        axis=[1, 2, 3])
+    d = \
+        tf.reduce_mean(
+            tf.math.multiply(
+                tf.keras.activations.relu(
+                    x=tf.abs(error),
+                    threshold=hinge,
+                    max_value=cutoff),
+                mask),
+            axis=[1, 2, 3])
     # mean over batch
     return tf.reduce_mean(d, axis=[0])
 
@@ -161,7 +169,7 @@ def mae_diff(
 def mae(
         original: tf.Tensor,
         prediction: tf.Tensor,
-        **kwargs):
+        **kwargs) -> tf.Tensor:
     """
     Mean Absolute Error (mean over channels and batches)
 
@@ -182,7 +190,7 @@ def mae(
 def mse_diff(
         error: tf.Tensor,
         hinge: float = 0,
-        cutoff: float = (255.0 * 255.0)):
+        cutoff: float = (255.0 * 255.0)) -> tf.Tensor:
     """
     Mean Square Error (mean over channels and batches)
 
@@ -194,7 +202,7 @@ def mse_diff(
         tf.keras.activations.relu(
             x=tf.square(error),
             threshold=hinge,
-            max_value=cutoff)(d)
+            max_value=cutoff)
     # mean over all dims
     d = tf.reduce_mean(d, axis=[1, 2, 3])
     # mean over batch
@@ -207,14 +215,12 @@ def mse_diff(
 def mse(
         original: tf.Tensor,
         prediction: tf.Tensor,
-        **kwargs):
+        **kwargs) -> tf.Tensor:
     """
     Mean Square Error (mean over channels and batches)
 
     :param original: original image batch
     :param prediction: denoised image batch
-    :param hinge: hinge value
-    :param cutoff: max value
     """
     return mse_diff(
         error=tf.square(original - prediction),
@@ -237,8 +243,8 @@ def nae(
     :param hinge: hinge value
     """
     d = tf.keras.activations.relu(
-            x=tf.abs(original - prediction),
-            threshold=hinge)
+        x=tf.abs(original - prediction),
+        threshold=hinge)
 
     # sum over all dims
     d = tf.reduce_sum(d, axis=[1, 2, 3])
@@ -280,7 +286,8 @@ def loss_function_builder(
             input_batch: tf.Tensor,
             prediction_batch: tf.Tensor,
             noisy_batch: tf.Tensor,
-            model_losses: tf.Tensor) -> Dict[str, tf.Tensor]:
+            model_losses: tf.Tensor,
+            mask_batch: tf.Tensor = tf.constant(1.0, dtype=tf.float32)) -> Dict[str, tf.Tensor]:
         """
         The loss function of the depth prediction model
 
@@ -288,11 +295,16 @@ def loss_function_builder(
         :param prediction_batch: prediction
         :param noisy_batch: noisy batch
         :param model_losses: weight/regularization losses
+        :param mask_batch: mask to focus on
+
         :return: dictionary of losses
         """
         # --- actual mean absolute error (no hinge or cutoff)
         mae_actual = \
-            mae(original=input_batch, prediction=prediction_batch, hinge=0.0, cutoff=255.0)
+            mae(original=input_batch,
+                prediction=prediction_batch,
+                hinge=0.0,
+                cutoff=255.0)
 
         # --- loss prediction on mae
         if use_delta:
@@ -300,12 +312,14 @@ def loss_function_builder(
                 mae_weighted_delta(
                     original=input_batch,
                     prediction=prediction_batch,
+                    mask=mask_batch,
                     hinge=hinge,
                     cutoff=cutoff)
         else:
             mae_prediction_loss = \
                 mae(original=input_batch,
                     prediction=prediction_batch,
+                    mask=mask_batch,
                     hinge=hinge,
                     cutoff=cutoff)
 
