@@ -7,7 +7,6 @@
     "block_filters": [32, 64, 32],
     "block_depthwise": [-1, 2, -1],
     "value_range": [0, 255],
-    "add_var": false,
     "type": "resnet",
     "batchnorm": true,
     "activation": "relu",
