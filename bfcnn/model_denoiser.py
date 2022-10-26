@@ -268,6 +268,7 @@ def model_builder(
                 **model_params)
             for i in range(len(x_levels))
         ]
+        
     upsampling_params = \
         dict(size=(2, 2),
              interpolation="bilinear")
@@ -281,20 +282,19 @@ def model_builder(
                 previous_level = \
                     keras.layers.UpSampling2D(
                         **upsampling_params)(previous_level)
-                previous_level = \
+                projection_previous_level = \
                     conv2d_wrapper(
                         input_layer=previous_level,
-                        bn_params=None,
                         conv_params=residual_conv_params,
                         channelwise_scaling=add_channelwise_scaling,
                         multiplier_scaling=add_learnable_multiplier)
-                previous_level = \
+                projection_previous_level = \
                     tf.clip_by_value(
-                        previous_level,
+                        projection_previous_level,
                         clip_value_min=-0.5,
                         clip_value_max=+0.5)
                 current_level_input = \
-                    tf.keras.layers.Add()([previous_level, x_level])
+                    tf.keras.layers.Add()([projection_previous_level, x_level])
                 current_level_input = \
                     tf.clip_by_value(
                         current_level_input,
