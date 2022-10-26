@@ -305,16 +305,6 @@ def model_builder(
         for i, x_level in enumerate(x_levels):
             x_levels[i] = backbone_models[i](x_level)
 
-    # --- give shared models some flexibility on the outcome
-    if shared_model:
-        for i, x_level in enumerate(x_levels):
-            x_levels[i] = \
-                ChannelwiseMultiplier(
-                    multiplier=1.0,
-                    regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
-                    trainable=True,
-                    activation="relu")(x_level)
-
     # --- optional multiplier to help saturation
     if output_multiplier is not None and \
             output_multiplier != 1.0:
