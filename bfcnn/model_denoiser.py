@@ -272,15 +272,6 @@ def model_builder(
         dict(size=(2, 2),
              interpolation="bilinear")
 
-    bn_params = None
-    if batchnorm:
-        bn_params = dict(
-            scale=True,
-            center=False,
-            momentum=DEFAULT_BN_MOMENTUM,
-            epsilon=DEFAULT_BN_EPSILON
-        )
-
     if add_residual_between_models:
         previous_level = None
         for i, x_level in reversed(list(enumerate(x_levels))):
@@ -293,7 +284,7 @@ def model_builder(
                 projection_previous_level = \
                     conv2d_wrapper(
                         input_layer=previous_level,
-                        bn_params=bn_params,
+                        bn_params=None,
                         conv_params=residual_conv_params,
                         channelwise_scaling=add_channelwise_scaling,
                         multiplier_scaling=add_learnable_multiplier)
