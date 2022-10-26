@@ -8,21 +8,21 @@ from typing import Dict, List, Tuple
 # local imports
 # ---------------------------------------------------------------------
 
+from .constants import *
 from .custom_logger import logger
 from .utilities import \
     conv2d_wrapper, \
     input_shape_fixer, \
     build_normalize_model, \
     build_denormalize_model
+from .custom_layers import ChannelwiseMultiplier
 from .backbone_unet import builder as builder_unet
 from .backbone_lunet import builder as builder_lunet
 from .backbone_resnet import builder as builder_resnet
 from .backbone_resnet_ce import builder as builder_resnet_ce
-from .backbone_blocks import selector_mixer_block
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
-from .constants import *
 from .regularizer import builder as regularizer_builder
 
 # ---------------------------------------------------------------------
@@ -300,11 +300,27 @@ def model_builder(
                         clip_value_min=-0.5,
                         clip_value_max=+0.5)
                 current_level_output = backbone_models[i](current_level_input)
+
+            if shared_model:
+                current_level_output = \
+                    ChannelwiseMultiplier(
+                        multiplier=1.0,
+                        regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
+                        trainable=True,
+                        activation="relu")(current_level_output)
             previous_level = current_level_output
             x_levels[i] = current_level_output
     else:
         for i, x_level in enumerate(x_levels):
-            x_levels[i] = backbone_models[i](x_level)
+            current_level_output = backbone_models[i](x_level)
+            if shared_model:
+                current_level_output = \
+                    ChannelwiseMultiplier(
+                        multiplier=1.0,
+                        regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
+                        trainable=True,
+                        activation="relu")(current_level_output)
+            x_levels[i] = current_level_output
 
     # --- optional multiplier to help saturation
     if output_multiplier is not None and \
