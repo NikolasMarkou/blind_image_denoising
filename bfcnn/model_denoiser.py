@@ -147,11 +147,12 @@ def model_builder(
     )
 
     residual_conv_params = dict(
-        kernel_size=3,
-        strides=(1, 1),
+        kernel_size=5,
         padding="same",
+        strides=(2, 2),
         use_bias=use_bias,
         activation="tanh",
+        dilation_rate=(1, 1),
         filters=input_shape[channel_index],
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
@@ -279,22 +280,19 @@ def model_builder(
                 current_level_output = backbone_models[i](x_level)
             else:
                 previous_level = \
-                    keras.layers.UpSampling2D(
-                        **upsampling_params)(previous_level)
-                projection_previous_level = \
                     conv2d_wrapper(
                         input_layer=previous_level,
                         bn_params=None,
                         conv_params=residual_conv_params,
                         channelwise_scaling=add_channelwise_scaling,
                         multiplier_scaling=add_learnable_multiplier)
-                projection_previous_level = \
+                previous_level = \
                     tf.clip_by_value(
-                        projection_previous_level,
+                        previous_level,
                         clip_value_min=-0.5,
                         clip_value_max=+0.5)
                 current_level_input = \
-                    tf.keras.layers.Add()([projection_previous_level, x_level])
+                    tf.keras.layers.Add()([previous_level, x_level])
                 current_level_input = \
                     tf.clip_by_value(
                         current_level_input,
