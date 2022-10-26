@@ -146,8 +146,19 @@ def model_builder(
         kernel_initializer=kernel_initializer
     )
 
-    residual_conv_params = dict(
+    residual_conv_0_params = dict(
         kernel_size=3,
+        padding="same",
+        strides=(1, 1),
+        use_bias=use_bias,
+        activation=activation,
+        filters=input_shape[channel_index],
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
+    residual_conv_1_params = dict(
+        kernel_size=1,
         padding="same",
         strides=(1, 1),
         use_bias=use_bias,
@@ -272,6 +283,14 @@ def model_builder(
     upsampling_params = \
         dict(size=(2, 2),
              interpolation="bilinear")
+    bn_params = None
+    if batchnorm:
+        bn_params = dict(
+            scale=True,
+            center=False,
+            momentum=DEFAULT_BN_MOMENTUM,
+            epsilon=DEFAULT_BN_EPSILON
+        )
 
     if add_residual_between_models:
         previous_level = None
@@ -280,21 +299,23 @@ def model_builder(
                 current_level_output = backbone_models[i](x_level)
             else:
                 previous_level = \
-                    keras.layers.UpSampling2D(
-                        **upsampling_params)(previous_level)
-                current_level_input_concat = \
-                    tf.keras.layers.Concatenate()([previous_level, x_level])
-                previous_level = \
                     conv2d_wrapper(
-                        input_layer=current_level_input_concat,
-                        conv_params=residual_conv_params,
+                        input_layer=previous_level,
+                        conv_params=residual_conv_0_params,
                         channelwise_scaling=add_channelwise_scaling,
                         multiplier_scaling=add_learnable_multiplier)
                 previous_level = \
-                    tf.clip_by_value(
-                        previous_level,
-                        clip_value_min=-0.5,
-                        clip_value_max=+0.5)
+                    keras.layers.UpSampling2D(
+                        **upsampling_params)(previous_level)
+                previous_level = \
+                    tf.keras.layers.Concatenate()([previous_level, x_level])
+                previous_level = \
+                    conv2d_wrapper(
+                        input_layer=previous_level,
+                        conv_params=residual_conv_1_params,
+                        bn_params=bn_params,
+                        channelwise_scaling=add_channelwise_scaling,
+                        multiplier_scaling=add_learnable_multiplier)
                 current_level_input = \
                     tf.keras.layers.Add()([previous_level, x_level])
                 current_level_input = \
