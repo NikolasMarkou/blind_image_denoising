@@ -149,7 +149,7 @@ def model_builder(
     residual_conv_params = dict(
         kernel_size=3,
         padding="same",
-        strides=(2, 2),
+        strides=(1, 1),
         use_bias=use_bias,
         activation="tanh",
         filters=input_shape[channel_index],
@@ -268,7 +268,7 @@ def model_builder(
                 **model_params)
             for i in range(len(x_levels))
         ]
-        
+
     upsampling_params = \
         dict(size=(2, 2),
              interpolation="bilinear")
