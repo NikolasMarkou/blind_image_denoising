@@ -331,7 +331,7 @@ def model_builder(
                     conv2d_wrapper(
                         input_layer=previous_level,
                         conv_params=residual_conv_base_params,
-                        channelwise_scaling=False,
+                        channelwise_scaling=True,
                         multiplier_scaling=False)
                 previous_level = \
                     tf.keras.layers.Concatenate()([previous_level, x_level])
