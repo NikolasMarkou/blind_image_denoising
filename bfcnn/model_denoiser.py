@@ -15,7 +15,7 @@ from .utilities import \
     input_shape_fixer, \
     build_normalize_model, \
     build_denormalize_model
-from .custom_layers import ChannelwiseMultiplier
+from .backbone_blocks import resnet_blocks_full
 from .backbone_unet import builder as builder_unet
 from .backbone_lunet import builder as builder_lunet
 from .backbone_resnet import builder as builder_resnet
@@ -85,6 +85,7 @@ def model_builder(
     block_filters = config.get("block_filters", (32, 32))
     block_depthwise = config.get("block_depthwise", None)
     add_initial_bn = config.get("add_initial_bn", False)
+    residual_no_layers = config.get("residual_no_layers", 1)
     add_concat_input = config.get("add_concat_input", False)
     input_shape = config.get("input_shape", (None, None, 3))
     output_multiplier = config.get("output_multiplier", 1.0)
@@ -143,28 +144,6 @@ def model_builder(
         groups=input_shape[channel_index],
         filters=input_shape[channel_index],
         kernel_regularizer=final_kernel_regularization,
-        kernel_initializer=kernel_initializer
-    )
-
-    residual_conv_0_params = dict(
-        kernel_size=3,
-        padding="same",
-        strides=(1, 1),
-        use_bias=use_bias,
-        activation=activation,
-        filters=input_shape[channel_index],
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
-    residual_conv_1_params = dict(
-        kernel_size=1,
-        padding="same",
-        strides=(1, 1),
-        use_bias=use_bias,
-        activation="tanh",
-        filters=input_shape[channel_index],
-        kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
 
@@ -280,19 +259,63 @@ def model_builder(
             for i in range(len(x_levels))
         ]
 
-    upsampling_params = \
-        dict(size=(2, 2),
-             interpolation="nearest")
-    bn_params = None
-    if batchnorm:
-        bn_params = dict(
-            scale=True,
-            center=False,
-            momentum=DEFAULT_BN_MOMENTUM,
-            epsilon=DEFAULT_BN_EPSILON
-        )
-
     if add_residual_between_models:
+        upsampling_params = \
+            dict(size=(2, 2),
+                 interpolation="nearest")
+        bn_params = None
+        if batchnorm:
+            bn_params = dict(
+                scale=True,
+                center=False,
+                momentum=DEFAULT_BN_MOMENTUM,
+                epsilon=DEFAULT_BN_EPSILON
+        )
+        residual_conv_base_params = dict(
+            kernel_size=3,
+            padding="same",
+            strides=(1, 1),
+            use_bias=use_bias,
+            activation=activation,
+            filters=input_shape[channel_index],
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer)
+        residual_first_conv_params = dict(
+            kernel_size=1,
+            filters=input_shape[channel_index] * 2,
+            strides=(1, 1),
+            padding="same",
+            use_bias=use_bias,
+            activation=activation,
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer)
+        residual_second_conv_params = dict(
+            kernel_size=3,
+            filters=input_shape[channel_index] * 4,
+            strides=(1, 1),
+            padding="same",
+            use_bias=use_bias,
+            activation=activation,
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer)
+        residual_third_conv_params = dict(
+            kernel_size=1,
+            filters=input_shape[channel_index] * 2,
+            strides=(1, 1),
+            padding="same",
+            use_bias=use_bias,
+            activation=activation,
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer)
+        residual_conv_final_params = dict(
+            kernel_size=1,
+            padding="same",
+            strides=(1, 1),
+            use_bias=use_bias,
+            activation="tanh",
+            filters=input_shape[channel_index],
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer)
         previous_level = None
         for i, x_level in reversed(list(enumerate(x_levels))):
             if previous_level is None:
@@ -307,23 +330,29 @@ def model_builder(
                 previous_level = \
                     conv2d_wrapper(
                         input_layer=previous_level,
-                        conv_params=residual_conv_0_params,
+                        conv_params=residual_conv_base_params,
                         channelwise_scaling=False,
                         multiplier_scaling=False)
                 previous_level = \
                     tf.keras.layers.Concatenate()([previous_level, x_level])
+                if residual_no_layers > 0:
+                    previous_level = \
+                        resnet_blocks_full(
+                            input_layer=previous_level,
+                            no_layers=residual_no_layers,
+                            first_conv_params=residual_first_conv_params,
+                            second_conv_params=residual_second_conv_params,
+                            third_conv_params=residual_third_conv_params,
+                            bn_params=bn_params)
                 previous_level = \
                     conv2d_wrapper(
                         input_layer=previous_level,
-                        conv_params=residual_conv_1_params,
-                        bn_params=bn_params,
+                        conv_params=residual_conv_final_params,
                         channelwise_scaling=add_channelwise_scaling,
                         multiplier_scaling=add_learnable_multiplier)
                 current_level_input = \
-                    tf.keras.layers.Add()([previous_level, x_level])
-                current_level_input = \
                     tf.clip_by_value(
-                        current_level_input,
+                        previous_level,
                         clip_value_min=-0.5,
                         clip_value_max=+0.5)
                 current_level_output = backbone_models[i](current_level_input)
