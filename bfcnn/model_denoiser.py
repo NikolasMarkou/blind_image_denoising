@@ -282,7 +282,7 @@ def model_builder(
 
     upsampling_params = \
         dict(size=(2, 2),
-             interpolation="bilinear")
+             interpolation="nearest")
     bn_params = None
     if batchnorm:
         bn_params = dict(
@@ -299,14 +299,14 @@ def model_builder(
                 current_level_output = backbone_models[i](x_level)
             else:
                 previous_level = \
+                    keras.layers.UpSampling2D(
+                        **upsampling_params)(previous_level)
+                previous_level = \
                     conv2d_wrapper(
                         input_layer=previous_level,
                         conv_params=residual_conv_0_params,
                         channelwise_scaling=add_channelwise_scaling,
                         multiplier_scaling=add_learnable_multiplier)
-                previous_level = \
-                    keras.layers.UpSampling2D(
-                        **upsampling_params)(previous_level)
                 previous_level = \
                     tf.keras.layers.Concatenate()([previous_level, x_level])
                 previous_level = \
