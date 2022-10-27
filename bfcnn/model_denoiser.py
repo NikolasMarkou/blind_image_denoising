@@ -298,6 +298,9 @@ def model_builder(
             if previous_level is None:
                 current_level_output = backbone_models[i](x_level)
             else:
+                # NOTE
+                # based on https://distill.pub/2016/deconv-checkerboard/
+                # it is better to upsample with nearest neighbor and then conv2d
                 previous_level = \
                     keras.layers.UpSampling2D(
                         **upsampling_params)(previous_level)
