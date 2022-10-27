@@ -269,8 +269,7 @@ def model_builder(
                 scale=True,
                 center=False,
                 momentum=DEFAULT_BN_MOMENTUM,
-                epsilon=DEFAULT_BN_EPSILON
-        )
+                epsilon=DEFAULT_BN_EPSILON)
         residual_conv_base_params = dict(
             kernel_size=3,
             padding="same",
@@ -331,8 +330,10 @@ def model_builder(
                     conv2d_wrapper(
                         input_layer=previous_level,
                         conv_params=residual_conv_base_params,
-                        channelwise_scaling=True,
+                        channelwise_scaling=False,
                         multiplier_scaling=False)
+                if batchnorm:
+                    previous_level = tf.keras.layers.BatchNormalization(**bn_params)(previous_level)
                 previous_level = \
                     tf.keras.layers.Concatenate()([previous_level, x_level])
                 if residual_no_layers > 0:
