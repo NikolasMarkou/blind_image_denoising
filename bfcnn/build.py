@@ -52,14 +52,9 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--output-file",
-        default="model_denoise.h5",
+        default=MODEL_DENOISE_DEFAULT_NAME_STR,
         dest="output_file",
         help="output file")
-
-    parser.add_argument(
-        "--version",
-        action="version",
-        version="%(prog)s (version {version})".format(version=__version__))
 
     # parse the arguments and pass them to main
     args = parser.parse_args()

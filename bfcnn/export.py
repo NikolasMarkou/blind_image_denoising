@@ -121,11 +121,6 @@ if __name__ == "__main__":
         dest="test_model",
         help="run model with random input")
 
-    parser.add_argument(
-        "--version",
-        action="version",
-        version="%(prog)s (version {version})".format(version=__version__))
-
     # parse the arguments and pass them to main
     args = parser.parse_args()
 

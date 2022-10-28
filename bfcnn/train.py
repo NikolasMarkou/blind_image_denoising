@@ -46,11 +46,6 @@ if __name__ == "__main__":
         help="Path to output model directory "
              "where event and checkpoint files will be written")
 
-    parser.add_argument(
-        "--version",
-        action="version",
-        version="%(prog)s (version {version})".format(version=__version__))
-
     # parse the arguments and pass them to main
     args = parser.parse_args()
 
