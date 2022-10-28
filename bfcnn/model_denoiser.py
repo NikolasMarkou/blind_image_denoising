@@ -324,18 +324,19 @@ def model_builder(
                 # based on https://distill.pub/2016/deconv-checkerboard/
                 # it is better to upsample with nearest neighbor and then conv2d
                 previous_level = \
-                    keras.layers.UpSampling2D(
-                        **upsampling_params)(previous_level)
-                previous_level = \
                     conv2d_wrapper(
                         input_layer=previous_level,
                         conv_params=residual_conv_base_params,
                         channelwise_scaling=False,
                         multiplier_scaling=False)
-                if batchnorm:
-                    previous_level = tf.keras.layers.BatchNormalization(**bn_params)(previous_level)
+                previous_level = \
+                    keras.layers.UpSampling2D(
+                        **upsampling_params)(previous_level)
                 previous_level = \
                     tf.keras.layers.Concatenate()([previous_level, x_level])
+                if batchnorm:
+                    previous_level = \
+                        tf.keras.layers.BatchNormalization(**bn_params)(previous_level)
                 if residual_no_layers > 0:
                     previous_level = \
                         resnet_blocks_full(
@@ -344,13 +345,16 @@ def model_builder(
                             first_conv_params=residual_first_conv_params,
                             second_conv_params=residual_second_conv_params,
                             third_conv_params=residual_third_conv_params,
+                            channelwise_params=channelwise_params,
                             bn_params=bn_params)
                 previous_level = \
                     conv2d_wrapper(
                         input_layer=previous_level,
                         conv_params=residual_conv_final_params,
-                        channelwise_scaling=add_channelwise_scaling,
-                        multiplier_scaling=add_learnable_multiplier)
+                        channelwise_scaling=True,
+                        multiplier_scaling=False)
+                previous_level = \
+                    tf.keras.layers.Add()([previous_level, x_level])
                 current_level_input = \
                     tf.clip_by_value(
                         previous_level,
