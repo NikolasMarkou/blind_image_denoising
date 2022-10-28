@@ -17,7 +17,7 @@ from .backbone_blocks import resnet_blocks_full
 from .backbone_unet import builder as builder_unet
 from .backbone_lunet import builder as builder_lunet
 from .backbone_resnet import builder as builder_resnet
-from .backbone_resnet_ce import builder as builder_resnet_ce
+from .backbone_resnet_stats import builder as builder_resnet_ce
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
@@ -268,44 +268,8 @@ def model_builder(
                 center=False,
                 momentum=DEFAULT_BN_MOMENTUM,
                 epsilon=DEFAULT_BN_EPSILON)
-        residual_conv_base_params = dict(
+        residual_conv_params = dict(
             kernel_size=3,
-            padding="same",
-            strides=(1, 1),
-            use_bias=use_bias,
-            activation="linear",
-            filters=input_shape[channel_index],
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer)
-        residual_first_conv_params = dict(
-            kernel_size=1,
-            filters=input_shape[channel_index] * 2,
-            strides=(1, 1),
-            padding="same",
-            use_bias=use_bias,
-            activation=activation,
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer)
-        residual_second_conv_params = dict(
-            kernel_size=3,
-            filters=input_shape[channel_index] * 4,
-            strides=(1, 1),
-            padding="same",
-            use_bias=use_bias,
-            activation=activation,
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer)
-        residual_third_conv_params = dict(
-            kernel_size=1,
-            filters=input_shape[channel_index] * 2,
-            strides=(1, 1),
-            padding="same",
-            use_bias=use_bias,
-            activation="linear",
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer)
-        residual_conv_final_params = dict(
-            kernel_size=1,
             padding="same",
             strides=(1, 1),
             use_bias=use_bias,
@@ -322,35 +286,22 @@ def model_builder(
                 # based on https://distill.pub/2016/deconv-checkerboard/
                 # it is better to upsample with nearest neighbor and then conv2d
                 previous_level = \
-                    conv2d_wrapper(
-                        input_layer=previous_level,
-                        conv_params=residual_conv_base_params,
-                        channelwise_scaling=False,
-                        multiplier_scaling=False)
-                previous_level = \
                     keras.layers.UpSampling2D(
                         **upsampling_params)(previous_level)
-                previous_level = \
-                    tf.keras.layers.Concatenate()([previous_level, x_level])
                 if batchnorm:
                     previous_level = \
                         tf.keras.layers.BatchNormalization(**bn_params)(previous_level)
-                if residual_no_layers > 0:
-                    previous_level = \
-                        resnet_blocks_full(
-                            input_layer=previous_level,
-                            no_layers=residual_no_layers,
-                            first_conv_params=residual_first_conv_params,
-                            second_conv_params=residual_second_conv_params,
-                            third_conv_params=residual_third_conv_params,
-                            channelwise_params=channelwise_params,
-                            bn_params=bn_params)
                 previous_level = \
                     conv2d_wrapper(
                         input_layer=previous_level,
-                        conv_params=residual_conv_final_params,
+                        conv_params=residual_conv_params,
                         channelwise_scaling=True,
                         multiplier_scaling=False)
+                previous_level = \
+                    tf.clip_by_value(
+                        previous_level,
+                        clip_value_min=-0.5,
+                        clip_value_max=+0.5)
                 previous_level = \
                     tf.keras.layers.Add()([previous_level, x_level])
                 current_level_input = \

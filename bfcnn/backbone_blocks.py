@@ -152,12 +152,16 @@ def resnet_blocks_full(
             x = tf.stop_gradient(x)
 
         if use_mean_sigma:
-            mean_sigma_pool_size = mean_sigma_params.get("pool_size", (11, 11))
-            x_mean, x_sigma = \
+            x_mean_global, x_sigma_global = \
+                mean_sigma_global(
+                    input_layer=x,
+                    axis=[1, 2])
+            x_mean_local, x_sigma_local = \
                 mean_sigma_local(
                     input_layer=x,
-                    kernel_size=mean_sigma_pool_size)
-            x = (x - x_mean) / (x_sigma + DEFAULT_EPSILON)
+                    kernel_size=(11, 11))
+            x = (x - x_mean_global) / (x_sigma_global + DEFAULT_EPSILON)
+            x = (x - x_mean_local) / (x_sigma_local + DEFAULT_EPSILON)
 
         if use_stats:
             # TODO
@@ -252,9 +256,17 @@ def resnet_blocks_full(
         # optional channelwise multiplier
         if use_channelwise:
             x = ChannelwiseMultiplier(**channelwise_params)(x)
+
         # optional multiplier
         if use_multiplier:
             x = Multiplier(**multiplier_params)(x)
+
+        # scale back to original
+        if use_mean_sigma:
+            x = (x * x_sigma_local) + x_mean_local
+            x = (x * x_sigma_global) + x_mean_global
+
+        # optional dropout on/off
         if use_dropout:
             x = RandomOnOff(**dropout_params)(x)
 

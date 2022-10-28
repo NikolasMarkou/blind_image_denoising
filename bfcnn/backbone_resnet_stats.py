@@ -44,7 +44,7 @@ def builder(
         add_channelwise_scaling: bool = False,
         add_learnable_multiplier: bool = False,
         add_mean_sigma_normalization: bool = False,
-        name="resnet",
+        name="resnet_stats",
         **kwargs) -> keras.Model:
     """
     builds a resnet model

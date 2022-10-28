@@ -452,7 +452,7 @@ def mean_sigma_local(
             input_layer=input_layer,
             kernel_size=kernel_size)
 
-    sigma = tf.sqrt(tf.abs(variance) + epsilon)
+    sigma = tf.sqrt(variance + epsilon)
 
     return mean, sigma
 
