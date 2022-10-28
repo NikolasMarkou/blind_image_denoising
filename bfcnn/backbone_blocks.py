@@ -59,6 +59,7 @@ def resnet_blocks_full(
         third_conv_params: Dict,
         bn_params: Dict = None,
         gate_params: Dict = None,
+        stats_params: Dict = None,
         sparse_params: Dict = None,
         dropout_params: Dict = None,
         selector_params: Dict = None,
@@ -103,6 +104,7 @@ def resnet_blocks_full(
 
     # --- set variables
     use_gate = gate_params is not None
+    use_stats = stats_params is not None
     use_dropout = dropout_params is not None
     use_sparsity = sparse_params is not None
     use_selector = selector_params is not None
@@ -156,6 +158,11 @@ def resnet_blocks_full(
                     input_layer=x,
                     kernel_size=mean_sigma_pool_size)
             x = (x - x_mean) / (x_sigma + DEFAULT_EPSILON)
+
+        if use_stats:
+            # TODO
+            # calculate stats for each layer and add it up
+            pass
 
         if first_conv_params is not None and not bn_first_conv_params:
             x = conv2d_wrapper(input_layer=x,

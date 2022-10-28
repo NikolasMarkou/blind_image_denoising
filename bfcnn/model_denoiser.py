@@ -1,8 +1,6 @@
 import abc
 import tensorflow as tf
-from tensorflow import keras
 from collections import namedtuple
-from typing import Dict, List, Tuple
 
 # ---------------------------------------------------------------------
 # local imports

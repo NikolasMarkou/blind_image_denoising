@@ -8,6 +8,9 @@ notebooks/.ipynb_checkpoints
 # training files
 training/*
 
+# testing data
+images/BSR/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
