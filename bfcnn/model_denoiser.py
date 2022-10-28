@@ -286,8 +286,10 @@ def model_builder(
                 # based on https://distill.pub/2016/deconv-checkerboard/
                 # it is better to upsample with nearest neighbor and then conv2d
                 previous_level = \
-                    keras.layers.UpSampling2D(
+                    tf.keras.layers.UpSampling2D(
                         **upsampling_params)(previous_level)
+                previous_level = \
+                    tf.keras.layers.Concatenate()([previous_level, x_level])
                 if batchnorm:
                     previous_level = \
                         tf.keras.layers.BatchNormalization(**bn_params)(previous_level)
