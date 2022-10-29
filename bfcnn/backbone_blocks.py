@@ -115,8 +115,6 @@ def resnet_blocks_full(
     # followed by dense layer, because we are using this on large images
     # global averaging looses too much information
     if use_gate:
-        pool_bias = gate_params.get("bias", 2.5)
-
         gate_dense_0_params = dict(
             units=max(int(third_conv_params["filters"] / 4), 2),
             use_bias=False,
@@ -126,7 +124,7 @@ def resnet_blocks_full(
         )
 
         gate_dense_1_params = dict(
-            units=third_conv_params["filters"],
+            units=second_conv_params["filters"],
             use_bias=False,
             activation="hard_sigmoid",
             kernel_regularizer=third_conv_params.get("kernel_regularizer", "l1"),
