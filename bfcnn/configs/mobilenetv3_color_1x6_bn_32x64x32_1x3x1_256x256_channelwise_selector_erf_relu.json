@@ -13,7 +13,7 @@
     "activation": "relu",
     "final_activation": "tanh",
     "add_residual_between_models": true,
-    "add_channelwise_scaling": true,
+    "add_channelwise_scaling": false,
     "add_selector": true,
     "add_gates": true,
     "input_shape": ["?", "?", 3],

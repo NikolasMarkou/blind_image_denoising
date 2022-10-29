@@ -189,11 +189,17 @@ def resnet_blocks_full(
             y = tf.expand_dims(y, axis=3)
             x = tf.keras.layers.Multiply()([x, y])
 
-        if third_conv_params is not None:
-            x = conv2d_wrapper(input_layer=x,
-                               conv_params=copy.deepcopy(third_conv_params),
-                               bn_params=bn_params,
-                               channelwise_scaling=False)
+            if third_conv_params is not None:
+                x = conv2d_wrapper(input_layer=x,
+                                   conv_params=copy.deepcopy(third_conv_params),
+                                   bn_params=None,
+                                   channelwise_scaling=False)
+        else:
+            if third_conv_params is not None:
+                x = conv2d_wrapper(input_layer=x,
+                                   conv_params=copy.deepcopy(third_conv_params),
+                                   bn_params=bn_params,
+                                   channelwise_scaling=False)
 
         # fix x dimensions and previous layers
         if expand_type == ExpandType.COMPRESS:
@@ -679,6 +685,13 @@ def selector_block(
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer)
 
+    if selector_type == "hard":
+        selector_dense_1_params["activation"] = "hard_sigmoid"
+    elif selector_type == "hard":
+        selector_dense_1_params["activation"] = "sigmoid"
+    else:
+        raise ValueError(f"don't understand selector_type [{selector_type}]")
+
     # --- setup network
     x = selector_layer
 
@@ -696,15 +709,8 @@ def selector_block(
         dense_params=selector_dense_1_params,
         bn_params=bn_params)
 
-    if selector_type == "hard":
-        # if x < -2.5: return 0
-        # if x > 2.5: return 1
-        # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
-        x = tf.keras.activations.hard_sigmoid(2.5 - x)
-    elif selector_type == "soft":
-        x = tf.keras.activations.sigmoid(2.5 - x)
-    else:
-        raise ValueError(f"don't understand selector_type [{selector_type}]")
+    x = tf.expand_dims(x, axis=2)
+    x = tf.expand_dims(x, axis=3)
 
     return \
         tf.keras.layers.Multiply()([input_1_layer, x]) + \
