@@ -252,7 +252,7 @@ def resnet_blocks_full(
         # skip connector or selector mixer
         if use_selector:
             x = \
-                soft_selector_block(
+                selector_block(
                     input_1_layer=previous_layer,
                     input_2_layer=x,
                     selector_layer=x_2nd_conv,
@@ -642,7 +642,7 @@ def renderer(
 # ---------------------------------------------------------------------
 
 
-def hard_selector_block(
+def selector_block(
         input_1_layer,
         input_2_layer,
         selector_layer,
@@ -651,73 +651,7 @@ def hard_selector_block(
         bn_params: Dict = None,
         kernel_regularizer: str = "l1",
         kernel_initializer: str = "glorot_normal",
-        **kwargs):
-    """
-    from 2 input layers,
-    select a combination of the 2 with bias on the first one
-
-    :return: filtered input_layer
-    """
-    # --- argument checking
-    if filters_target is None:
-        raise ValueError("filters_target should not be None")
-
-    # --- set variables
-    # out squeeze and excite gating does not use global avg
-    # followed by dense layer, because we are using this on large images
-    # global averaging looses too much information
-    selector_dense_0_params = dict(
-        units=filters_compress,
-        use_bias=False,
-        activation="relu",
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer)
-
-    selector_dense_1_params = dict(
-        units=filters_target,
-        use_bias=False,
-        activation="relu",
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer)
-
-    # --- setup network
-    x = selector_layer
-
-    # transformation
-    x = tf.reduce_mean(x, axis=[1, 2], keepdims=False)
-
-    if filters_compress is not None:
-        x = dense_wrapper(
-            input_layer=x,
-            dense_params=selector_dense_0_params,
-            bn_params=None)
-
-    x = dense_wrapper(
-        input_layer=x,
-        dense_params=selector_dense_1_params,
-        bn_params=bn_params)
-
-    # if x < -2.5: return 0
-    # if x > 2.5: return 1
-    # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
-    x = tf.keras.activations.hard_sigmoid(2.5 - x)
-
-    return \
-        tf.keras.layers.Multiply()([input_1_layer, x]) + \
-        tf.keras.layers.Multiply()([input_2_layer, 1.0 - x])
-
-# ---------------------------------------------------------------------
-
-
-def soft_selector_block(
-        input_1_layer,
-        input_2_layer,
-        selector_layer,
-        filters_compress: int,
-        filters_target: int,
-        bn_params: Dict = None,
-        kernel_regularizer: str = "l1",
-        kernel_initializer: str = "glorot_normal",
+        selector_type: str = "hard",
         **kwargs):
     """
     from 2 input layers,
@@ -764,7 +698,15 @@ def soft_selector_block(
         dense_params=selector_dense_1_params,
         bn_params=bn_params)
 
-    x = tf.keras.activations.sigmoid(2.5 - x)
+    if selector_type == "hard":
+        # if x < -2.5: return 0
+        # if x > 2.5: return 1
+        # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
+        x = tf.keras.activations.hard_sigmoid(2.5 - x)
+    elif selector_type == "soft":
+        x = tf.keras.activations.sigmoid(2.5 - x)
+    else:
+        raise ValueError(f"don't understand selector_type [{selector_type}]")
 
     return \
         tf.keras.layers.Multiply()([input_1_layer, x]) + \
