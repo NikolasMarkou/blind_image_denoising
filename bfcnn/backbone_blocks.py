@@ -185,8 +185,8 @@ def resnet_blocks_full(
             # if x > 2.5: return 1
             # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
             y = tf.keras.layers.Dense(**gate_dense_1_params)(y)
+            y = tf.expand_dims(y, axis=1)
             y = tf.expand_dims(y, axis=2)
-            y = tf.expand_dims(y, axis=3)
             x = tf.keras.layers.Multiply()([x, y])
 
             if third_conv_params is not None:
@@ -709,8 +709,8 @@ def selector_block(
         dense_params=selector_dense_1_params,
         bn_params=bn_params)
 
+    x = tf.expand_dims(x, axis=1)
     x = tf.expand_dims(x, axis=2)
-    x = tf.expand_dims(x, axis=3)
 
     return \
         tf.keras.layers.Multiply()([input_1_layer, x]) + \
