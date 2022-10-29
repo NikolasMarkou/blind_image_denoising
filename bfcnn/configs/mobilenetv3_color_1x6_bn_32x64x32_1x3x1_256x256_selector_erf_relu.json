@@ -12,7 +12,7 @@
     "batchnorm": true,
     "activation": "relu",
     "final_activation": "tanh",
-    "add_residual_between_models": true,
+    "add_residual_between_models": false,
     "add_channelwise_scaling": false,
     "add_selector": true,
     "add_gates": true,
