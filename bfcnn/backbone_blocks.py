@@ -115,20 +115,28 @@ def resnet_blocks_full(
     # followed by dense layer, because we are using this on large images
     # global averaging looses too much information
     if use_gate:
+        no_filters = 0
+        if "filters" in second_conv_params:
+            no_filters = second_conv_params["filters"]
+        elif "depth_multiplier" in second_conv_params:
+            no_filters = first_conv_params["filters"] * second_conv_params["depth_multiplier"]
+        else:
+            raise ValueError("don't know what to do here")
+
         gate_dense_0_params = dict(
-            units=max(int(third_conv_params["filters"] / 4), 2),
+            units=max(int(no_filters / 8), 2),
             use_bias=False,
             activation="relu",
-            kernel_regularizer=third_conv_params.get("kernel_regularizer", "l1"),
-            kernel_initializer=third_conv_params.get("kernel_initializer", "glorot_normal")
+            kernel_regularizer=first_conv_params.get("kernel_regularizer", "l1"),
+            kernel_initializer=first_conv_params.get("kernel_initializer", "glorot_normal")
         )
 
         gate_dense_1_params = dict(
-            units=second_conv_params["filters"],
+            units=no_filters,
             use_bias=False,
             activation="hard_sigmoid",
-            kernel_regularizer=third_conv_params.get("kernel_regularizer", "l1"),
-            kernel_initializer=third_conv_params.get("kernel_initializer", "glorot_normal")
+            kernel_regularizer=first_conv_params.get("kernel_regularizer", "l1"),
+            kernel_initializer=first_conv_params.get("kernel_initializer", "glorot_normal")
         )
 
     # --- setup resnet along with its variants
