@@ -59,7 +59,6 @@ def resnet_blocks_full(
         third_conv_params: Dict,
         bn_params: Dict = None,
         gate_params: Dict = None,
-        stats_params: Dict = None,
         sparse_params: Dict = None,
         dropout_params: Dict = None,
         selector_params: Dict = None,
@@ -104,7 +103,6 @@ def resnet_blocks_full(
 
     # --- set variables
     use_gate = gate_params is not None
-    use_stats = stats_params is not None
     use_dropout = dropout_params is not None
     use_sparsity = sparse_params is not None
     use_selector = selector_params is not None
@@ -118,21 +116,19 @@ def resnet_blocks_full(
     # global averaging looses too much information
     if use_gate:
         pool_bias = gate_params.get("bias", 2.5)
-        gate_conv_params = dict(
-            kernel_size=3,
-            strides=(1, 1),
-            padding="same",
+
+        gate_dense_0_params = dict(
+            units=max(int(third_conv_params["filters"] / 4), 2),
             use_bias=False,
             activation="relu",
-            filters=third_conv_params["filters"] / 2,
             kernel_regularizer=third_conv_params.get("kernel_regularizer", "l1"),
             kernel_initializer=third_conv_params.get("kernel_initializer", "glorot_normal")
         )
 
-        gate_dense_params = dict(
+        gate_dense_1_params = dict(
             units=third_conv_params["filters"],
             use_bias=False,
-            activation="relu",
+            activation="hard_sigmoid",
             kernel_regularizer=third_conv_params.get("kernel_regularizer", "l1"),
             kernel_initializer=third_conv_params.get("kernel_initializer", "glorot_normal")
         )
@@ -156,17 +152,7 @@ def resnet_blocks_full(
                 mean_sigma_global(
                     input_layer=x,
                     axis=[1, 2])
-            x_mean_local, x_sigma_local = \
-                mean_sigma_local(
-                    input_layer=x,
-                    kernel_size=(11, 11))
             x = (x - x_mean_global) / (x_sigma_global + DEFAULT_EPSILON)
-            x = (x - x_mean_local) / (x_sigma_local + DEFAULT_EPSILON)
-
-        if use_stats:
-            # TODO
-            # calculate stats for each layer and add it up
-            pass
 
         if first_conv_params is not None and not bn_first_conv_params:
             x = conv2d_wrapper(input_layer=x,
@@ -201,20 +187,14 @@ def resnet_blocks_full(
 
         # compute activation per channel
         if use_gate:
-            y = conv2d_wrapper(input_layer=gate_layer,
-                               conv_params=copy.deepcopy(gate_conv_params),
-                               bn_params=bn_params,
-                               channelwise_scaling=True,
-                               multiplier_scaling=False)
-            y = tf.reduce_mean(y, axis=[1, 2], keepdims=False)
-            y = tf.keras.layers.Dense(**gate_dense_params)(y)
-            y = tf.expand_dims(y, axis=2)
-            y = tf.expand_dims(y, axis=3)
-
+            y = tf.reduce_mean(gate_layer, axis=[1, 2], keepdims=False)
+            y = tf.keras.layers.Dense(**gate_dense_0_params)(y)
             # if x < -2.5: return 0
             # if x > 2.5: return 1
             # if -2.5 <= x <= 2.5: return 0.2 * x + 0.5
-            y = tf.keras.activations.hard_sigmoid(pool_bias - y)
+            y = tf.keras.layers.Dense(**gate_dense_1_params)(y)
+            y = tf.expand_dims(y, axis=2)
+            y = tf.expand_dims(y, axis=3)
             x = tf.keras.layers.Multiply()([x, y])
 
         # fix x dimensions and previous layers
@@ -263,7 +243,6 @@ def resnet_blocks_full(
 
         # scale back to original
         if use_mean_sigma:
-            x = (x * x_sigma_local) + x_mean_local
             x = (x * x_sigma_global) + x_mean_global
 
         # optional dropout on/off
