@@ -26,6 +26,11 @@ CONFIGS = {
 
 
 def main(args):
+    # --- argument checking
+    if args.model is None or len(args.model) <= 0:
+        raise ValueError("you must select a model")
+
+    # --- set variables
     model = args.model.lower()
 
     # --- check if model in configs

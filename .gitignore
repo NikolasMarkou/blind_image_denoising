@@ -1,6 +1,7 @@
 # compressed files
 *tar.gz
 *tgz
+*.h5
 
 # ide files
 .idea/

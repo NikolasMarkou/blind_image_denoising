@@ -27,11 +27,12 @@ def main(args):
     models = \
         model_denoise_builder(config=config[MODEL_DENOISE_STR])
 
-    # summary of model
-    denoiser = models.denoiser
-    denoiser.summary(print_fn=logger.info)
-    # save model so we can visualize it easier
-    denoiser.save(
+    # --- summary of model
+    models.denoiser.summary(print_fn=logger.info)
+
+    # --- save model so we can visualize it easier
+    logger.info(f"saving denoiser model in [{args.output_file}]")
+    models.denoiser.save(
         filepath=args.output_file,
         include_optimizer=False)
 

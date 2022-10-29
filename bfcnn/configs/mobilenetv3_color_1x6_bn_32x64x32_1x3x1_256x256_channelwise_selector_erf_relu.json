@@ -5,23 +5,17 @@
     "kernel_size": 7,
     "block_kernels": [1, 3, 1],
     "block_filters": [32, 64, 32],
-    "add_var": false,
+    "block_depthwise": [-1, 2, -1],
     "value_range": [0, 255],
+    "add_var": false,
     "type": "resnet",
     "batchnorm": true,
     "activation": "relu",
-    "add_gates": false,
-    "dropout_rate": 0.15,
-    "add_sparsity": false,
-    "clip_values": false,
-    "shared_model": false,
-    "add_final_bn": false,
-    "output_multiplier": 1.0,
     "final_activation": "tanh",
-    "add_channelwise_scaling": false,
-    "add_learnable_multiplier": false,
-    "add_skip_with_input": false,
-    "add_residual_between_models": false,
+    "add_residual_between_models": true,
+    "add_channelwise_scaling": true,
+    "add_selector": true,
+    "add_gates": true,
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
     "kernel_regularizer": {
@@ -40,6 +34,7 @@
     "checkpoint_every": 10000,
     "visualization_number": 4,
     "visualization_every": 1000,
+    "same_sample_iterations": 1,
     "random_batch_iterations": 5,
     "random_batch_size": [256, 256, 3],
     "random_batch_min_difference": 0.1,
@@ -64,7 +59,7 @@
   "dataset": {
     "batch_size": 16,
     "value_range": [0, 255],
-    "scale_range": [0.25, 1.0],
+    "scale_range": [0.5, 1.0],
     "clip_value": true,
     "random_blur": true,
     "subsample_size": -1,
@@ -81,6 +76,10 @@
       {
         "dataset_shape": [256, 768],
         "directory": "/media/data1_4tb/datasets/KITTI/data/depth/raw_image_values/"
+      },
+      {
+        "dataset_shape": [512, 512],
+        "directory": "/media/data1_4tb/datasets/COCO/train2017"
       },
       {
         "dataset_shape": [512, 512],

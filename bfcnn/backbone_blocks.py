@@ -176,14 +176,6 @@ def resnet_blocks_full(
                                channelwise_scaling=False)
             x_2nd_conv = x
             gate_layer = x_2nd_conv
-        # ---
-        if third_conv_params is not None:
-            x = conv2d_wrapper(input_layer=x,
-                               conv_params=copy.deepcopy(third_conv_params),
-                               bn_params=bn_params,
-                               channelwise_scaling=False)
-            x_3rd_conv = x
-            gate_layer = x_3rd_conv
 
         # compute activation per channel
         if use_gate:
@@ -196,6 +188,12 @@ def resnet_blocks_full(
             y = tf.expand_dims(y, axis=2)
             y = tf.expand_dims(y, axis=3)
             x = tf.keras.layers.Multiply()([x, y])
+
+        if third_conv_params is not None:
+            x = conv2d_wrapper(input_layer=x,
+                               conv_params=copy.deepcopy(third_conv_params),
+                               bn_params=bn_params,
+                               channelwise_scaling=False)
 
         # fix x dimensions and previous layers
         if expand_type == ExpandType.COMPRESS:
