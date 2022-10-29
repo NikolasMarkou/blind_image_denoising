@@ -677,7 +677,7 @@ def selector_block(
     selector_dense_1_params = dict(
         units=filters_target,
         use_bias=False,
-        activation="linear",
+        activation="relu",
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer)
 
