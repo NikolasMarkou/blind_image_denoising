@@ -255,6 +255,35 @@ def nae(
         tf.reduce_mean(d, axis=[0]) / \
         (tf.reduce_mean(d_x, axis=[0]) + DEFAULT_EPSILON)
 
+# ---------------------------------------------------------------------
+
+
+def soft_orthogonal(
+        feature_map: tf.Tensor) -> tf.Tensor:
+    """
+
+    :return: soft orthogonal loss
+    """
+    # move channels
+    shape = tf.shape(feature_map)
+    f = tf.transpose(feature_map, perm=(0, 3, 1, 2))
+    ft = tf.reshape(f, shape=(shape[0], shape[3], -1))
+    ft_x_f = \
+        tf.linalg.matmul(
+            ft,
+            tf.transpose(ft, perm=(0, 2, 1)))
+
+    # identity matrix
+    i = tf.eye(
+        num_rows=shape[3],
+        num_columns=shape[3])
+    x = \
+        tf.square(
+            tf.norm(ft_x_f - i,
+                    ord="fro",
+                    axis=(1, 2),
+                    keepdims=False))
+    return tf.reduce_mean(x, axis=[0])
 
 # ---------------------------------------------------------------------
 

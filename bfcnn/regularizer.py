@@ -128,6 +128,8 @@ class SoftOrthonormalConstraintRegularizer(keras.regularizers.Regularizer):
     def __call__(self, x):
         # --- compute (Wt * W)
         wt_w = wt_x_w(x)
+        w_shape = tf.shape(wt_w)
+        i = tf.eye(num_rows=w_shape[0])
 
         # --- init result
         result = tf.constant(0.0, dtype=tf.float32)
@@ -137,7 +139,7 @@ class SoftOrthonormalConstraintRegularizer(keras.regularizers.Regularizer):
             result += \
                 self._lambda_coefficient * \
                 tf.square(
-                    tf.norm(wt_w,
+                    tf.norm(wt_w - i,
                             ord="fro",
                             axis=(0, 1),
                             keepdims=False))

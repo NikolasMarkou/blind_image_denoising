@@ -127,16 +127,16 @@ def resnet_blocks_full(
             units=max(int(no_filters / 8), 2),
             use_bias=False,
             activation="relu",
-            kernel_regularizer=first_conv_params.get("kernel_regularizer", "l1"),
-            kernel_initializer=first_conv_params.get("kernel_initializer", "glorot_normal")
+            kernel_regularizer="l1",
+            kernel_initializer="glorot_normal"
         )
 
         gate_dense_1_params = dict(
             units=no_filters,
             use_bias=False,
             activation="hard_sigmoid",
-            kernel_regularizer=first_conv_params.get("kernel_regularizer", "l1"),
-            kernel_initializer=first_conv_params.get("kernel_initializer", "glorot_normal")
+            kernel_regularizer="l1",
+            kernel_initializer="glorot_normal"
         )
 
     # --- setup resnet along with its variants
@@ -269,8 +269,8 @@ def resnet_blocks_full(
                     bn_params=None,
                     filters_compress=max(int(third_conv_params["filters"] / 4), 2),
                     filters_target=third_conv_params["filters"],
-                    kernel_regularizer=third_conv_params.get("kernel_regularizer", "l1"),
-                    kernel_initializer=third_conv_params.get("kernel_initializer", "glorot_normal"))
+                    kernel_regularizer="l1",
+                    kernel_initializer="glorot_normal")
         else:
             # skip connection
             x = tf.keras.layers.Add()([x, previous_layer])
