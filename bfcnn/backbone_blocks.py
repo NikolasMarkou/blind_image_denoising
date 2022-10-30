@@ -115,16 +115,16 @@ def resnet_blocks_full(
     # followed by dense layer, because we are using this on large images
     # global averaging looses too much information
     if use_gate:
-        no_filters = 0
+        gate_no_filters = 0
         if "filters" in second_conv_params:
-            no_filters = second_conv_params["filters"]
+            gate_no_filters = second_conv_params["filters"]
         elif "depth_multiplier" in second_conv_params:
-            no_filters = first_conv_params["filters"] * second_conv_params["depth_multiplier"]
+            gate_no_filters = first_conv_params["filters"] * second_conv_params["depth_multiplier"]
         else:
             raise ValueError("don't know what to do here")
 
         gate_dense_0_params = dict(
-            units=max(int(no_filters / 8), 2),
+            units=max(int(gate_no_filters / 8), 2),
             use_bias=False,
             activation="relu",
             kernel_regularizer="l1",
@@ -132,7 +132,7 @@ def resnet_blocks_full(
         )
 
         gate_dense_1_params = dict(
-            units=no_filters,
+            units=gate_no_filters,
             use_bias=False,
             activation="hard_sigmoid",
             kernel_regularizer="l1",

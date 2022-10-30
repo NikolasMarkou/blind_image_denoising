@@ -311,11 +311,16 @@ def loss_function_builder(
     # --- regularization
     regularization_multiplier = tf.constant(config.get("regularization", 1.0))
 
+    # --- features
+    features_multiplier = tf.constant(config.get("features_multiplier", 0.0))
+    use_features = features_multiplier > 0.0
+
     def loss_function(
             input_batch: tf.Tensor,
             prediction_batch: tf.Tensor,
             noisy_batch: tf.Tensor,
             model_losses: tf.Tensor,
+            feature_map_batch: tf.tensor = None,
             mask_batch: tf.Tensor = tf.constant(1.0, dtype=tf.float32)) -> Dict[str, tf.Tensor]:
         """
         The loss function of the depth prediction model
@@ -324,6 +329,7 @@ def loss_function_builder(
         :param prediction_batch: prediction
         :param noisy_batch: noisy batch
         :param model_losses: weight/regularization losses
+        :param feature_map_batch: features batch
         :param mask_batch: mask to focus on
 
         :return: dictionary of losses
@@ -352,6 +358,11 @@ def loss_function_builder(
                     hinge=hinge,
                     cutoff=cutoff)
 
+        # --- regularization on features map
+        feature_map_regularization_loss = tf.constant(0.0)
+        if use_features and feature_map_batch is not None:
+            feature_map_regularization_loss = soft_orthogonal(feature_map_batch)
+
         # ---
         nae_noise = nae(input_batch, noisy_batch)
         nae_prediction = nae(input_batch, prediction_batch)
@@ -368,7 +379,8 @@ def loss_function_builder(
         # --- add up loss
         mean_total_loss = \
             mae_prediction_loss * mae_multiplier + \
-            regularization_loss * regularization_multiplier
+            regularization_loss * regularization_multiplier + \
+            feature_map_regularization_loss * features_multiplier
 
         return {
             NAE_NOISE_STR: nae_noise,
