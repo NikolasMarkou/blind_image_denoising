@@ -113,6 +113,14 @@ def model_builder(
     if kernel_size <= 0:
         raise ValueError("kernel_size must be > 0")
 
+    # regularizer for all kernels in the backbone
+    kernel_regularizer = \
+        regularizer_builder(kernel_regularizer)
+
+    # regularizer for all kernels denoise head
+    denoise_head_kernel_regularization = \
+        regularizer_builder(denoise_head_kernel_regularization)
+
     denoise_intermediate_conv_params = dict(
         groups=groups,
         kernel_size=1,
