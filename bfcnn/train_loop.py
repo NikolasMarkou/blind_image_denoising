@@ -345,14 +345,26 @@ def train_loop(
                                 grads[j] += tmp_grads[j]
 
                     # set it back so we can iterate again
-                    if i < (same_sample_iterations - 1):
-                        denoised_batch = \
-                            tf.clip_by_value(
-                                denoised_batch,
-                                clip_value_min=-0.5,
-                                clip_value_max=0.5)
-                        noisy_batch = (denormalized_denoised_batch + noisy_batch) / 2
-                        normalized_noisy_batch = (denoised_batch + normalized_noisy_batch) / 2
+                    if 1 < same_sample_iterations:
+                        if i == 0:
+                            tmp_loss = loss_map
+                            denoised_batch = \
+                                tf.clip_by_value(
+                                    denoised_batch,
+                                    clip_value_min=-0.5,
+                                    clip_value_max=0.5)
+                            noisy_batch = (denormalized_denoised_batch + noisy_batch) / 2
+                            normalized_noisy_batch = (denoised_batch + normalized_noisy_batch) / 2
+                        elif i < (same_sample_iterations - 1):
+                            denoised_batch = \
+                                tf.clip_by_value(
+                                    denoised_batch,
+                                    clip_value_min=-0.5,
+                                    clip_value_max=0.5)
+                            noisy_batch = (denormalized_denoised_batch + noisy_batch) / 2
+                            normalized_noisy_batch = (denoised_batch + normalized_noisy_batch) / 2
+                        elif i == (same_sample_iterations - 1):
+                            loss_map = tmp_loss
 
                 # run one step of gradient descent by updating
                 # the value of the variables to minimize the loss.
