@@ -1,6 +1,8 @@
 from copy import deepcopy
 from .config_base import config as base
 
+# ---------------------------------------------------------------------
+
 config = deepcopy(base)
 
 config["model_denoise"] = {
@@ -12,11 +14,10 @@ config["model_denoise"] = {
     "value_range": [0, 255],
     "type": "resnet",
     "batchnorm": True,
+    "use_bias": False,
     "activation": "relu",
     "final_activation": "tanh",
-    "add_residual_between_models": False,
-    "add_channelwise_scaling": False,
-    "add_selector": False,
+    "base_activation": "linear",
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
     "kernel_regularizer": {
@@ -28,3 +29,4 @@ config["model_denoise"] = {
     }
   }
 
+# ---------------------------------------------------------------------
