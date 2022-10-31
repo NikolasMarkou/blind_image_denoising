@@ -320,7 +320,7 @@ def loss_function_builder(
             prediction_batch: tf.Tensor,
             noisy_batch: tf.Tensor,
             model_losses: tf.Tensor,
-            feature_map_batch: tf.tensor = None,
+            feature_map_batch: tf.Tensor = None,
             mask_batch: tf.Tensor = tf.constant(1.0, dtype=tf.float32)) -> Dict[str, tf.Tensor]:
         """
         The loss function of the depth prediction model
