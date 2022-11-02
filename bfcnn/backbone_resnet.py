@@ -33,7 +33,7 @@ def builder(
         kernel_initializer="glorot_normal",
         dropout_rate: float = -1,
         stop_gradient: bool = False,
-        add_clip: bool = False,
+        add_squash: bool = False,
         add_gelu: bool = False,
         add_gates: bool = False,
         add_selector: bool = False,
@@ -77,7 +77,7 @@ def builder(
     :param add_final_bn: add a batch norm after the resnet blocks
     :param add_concat_input: if true concat input to intermediate before projecting
     :param add_selector: if true add a selector block in skip connections
-    :param add_clip: if True squash results with a tanh activation
+    :param add_squash: if True squash results with a tanh activation
     :param add_sparse_features: if true set feature map to be sparse
     :param name: name of the model
 
@@ -287,7 +287,7 @@ def builder(
         x = Multiplier(**multiplier_params)(x)
 
     # optional clipping to [-1, +1]
-    if add_clip:
+    if add_squash:
         x = tf.tanh(x)
 
     # --- output layer branches here,

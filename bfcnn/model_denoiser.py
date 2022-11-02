@@ -71,6 +71,7 @@ def model_builder(
     pyramid_config = config.get("pyramid", None)
     dropout_rate = config.get("dropout_rate", -1)
     activation = config.get("activation", "relu")
+    add_squash = config.get("add_squash", False)
     clip_values = config.get("clip_values", False)
     channel_index = config.get("channel_index", 2)
     add_final_bn = config.get("add_final_bn", False)
@@ -176,6 +177,7 @@ def model_builder(
         no_layers=no_layers,
         add_gates=add_gates,
         activation=activation,
+        add_squash=add_squash,
         input_dims=input_shape,
         kernel_size=kernel_size,
         add_selector=add_selector,
