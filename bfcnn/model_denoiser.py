@@ -58,12 +58,12 @@ def model_builder(
 
     # --- argument parsing
     model_type = config[TYPE_STR]
-    filters = config.get("filters", 32)
     groups = config.get("groups", 4)
+    filters = config.get("filters", 32)
     no_levels = config.get("no_levels", 1)
     add_var = config.get("add_var", False)
     no_layers = config.get("no_layers", 5)
-    value_range = config.get("value_range", (0, 255))
+    add_gelu = config.get("add_gelu", False)
     use_bias = config.get("use_bias", False)
     batchnorm = config.get("batchnorm", True)
     kernel_size = config.get("kernel_size", 3)
@@ -77,13 +77,13 @@ def model_builder(
     add_selector = config.get("add_selector", False)
     shared_model = config.get("shared_model", False)
     add_sparsity = config.get("add_sparsity", False)
+    value_range = config.get("value_range", (0, 255))
     add_laplacian = config.get("add_laplacian", True)
     stop_gradient = config.get("stop_gradient", False)
     block_kernels = config.get("block_kernels", (3, 3))
     block_filters = config.get("block_filters", (32, 32))
     block_depthwise = config.get("block_depthwise", None)
     add_initial_bn = config.get("add_initial_bn", False)
-    residual_no_layers = config.get("residual_no_layers", 1)
     add_concat_input = config.get("add_concat_input", False)
     input_shape = config.get("input_shape", (None, None, 3))
     output_multiplier = config.get("output_multiplier", 1.0)
@@ -171,6 +171,7 @@ def model_builder(
         add_var=add_var,
         filters=filters,
         use_bn=batchnorm,
+        add_gelu=add_gelu,
         no_levels=no_levels,
         no_layers=no_layers,
         add_gates=add_gates,

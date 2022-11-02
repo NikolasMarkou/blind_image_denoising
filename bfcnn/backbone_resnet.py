@@ -9,8 +9,8 @@ from typing import List
 from .constants import *
 from .custom_logger import logger
 from .utilities import conv2d_wrapper
-from .custom_layers import ChannelwiseMultiplier, Multiplier
 from .backbone_blocks import resnet_blocks_full, sparse_block
+from .custom_layers import ChannelwiseMultiplier, Multiplier, DifferentiableGateLayer
 
 
 # ---------------------------------------------------------------------
@@ -34,6 +34,7 @@ def builder(
         dropout_rate: float = -1,
         stop_gradient: bool = False,
         add_clip: bool = False,
+        add_gelu: bool = False,
         add_gates: bool = False,
         add_selector: bool = False,
         add_sparsity: bool = False,
@@ -70,6 +71,7 @@ def builder(
     :param stop_gradient: if True stop gradients in each resnet block
     :param add_sparsity: if true add sparsity layer
     :param add_gates: if true add gate layer
+    :param add_gelu: if true add gelu layers
     :param add_mean_sigma_normalization: if true add variance for each block
     :param add_initial_bn: add a batch norm before the resnet blocks
     :param add_final_bn: add a batch norm after the resnet blocks
@@ -193,6 +195,9 @@ def builder(
             dict(
                 threshold_sigma=1.0,
             )
+
+    if add_gelu:
+        resnet_params["gelu_params"] = dict()
 
     if add_selector:
         resnet_params["selector_params"] = dict()

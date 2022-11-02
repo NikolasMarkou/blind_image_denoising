@@ -14,7 +14,8 @@ from .constants import *
 from .custom_layers import \
     Multiplier, \
     RandomOnOff, \
-    ChannelwiseMultiplier
+    ChannelwiseMultiplier, \
+    DifferentiableGateLayer
 from .utilities import \
     ConvType, \
     sparse_block, \
@@ -59,6 +60,7 @@ def resnet_blocks_full(
         third_conv_params: Dict,
         bn_params: Dict = None,
         gate_params: Dict = None,
+        gelu_params: Dict = None,
         sparse_params: Dict = None,
         dropout_params: Dict = None,
         selector_params: Dict = None,
@@ -69,6 +71,7 @@ def resnet_blocks_full(
         expand_type: ExpandType = ExpandType.SAME,
         stop_gradient: bool = False,
         bn_first_conv_params: bool = False,
+
         **kwargs):
     """
     Create a series of residual network blocks
@@ -103,6 +106,7 @@ def resnet_blocks_full(
 
     # --- set variables
     use_gate = gate_params is not None
+    use_gelu = gelu_params is not None
     use_dropout = dropout_params is not None
     use_sparsity = sparse_params is not None
     use_selector = selector_params is not None
@@ -242,6 +246,10 @@ def resnet_blocks_full(
         # optional sparsity
         if use_sparsity:
             x = sparse_block(x, **sparse_params)
+
+        # optional gelu
+        if use_gelu:
+            x = DifferentiableGateLayer(**gelu_params)(x)
 
         # optional channelwise multiplier
         if use_channelwise:
