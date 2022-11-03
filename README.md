@@ -53,6 +53,8 @@ several types of noise and then try to recover the original image
 * normally distributed additive noise (same per channel / different same per channel)
 * normally distributed multiplicative noise (same per channel / different same per channel)
 
+in addition to that there is a small smoothing kernel (3x3) that probabilistically embeds the noise. 
+
 
 ## Pretrained models
 
