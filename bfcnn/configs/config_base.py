@@ -47,7 +47,7 @@ config = {
     "random_left_right": True,
     "input_shape": [256, 256, 3],
     "multiplicative_noise": [0.05, 0.1, 0.2],
-    "additional_noise": [1, 5, 10, 20, 40, 60, 80],
+    "additional_noise": [1, 5, 10, 20],
     "inputs": [
       {
         "dataset_shape": [256, 768],
