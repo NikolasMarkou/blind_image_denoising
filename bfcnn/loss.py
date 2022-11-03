@@ -367,7 +367,7 @@ def loss_function_builder(
                 pyramid_model(input_batch, training=False)
             prediction_batch_multiscale = \
                 pyramid_model(prediction_batch, training=False)
-            for i in tf.range(pyramid_levels):
+            for i in range(pyramid_levels):
                 mae_prediction_loss += \
                     mae(original=input_batch_multiscale[i],
                         prediction=prediction_batch_multiscale[i],
