@@ -13,6 +13,7 @@ This is documentation of several experiments and various techniques
 * ReLU seems to work very well
 * ELU (alone) does not produce better results than ReLU but produces lesser artifacts at very high noise levels
 * ReLU6 seems to work better than ReLU and provides better regularization
+* squashing feature space increases MAE 
 
 ## Performance
 

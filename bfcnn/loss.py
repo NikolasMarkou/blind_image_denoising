@@ -10,7 +10,7 @@ from typing import List, Dict, Callable
 from .constants import *
 from .custom_logger import logger
 from .delta import delta_xy_magnitude
-
+from .pyramid import build_pyramid_model
 
 # ---------------------------------------------------------------------
 
@@ -84,6 +84,7 @@ def mae_weighted_delta(
         original: tf.Tensor,
         prediction: tf.Tensor,
         mask: tf.Tensor = tf.constant(1.0, tf.float32),
+        bias: float = 1.0,
         hinge: float = 0.0,
         cutoff: float = 255.0) -> tf.Tensor:
     """
@@ -92,6 +93,7 @@ def mae_weighted_delta(
     :param original: original image batch
     :param prediction: denoised image batch
     :param mask: where to focus the loss
+    :param bias: add this to the whole xy magnitude
     :param hinge: hinge value
     :param cutoff: max value
 
@@ -104,6 +106,7 @@ def mae_weighted_delta(
             alpha=1.0,
             beta=1.0,
             eps=DEFAULT_EPSILON)
+    d_weight = d_weight + bias
     d_weight = \
         d_weight / \
         (tf.reduce_max(
@@ -315,6 +318,21 @@ def loss_function_builder(
     features_multiplier = tf.constant(config.get("features_multiplier", 0.0))
     use_features = features_multiplier > 0.0
 
+    # --- multiscale mae
+    use_multiscale = tf.constant(config.get("use_multiscale", False))
+    laplacian_config = {
+        "levels": 3,
+        "type": "laplacian",
+        "xy_max": (1.0, 1.0),
+        "kernel_size": (5, 5)
+    }
+    pyramid_model = \
+        build_pyramid_model(
+            input_dims=(None, None, None, 3),
+            config=laplacian_config)
+    pyramid_levels = \
+        tf.constant(laplacian_config["levels"])
+
     def loss_function(
             input_batch: tf.Tensor,
             prediction_batch: tf.Tensor,
@@ -342,8 +360,21 @@ def loss_function_builder(
                 cutoff=255.0)
 
         # --- loss prediction on mae
+        mae_prediction_loss = \
+            tf.constant(0.0, dtype=tf.float32)
+        if use_multiscale:
+            input_batch_multiscale = \
+                pyramid_model(input_batch, training=False)
+            prediction_batch_multiscale = \
+                pyramid_model(prediction_batch, training=False)
+            for i in tf.range(pyramid_levels):
+                mae_prediction_loss += \
+                    mae(original=input_batch_multiscale[i],
+                        prediction=prediction_batch_multiscale[i],
+                        mask=mask_batch)
+
         if use_delta:
-            mae_prediction_loss = \
+            mae_prediction_loss += \
                 mae_weighted_delta(
                     original=input_batch,
                     prediction=prediction_batch,
@@ -351,7 +382,7 @@ def loss_function_builder(
                     hinge=hinge,
                     cutoff=cutoff)
         else:
-            mae_prediction_loss = \
+            mae_prediction_loss += \
                 mae(original=input_batch,
                     prediction=prediction_batch,
                     mask=mask_batch,
@@ -360,7 +391,7 @@ def loss_function_builder(
 
         # --- regularization on features map
         feature_map_regularization_loss = tf.constant(0.0)
-        if use_features and feature_map_batch is not None:
+        if use_features:
             feature_map_regularization_loss = soft_orthogonal(feature_map_batch)
 
         # ---
