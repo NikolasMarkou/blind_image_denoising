@@ -328,7 +328,7 @@ def loss_function_builder(
     }
     pyramid_model = \
         build_pyramid_model(
-            input_dims=(None, None, None, 3),
+            input_dims=(None, None, 3),
             config=laplacian_config)
     pyramid_levels = \
         tf.constant(laplacian_config["levels"])
