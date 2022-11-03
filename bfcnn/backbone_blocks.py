@@ -143,6 +143,17 @@ def resnet_blocks_full(
             kernel_initializer="glorot_normal"
         )
 
+    if use_selector:
+        selector_no_filters = 0
+        if third_conv_params is not None:
+            selector_no_filters = third_conv_params["filters"]
+        elif second_conv_params is not None:
+            selector_no_filters = second_conv_params["filters"]
+        elif first_conv_params is not None:
+            selector_no_filters = first_conv_params["filters"]
+        else:
+            raise ValueError("don't know what to do here")
+
     # --- setup resnet along with its variants
     x = input_layer
 
@@ -275,10 +286,11 @@ def resnet_blocks_full(
                     input_2_layer=x,
                     selector_layer=x_2nd_conv,
                     bn_params=None,
-                    filters_compress=max(int(third_conv_params["filters"] / 4), 2),
-                    filters_target=third_conv_params["filters"],
+                    filters_compress=max(int(selector_no_filters / 4), 2),
+                    filters_target=selector_no_filters,
                     kernel_regularizer="l1",
-                    kernel_initializer="glorot_normal")
+                    kernel_initializer="glorot_normal",
+                    selector_type="hard")
         else:
             # skip connection
             x = tf.keras.layers.Add()([x, previous_layer])

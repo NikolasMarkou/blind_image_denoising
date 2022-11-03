@@ -1,14 +1,14 @@
 {
   "model_denoise": {
     "filters": 32,
-    "no_layers": 6,
+    "no_layers": 12,
     "kernel_size": 7,
     "block_kernels": [3, 3],
     "block_filters": [32, 32],
     "value_range": [0, 255],
     "type": "resnet",
     "batchnorm": true,
-    "activation": "relu",
+    "activation": "relu6",
     "final_activation": "tanh",
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
