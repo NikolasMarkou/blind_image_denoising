@@ -151,14 +151,13 @@ denoised_tensor = denoiser_model(input_tensor)
 ```
 
 ## Designing the best possible denoiser
-1. Add a small hinge at the MAE loss. 2 (from 255) seems to work very good
+1. Add a small hinge at the MAE loss. values from 0.5 - 2.0 (from 255) seem to work very good
 2. Multiscale models work better, 3-4 scales is ideal. LUnet seems to perform very well.
 3. Soft-Orthogonal regularization provides better generalization, but it's slower to train.
 4. Effective Receptive Field regularization provides better generalization, but it's slower to train.
 5. Squeeze-and-Excite provides a small boost without many additional parameters.
 6. Avoid Batch Normalization at the end.
-7. Residual learning (learning the noise) trains faster and gives better metrics 
-   but may give out artifacts, so better avoid it.
+7. Residual learning (learning the noise) trains faster and gives better metrics but may give out artifacts, so better avoid it.
 All these options are supported in the configuration.
 
 ## Model types
