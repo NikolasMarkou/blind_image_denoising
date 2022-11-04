@@ -114,7 +114,7 @@ def test_stats_2d_block(input_dims):
             mean=0,
             stddev=1,
             shape=input_dims)
-    results = bfcnn.utilities.stats_2d_block(tensor)
+    results = bfcnn.utilities.min_max_mean_sigma_block(tensor)
     results = results.numpy()
     assert len(results.shape) == 2
     assert results.shape[0] == tensor.shape[0]

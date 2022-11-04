@@ -48,8 +48,9 @@ def dataset_builder(
         raise ValueError("dont know how to handle anything else than list and dict")
 
     # --- clip values to min max
-    min_value = config.get("min_value", 0)
-    max_value = config.get("max_value", 255)
+    value_range = config.get("value_range", [0, 255])
+    min_value = tf.constant(value_range[0], dtype=tf.float32)
+    max_value = tf.constant(value_range[1], dtype=tf.float32)
     clip_value = tf.constant(config.get("clip_value", True))
 
     # --- if true round values
@@ -72,8 +73,9 @@ def dataset_builder(
     # quantization value, -1 disabled, otherwise 2, 4, 8
     quantization = tf.constant(config.get("quantization", -1))
     # min/max scale
-    min_scale = tf.constant(config.get("min_scale", 0.25))
-    max_scale = tf.constant(config.get("max_scale", 1.0))
+    scale_range = config.get("scale_range", [0.25, 1.0])
+    min_scale = tf.constant(scale_range[0], dtype=tf.float32)
+    max_scale = tf.constant(scale_range[1], dtype=tf.float32)
     # whether to crop or not
     random_crop = dataset_shape[0][0:2] != input_shape[0:2]
     random_crop = tf.constant(random_crop)

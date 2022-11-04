@@ -10,7 +10,7 @@ from typing import List, Dict, Callable
 from .constants import *
 from .custom_logger import logger
 from .delta import delta_xy_magnitude
-
+from .pyramid import build_pyramid_model
 
 # ---------------------------------------------------------------------
 
@@ -83,6 +83,8 @@ def snr(
 def mae_weighted_delta(
         original: tf.Tensor,
         prediction: tf.Tensor,
+        mask: tf.Tensor = tf.constant(1.0, tf.float32),
+        bias: float = 1.0,
         hinge: float = 0.0,
         cutoff: float = 255.0) -> tf.Tensor:
     """
@@ -90,6 +92,8 @@ def mae_weighted_delta(
 
     :param original: original image batch
     :param prediction: denoised image batch
+    :param mask: where to focus the loss
+    :param bias: add this to the whole xy magnitude
     :param hinge: hinge value
     :param cutoff: max value
 
@@ -102,6 +106,7 @@ def mae_weighted_delta(
             alpha=1.0,
             beta=1.0,
             eps=DEFAULT_EPSILON)
+    d_weight = d_weight + bias
     d_weight = \
         d_weight / \
         (tf.reduce_max(
@@ -120,6 +125,7 @@ def mae_weighted_delta(
 
     # --- multiply diff and weight
     d = tf.math.multiply(d, d_weight)
+    d = tf.math.multiply(d, mask)
 
     # --- mean over all dims
     d = tf.reduce_mean(d, axis=[1, 2, 3])
@@ -133,24 +139,29 @@ def mae_weighted_delta(
 
 def mae_diff(
         error: tf.Tensor,
+        mask: tf.Tensor = tf.constant(1.0, tf.float32),
         hinge: float = 0.0,
         cutoff: float = 255.0) -> tf.Tensor:
     """
     Mean Absolute Error (mean over channels and batches)
 
-    :param error: original image batch
+    :param error: diff between prediction and ground truth
+    :param mask:
     :param hinge: hinge value
     :param cutoff: max value
 
     :return: mean absolute error
     """
     # --- mean over all dims
-    d = tf.reduce_mean(
-        tf.keras.activations.relu(
-            x=tf.abs(error),
-            threshold=hinge,
-            max_value=cutoff),
-        axis=[1, 2, 3])
+    d = \
+        tf.reduce_mean(
+            tf.math.multiply(
+                tf.keras.activations.relu(
+                    x=tf.abs(error),
+                    threshold=hinge,
+                    max_value=cutoff),
+                mask),
+            axis=[1, 2, 3])
     # mean over batch
     return tf.reduce_mean(d, axis=[0])
 
@@ -161,7 +172,7 @@ def mae_diff(
 def mae(
         original: tf.Tensor,
         prediction: tf.Tensor,
-        **kwargs):
+        **kwargs) -> tf.Tensor:
     """
     Mean Absolute Error (mean over channels and batches)
 
@@ -182,7 +193,7 @@ def mae(
 def mse_diff(
         error: tf.Tensor,
         hinge: float = 0,
-        cutoff: float = (255.0 * 255.0)):
+        cutoff: float = (255.0 * 255.0)) -> tf.Tensor:
     """
     Mean Square Error (mean over channels and batches)
 
@@ -194,7 +205,7 @@ def mse_diff(
         tf.keras.activations.relu(
             x=tf.square(error),
             threshold=hinge,
-            max_value=cutoff)(d)
+            max_value=cutoff)
     # mean over all dims
     d = tf.reduce_mean(d, axis=[1, 2, 3])
     # mean over batch
@@ -207,14 +218,12 @@ def mse_diff(
 def mse(
         original: tf.Tensor,
         prediction: tf.Tensor,
-        **kwargs):
+        **kwargs) -> tf.Tensor:
     """
     Mean Square Error (mean over channels and batches)
 
     :param original: original image batch
     :param prediction: denoised image batch
-    :param hinge: hinge value
-    :param cutoff: max value
     """
     return mse_diff(
         error=tf.square(original - prediction),
@@ -237,8 +246,8 @@ def nae(
     :param hinge: hinge value
     """
     d = tf.keras.activations.relu(
-            x=tf.abs(original - prediction),
-            threshold=hinge)
+        x=tf.abs(original - prediction),
+        threshold=hinge)
 
     # sum over all dims
     d = tf.reduce_sum(d, axis=[1, 2, 3])
@@ -249,6 +258,35 @@ def nae(
         tf.reduce_mean(d, axis=[0]) / \
         (tf.reduce_mean(d_x, axis=[0]) + DEFAULT_EPSILON)
 
+# ---------------------------------------------------------------------
+
+
+def soft_orthogonal(
+        feature_map: tf.Tensor) -> tf.Tensor:
+    """
+
+    :return: soft orthogonal loss
+    """
+    # move channels
+    shape = tf.shape(feature_map)
+    f = tf.transpose(feature_map, perm=(0, 3, 1, 2))
+    ft = tf.reshape(f, shape=(shape[0], shape[3], -1))
+    ft_x_f = \
+        tf.linalg.matmul(
+            ft,
+            tf.transpose(ft, perm=(0, 2, 1)))
+
+    # identity matrix
+    i = tf.eye(
+        num_rows=shape[3],
+        num_columns=shape[3])
+    x = \
+        tf.square(
+            tf.norm(ft_x_f - i,
+                    ord="fro",
+                    axis=(1, 2),
+                    keepdims=False))
+    return tf.reduce_mean(x, axis=[0])
 
 # ---------------------------------------------------------------------
 
@@ -276,11 +314,32 @@ def loss_function_builder(
     # --- regularization
     regularization_multiplier = tf.constant(config.get("regularization", 1.0))
 
+    # --- features
+    features_multiplier = tf.constant(config.get("features_multiplier", 0.0))
+    use_features = features_multiplier > 0.0
+
+    # --- multiscale mae
+    use_multiscale = tf.constant(config.get("use_multiscale", False))
+    laplacian_config = {
+        "levels": 3,
+        "type": "laplacian",
+        "xy_max": (1.0, 1.0),
+        "kernel_size": (5, 5)
+    }
+    pyramid_model = \
+        build_pyramid_model(
+            input_dims=(None, None, 3),
+            config=laplacian_config)
+    pyramid_levels = \
+        tf.constant(laplacian_config["levels"])
+
     def loss_function(
             input_batch: tf.Tensor,
             prediction_batch: tf.Tensor,
             noisy_batch: tf.Tensor,
-            model_losses: tf.Tensor) -> Dict[str, tf.Tensor]:
+            model_losses: tf.Tensor,
+            feature_map_batch: tf.Tensor = None,
+            mask_batch: tf.Tensor = tf.constant(1.0, dtype=tf.float32)) -> Dict[str, tf.Tensor]:
         """
         The loss function of the depth prediction model
 
@@ -288,26 +347,51 @@ def loss_function_builder(
         :param prediction_batch: prediction
         :param noisy_batch: noisy batch
         :param model_losses: weight/regularization losses
+        :param feature_map_batch: features batch
+        :param mask_batch: mask to focus on
+
         :return: dictionary of losses
         """
         # --- actual mean absolute error (no hinge or cutoff)
         mae_actual = \
-            mae(original=input_batch, prediction=prediction_batch, hinge=0.0, cutoff=255.0)
+            mae(original=input_batch,
+                prediction=prediction_batch,
+                hinge=0.0,
+                cutoff=255.0)
 
         # --- loss prediction on mae
-        if use_delta:
-            mae_prediction_loss = \
+        mae_prediction_loss = \
+            tf.constant(0.0, dtype=tf.float32)
+        if use_multiscale:
+            input_batch_multiscale = \
+                pyramid_model(input_batch, training=False)
+            prediction_batch_multiscale = \
+                pyramid_model(prediction_batch, training=False)
+            for i in range(pyramid_levels):
+                mae_prediction_loss += \
+                    mae(original=input_batch_multiscale[i],
+                        prediction=prediction_batch_multiscale[i],
+                        mask=mask_batch)
+        elif use_delta:
+            mae_prediction_loss += \
                 mae_weighted_delta(
                     original=input_batch,
                     prediction=prediction_batch,
+                    mask=mask_batch,
                     hinge=hinge,
                     cutoff=cutoff)
         else:
-            mae_prediction_loss = \
+            mae_prediction_loss += \
                 mae(original=input_batch,
                     prediction=prediction_batch,
+                    mask=mask_batch,
                     hinge=hinge,
                     cutoff=cutoff)
+
+        # --- regularization on features map
+        feature_map_regularization_loss = tf.constant(0.0)
+        if use_features:
+            feature_map_regularization_loss = soft_orthogonal(feature_map_batch)
 
         # ---
         nae_noise = nae(input_batch, noisy_batch)
@@ -325,7 +409,8 @@ def loss_function_builder(
         # --- add up loss
         mean_total_loss = \
             mae_prediction_loss * mae_multiplier + \
-            regularization_loss * regularization_multiplier
+            regularization_loss * regularization_multiplier + \
+            feature_map_regularization_loss * features_multiplier
 
         return {
             NAE_NOISE_STR: nae_noise,

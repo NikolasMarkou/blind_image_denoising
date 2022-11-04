@@ -14,8 +14,8 @@ from .visualize import visualize
 from .custom_logger import logger
 from .loss import loss_function_builder
 from .optimizer import optimizer_builder
-from .utilities import load_config, load_image
 from .model_denoiser import model_builder as model_denoise_builder
+from .utilities import load_config, load_image, probabilistic_drop_off
 from .dataset import dataset_builder, DATASET_FN_STR, AUGMENTATION_FN_STR
 from .pruning import prune_function_builder, PruneStrategy, get_conv2d_weights
 
@@ -81,12 +81,12 @@ def train_loop(
     # --- get the train configuration
     train_config = config["train"]
     epochs = train_config["epochs"]
+    use_probabilistic_gradient_drop_off = \
+        train_config.get("use_probabilistic_drop_off", False)
     same_sample_iterations = train_config.get("same_sample_iterations", 1)
     global_total_epochs = tf.Variable(
         epochs, trainable=False, dtype=tf.dtypes.int64, name="global_total_epochs")
-    trace_every = train_config.get("trace_every", 100)
     weight_buckets = train_config.get("weight_buckets", 100)
-    error_buckets = train_config.get("error_buckets", 255)
     total_steps = \
         tf.constant(
             train_config.get("total_steps", -1),
@@ -121,6 +121,15 @@ def train_loop(
     random_batch_size = \
         [visualization_number] + \
         train_config.get("random_batch_size", [128, 128, 3])
+
+    @tf.function
+    def clip_fn(input_x: tf.Tensor) -> tf.Tensor:
+        return \
+            tf.clip_by_value(
+                input_x,
+                clip_value_min=-0.5,
+                clip_value_max=+0.5)
+
     # test images
     use_test_images = train_config.get("use_test_images", False)
     test_images = []
@@ -212,14 +221,10 @@ def train_loop(
             tf.random.truncated_normal(
                 seed=0,
                 mean=0.0,
-                stddev=0.25,
+                stddev=0.1,
                 shape=test_images.shape) + \
             test_images
-        x_noisy = \
-            tf.clip_by_value(
-                x_noisy,
-                clip_value_min=-0.5,
-                clip_value_max=+0.5)
+        x_noisy = clip_fn(x_noisy)
         x_noisy_denormalized = \
             denormalizer(
                 x_noisy,
@@ -238,14 +243,10 @@ def train_loop(
             tf.random.truncated_normal(
                 seed=0,
                 mean=0.0,
-                stddev=0.25,
+                stddev=0.1,
                 shape=random_batch_size)
         while x_iteration < random_batch_iterations:
-            x_random = \
-                tf.clip_by_value(
-                    x_random,
-                    clip_value_min=-0.5,
-                    clip_value_max=+0.5)
+            x_random = clip_fn(x_random)
             x_random = denoiser(x_random, training=False)
             x_iteration += 1
         return denormalizer(x_random, training=False)
@@ -345,19 +346,27 @@ def train_loop(
                                 grads[j] += tmp_grads[j]
 
                     # set it back so we can iterate again
-                    if i < (same_sample_iterations - 1):
-                        denoised_batch = \
-                            tf.clip_by_value(
-                                denoised_batch,
-                                clip_value_min=-0.5,
-                                clip_value_max=0.5)
-                        noisy_batch = (denormalized_denoised_batch + noisy_batch) / 2
-                        normalized_noisy_batch = (denoised_batch + normalized_noisy_batch) / 2
+                    if 1 < same_sample_iterations:
+                        if i == 0:
+                            tmp_loss = loss_map
+                            denoised_batch = clip_fn(denoised_batch)
+                            noisy_batch = (denormalized_denoised_batch + noisy_batch) / 2
+                            normalized_noisy_batch = (denoised_batch + normalized_noisy_batch) / 2
+                        elif i < (same_sample_iterations - 1):
+                            denoised_batch = clip_fn(denoised_batch)
+                            noisy_batch = (denormalized_denoised_batch + noisy_batch) / 2
+                            normalized_noisy_batch = (denoised_batch + normalized_noisy_batch) / 2
+                        elif i == (same_sample_iterations - 1):
+                            loss_map = tmp_loss
 
                 # run one step of gradient descent by updating
                 # the value of the variables to minimize the loss.
-                optimizer.apply_gradients(
-                    grads_and_vars=zip(grads, model_denoise_weights))
+                if use_probabilistic_gradient_drop_off:
+                    optimizer.apply_gradients(
+                        grads_and_vars=zip(probabilistic_drop_off(grads), model_denoise_weights))
+                else:
+                    optimizer.apply_gradients(
+                        grads_and_vars=zip(grads, model_denoise_weights))
 
                 # --- add loss summaries for tensorboard
                 for name, key in [

@@ -9,8 +9,8 @@ from typing import List
 from .constants import *
 from .custom_logger import logger
 from .utilities import conv2d_wrapper
+from .custom_layers import ChannelwiseMultiplier, Multiplier
 from .backbone_blocks import resnet_blocks_full, sparse_block
-from .custom_layers import ChannelwiseMultiplier, Multiplier, DifferentiableGateLayer
 
 
 # ---------------------------------------------------------------------
@@ -33,8 +33,7 @@ def builder(
         kernel_initializer="glorot_normal",
         dropout_rate: float = -1,
         stop_gradient: bool = False,
-        add_squash: bool = False,
-        add_gelu: bool = False,
+        add_clip: bool = False,
         add_gates: bool = False,
         add_selector: bool = False,
         add_sparsity: bool = False,
@@ -45,7 +44,7 @@ def builder(
         add_channelwise_scaling: bool = False,
         add_learnable_multiplier: bool = False,
         add_mean_sigma_normalization: bool = False,
-        name="resnet",
+        name="resnet_stats",
         **kwargs) -> keras.Model:
     """
     builds a resnet model
@@ -71,13 +70,12 @@ def builder(
     :param stop_gradient: if True stop gradients in each resnet block
     :param add_sparsity: if true add sparsity layer
     :param add_gates: if true add gate layer
-    :param add_gelu: if true add gelu layers
     :param add_mean_sigma_normalization: if true add variance for each block
     :param add_initial_bn: add a batch norm before the resnet blocks
     :param add_final_bn: add a batch norm after the resnet blocks
     :param add_concat_input: if true concat input to intermediate before projecting
     :param add_selector: if true add a selector block in skip connections
-    :param add_squash: if True squash results with a tanh activation
+    :param add_clip: if True squash results with a tanh activation
     :param add_sparse_features: if true set feature map to be sparse
     :param name: name of the model
 
@@ -196,9 +194,6 @@ def builder(
                 threshold_sigma=1.0,
             )
 
-    if add_gelu:
-        resnet_params["gelu_params"] = dict()
-
     if add_selector:
         resnet_params["selector_params"] = dict()
 
@@ -287,7 +282,7 @@ def builder(
         x = Multiplier(**multiplier_params)(x)
 
     # optional clipping to [-1, +1]
-    if add_squash:
+    if add_clip:
         x = tf.tanh(x)
 
     # --- output layer branches here,

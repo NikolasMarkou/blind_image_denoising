@@ -17,9 +17,7 @@ from .constants import *
 from .custom_logger import logger
 from .custom_layers import \
     Multiplier, \
-    RandomOnOff, \
-    ChannelwiseMultiplier, \
-    DifferentiableReluLayer
+    ChannelwiseMultiplier
 
 # ---------------------------------------------------------------------
 
@@ -107,6 +105,24 @@ def merge_iterators(
             if value is not empty:
                 yield value
 
+# ---------------------------------------------------------------------
+
+
+def probabilistic_drop_off(
+        iterator: Iterable,
+        probability: float = 0.5):
+    """
+    randomly zero out an element of the iterator
+
+    :param iterator:
+    :param probability: probability of an element not being affected
+    :return:
+    """
+    for value in iterator:
+        if np.random.uniform(low=0, high=1.0, size=None) > probability:
+            yield value * 0.0
+        else:
+            yield value
 
 # ---------------------------------------------------------------------
 
@@ -436,7 +452,7 @@ def mean_sigma_local(
             input_layer=input_layer,
             kernel_size=kernel_size)
 
-    sigma = tf.sqrt(tf.abs(variance) + epsilon)
+    sigma = tf.sqrt(variance + epsilon)
 
     return mean, sigma
 
@@ -546,27 +562,46 @@ def sparse_block(
 # ---------------------------------------------------------------------
 
 
-def stats_2d_block(
-        input_layer: tf.Tensor) -> tf.Tensor:
+def mean_sigma_block(
+        input_layer: tf.Tensor,
+        axis: List[int] = [1, 2]) -> tf.Tensor:
     """
-    compute the basic stats of a tensor per channel
+    compute the mean / sigma of tensor per channel
+
     """
     x = input_layer
-    x_max = tf.reduce_max(x, axis=[1, 2], keepdims=False)
-    x_min = tf.reduce_min(x, axis=[1, 2], keepdims=False)
-    x_mean = tf.reduce_mean(x, axis=[1, 2], keepdims=True)
+    x_mean = tf.reduce_mean(x, axis=axis, keepdims=True)
     x_variance = \
         tf.reduce_mean(
-            tf.square(x - x_mean), axis=[1, 2], keepdims=False)
+            tf.square(x - x_mean), axis=axis, keepdims=False)
     x_sigma = tf.sqrt(x_variance + DEFAULT_EPSILON)
-    x_mean = tf.squeeze(x_mean, axis=[1, 2])
+    x_mean = tf.squeeze(x_mean, axis=axis)
+    return \
+        tf.keras.layers.Concatenate(axis=-1)([
+            x_mean,
+            x_sigma
+        ])
+# ---------------------------------------------------------------------
+
+
+def min_max_mean_sigma_block(
+        input_layer: tf.Tensor,
+        axis: List[int] = [1, 2]) -> tf.Tensor:
+    """
+    compute the basic stats of a tensor per channel
+
+    """
+    x = input_layer
+    x_max = tf.reduce_max(x, axis=axis, keepdims=False)
+    x_min = tf.reduce_min(x, axis=axis, keepdims=False)
+    x_mean_sigma = mean_sigma_block(input_layer=input_layer, axis=axis)
     return \
         tf.keras.layers.Concatenate(axis=-1)([
             x_max,
             x_min,
-            x_mean,
-            x_sigma
+            x_mean_sigma
         ])
+
 # ---------------------------------------------------------------------
 
 

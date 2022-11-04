@@ -1,45 +1,16 @@
-{
+config = {
   "model_denoise": {
-    "filters": 32,
-    "no_layers": 6,
-    "kernel_size": 7,
-    "block_kernels": [1, 3, 1],
-    "block_filters": [32, 64, 32],
-    "min_value": 0,
-    "add_var": false,
-    "max_value": 255,
-    "type": "resnet",
-    "batchnorm": true,
-    "activation": "relu",
-    "add_gates": false,
-    "add_sparsity": false,
-    "clip_values": false,
-    "shared_model": false,
-    "add_final_bn": false,
-    "output_multiplier": 1.0,
-    "final_activation": "tanh",
-    "add_channelwise_scaling": false,
-    "add_learnable_multiplier": false,
-    "add_skip_with_input": false,
-    "add_residual_between_models": false,
-    "input_shape": ["?", "?", 3],
-    "kernel_initializer": "glorot_normal",
-    "kernel_regularizer": {
-        "type": "erf",
-        "config": {
-            "l2_coefficient": 0.0,
-            "l1_coefficient": 0.025
-        }
-    }
+
   },
-   "train": {
+  "train": {
     "epochs": 20,
     "total_steps": -1,
-    "use_test_images": true,
+    "use_test_images": True,
     "checkpoints_to_keep": 3,
     "checkpoint_every": 10000,
     "visualization_number": 4,
     "visualization_every": 1000,
+    "same_sample_iterations": 1,
     "random_batch_iterations": 5,
     "random_batch_size": [256, 256, 3],
     "random_batch_min_difference": 0.1,
@@ -63,24 +34,28 @@
   },
   "dataset": {
     "batch_size": 16,
-    "min_value": 0,
-    "max_value": 255,
-    "clip_value": true,
-    "random_blur": true,
+    "value_range": [0, 255],
+    "scale_range": [0.5, 1.0],
+    "clip_value": True,
+    "random_blur": True,
     "subsample_size": -1,
-    "round_values": true,
-    "random_invert": false,
+    "round_values": True,
+    "random_invert": False,
     "random_rotate": 0.314,
-    "random_up_down": true,
+    "random_up_down": True,
     "color_mode": "rgb",
-    "random_left_right": true,
+    "random_left_right": True,
     "input_shape": [256, 256, 3],
     "multiplicative_noise": [0.05, 0.1, 0.2],
-    "additional_noise": [1, 5, 10, 20, 40, 60, 80],
+    "additional_noise": [1, 5, 10, 20],
     "inputs": [
       {
         "dataset_shape": [256, 768],
         "directory": "/media/data1_4tb/datasets/KITTI/data/depth/raw_image_values/"
+      },
+      {
+        "dataset_shape": [512, 512],
+        "directory": "/media/data1_4tb/datasets/COCO/train2017"
       },
       {
         "dataset_shape": [512, 512],

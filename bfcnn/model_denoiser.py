@@ -1,27 +1,26 @@
 import abc
 import tensorflow as tf
-from tensorflow import keras
 from collections import namedtuple
-from typing import Dict, List, Tuple
 
 # ---------------------------------------------------------------------
 # local imports
 # ---------------------------------------------------------------------
 
+from .constants import *
 from .custom_logger import logger
 from .utilities import \
     conv2d_wrapper, \
     input_shape_fixer, \
     build_normalize_model, \
     build_denormalize_model
+from .backbone_blocks import resnet_blocks_full
 from .backbone_unet import builder as builder_unet
 from .backbone_lunet import builder as builder_lunet
 from .backbone_resnet import builder as builder_resnet
-from .backbone_resnet_ce import builder as builder_resnet_ce
+from .backbone_resnet_stats import builder as builder_resnet_ce
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
-from .constants import *
 from .regularizer import builder as regularizer_builder
 
 # ---------------------------------------------------------------------
@@ -30,12 +29,10 @@ BuilderResults = namedtuple(
     "BuilderResults",
     {
         "pyramid",
-        "superres",
         "denoiser",
         "backbone",
         "normalizer",
         "denormalizer",
-        "superres_head",
         "denoiser_head",
         "inverse_pyramid",
     })
@@ -61,13 +58,12 @@ def model_builder(
 
     # --- argument parsing
     model_type = config[TYPE_STR]
-    filters = config.get("filters", 32)
     groups = config.get("groups", 4)
+    filters = config.get("filters", 32)
     no_levels = config.get("no_levels", 1)
     add_var = config.get("add_var", False)
     no_layers = config.get("no_layers", 5)
-    min_value = config.get("min_value", 0)
-    max_value = config.get("max_value", 255)
+    add_gelu = config.get("add_gelu", False)
     use_bias = config.get("use_bias", False)
     batchnorm = config.get("batchnorm", True)
     kernel_size = config.get("kernel_size", 3)
@@ -75,16 +71,19 @@ def model_builder(
     pyramid_config = config.get("pyramid", None)
     dropout_rate = config.get("dropout_rate", -1)
     activation = config.get("activation", "relu")
-    clip_values = config.get("clip_values", True)
+    add_squash = config.get("add_squash", False)
+    clip_values = config.get("clip_values", False)
     channel_index = config.get("channel_index", 2)
-    add_final_bn = config.get("add_final_bn", True)
+    add_final_bn = config.get("add_final_bn", False)
     add_selector = config.get("add_selector", False)
     shared_model = config.get("shared_model", False)
     add_sparsity = config.get("add_sparsity", False)
+    value_range = config.get("value_range", (0, 255))
     add_laplacian = config.get("add_laplacian", True)
     stop_gradient = config.get("stop_gradient", False)
     block_kernels = config.get("block_kernels", (3, 3))
     block_filters = config.get("block_filters", (32, 32))
+    block_depthwise = config.get("block_depthwise", None)
     add_initial_bn = config.get("add_initial_bn", False)
     add_concat_input = config.get("add_concat_input", False)
     input_shape = config.get("input_shape", (None, None, 3))
@@ -92,15 +91,18 @@ def model_builder(
     final_activation = config.get("final_activation", "linear")
     kernel_regularizer = config.get("kernel_regularizer", "l1")
     backbone_activation = config.get("backbone_activation", None)
-    add_skip_with_input = config.get("add_skip_with_input", True)
+    add_skip_with_input = config.get("add_skip_with_input", False)
     add_channelwise_scaling = config.get("add_channelwise_scaling", False)
     add_sparse_features = config.get("add_sparse_features", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     add_learnable_multiplier = config.get("add_learnable_multiplier", False)
-    final_kernel_regularization = config.get("final_kernel_regularization", "l1")
     add_residual_between_models = config.get("add_residual_between_models", False)
     add_mean_sigma_normalization = config.get("add_mean_sigma_normalization", False)
+    denoise_head_kernel_regularization = config.get("denoise_head_kernel_regularization", "l2")
+    denoise_head_kernel_initializer = config.get("denoise_head_kernel_initializer", "glorot_normal")
 
+    min_value = value_range[0]
+    max_value = value_range[1]
     use_pyramid = pyramid_config is not None
     input_shape = input_shape_fixer(input_shape)
 
@@ -112,13 +114,13 @@ def model_builder(
     if kernel_size <= 0:
         raise ValueError("kernel_size must be > 0")
 
-    # regularizer for all kernels above the final ones
+    # regularizer for all kernels in the backbone
     kernel_regularizer = \
         regularizer_builder(kernel_regularizer)
 
-    # regularizer for the final kernel
-    final_kernel_regularization = \
-        regularizer_builder(final_kernel_regularization)
+    # regularizer for all kernels denoise head
+    denoise_head_kernel_regularization = \
+        regularizer_builder(denoise_head_kernel_regularization)
 
     denoise_intermediate_conv_params = dict(
         groups=groups,
@@ -128,8 +130,8 @@ def model_builder(
         use_bias=use_bias,
         activation=activation,
         filters=input_shape[channel_index] * groups,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
+        kernel_regularizer=denoise_head_kernel_regularization,
+        kernel_initializer=denoise_head_kernel_initializer
     )
 
     denoise_final_conv_params = dict(
@@ -141,19 +143,8 @@ def model_builder(
         activation="linear",
         groups=input_shape[channel_index],
         filters=input_shape[channel_index],
-        kernel_regularizer=final_kernel_regularization,
-        kernel_initializer=kernel_initializer
-    )
-
-    residual_conv_params = dict(
-        kernel_size=3,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation="tanh",
-        filters=input_shape[channel_index],
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
+        kernel_regularizer=denoise_head_kernel_regularization,
+        kernel_initializer=denoise_head_kernel_initializer
     )
 
     channelwise_params = dict(
@@ -161,43 +152,6 @@ def model_builder(
         regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
         trainable=True,
         activation="relu"
-    )
-
-    superres_expand_conv_params = dict(
-        groups=groups,
-        kernel_size=3,
-        padding="valid",
-        use_bias=use_bias,
-        dilation_rate=(2, 2),
-        activation=activation,
-        filters=filters * groups,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
-    superres_intermediate_conv_params = dict(
-        groups=groups,
-        kernel_size=3,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation=activation,
-        filters=input_shape[channel_index] * groups,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
-    superres_final_conv_params = dict(
-        kernel_size=1,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        # this must be linear because it is capped later
-        activation="linear",
-        groups=input_shape[channel_index],
-        filters=input_shape[channel_index],
-        kernel_regularizer=final_kernel_regularization,
-        kernel_initializer=kernel_initializer
     )
 
     # --- build normalize denormalize models
@@ -218,10 +172,12 @@ def model_builder(
         add_var=add_var,
         filters=filters,
         use_bn=batchnorm,
+        add_gelu=add_gelu,
         no_levels=no_levels,
         no_layers=no_layers,
         add_gates=add_gates,
         activation=activation,
+        add_squash=add_squash,
         input_dims=input_shape,
         kernel_size=kernel_size,
         add_selector=add_selector,
@@ -230,6 +186,7 @@ def model_builder(
         add_final_bn=add_final_bn,
         block_kernels=block_kernels,
         block_filters=block_filters,
+        block_depthwise=block_depthwise,
         add_laplacian=add_laplacian,
         stop_gradient=stop_gradient,
         add_initial_bn=add_initial_bn,
@@ -303,30 +260,61 @@ def model_builder(
                 **model_params)
             for i in range(len(x_levels))
         ]
-    upsampling_params = \
-        dict(size=(2, 2),
-             interpolation="bilinear")
 
     if add_residual_between_models:
+        upsampling_params = \
+            dict(size=(2, 2),
+                 interpolation="nearest")
+        bn_params = None
+        if batchnorm:
+            bn_params = dict(
+                scale=True,
+                center=False,
+                momentum=DEFAULT_BN_MOMENTUM,
+                epsilon=DEFAULT_BN_EPSILON)
+        residual_conv_params = dict(
+            kernel_size=3,
+            padding="same",
+            strides=(1, 1),
+            use_bias=use_bias,
+            activation="tanh",
+            filters=input_shape[channel_index],
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer)
         previous_level = None
         for i, x_level in reversed(list(enumerate(x_levels))):
             if previous_level is None:
                 current_level_output = backbone_models[i](x_level)
             else:
-                # TODO verify this
-                # previous_level = \
-                #     tf.stop_gradient(previous_level)
+                # NOTE
+                # based on https://distill.pub/2016/deconv-checkerboard/
+                # it is better to upsample with nearest neighbor and then conv2d
                 previous_level = \
-                    keras.layers.UpSampling2D(
+                    tf.keras.layers.UpSampling2D(
                         **upsampling_params)(previous_level)
+                previous_level = \
+                    tf.keras.layers.Concatenate()([previous_level, x_level])
+                if batchnorm:
+                    previous_level = \
+                        tf.keras.layers.BatchNormalization(**bn_params)(previous_level)
                 previous_level = \
                     conv2d_wrapper(
                         input_layer=previous_level,
                         conv_params=residual_conv_params,
-                        channelwise_scaling=add_channelwise_scaling,
-                        multiplier_scaling=add_learnable_multiplier)
+                        channelwise_scaling=True,
+                        multiplier_scaling=False)
+                previous_level = \
+                    tf.clip_by_value(
+                        previous_level,
+                        clip_value_min=-0.5,
+                        clip_value_max=+0.5)
+                previous_level = \
+                    tf.keras.layers.Add()([previous_level, x_level])
                 current_level_input = \
-                    tf.keras.layers.Concatenate(axis=-1)([previous_level, x_level])
+                    tf.clip_by_value(
+                        previous_level,
+                        clip_value_min=-0.5,
+                        clip_value_max=+0.5)
                 current_level_output = backbone_models[i](current_level_input)
             previous_level = current_level_output
             x_levels[i] = current_level_output
@@ -336,7 +324,7 @@ def model_builder(
 
     # --- optional multiplier to help saturation
     if output_multiplier is not None and \
-            output_multiplier != 1:
+            output_multiplier != 1.0:
         x_levels = [
             x_level * output_multiplier
             for x_level in x_levels
@@ -401,7 +389,7 @@ def model_builder(
 
     if add_skip_with_input:
         x_result = \
-            tf.keras.layers.Substract(
+            tf.keras.layers.Subtract(
                 name="skip_input")([x_result, input_layer])
 
     # wrap and name denoiser head
@@ -418,65 +406,15 @@ def model_builder(
             outputs=model_denoiser_head(x_backbone_output),
             name=f"{model_type}_denoiser")
 
-    # --- define super resolution here
-    superres_input_layer = \
-        keras.Input(
-            shape=(None, None, filters),
-            name="input_tensor")
-    x = superres_input_layer
-
-    x = \
-        conv2d_wrapper(
-            input_layer=x,
-            bn_params=None,
-            conv_params=superres_expand_conv_params,
-            channelwise_scaling=channelwise_params)
-
-    x = \
-        conv2d_wrapper(
-            input_layer=x,
-            bn_params=None,
-            conv_params=superres_intermediate_conv_params,
-            channelwise_scaling=channelwise_params)
-
-    x = \
-        conv2d_wrapper(
-            input_layer=x,
-            bn_params=None,
-            conv_params=superres_final_conv_params,
-            channelwise_scaling=channelwise_params)
-
-    # cap it off to limit values
-    x_result = \
-        tf.keras.layers.Activation(
-            name="output_tensor",
-            activation=final_activation)(x)
-
-    # wrap and name superres head
-    model_superres_head = \
-        keras.Model(
-            inputs=superres_input_layer,
-            outputs=x_result,
-            name=f"superres_head")
-
-    # wrap and name superres
-    model_superres = \
-        keras.Model(
-            inputs=input_layer,
-            outputs=model_superres_head(x_backbone_output),
-            name=f"{model_type}_superres")
-
     # ---
     return \
         BuilderResults(
             pyramid=model_pyramid,
             denoiser=model_denoiser,
-            superres=model_superres,
             backbone=model_backbone,
             normalizer=model_normalize,
             denormalizer=model_denormalize,
             denoiser_head=model_denoiser_head,
-            superres_head=model_superres_head,
             inverse_pyramid=model_inverse_pyramid)
 
 

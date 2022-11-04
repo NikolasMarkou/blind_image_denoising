@@ -244,6 +244,7 @@ def build_inverse_gaussian_pyramid_model(
     :param levels: how many levels to go down the pyramid
     :param trainable: is the pyramid trainable (default False)
     :param name: name of the model
+
     :return: inverse gaussian pyramid keras model
     """
     # --- prepare input
