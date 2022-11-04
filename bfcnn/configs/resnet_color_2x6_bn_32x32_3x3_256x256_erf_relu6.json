@@ -1,7 +1,7 @@
 {
   "model_denoise": {
     "filters": 32,
-    "no_layers": 12,
+    "no_layers": 6,
     "kernel_size": 7,
     "block_kernels": [3, 3],
     "block_filters": [32, 32],
@@ -18,6 +18,11 @@
             "l2_coefficient": 0.0,
             "l1_coefficient": 0.025
         }
+    },
+    "pyramid": {
+      "levels": 2,
+      "type": "laplacian",
+      "kernel_size": [5, 5]
     }
   },
    "train": {
@@ -45,11 +50,11 @@
     }
   },
   "loss": {
-    "hinge": 0.5,
+    "hinge": 0.0,
     "cutoff": 255.0,
     "mae_multiplier": 1.0,
     "regularization": 0.01,
-    "use_multiscale": false
+    "use_multiscale": true
   },
   "dataset": {
     "batch_size": 16,
