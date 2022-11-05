@@ -379,10 +379,10 @@ class DifferentiableReluLayer(tf.keras.layers.Layer):
 
 class DifferentiableGateLayer(tf.keras.layers.Layer):
     def __init__(self,
-                 trainable: bool = True,
                  multiplier: float = 1.0,
                  min_value: float = 0.001,
                  regularizer: Any = "l1",
+                 trainable: bool = True,
                  name=None,
                  **kwargs):
         """
@@ -429,12 +429,12 @@ class DifferentiableGateLayer(tf.keras.layers.Layer):
                 initializer=init_multiplier_fn)
         super(DifferentiableGateLayer, self).build(input_shape)
 
-    def call(self, inputs, controller, training):
+    def call(self, inputs, training):
         # minimum value of 1 gives a max multiplier of 1.0 / 1.0 = 1
         # minimum value of 0.1 gives a max multiplier of 1.0 / 0.1 = 10
         # minimum value of 0.01 gives a max multiplier of 1.0 / 0.01 = 100
         # minimum value of 0.001 gives a max multiplier of 1.0 / 0.001 = 1000
-        x = tf.math.sigmoid(controller * (1.0 / (tf.relu(self._multiplier) + self._min_value)))
+        x = tf.math.sigmoid(inputs * (1.0 / (tf.relu(self._multiplier) + self._min_value)))
         return tf.keras.layers.Multiply()([x, inputs])
 
     def get_config(self):

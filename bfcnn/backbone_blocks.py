@@ -16,6 +16,10 @@ from .custom_layers import \
     RandomOnOff, \
     ChannelwiseMultiplier, \
     DifferentiableGateLayer
+from .custom_layers_selector import \
+    SelectorType, \
+    ActivationType, \
+    selector_block
 from .utilities import \
     ConvType, \
     sparse_block, \
@@ -285,12 +289,12 @@ def resnet_blocks_full(
                     input_1_layer=previous_layer,
                     input_2_layer=x,
                     selector_layer=x_2nd_conv,
-                    bn_params=None,
                     filters_compress=max(int(selector_no_filters / 4), 2),
                     filters_target=selector_no_filters,
                     kernel_regularizer="l1",
                     kernel_initializer="glorot_normal",
-                    selector_type="hard")
+                    selector_type=SelectorType.CHANNEL,
+                    activation_type=ActivationType.HARD)
         else:
             # skip connection
             x = tf.keras.layers.Add()([x, previous_layer])
@@ -668,80 +672,6 @@ def renderer(
                 tf.multiply(acc_signal, 1.0 - mask)
 
     return acc_signal
-
-# ---------------------------------------------------------------------
-
-
-def selector_block(
-        input_1_layer,
-        input_2_layer,
-        selector_layer,
-        filters_compress: int,
-        filters_target: int,
-        bn_params: Dict = None,
-        kernel_regularizer: str = "l1",
-        kernel_initializer: str = "glorot_normal",
-        selector_type: str = "hard",
-        **kwargs):
-    """
-    from 2 input layers,
-    select a combination of the 2 with bias on the first one
-
-    :return: filtered input_layer
-    """
-    # --- argument checking
-    if filters_target is None:
-        raise ValueError("filters_target should not be None")
-
-    # --- set variables
-    # out squeeze and excite gating does not use global avg
-    # followed by dense layer, because we are using this on large images
-    # global averaging looses too much information
-    selector_dense_0_params = dict(
-        units=filters_compress,
-        use_bias=False,
-        activation="relu",
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer)
-
-    selector_dense_1_params = dict(
-        units=filters_target,
-        use_bias=False,
-        activation="relu",
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer)
-
-    if selector_type == "hard":
-        selector_dense_1_params["activation"] = "hard_sigmoid"
-    elif selector_type == "hard":
-        selector_dense_1_params["activation"] = "sigmoid"
-    else:
-        raise ValueError(f"don't understand selector_type [{selector_type}]")
-
-    # --- setup network
-    x = selector_layer
-
-    # transformation
-    x = tf.reduce_mean(x, axis=[1, 2], keepdims=False)
-
-    if filters_compress is not None:
-        x = dense_wrapper(
-            input_layer=x,
-            dense_params=selector_dense_0_params,
-            bn_params=None)
-
-    x = dense_wrapper(
-        input_layer=x,
-        dense_params=selector_dense_1_params,
-        bn_params=bn_params)
-
-    x = tf.expand_dims(x, axis=1)
-    x = tf.expand_dims(x, axis=2)
-
-    return \
-        tf.keras.layers.Multiply()([input_1_layer, x]) + \
-        tf.keras.layers.Multiply()([input_2_layer, 1.0 - x])
-
 
 # ---------------------------------------------------------------------
 
