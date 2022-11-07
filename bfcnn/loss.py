@@ -163,7 +163,7 @@ def mae_diff(
                 max_value=cutoff)
         d_count = \
             tf.math.count_nonzero(
-                input=d,
+                input=d > 0,
                 axis=[1, 2, 3],
                 keepdims=False,
                 dtype=tf.float32)
