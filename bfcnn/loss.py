@@ -371,7 +371,9 @@ def loss_function_builder(
                 mae_prediction_loss += \
                     mae(original=input_batch_multiscale[i],
                         prediction=prediction_batch_multiscale[i],
-                        mask=mask_batch)
+                        mask=mask_batch,
+                        hinge=hinge,
+                        cutoff=cutoff)
         elif use_delta:
             mae_prediction_loss += \
                 mae_weighted_delta(
