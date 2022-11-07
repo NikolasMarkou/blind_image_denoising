@@ -140,6 +140,7 @@ def mae_weighted_delta(
 def mae_diff(
         error: tf.Tensor,
         mask: tf.Tensor = tf.constant(1.0, tf.float32),
+        count_non_zero_mean: bool = False,
         hinge: float = 0.0,
         cutoff: float = 255.0) -> tf.Tensor:
     """
@@ -147,21 +148,41 @@ def mae_diff(
 
     :param error: diff between prediction and ground truth
     :param mask:
+    :param count_non_zero_mean: if True, calculate mean on non zero
     :param hinge: hinge value
     :param cutoff: max value
 
     :return: mean absolute error
     """
     # --- mean over all dims
-    d = \
-        tf.reduce_mean(
-            tf.math.multiply(
-                tf.keras.activations.relu(
-                    x=tf.abs(error),
-                    threshold=hinge,
-                    max_value=cutoff),
-                mask),
-            axis=[1, 2, 3])
+    if count_non_zero_mean:
+        d = \
+            tf.keras.activations.relu(
+                x=tf.abs(error),
+                threshold=hinge,
+                max_value=cutoff)
+        d_count = \
+            tf.math.count_nonzero(
+                input=d,
+                axis=[1, 2, 3],
+                keepdims=False,
+                dtype=tf.uint32)
+        d_sum = \
+            tf.reduce_sum(
+                input_tensor=d,
+                axis=[1, 2, 3],
+                keepdims=False)
+        d = d_sum / (d_count + 1.0)
+    else:
+        d = \
+            tf.reduce_mean(
+                tf.math.multiply(
+                    tf.keras.activations.relu(
+                        x=tf.abs(error),
+                        threshold=hinge,
+                        max_value=cutoff),
+                    mask),
+                axis=[1, 2, 3])
     # mean over batch
     return tf.reduce_mean(d, axis=[0])
 
@@ -308,6 +329,9 @@ def loss_function_builder(
     # --- mae
     mae_multiplier = tf.constant(config.get("mae_multiplier", 1.0))
 
+    # --- count non zero
+    count_non_zero_mean = tf.constant(config.get("count_non_zero_mean", False))
+
     # --- delta
     use_delta = tf.constant(config.get("use_delta", False))
 
@@ -373,7 +397,8 @@ def loss_function_builder(
                         prediction=prediction_batch_multiscale[i],
                         mask=mask_batch,
                         hinge=hinge,
-                        cutoff=cutoff)
+                        cutoff=cutoff,
+                        count_non_zero_mean=count_non_zero_mean)
         elif use_delta:
             mae_prediction_loss += \
                 mae_weighted_delta(
@@ -388,7 +413,8 @@ def loss_function_builder(
                     prediction=prediction_batch,
                     mask=mask_batch,
                     hinge=hinge,
-                    cutoff=cutoff)
+                    cutoff=cutoff,
+                    count_non_zero_mean=count_non_zero_mean)
 
         # --- regularization on features map
         feature_map_regularization_loss = tf.constant(0.0)
