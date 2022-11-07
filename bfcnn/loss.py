@@ -166,7 +166,7 @@ def mae_diff(
                 input=d,
                 axis=[1, 2, 3],
                 keepdims=False,
-                dtype=tf.uint32)
+                dtype=tf.float32)
         d_sum = \
             tf.reduce_sum(
                 input_tensor=d,
