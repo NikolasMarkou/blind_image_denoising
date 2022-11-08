@@ -12,6 +12,7 @@ from .custom_logger import logger
 from .delta import delta_xy_magnitude
 from .pyramid import build_pyramid_model
 
+
 # ---------------------------------------------------------------------
 
 
@@ -154,36 +155,37 @@ def mae_diff(
 
     :return: mean absolute error
     """
-    # --- mean over all dims
-    if count_non_zero_mean:
-        d = \
+    axis = [1, 2, 3]
+    d = \
+        tf.math.multiply(
             tf.keras.activations.relu(
                 x=tf.abs(error),
                 threshold=hinge,
-                max_value=cutoff)
-        d_count = \
-            tf.math.count_nonzero(
-                input=d > 0,
-                axis=[1, 2, 3],
-                keepdims=False,
-                dtype=tf.float32)
-        d_sum = \
-            tf.reduce_sum(
+                max_value=cutoff),
+            mask)
+
+    # --- mean over all dims
+    if count_non_zero_mean:
+        # mean over non zero
+        d = \
+            (tf.reduce_sum(
                 input_tensor=d,
-                axis=[1, 2, 3],
-                keepdims=False)
-        d = d_sum / (d_count + 1.0)
+                axis=axis,
+                keepdims=False)) / \
+            (DEFAULT_EPSILON +
+             tf.math.count_nonzero(
+                 input=d,
+                 axis=axis,
+                 keepdims=False,
+                 dtype=tf.float32))
     else:
+        # mean over all values
         d = \
             tf.reduce_mean(
-                tf.math.multiply(
-                    tf.keras.activations.relu(
-                        x=tf.abs(error),
-                        threshold=hinge,
-                        max_value=cutoff),
-                    mask),
-                axis=[1, 2, 3])
-    # mean over batch
+                input_tensor=d,
+                axis=axis)
+
+    # --- mean over batch
     return tf.reduce_mean(d, axis=[0])
 
 
@@ -279,6 +281,7 @@ def nae(
         tf.reduce_mean(d, axis=[0]) / \
         (tf.reduce_mean(d_x, axis=[0]) + DEFAULT_EPSILON)
 
+
 # ---------------------------------------------------------------------
 
 
@@ -308,6 +311,7 @@ def soft_orthogonal(
                     axis=(1, 2),
                     keepdims=False))
     return tf.reduce_mean(x, axis=[0])
+
 
 # ---------------------------------------------------------------------
 
