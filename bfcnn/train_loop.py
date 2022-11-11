@@ -15,9 +15,9 @@ from .custom_logger import logger
 from .loss import loss_function_builder
 from .optimizer import optimizer_builder
 from .model_denoiser import model_builder as model_denoise_builder
-from .utilities import load_config, load_image, probabilistic_drop_off
 from .dataset import dataset_builder, DATASET_FN_STR, AUGMENTATION_FN_STR
 from .pruning import prune_function_builder, PruneStrategy, get_conv2d_weights
+from .utilities import load_config, load_image, probabilistic_drop_off, clip_tensor
 
 # ---------------------------------------------------------------------
 
@@ -122,14 +122,6 @@ def train_loop(
         [visualization_number] + \
         train_config.get("random_batch_size", [128, 128, 3])
 
-    @tf.function
-    def clip_fn(input_x: tf.Tensor) -> tf.Tensor:
-        return \
-            tf.clip_by_value(
-                input_x,
-                clip_value_min=-0.5,
-                clip_value_max=+0.5)
-
     # test images
     use_test_images = train_config.get("use_test_images", False)
     test_images = []
@@ -224,7 +216,7 @@ def train_loop(
                 stddev=0.1,
                 shape=test_images.shape) + \
             test_images
-        x_noisy = clip_fn(x_noisy)
+        x_noisy = clip_tensor(x_noisy)
         x_noisy_denormalized = \
             denormalizer(
                 x_noisy,
@@ -246,7 +238,7 @@ def train_loop(
                 stddev=0.1,
                 shape=random_batch_size)
         while x_iteration < random_batch_iterations:
-            x_random = clip_fn(x_random)
+            x_random = clip_tensor(x_random)
             x_random = denoiser(x_random, training=False)
             x_iteration += 1
         return denormalizer(x_random, training=False)
@@ -349,13 +341,13 @@ def train_loop(
                     if 1 < same_sample_iterations:
                         if i == 0:
                             tmp_loss = loss_map
-                            denoised_batch = clip_fn(denoised_batch)
-                            noisy_batch = (denormalized_denoised_batch + noisy_batch) / 2
-                            normalized_noisy_batch = (denoised_batch + normalized_noisy_batch) / 2
+                            denoised_batch = clip_tensor(denoised_batch)
+                            noisy_batch = denormalized_denoised_batch
+                            normalized_noisy_batch = denoised_batch
                         elif i < (same_sample_iterations - 1):
-                            denoised_batch = clip_fn(denoised_batch)
-                            noisy_batch = (denormalized_denoised_batch + noisy_batch) / 2
-                            normalized_noisy_batch = (denoised_batch + normalized_noisy_batch) / 2
+                            denoised_batch = clip_tensor(denoised_batch)
+                            noisy_batch = denormalized_denoised_batch
+                            normalized_noisy_batch = denoised_batch
                         elif i == (same_sample_iterations - 1):
                             loss_map = tmp_loss
 
