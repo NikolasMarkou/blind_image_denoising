@@ -54,7 +54,8 @@
     "cutoff": 255.0,
     "mae_multiplier": 1.0,
     "regularization": 0.01,
-    "use_multiscale": true
+    "use_multiscale": true,
+    "count_non_zero_mean": false
   },
   "dataset": {
     "batch_size": 16,
