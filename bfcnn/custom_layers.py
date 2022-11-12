@@ -408,7 +408,7 @@ class DifferentiableGateLayer(tf.keras.layers.Layer):
     def build(self, input_shape):
 
         def init_min_value(shape, dtype):
-            return np.zeros(shape, dtype=np.float32) + self._minimum_value
+            return np.zeros(shape, dtype=np.float32) + self._min_value
 
         def init_multiplier_fn(shape, dtype):
             return np.ones(shape, dtype=np.float32) * self._multiplier
@@ -434,7 +434,7 @@ class DifferentiableGateLayer(tf.keras.layers.Layer):
         # minimum value of 0.1 gives a max multiplier of 1.0 / 0.1 = 10
         # minimum value of 0.01 gives a max multiplier of 1.0 / 0.01 = 100
         # minimum value of 0.001 gives a max multiplier of 1.0 / 0.001 = 1000
-        x = tf.math.sigmoid(inputs * (1.0 / (tf.relu(self._multiplier) + self._min_value)))
+        x = tf.math.sigmoid(inputs * (1.0 / (tf.nn.relu(self._multiplier) + self._min_value)))
         return tf.keras.layers.Multiply()([x, inputs])
 
     def get_config(self):
