@@ -90,6 +90,7 @@ def selector_block(
         selector_type: SelectorType,
         activation_type: ActivationType,
         filters_compress: int,
+        filters_target: int,
         bn_params: Dict = None,
         kernel_regularizer: str = "l1",
         kernel_initializer: str = "glorot_normal",
