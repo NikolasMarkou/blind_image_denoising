@@ -101,23 +101,7 @@ def selector_block(
     :return: filtered input_layer
     """
     # --- argument checking
-    shape_1 = tf.shape(input_1_layer)
-    shape_2 = tf.shape(input_2_layer)
-
-    if len(shape_1) != len(shape_2):
-        raise ValueError("shapes must have the same length")
-    if shape_1[-1] != shape_2[-1]:
-        raise ValueError("last dimension must be the same")
-
-    if selector_type == SelectorType.BATCH:
-        filters_target = 1
-    else:
-        filters_target = shape_1[-1]
-
-    if filters_target is None:
-        raise ValueError("filters_target should not be None")
-
-    # --- set variables
+    # TODO
 
     # --- setup network
     x = selector_layer
