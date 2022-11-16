@@ -73,7 +73,9 @@ def schedule_builder(
 
 
 def optimizer_builder(
-        config: Dict) -> Tuple[keras.optimizers.Optimizer, keras.optimizers.schedules.LearningRateSchedule]:
+        config: Dict) -> \
+        Tuple[keras.optimizers.Optimizer,
+              keras.optimizers.schedules.LearningRateSchedule]:
     """
     Instantiate an optimizer.
 
@@ -84,8 +86,10 @@ def optimizer_builder(
     if not isinstance(config, Dict):
         raise ValueError("config must be a dictionary")
 
-    # --- read configuration
+    # --- set up schedule
     schedule_config = config["schedule"]
+    lr_schedule = \
+        schedule_builder(config=schedule_config)
 
     # --- gradient clipping configuration
     # clip by value (every gradient independently)
@@ -97,21 +101,36 @@ def optimizer_builder(
     # clip by norm all together
     gradient_global_clipnorm = \
         config.get("gradient_clipping_by_norm", None)
+    optimizer_type = config.get("type", "RMSprop")
 
-    gradient_kwargs = dict(
-        clipvalue=gradient_clipvalue,
-        clipnorm=gradient_clipnorm,
-        global_clipnorm=gradient_global_clipnorm
-    )
-
-    # --- set up schedule
-    lr_schedule = \
-        schedule_builder(config=schedule_config)
+    # --- build optimizer
+    if optimizer_type == "RMSprop":
+        # RMSprop optimizer
+        rho = config.get("rho", 0.9)
+        momentum = config.get("momentum", 0.0)
+        epsilon = config.get("epsilon", 1e-07)
+        centered = config.get("centered", False)
+        optimizer_parameters = dict(
+            name="RMSprop",
+            rho=rho,
+            epsilon=epsilon,
+            centered=centered,
+            momentum=momentum,
+            learning_rate=lr_schedule,
+            clipvalue=gradient_clipvalue,
+            clipnorm=gradient_clipnorm,
+            global_clipnorm=gradient_global_clipnorm
+        )
+        optimizer = keras.optimizers.RMSprop(**optimizer_parameters)
+    elif optimizer_type == "Adam":
+        # Adam optimizer
+        raise NotImplemented("not implemented yet")
+    else:
+        raise ValueError(
+            f"don't know how to handle [{optimizer_type}]")
 
     return \
-        keras.optimizers.RMSprop(
-            learning_rate=lr_schedule,
-            **gradient_kwargs),\
+        optimizer,\
         lr_schedule
 
 # ---------------------------------------------------------------------
