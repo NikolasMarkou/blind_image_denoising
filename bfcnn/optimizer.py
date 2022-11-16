@@ -115,8 +115,7 @@ def optimizer_builder(
             learning_rate=lr_schedule,
             clipvalue=gradient_clipvalue,
             clipnorm=gradient_clipnorm,
-            global_clipnorm=gradient_global_clipnorm
-        )
+            global_clipnorm=gradient_global_clipnorm)
         optimizer = keras.optimizers.RMSprop(**optimizer_parameters)
     elif optimizer_type == "ADAM":
         # Adam optimizer
@@ -133,8 +132,7 @@ def optimizer_builder(
             learning_rate=lr_schedule,
             clipvalue=gradient_clipvalue,
             clipnorm=gradient_clipnorm,
-            global_clipnorm=gradient_global_clipnorm
-        )
+            global_clipnorm=gradient_global_clipnorm)
         optimizer = keras.optimizers.Adam(**optimizer_parameters)
     elif optimizer_type == "ADADELTA":
         # Adadelta optimizer
@@ -147,8 +145,7 @@ def optimizer_builder(
             learning_rate=lr_schedule,
             clipvalue=gradient_clipvalue,
             clipnorm=gradient_clipnorm,
-            global_clipnorm=gradient_global_clipnorm
-        )
+            global_clipnorm=gradient_global_clipnorm)
         optimizer = keras.optimizers.Adadelta(**optimizer_parameters)
     else:
         raise ValueError(
