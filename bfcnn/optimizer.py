@@ -79,7 +79,7 @@ def optimizer_builder(
     Instantiate an optimizer.
 
     :param config:
-    :return:
+    :return: optimizer and learning schedule
     """
     # --- argument checking
     if not isinstance(config, Dict):

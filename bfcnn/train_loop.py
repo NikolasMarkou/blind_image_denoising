@@ -167,8 +167,7 @@ def train_loop(
     else:
         use_prune = False
     use_prune = tf.constant(use_prune)
-    prune_fn = \
-        prune_function_builder(prune_strategies)
+    prune_fn = prune_function_builder(prune_strategies)
 
     # --- build the denoise model
     tf.summary.trace_on(graph=True, profiler=False)

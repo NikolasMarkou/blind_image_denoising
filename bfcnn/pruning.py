@@ -219,6 +219,7 @@ def prune_conv2d_weights(
 
     :param model: model to be pruned
     :param prune_fn: pruning strategy function
+
     :return: pruned model
     """
     # --- argument checking
@@ -230,10 +231,13 @@ def prune_conv2d_weights(
     # --- go through each layer and prune
     for layer in model.layers:
         layer_config = layer.get_config()
+
         if "layers" not in layer_config:
             continue
+
         if not layer.trainable:
             continue
+
         for layer_internal in layer.layers:
             # --- make sure to prune only convolutions
             if not isinstance(layer_internal, keras.layers.Conv2D) and \
@@ -241,14 +245,17 @@ def prune_conv2d_weights(
                 # skipping because not convolution
                 continue
             layer_internal_config = layer_internal.get_config()
+
             # --- skipping because not trainable
             if not layer_internal_config["trainable"]:
                 continue
+
             # --- get layer weights, prune layer weights with the pruning strategy
             pruned_weights = [
                 prune_fn(x)
                 for x in layer_internal.get_weights()
             ]
+
             # --- set weights back to update the model
             layer_internal.set_weights(pruned_weights)
     return model
@@ -258,9 +265,17 @@ def prune_conv2d_weights(
 
 
 def prune_function_builder(
-        config: Union[List, List[Dict]]) -> Callable[[np.ndarray], np.ndarray]:
+        config: Union[Dict, List, List[Dict]]) -> Callable[[np.ndarray], np.ndarray]:
     """
     Constructs a pruning function
+    example
+    {
+        "type": "minimum_threshold",
+        "config": {
+          "minimum_threshold": 0.001
+        }
+    }
+
     :param config: pruning configuration
     :return: pruning function
     """
