@@ -1,4 +1,3 @@
-import tensorflow as tf
 from tensorflow import keras
 from typing import Dict, Tuple
 
@@ -93,18 +92,15 @@ def optimizer_builder(
 
     # --- gradient clipping configuration
     # clip by value (every gradient independently)
-    gradient_clipvalue = \
-        config.get("gradient_clipping_by_value", None)
+    gradient_clipvalue = config.get("gradient_clipping_by_value", None)
     # clip by norm (every gradient independently)
-    gradient_clipnorm = \
-        config.get("gradient_clipping_by_norm_local", None)
+    gradient_clipnorm = config.get("gradient_clipping_by_norm_local", None)
     # clip by norm all together
-    gradient_global_clipnorm = \
-        config.get("gradient_clipping_by_norm", None)
-    optimizer_type = config.get("type", "RMSprop")
+    gradient_global_clipnorm = config.get("gradient_clipping_by_norm", None)
+    optimizer_type = config.get("type", "RMSprop").strip().upper()
 
     # --- build optimizer
-    if optimizer_type == "RMSprop":
+    if optimizer_type == "RMSPROP":
         # RMSprop optimizer
         rho = config.get("rho", 0.9)
         momentum = config.get("momentum", 0.0)
@@ -122,9 +118,38 @@ def optimizer_builder(
             global_clipnorm=gradient_global_clipnorm
         )
         optimizer = keras.optimizers.RMSprop(**optimizer_parameters)
-    elif optimizer_type == "Adam":
+    elif optimizer_type == "ADAM":
         # Adam optimizer
-        raise NotImplemented("not implemented yet")
+        beta_1 = config.get("beta_1", 0.9)
+        beta_2 = config.get("beta_2", 0.999)
+        epsilon = config.get("epsilon", 1e-07)
+        amsgrad = config.get("amsgrad", False)
+        optimizer_parameters = dict(
+            name="Adam",
+            beta_1=beta_1,
+            beta_2=beta_2,
+            epsilon=epsilon,
+            amsgrad=amsgrad,
+            learning_rate=lr_schedule,
+            clipvalue=gradient_clipvalue,
+            clipnorm=gradient_clipnorm,
+            global_clipnorm=gradient_global_clipnorm
+        )
+        optimizer = keras.optimizers.Adam(**optimizer_parameters)
+    elif optimizer_type == "ADADELTA":
+        # Adadelta optimizer
+        rho = config.get("rho", 0.9)
+        epsilon = config.get("epsilon", 1e-07)
+        optimizer_parameters = dict(
+            name="Adadelta",
+            rho=rho,
+            epsilon=epsilon,
+            learning_rate=lr_schedule,
+            clipvalue=gradient_clipvalue,
+            clipnorm=gradient_clipnorm,
+            global_clipnorm=gradient_global_clipnorm
+        )
+        optimizer = keras.optimizers.Adadelta(**optimizer_parameters)
     else:
         raise ValueError(
             f"don't know how to handle [{optimizer_type}]")
