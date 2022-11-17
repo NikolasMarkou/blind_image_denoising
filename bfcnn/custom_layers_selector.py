@@ -121,7 +121,7 @@ def selector_block(
             filters=filters_target,
             kernel_size=1,
             use_bias=False,
-            activation="linear",
+            activation="relu",
             kernel_regularizer=kernel_regularizer,
             kernel_initializer=kernel_initializer)
 
@@ -150,7 +150,7 @@ def selector_block(
         selector_dense_1_params = dict(
             units=filters_target,
             use_bias=False,
-            activation="linear",
+            activation="relu",
             kernel_regularizer=kernel_regularizer,
             kernel_initializer=kernel_initializer)
 
@@ -173,10 +173,11 @@ def selector_block(
     else:
         raise ValueError(f"don't know how to handle this [{selector_type}]")
 
+    # --- attach activation head
     if activation_type == ActivationType.SOFT:
-        x = tf.keras.layers.Activation("sigmoid")(x)
+        x = tf.keras.layers.Activation("sigmoid")(2.5 - x)
     elif activation_type == ActivationType.HARD:
-        x = tf.keras.layers.Activation("hard_sigmoid")(x)
+        x = tf.keras.layers.Activation("hard_sigmoid")(2.5 - x)
     elif activation_type == ActivationType.ADAPTIVE:
         x = \
             DifferentiableGateLayer(

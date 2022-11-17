@@ -308,15 +308,17 @@ def dataset_builder(
                             sigma=1,
                             filter_shape=(3, 3))
         elif noise_type == tf.constant(2, dtype=tf.int64):
-            # subsample
-            stride = (subsample_size, subsample_size)
+            # downsample and upsample
             noisy_batch = \
-                keras.layers.MaxPool2D(
-                    pool_size=(1, 1),
-                    strides=stride)(noisy_batch)
+                tf.image.resize(
+                    images=noisy_batch,
+                    method=tf.image.ResizeMethod.LANCZOS5,
+                    size=(input_shape[0] / subsample_size, input_shape[1] / subsample_size))
             noisy_batch = \
-                keras.layers.UpSampling2D(
-                    size=stride)(noisy_batch)
+                tf.image.resize(
+                    images=noisy_batch,
+                    method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
+                    size=(input_shape[0], input_shape[1]))
         elif noise_type == tf.constant(3, dtype=tf.int64):
             # quantize values
             noisy_batch = tf.round(noisy_batch / quantization)
