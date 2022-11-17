@@ -124,7 +124,7 @@ def dataset_builder(
                 seed=0,
                 validation_split=None,
                 subset=None,
-                interpolation="bilinear",
+                interpolation="lanczos5",
                 crop_to_aspect_ratio=True)
             for d, s in zip(directory, dataset_shape)
         ]
@@ -181,6 +181,7 @@ def dataset_builder(
         input_batch = \
             tf.image.resize(
                 images=input_batch,
+                method=tf.image.ResizeMethod.LANCZOS5,
                 size=(input_shape[0], input_shape[1]))
 
         # --- flip left right
