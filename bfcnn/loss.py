@@ -332,6 +332,11 @@ def loss_function_builder(
 
     # --- mae
     mae_multiplier = tf.constant(config.get("mae_multiplier", 1.0))
+    use_mae = tf.constant(mae_multiplier > 0.0)
+
+    # --- mse
+    mse_multiplier = tf.constant(config.get("mse_multiplier", 0.0))
+    use_mse = tf.constant(mse_multiplier > 0.0)
 
     # --- count non zero
     count_non_zero_mean = tf.constant(config.get("count_non_zero_mean", False))
@@ -344,7 +349,7 @@ def loss_function_builder(
 
     # --- features
     features_multiplier = tf.constant(config.get("features_multiplier", 0.0))
-    use_features = features_multiplier > 0.0
+    use_features = tf.constant(features_multiplier > 0.0)
 
     # --- multiscale mae
     use_multiscale = tf.constant(config.get("use_multiscale", False))
@@ -390,38 +395,50 @@ def loss_function_builder(
         # --- loss prediction on mae
         mae_prediction_loss = \
             tf.constant(0.0, dtype=tf.float32)
-        if use_multiscale:
-            input_batch_multiscale = \
-                pyramid_model(input_batch, training=False)
-            prediction_batch_multiscale = \
-                pyramid_model(prediction_batch, training=False)
-            for i in range(pyramid_levels):
+        if use_mae:
+            if use_multiscale:
+                input_batch_multiscale = \
+                    pyramid_model(input_batch, training=False)
+                prediction_batch_multiscale = \
+                    pyramid_model(prediction_batch, training=False)
+                for i in range(pyramid_levels):
+                    mae_prediction_loss += \
+                        mae(original=input_batch_multiscale[i],
+                            prediction=prediction_batch_multiscale[i],
+                            mask=mask_batch,
+                            hinge=hinge,
+                            cutoff=cutoff,
+                            count_non_zero_mean=count_non_zero_mean)
+            elif use_delta:
                 mae_prediction_loss += \
-                    mae(original=input_batch_multiscale[i],
-                        prediction=prediction_batch_multiscale[i],
+                    mae_weighted_delta(
+                        original=input_batch,
+                        prediction=prediction_batch,
+                        mask=mask_batch,
+                        hinge=hinge,
+                        cutoff=cutoff)
+            else:
+                mae_prediction_loss += \
+                    mae(original=input_batch,
+                        prediction=prediction_batch,
                         mask=mask_batch,
                         hinge=hinge,
                         cutoff=cutoff,
                         count_non_zero_mean=count_non_zero_mean)
-        elif use_delta:
-            mae_prediction_loss += \
-                mae_weighted_delta(
-                    original=input_batch,
+
+        # --- loss prediction on mse
+        mse_prediction_loss = \
+            tf.constant(0.0, dtype=tf.float32)
+        if use_mse:
+            mse_prediction_loss += \
+                mse(original=input_batch,
                     prediction=prediction_batch,
-                    mask=mask_batch,
-                    hinge=hinge,
-                    cutoff=cutoff)
-        else:
-            mae_prediction_loss += \
-                mae(original=input_batch,
-                    prediction=prediction_batch,
-                    mask=mask_batch,
-                    hinge=hinge,
                     cutoff=cutoff,
-                    count_non_zero_mean=count_non_zero_mean)
+                    hinge=hinge)
 
         # --- regularization on features map
-        feature_map_regularization_loss = tf.constant(0.0)
+        feature_map_regularization_loss =\
+            tf.constant(0.0, dtype=tf.float32)
         if use_features:
             feature_map_regularization_loss = soft_orthogonal(feature_map_batch)
 
@@ -441,6 +458,7 @@ def loss_function_builder(
         # --- add up loss
         mean_total_loss = \
             mae_prediction_loss * mae_multiplier + \
+            mse_prediction_loss * mse_multiplier + \
             regularization_loss * regularization_multiplier + \
             feature_map_regularization_loss * features_multiplier
 
