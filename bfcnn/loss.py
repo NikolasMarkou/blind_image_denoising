@@ -433,8 +433,8 @@ def loss_function_builder(
             mse_prediction_loss += \
                 mse(original=input_batch,
                     prediction=prediction_batch,
-                    cutoff=cutoff,
-                    hinge=hinge)
+                    hinge=hinge,
+                    cutoff=(cutoff * cutoff))
 
         # --- regularization on features map
         feature_map_regularization_loss =\
