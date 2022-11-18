@@ -313,7 +313,7 @@ def dataset_builder(
                 tf.image.resize(
                     images=noisy_batch,
                     method=tf.image.ResizeMethod.LANCZOS5,
-                    size=(input_shape[0] / subsample_size, input_shape[1] / subsample_size))
+                    size=(int(input_shape[0] / subsample_size), int(input_shape[1] / subsample_size)))
             noisy_batch = \
                 tf.image.resize(
                     images=noisy_batch,
