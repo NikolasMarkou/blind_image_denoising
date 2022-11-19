@@ -118,7 +118,7 @@ def dataset_builder(
                 label_mode=None,
                 class_names=None,
                 color_mode=color_mode,
-                batch_size=batch_size,
+                batch_size=1,
                 shuffle=True,
                 image_size=s,
                 seed=0,
@@ -212,6 +212,9 @@ def dataset_builder(
         # --- random invert colors
         if random_invert and tf.random.uniform(()) > 0.5:
             input_batch = max_value - (input_batch - min_value)
+
+        if input_shape_inference[0] == 1:
+            input_batch = input_batch.squeeze(input_batch, axis=0)
 
         return input_batch
 
@@ -355,12 +358,17 @@ def dataset_builder(
         result[DATASET_FN_STR] = \
             dataset[0].map(
                 map_func=geometric_augmentations_fn,
-                num_parallel_calls=tf.data.AUTOTUNE).prefetch(2)
+                num_parallel_calls=tf.data.AUTOTUNE)
     else:
         result[DATASET_FN_STR] = \
             tf.data.Dataset.sample_from_datasets(dataset).map(
                 map_func=geometric_augmentations_fn,
-                num_parallel_calls=tf.data.AUTOTUNE).prefetch(2)
+                num_parallel_calls=tf.data.AUTOTUNE)
+
+    result[DATASET_FN_STR] = \
+        result[DATASET_FN_STR]\
+            .batch(batch_size=batch_size, num_parallel_calls=tf.data.AUTOTUNE)\
+            .prefetch(2)
 
     return result
 
