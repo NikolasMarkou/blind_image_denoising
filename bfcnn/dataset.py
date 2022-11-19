@@ -214,7 +214,7 @@ def dataset_builder(
             input_batch = max_value - (input_batch - min_value)
 
         if input_shape_inference[0] == 1:
-            input_batch = input_batch.squeeze(input_batch, axis=0)
+            input_batch = tf.squeeze(input_batch, axis=0)
 
         return input_batch
 
