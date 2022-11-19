@@ -157,6 +157,8 @@ denoised_tensor = denoiser_model(input_tensor)
 6. Avoid Batch Normalization at the end.
 7. Residual learning (learning the noise) trains faster and gives better metrics 
    but may give out artifacts, so better avoid it.
+8. Every sample in each batch uses independent forms of noise.
+
 All these options are supported in the configuration.
 
 ## Model types
