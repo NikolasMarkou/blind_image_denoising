@@ -213,8 +213,8 @@ def dataset_builder(
         if random_invert and tf.random.uniform(()) > 0.5:
             input_batch = max_value - (input_batch - min_value)
 
-        if input_shape_inference[0] == 1:
-            input_batch = tf.squeeze(input_batch, axis=0)
+        # if input_shape_inference[0] == 1:
+        #     input_batch = tf.squeeze(input_batch, axis=0)
 
         return input_batch
 
@@ -355,19 +355,29 @@ def dataset_builder(
     if len(dataset) == 0:
         raise ValueError("don't know how to handle zero datasets")
     elif len(dataset) == 1:
-        result[DATASET_FN_STR] = \
-            dataset[0].map(
-                map_func=geometric_augmentations_fn,
-                num_parallel_calls=tf.data.AUTOTUNE)
+        result[DATASET_FN_STR] = dataset[0]
     else:
-        result[DATASET_FN_STR] = \
-            tf.data.Dataset.sample_from_datasets(dataset).map(
-                map_func=geometric_augmentations_fn,
-                num_parallel_calls=tf.data.AUTOTUNE)
+        result[DATASET_FN_STR] = tf.data.Dataset.sample_from_datasets(dataset)
 
+    @tf.function(
+        input_signature=[
+            tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], None], dtype=tf.float32)])
+    def squeeze_fn(x):
+        return tf.squeeze(x, axis=0)
+
+    # !!! CREATE PROPER BATCHES HERE AFTER EACH SAMPLE IS INDEPENDENTLY AUGMENTED !!!
     result[DATASET_FN_STR] = \
         result[DATASET_FN_STR]\
-            .batch(batch_size=batch_size, num_parallel_calls=tf.data.AUTOTUNE)\
+            .map(
+                map_func=geometric_augmentations_fn,
+                num_parallel_calls=tf.data.AUTOTUNE)\
+            .map(
+                map_func=noise_augmentations_fn,
+                num_parallel_calls=tf.data.AUTOTUNE) \
+            .map(
+                map_func=squeeze_fn,
+                num_parallel_calls=tf.data.AUTOTUNE) \
+            .batch(batch_size=batch_size, num_parallel_calls=tf.data.AUTOTUNE) \
             .prefetch(2)
 
     return result

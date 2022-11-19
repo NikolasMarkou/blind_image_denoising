@@ -290,11 +290,11 @@ def train_loop(
                 denoiser.trainable_weights
 
             # --- iterate over the batches of the dataset
-            for input_batch in dataset:
+            for (input_batch, noisy_batch) in dataset:
                 start_time = time.time()
 
                 # augment data
-                noisy_batch = augmentation_fn(input_batch)
+                #noisy_batch = augmentation_fn(input_batch)
 
                 normalized_noisy_batch = \
                     normalizer(noisy_batch, training=False)
