@@ -295,7 +295,7 @@ def train_loop(
 
                 # augment data
                 noisy_batch = tf.map_fn(
-                    fn=augmentation_fn,
+                    fn=augmentation_exp_fn,
                     elems=input_batch,
                     dtype=tf.float32,
                     parallel_iterations=10,
