@@ -301,7 +301,7 @@ def train_loop(
                     parallel_iterations=10,
                     back_prop=False,
                     swap_memory=False,
-                    infer_shape=True,
+                    infer_shape=False,
                 )
 
                 #noisy_batch = augmentation_fn(input_batch)
