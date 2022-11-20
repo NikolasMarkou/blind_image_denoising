@@ -14,6 +14,7 @@ from .utilities import merge_iterators, random_choice
 
 DATASET_FN_STR = "dataset"
 AUGMENTATION_FN_STR = "augmentation"
+AUGMENTATION_EXP_FN_STR = "augmentation_exp"
 DATASET_TESTING_FN_STR = "dataset_testing"
 
 
@@ -213,8 +214,8 @@ def dataset_builder(
         if random_invert and tf.random.uniform(()) > 0.5:
             input_batch = max_value - (input_batch - min_value)
 
-        # if input_shape_inference[0] == 1:
-        #     input_batch = tf.squeeze(input_batch, axis=0)
+        if input_shape_inference[0] == 1:
+            input_batch = tf.squeeze(input_batch, axis=0)
 
         return input_batch
 
@@ -346,10 +347,21 @@ def dataset_builder(
 
         return noisy_batch
 
+    @tf.function(
+        input_signature=[
+            tf.TensorSpec(shape=[input_shape[0], input_shape[1], None], dtype=tf.float32)])
+    def noise_augmentations_exp_fn(
+            input_batch: tf.Tensor) -> tf.Tensor:
+        input_batch = tf.expand_dims(input_batch, axis=0)
+        input_batch = noise_augmentations_fn(input_batch)
+        input_batch = tf.squeeze(input_batch, axis=0)
+        return input_batch
+
     # --- create the dataset
     result = dict()
 
     result[AUGMENTATION_FN_STR] = noise_augmentations_fn
+    result[AUGMENTATION_EXP_FN_STR] = noise_augmentations_exp_fn
 
     # dataset produces the dataset with basic geometric distortions
     if len(dataset) == 0:
@@ -359,23 +371,11 @@ def dataset_builder(
     else:
         result[DATASET_FN_STR] = tf.data.Dataset.sample_from_datasets(dataset)
 
-    @tf.function(
-        input_signature=[
-            tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], None], dtype=tf.float32)])
-    def squeeze_fn(x):
-        return tf.squeeze(x, axis=0)
-
     # !!! CREATE PROPER BATCHES HERE AFTER EACH SAMPLE IS INDEPENDENTLY AUGMENTED !!!
     result[DATASET_FN_STR] = \
-        result[DATASET_FN_STR]\
+        result[DATASET_FN_STR] \
             .map(
                 map_func=geometric_augmentations_fn,
-                num_parallel_calls=tf.data.AUTOTUNE)\
-            .map(
-                map_func=noise_augmentations_fn,
-                num_parallel_calls=tf.data.AUTOTUNE) \
-            .map(
-                map_func=squeeze_fn,
                 num_parallel_calls=tf.data.AUTOTUNE) \
             .batch(batch_size=batch_size, num_parallel_calls=tf.data.AUTOTUNE) \
             .prefetch(2)
