@@ -129,7 +129,7 @@ def dataset_builder(
                 seed=0,
                 validation_split=None,
                 subset=None,
-                interpolation="lanczos5",
+                interpolation="area",
                 crop_to_aspect_ratio=True)
             for d, s in zip(directory, dataset_shape)
         ]
@@ -326,7 +326,7 @@ def dataset_builder(
             noisy_batch = \
                 tf.image.resize(
                     images=noisy_batch,
-                    method=tf.image.ResizeMethod.LANCZOS5,
+                    method=tf.image.ResizeMethod.AREA,
                     size=(int(input_shape[0] / subsample_size), int(input_shape[1] / subsample_size)))
             noisy_batch = \
                 tf.image.resize(
