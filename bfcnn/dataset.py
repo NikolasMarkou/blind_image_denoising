@@ -14,8 +14,8 @@ from .utilities import merge_iterators, random_choice
 
 DATASET_FN_STR = "dataset"
 AUGMENTATION_FN_STR = "augmentation"
-AUGMENTATION_EXP_FN_STR = "augmentation_exp"
 DATASET_TESTING_FN_STR = "dataset_testing"
+AUGMENTATION_MIX_FN_STR = "augmentation_mix"
 
 
 # ---------------------------------------------------------------------
@@ -347,21 +347,40 @@ def dataset_builder(
 
         return noisy_batch
 
+    # this will be use to augment data by mapping,
+    # so each image in the tensor
+    # is treated independently and gets a different noise type
     @tf.function(
         input_signature=[
             tf.TensorSpec(shape=[input_shape[0], input_shape[1], None], dtype=tf.float32)])
-    def noise_augmentations_exp_fn(
-            input_batch: tf.Tensor) -> tf.Tensor:
-        input_batch = tf.expand_dims(input_batch, axis=0)
-        input_batch = noise_augmentations_fn(input_batch)
-        input_batch = tf.squeeze(input_batch, axis=0)
-        return input_batch
+    def noise_augmentations_map_fn(
+            x_input: tf.Tensor) -> tf.Tensor:
+        x_input = tf.expand_dims(x_input, axis=0)
+        x_input = noise_augmentations_fn(x_input)
+        x_input = tf.squeeze(x_input, axis=0)
+        return x_input
+
+    @tf.function(
+        input_signature=[
+            tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], None], dtype=tf.float32)])
+    def noise_augmentations_mix_fn(
+            x_input: tf.Tensor) -> tf.Tensor:
+        return tf.map_fn(
+            fn=noise_augmentations_map_fn,
+            elems=x_input,
+            dtype=tf.float32,
+            parallel_iterations=tf.shape(x_input)[0],
+            back_prop=False,
+            swap_memory=False,
+            infer_shape=False,
+        )
 
     # --- create the dataset
     result = dict()
 
     result[AUGMENTATION_FN_STR] = noise_augmentations_fn
-    result[AUGMENTATION_EXP_FN_STR] = noise_augmentations_exp_fn
+
+    result[AUGMENTATION_MIX_FN_STR] = noise_augmentations_mix_fn
 
     # dataset produces the dataset with basic geometric distortions
     if len(dataset) == 0:
@@ -371,7 +390,7 @@ def dataset_builder(
     else:
         result[DATASET_FN_STR] = tf.data.Dataset.sample_from_datasets(dataset)
 
-    # !!! CREATE PROPER BATCHES HERE AFTER EACH SAMPLE IS INDEPENDENTLY AUGMENTED !!!
+    # --- create proper batches by sampling from each dataset independently
     result[DATASET_FN_STR] = \
         result[DATASET_FN_STR] \
             .map(

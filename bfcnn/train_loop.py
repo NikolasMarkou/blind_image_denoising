@@ -15,9 +15,9 @@ from .custom_logger import logger
 from .loss import loss_function_builder
 from .optimizer import optimizer_builder
 from .model_denoiser import model_builder as model_denoise_builder
-from .dataset import dataset_builder, DATASET_FN_STR, AUGMENTATION_FN_STR, AUGMENTATION_EXP_FN_STR
 from .pruning import prune_function_builder, PruneStrategy, get_conv2d_weights
 from .utilities import load_config, load_image, probabilistic_drop_off, clip_tensor
+from .dataset import dataset_builder, DATASET_FN_STR, AUGMENTATION_FN_STR, AUGMENTATION_MIX_FN_STR
 
 # ---------------------------------------------------------------------
 
@@ -60,10 +60,14 @@ def train_loop(
                 model_dir))
 
     # --- build dataset
-    dataset_res = dataset_builder(config=config["dataset"])
+    dataset_config = config["dataset"]
+    dataset_res = dataset_builder(dataset_config)
     dataset = dataset_res[DATASET_FN_STR]
-    augmentation_fn = tf.function(dataset_res[AUGMENTATION_FN_STR])
-    augmentation_exp_fn = tf.function(dataset_res[AUGMENTATION_EXP_FN_STR])
+    if dataset_config.get("mix_noise_types", False):
+        augmentation_fn = dataset_res[AUGMENTATION_FN_STR]
+    else:
+        augmentation_fn = dataset_res[AUGMENTATION_MIX_FN_STR]
+
     # --- build loss function
     loss_fn = loss_function_builder(config=config["loss"])
 
@@ -293,18 +297,9 @@ def train_loop(
             for input_batch in dataset:
                 start_time = time.time()
 
-                # augment data
-                noisy_batch = tf.map_fn(
-                    fn=augmentation_exp_fn,
-                    elems=input_batch,
-                    dtype=tf.float32,
-                    parallel_iterations=10,
-                    back_prop=False,
-                    swap_memory=False,
-                    infer_shape=False,
-                )
-
-                #noisy_batch = augmentation_fn(input_batch)
+                # augment data by mapping, so each image in the tensor
+                # is treated independently and gets a different noise type
+                noisy_batch = augmentation_fn(input_batch)
 
                 normalized_noisy_batch = \
                     normalizer(noisy_batch, training=False)

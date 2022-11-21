@@ -409,6 +409,7 @@ def loss_function_builder(
                             hinge=hinge,
                             cutoff=cutoff,
                             count_non_zero_mean=count_non_zero_mean)
+                mae_prediction_loss /= pyramid_levels
             elif use_delta:
                 mae_prediction_loss += \
                     mae_weighted_delta(
