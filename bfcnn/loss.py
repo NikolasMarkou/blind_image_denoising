@@ -12,6 +12,29 @@ from .custom_logger import logger
 from .delta import delta_xy_magnitude
 from .pyramid import build_pyramid_model
 
+# ---------------------------------------------------------------------
+
+
+def gar_loss(
+        x: tf.Tensor,
+        alpha: float = 1.0,
+        c: float = 1.0) -> tf.Tensor:
+    """
+    General and Adaptive Robust loss as described in
+    A General and Adaptive Robust Loss Function,
+    Jonathan T. Barron,
+    Google Research,
+    2019
+
+    :param x: error tensor
+    :param alpha: shape parameter that controls the robustness of the loss
+    :param c: c > 0 is a scale parameter that controls the size of the loss’s quadratic bowl near x = 0
+    :return loss
+    """
+    a_2 = tf.abs(alpha - 2.0)
+    return \
+        (a_2 / alpha) * \
+        (tf.pow((tf.square(x/c) / a_2) + 1.0, alpha / 2.0) - 1.0)
 
 # ---------------------------------------------------------------------
 
@@ -213,12 +236,12 @@ def mae(
 # ---------------------------------------------------------------------
 
 
-def mse_diff(
+def rmse_diff(
         error: tf.Tensor,
         hinge: float = 0,
         cutoff: float = (255.0 * 255.0)) -> tf.Tensor:
     """
-    Mean Square Error (mean over channels and batches)
+    Root Mean Square Error (mean over channels and batches)
 
     :param error:
     :param hinge: hinge value
@@ -226,11 +249,13 @@ def mse_diff(
     """
     d = \
         tf.keras.activations.relu(
-            x=tf.square(error),
+            x=error,
             threshold=hinge,
             max_value=cutoff)
+    d = tf.square(d)
     # mean over all dims
     d = tf.reduce_mean(d, axis=[1, 2, 3])
+    d = tf.sqrt(d)
     # mean over batch
     return tf.reduce_mean(d, axis=[0])
 
@@ -238,18 +263,18 @@ def mse_diff(
 # ---------------------------------------------------------------------
 
 
-def mse(
+def rmse(
         original: tf.Tensor,
         prediction: tf.Tensor,
         **kwargs) -> tf.Tensor:
     """
-    Mean Square Error (mean over channels and batches)
+    Root Mean Square Error (mean over channels and batches)
 
     :param original: original image batch
     :param prediction: denoised image batch
     """
-    return mse_diff(
-        error=tf.square(original - prediction),
+    return rmse_diff(
+        error=(original - prediction),
         **kwargs)
 
 
@@ -432,10 +457,10 @@ def loss_function_builder(
             tf.constant(0.0, dtype=tf.float32)
         if use_mse:
             mse_prediction_loss += \
-                mse(original=input_batch,
-                    prediction=prediction_batch,
-                    hinge=hinge,
-                    cutoff=(cutoff * cutoff))
+                rmse(original=input_batch,
+                     prediction=prediction_batch,
+                     hinge=hinge,
+                     cutoff=(cutoff * cutoff))
 
         # --- regularization on features map
         feature_map_regularization_loss =\
