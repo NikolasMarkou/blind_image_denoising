@@ -10,6 +10,7 @@
     "batchnorm": true,
     "activation": "relu",
     "add_initial_bn": true,
+    "add_final_bn": true,
     "final_activation": "tanh",
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
