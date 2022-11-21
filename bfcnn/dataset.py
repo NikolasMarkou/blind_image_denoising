@@ -186,7 +186,7 @@ def dataset_builder(
         input_batch = \
             tf.image.resize(
                 images=input_batch,
-                method=tf.image.ResizeMethod.LANCZOS5,
+                method=tf.image.ResizeMethod.AREA,
                 size=(input_shape[0], input_shape[1]))
 
         # --- flip left right
@@ -218,8 +218,8 @@ def dataset_builder(
         if random_invert and tf.random.uniform(()) > 0.5:
             input_batch = max_value - (input_batch - min_value)
 
-        if input_shape_inference[0] == 1:
-            input_batch = tf.squeeze(input_batch, axis=0)
+        # --- squeeze batch axis so we can mix different datasets
+        input_batch = tf.squeeze(input_batch, axis=0)
 
         input_batch = \
             tf.clip_by_value(
