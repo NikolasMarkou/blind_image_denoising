@@ -14,10 +14,14 @@ from .visualize import visualize
 from .custom_logger import logger
 from .loss import loss_function_builder
 from .optimizer import optimizer_builder
+from .pruning import prune_function_builder, get_conv2d_weights
 from .model_denoiser import model_builder as model_denoise_builder
-from .pruning import prune_function_builder, PruneStrategy, get_conv2d_weights
 from .utilities import load_config, load_image, probabilistic_drop_off, clip_tensor
-from .dataset import dataset_builder, DATASET_FN_STR, AUGMENTATION_FN_STR, AUGMENTATION_MIX_FN_STR
+from .dataset import \
+    dataset_builder, \
+    AUGMENTATION_FN_STR, \
+    DATASET_TRAINING_FN_STR, \
+    DATASET_VALIDATION_FN_STR
 
 # ---------------------------------------------------------------------
 
@@ -60,14 +64,10 @@ def train_loop(
                 model_dir))
 
     # --- build dataset
-    dataset_config = config["dataset"]
-    dataset_res = dataset_builder(dataset_config)
-    dataset = dataset_res[DATASET_FN_STR]
-    if dataset_config.get("mix_noise_types", False):
-        augmentation_fn = dataset_res[AUGMENTATION_FN_STR]
-    else:
-        augmentation_fn = dataset_res[AUGMENTATION_MIX_FN_STR]
-
+    dataset_res = dataset_builder(config["dataset"])
+    dataset_training = dataset_res[DATASET_TRAINING_FN_STR]
+    dataset_validation = dataset_res[DATASET_VALIDATION_FN_STR]
+    augmentation_fn = dataset_res[AUGMENTATION_FN_STR]
     # --- build loss function
     loss_fn = loss_function_builder(config=config["loss"])
 
@@ -287,14 +287,13 @@ def train_loop(
             # --- pruning strategy
             if use_prune and (global_epoch >= prune_start_epoch):
                 logger.info(f"pruning weights at step [{int(global_step)}]")
-                denoiser = \
-                    prune_fn(model=denoiser)
+                denoiser = prune_fn(model=denoiser)
 
             model_denoise_weights = \
                 denoiser.trainable_weights
 
             # --- iterate over the batches of the dataset
-            for input_batch in dataset:
+            for input_batch in dataset_training:
                 start_time = time.time()
 
                 # augment data by mapping, so each image in the tensor
@@ -304,7 +303,7 @@ def train_loop(
                 normalized_noisy_batch = \
                     normalizer(noisy_batch, training=False)
 
-                grads = None
+                same_sample_grads = None
                 for i in range(same_sample_iterations):
                     # Open a GradientTape to record the operations run
                     # during the forward pass,
@@ -328,8 +327,8 @@ def train_loop(
                         # use the gradient tape to automatically retrieve
                         # the gradients of the trainable variables
                         # with respect to the loss.
-                        if grads is None:
-                            grads = \
+                        if same_sample_grads is None:
+                            same_sample_grads = \
                                 tape.gradient(
                                     target=loss_map[MEAN_TOTAL_LOSS_STR],
                                     sources=model_denoise_weights)
@@ -339,7 +338,7 @@ def train_loop(
                                     target=loss_map[MEAN_TOTAL_LOSS_STR],
                                     sources=model_denoise_weights)
                             for j in range(len(tmp_grads)):
-                                grads[j] += tmp_grads[j]
+                                same_sample_grads[j] += tmp_grads[j]
 
                     # set it back so we can iterate again
                     if 1 < same_sample_iterations:
@@ -359,10 +358,10 @@ def train_loop(
                 # the value of the variables to minimize the loss.
                 if use_probabilistic_gradient_drop_off:
                     optimizer.apply_gradients(
-                        grads_and_vars=zip(probabilistic_drop_off(grads), model_denoise_weights))
+                        grads_and_vars=zip(probabilistic_drop_off(same_sample_grads), model_denoise_weights))
                 else:
                     optimizer.apply_gradients(
-                        grads_and_vars=zip(grads, model_denoise_weights))
+                        grads_and_vars=zip(same_sample_grads, model_denoise_weights))
 
                 # --- add loss summaries for tensorboard
                 for name, key in [
@@ -426,6 +425,7 @@ def train_loop(
                         (int(prune_steps) != -1) and (global_step % prune_steps == 0):
                     logger.info(f"pruning weights at step [{int(global_step)}]")
                     denoiser = prune_fn(model=denoiser)
+                    model_denoise_weights = denoiser.trainable_weights
 
                 # --- check if it is time to save a checkpoint
                 if checkpoint_every > 0 and \

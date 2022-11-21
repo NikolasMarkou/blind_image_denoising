@@ -8,15 +8,14 @@ from typing import Dict, Callable, Iterator
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .utilities import merge_iterators, random_choice
+from .utilities import random_choice
 
 # ---------------------------------------------------------------------
 
-DATASET_FN_STR = "dataset"
 AUGMENTATION_FN_STR = "augmentation"
 DATASET_TESTING_FN_STR = "dataset_testing"
-AUGMENTATION_MIX_FN_STR = "augmentation_mix"
-
+DATASET_TRAINING_FN_STR = "dataset_training"
+DATASET_VALIDATION_FN_STR = "dataset_validation"
 
 # ---------------------------------------------------------------------
 
@@ -80,6 +79,11 @@ def dataset_builder(
     # whether to crop or not
     random_crop = dataset_shape[0][0:2] != input_shape[0:2]
     random_crop = tf.constant(random_crop)
+    # percentage to keep for validation
+    validation_split = min(max(config.get("validation_split", 0.1), 0.0), 1.0)
+    subset = "both"
+    # mix noise types
+    mix_noise_types = config.get("mix_noise_types", False)
 
     # --- build noise options
     noise_choices = []
@@ -112,7 +116,7 @@ def dataset_builder(
 
     # --- define generator function from directory
     if directory:
-        dataset = [
+        dataset_training = [
             tf.keras.utils.image_dataset_from_directory(
                 directory=d,
                 labels=None,
@@ -216,6 +220,12 @@ def dataset_builder(
 
         if input_shape_inference[0] == 1:
             input_batch = tf.squeeze(input_batch, axis=0)
+
+        input_batch = \
+            tf.clip_by_value(
+                input_batch,
+                clip_value_min=min_value,
+                clip_value_max=max_value)
 
         return input_batch
 
@@ -378,21 +388,22 @@ def dataset_builder(
     # --- create the dataset
     result = dict()
 
-    result[AUGMENTATION_FN_STR] = noise_augmentations_fn
-
-    result[AUGMENTATION_MIX_FN_STR] = noise_augmentations_mix_fn
+    if mix_noise_types:
+        result[AUGMENTATION_FN_STR] = noise_augmentations_mix_fn
+    else:
+        result[AUGMENTATION_FN_STR] = noise_augmentations_fn
 
     # dataset produces the dataset with basic geometric distortions
-    if len(dataset) == 0:
+    if len(dataset_training) == 0:
         raise ValueError("don't know how to handle zero datasets")
-    elif len(dataset) == 1:
-        result[DATASET_FN_STR] = dataset[0]
+    elif len(dataset_training) == 1:
+        result[DATASET_TRAINING_FN_STR] = dataset_training[0]
     else:
-        result[DATASET_FN_STR] = tf.data.Dataset.sample_from_datasets(dataset)
+        result[DATASET_TRAINING_FN_STR] = tf.data.Dataset.sample_from_datasets(dataset_training)
 
     # --- create proper batches by sampling from each dataset independently
-    result[DATASET_FN_STR] = \
-        result[DATASET_FN_STR] \
+    result[DATASET_TRAINING_FN_STR] = \
+        result[DATASET_TRAINING_FN_STR] \
             .map(
                 map_func=geometric_augmentations_fn,
                 num_parallel_calls=tf.data.AUTOTUNE) \
