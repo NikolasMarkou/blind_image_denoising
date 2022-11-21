@@ -124,35 +124,28 @@ def model_builder(
         regularizer_builder(denoise_head_kernel_regularization)
 
     denoise_intermediate_conv_params = dict(
-        groups=groups,
+        groups=1,
         kernel_size=1,
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
         activation=activation,
-        filters=input_shape[channel_index] * groups,
+        filters=input_shape[channel_index] * input_shape[channel_index],
         kernel_regularizer=denoise_head_kernel_regularization,
         kernel_initializer=denoise_head_kernel_initializer
     )
 
     denoise_final_conv_params = dict(
+        groups=1,
         kernel_size=1,
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
         # this must be linear because it is capped later
         activation="linear",
-        groups=input_shape[channel_index],
         filters=input_shape[channel_index],
         kernel_regularizer=denoise_head_kernel_regularization,
         kernel_initializer=denoise_head_kernel_initializer
-    )
-
-    channelwise_params = dict(
-        multiplier=1.0,
-        regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
-        trainable=True,
-        activation="relu"
     )
 
     # --- build normalize denormalize models
