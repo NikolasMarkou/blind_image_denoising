@@ -20,8 +20,7 @@ from .utilities import load_config, load_image, probabilistic_drop_off, clip_ten
 from .dataset import \
     dataset_builder, \
     AUGMENTATION_FN_STR, \
-    DATASET_TRAINING_FN_STR, \
-    DATASET_VALIDATION_FN_STR
+    DATASET_TRAINING_FN_STR
 
 # ---------------------------------------------------------------------
 
@@ -66,7 +65,6 @@ def train_loop(
     # --- build dataset
     dataset_res = dataset_builder(config["dataset"])
     dataset_training = dataset_res[DATASET_TRAINING_FN_STR]
-    dataset_validation = dataset_res[DATASET_VALIDATION_FN_STR]
     augmentation_fn = dataset_res[AUGMENTATION_FN_STR]
     # --- build loss function
     loss_fn = loss_function_builder(config=config["loss"])
