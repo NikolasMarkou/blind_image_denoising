@@ -386,20 +386,27 @@ def dataset_builder(
             infer_shape=False,
         )
 
-    @tf.function(
-        input_signature=[
-            tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], None], dtype=tf.float32)])
-    def augmentation_map_fn(
-            x_input: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
-        return x_input, noise_augmentations_fn(x_input)
-
     # --- create the dataset
     result = dict()
 
     if mix_noise_types:
         result[AUGMENTATION_FN_STR] = noise_augmentations_mix_fn
+
+        @tf.function(
+            input_signature=[
+                tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], None], dtype=tf.float32)])
+        def augmentation_map_fn(
+                x_input: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+            return x_input, noise_augmentations_mix_fn(x_input)
     else:
         result[AUGMENTATION_FN_STR] = noise_augmentations_fn
+
+        @tf.function(
+            input_signature=[
+                tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], None], dtype=tf.float32)])
+        def augmentation_map_fn(
+                x_input: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+            return x_input, noise_augmentations_fn(x_input)
 
     # dataset produces the dataset with basic geometric distortions
     if len(dataset_training) == 0:
@@ -413,12 +420,12 @@ def dataset_builder(
     # --- create proper batches by sampling from each dataset independently
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
+            .map(map_func=geometric_augmentations_fn,
+                 num_parallel_calls=tf.data.AUTOTUNE) \
             .unbatch() \
             .shuffle(buffer_size=1024) \
             .batch(batch_size=batch_size,
                    num_parallel_calls=tf.data.AUTOTUNE) \
-            .map(map_func=geometric_augmentations_fn,
-                 num_parallel_calls=tf.data.AUTOTUNE) \
             .map(map_func=augmentation_map_fn,
                  num_parallel_calls=tf.data.AUTOTUNE) \
             .prefetch(2)
