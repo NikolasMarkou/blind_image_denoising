@@ -48,6 +48,7 @@
   },
   "dataset": {
     "batch_size": 16,
+    "no_iteration_per_batch": 2,
     "mix_noise_types": false,
     "value_range": [0, 255],
     "scale_range": [0.9, 1.0],

@@ -65,7 +65,7 @@ def train_loop(
     # --- build dataset
     dataset_res = dataset_builder(config["dataset"])
     dataset_training = dataset_res[DATASET_TRAINING_FN_STR]
-    augmentation_fn = dataset_res[AUGMENTATION_FN_STR]
+
     # --- build loss function
     loss_fn = loss_function_builder(config=config["loss"])
 
@@ -83,9 +83,7 @@ def train_loop(
     # --- get the train configuration
     train_config = config["train"]
     epochs = train_config["epochs"]
-    use_probabilistic_gradient_drop_off = \
-        train_config.get("use_probabilistic_drop_off", False)
-    same_sample_iterations = train_config.get("same_sample_iterations", 1)
+    no_iterations_per_batch = train_config.get("no_iterations_per_batch", 1)
     global_total_epochs = tf.Variable(
         epochs, trainable=False, dtype=tf.dtypes.int64, name="global_total_epochs")
     weight_buckets = train_config.get("weight_buckets", 100)
@@ -296,13 +294,15 @@ def train_loop(
             while True:
                 try:
                     start_time = time.time()
-                    input_batch, noisy_batch = dataset_training_iterator.get_next()
 
-                    normalized_noisy_batch = \
-                        normalizer(noisy_batch, training=False)
+                    # --- do this for small batches
+                    grads_batch = None
+                    for i in range(no_iterations_per_batch):
+                        input_batch, noisy_batch = dataset_training_iterator.get_next()
 
-                    same_sample_grads = None
-                    for i in range(same_sample_iterations):
+                        normalized_noisy_batch = \
+                            normalizer(noisy_batch, training=False)
+
                         # Open a GradientTape to record the operations run
                         # during the forward pass,
                         # which enables auto-differentiation.
@@ -321,45 +321,20 @@ def train_loop(
                                     noisy_batch=noisy_batch,
                                     model_losses=denoiser.losses,
                                     prediction_batch=denormalized_denoised_batch)
+                            grads = \
+                                tape.gradient(
+                                    target=loss_map[MEAN_TOTAL_LOSS_STR],
+                                    sources=model_denoise_weights)
 
-                            # use the gradient tape to automatically retrieve
-                            # the gradients of the trainable variables
-                            # with respect to the loss.
-                            if same_sample_grads is None:
-                                same_sample_grads = \
-                                    tape.gradient(
-                                        target=loss_map[MEAN_TOTAL_LOSS_STR],
-                                        sources=model_denoise_weights)
-                            else:
-                                tmp_grads = \
-                                    tape.gradient(
-                                        target=loss_map[MEAN_TOTAL_LOSS_STR],
-                                        sources=model_denoise_weights)
-                                for j in range(len(tmp_grads)):
-                                    same_sample_grads[j] += tmp_grads[j]
+                        if grads_batch is None:
+                            grads_batch = grads
+                        else:
+                            for j in range(len(grads)):
+                                grads_batch[j] += grads[j]
 
-                        # set it back so we can iterate again
-                        if 1 < same_sample_iterations:
-                            if i == 0:
-                                tmp_loss = loss_map
-                                denoised_batch = clip_tensor(denoised_batch)
-                                noisy_batch = denormalized_denoised_batch
-                                normalized_noisy_batch = denoised_batch
-                            elif i < (same_sample_iterations - 1):
-                                denoised_batch = clip_tensor(denoised_batch)
-                                noisy_batch = denormalized_denoised_batch
-                                normalized_noisy_batch = denoised_batch
-                            elif i == (same_sample_iterations - 1):
-                                loss_map = tmp_loss
-
-                    # run one step of gradient descent by updating
-                    # the value of the variables to minimize the loss.
-                    if use_probabilistic_gradient_drop_off:
-                        optimizer.apply_gradients(
-                            grads_and_vars=zip(probabilistic_drop_off(same_sample_grads), model_denoise_weights))
-                    else:
-                        optimizer.apply_gradients(
-                            grads_and_vars=zip(same_sample_grads, model_denoise_weights))
+                    # --- apply weights
+                    optimizer.apply_gradients(
+                        grads_and_vars=zip(grads_batch, model_denoise_weights))
 
                     # --- add loss summaries for tensorboard
                     for name, key in [

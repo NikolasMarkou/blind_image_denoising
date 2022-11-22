@@ -122,10 +122,14 @@ def test_dataset_builder_build(config):
     assert bfcnn.dataset.DATASET_TRAINING_FN_STR in dataset_results
     assert bfcnn.dataset.AUGMENTATION_FN_STR in dataset_results
 
-    for input_batch in dataset_results[bfcnn.dataset.DATASET_TRAINING_FN_STR]:
+    for input_batch, noisy_batch in dataset_results[bfcnn.dataset.DATASET_TRAINING_FN_STR]:
         assert input_batch.shape[0] <= config["batch_size"]
         assert input_batch.shape[1] == config["input_shape"][0]
         assert input_batch.shape[2] == config["input_shape"][1]
+
+        assert noisy_batch.shape[0] <= config["batch_size"]
+        assert noisy_batch.shape[1] == config["input_shape"][0]
+        assert noisy_batch.shape[2] == config["input_shape"][1]
 
         if config["color_mode"] == "grayscale":
             assert input_batch.shape[3] == 1
