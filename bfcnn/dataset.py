@@ -136,7 +136,7 @@ def dataset_builder(
                 validation_split=None,
                 subset=None,
                 interpolation="area",
-                crop_to_aspect_ratio=True).map(map_func=cast_to_uint8)
+                crop_to_aspect_ratio=True)
             for d, s in zip(directory, dataset_shape)
         ]
     else:
@@ -148,7 +148,7 @@ def dataset_builder(
                                  None,
                                  None,
                                  None],
-                          dtype=tf.uint8)])
+                          dtype=tf.float32)])
     def geometric_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -438,7 +438,6 @@ def dataset_builder(
             .shuffle(buffer_size=batch_size * len(dataset_training),
                      reshuffle_each_iteration=False) \
             .batch(batch_size=batch_size) \
-            .map(map_func=cast_to_float32) \
             .prefetch(2)
 
     return result
