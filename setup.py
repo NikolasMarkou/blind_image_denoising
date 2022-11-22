@@ -43,9 +43,11 @@ setuptools.setup(
         ]),
     install_requires=[
         "numpy",
-        "Keras",
+        "pandas",
         "setuptools",
-        "tensorflow>=2.6.2",
+        "scikit-learn",
+        "Pillow>=8.1.2",
+        "tensorflow>=2.10.0",
         "matplotlib>=3.3.4",
         "tensorflow-addons",
     ],
