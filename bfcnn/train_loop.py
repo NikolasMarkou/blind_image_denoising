@@ -264,11 +264,13 @@ def train_loop(
 
         # --- define denoise fn
         @tf.function
-        def denoise_and_denormalize_fn(x_input: tf.Tensor) -> tf.Tensor:
-            # denoised merged
-            x_denoised = denoiser(x_input, training=True)
-            # denoised denormalized
-            return denormalizer(x_denoised, training=False)
+        def denoise_fn(x_input: tf.Tensor) -> tf.Tensor:
+            # normalize
+            x_tmp = normalizer(x_input, training=False)
+            # denoise
+            x_tmp = denoiser(x_tmp, training=True)
+            # denormalize
+            return denormalizer(x_tmp, training=False)
 
         # --- define decompose fn
         @tf.function
@@ -301,9 +303,6 @@ def train_loop(
                         input_batch = dataset_training_iterator.get_next()
                         noisy_batch = augmentation_fn(input_batch)
 
-                        normalized_noisy_batch = \
-                            normalizer(noisy_batch, training=False)
-
                         # Open a GradientTape to record the operations run
                         # during the forward pass,
                         # which enables auto-differentiation.
@@ -312,8 +311,7 @@ def train_loop(
                             # The operations that the layer applies
                             # to its inputs are going to be recorded
                             # on the GradientTape.
-                            denormalized_denoised_batch = \
-                                denoise_and_denormalize_fn(normalized_noisy_batch)
+                            denoised_batch = denoise_fn(noisy_batch)
 
                             # compute the loss value for this mini-batch
                             loss_map = \
@@ -321,7 +319,7 @@ def train_loop(
                                     input_batch=input_batch,
                                     noisy_batch=noisy_batch,
                                     model_losses=denoiser.losses,
-                                    prediction_batch=denormalized_denoised_batch)
+                                    prediction_batch=denoised_batch)
                             grads = \
                                 tape.gradient(
                                     target=loss_map[MEAN_TOTAL_LOSS_STR],
@@ -367,7 +365,7 @@ def train_loop(
                             random_batch=create_random_batch(),
                             test_input_batch=test_input_batch,
                             test_output_batch=test_output_batch,
-                            prediction_batch=denormalized_denoised_batch,
+                            prediction_batch=denoised_batch,
                             visualization_number=visualization_number)
                         # add weight visualization
                         tf.summary.histogram(
