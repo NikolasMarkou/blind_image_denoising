@@ -123,7 +123,7 @@ def dataset_builder(
                 label_mode=None,
                 class_names=None,
                 color_mode=color_mode,
-                batch_size=1,
+                batch_size=batch_size,
                 shuffle=True,
                 image_size=s,
                 seed=0,
@@ -218,8 +218,8 @@ def dataset_builder(
         if random_invert and tf.random.uniform(()) > 0.5:
             input_batch = max_value - (input_batch - min_value)
 
-        # --- squeeze batch axis so we can mix different datasets
-        input_batch = tf.squeeze(input_batch, axis=0)
+        # # --- squeeze batch axis so we can mix different datasets
+        # input_batch = tf.squeeze(input_batch, axis=0)
 
         input_batch = \
             tf.clip_by_value(
@@ -399,7 +399,8 @@ def dataset_builder(
     elif len(dataset_training) == 1:
         result[DATASET_TRAINING_FN_STR] = dataset_training[0]
     else:
-        result[DATASET_TRAINING_FN_STR] = tf.data.Dataset.sample_from_datasets(dataset_training)
+        result[DATASET_TRAINING_FN_STR] = \
+            tf.data.Dataset.sample_from_datasets(dataset_training)
 
     # --- create proper batches by sampling from each dataset independently
     result[DATASET_TRAINING_FN_STR] = \
@@ -407,6 +408,8 @@ def dataset_builder(
             .map(
                 map_func=geometric_augmentations_fn,
                 num_parallel_calls=tf.data.AUTOTUNE) \
+            .unbatch()\
+            .shuffle(buffer_size=1024)\
             .batch(batch_size=batch_size, num_parallel_calls=tf.data.AUTOTUNE) \
             .prefetch(2)
 
