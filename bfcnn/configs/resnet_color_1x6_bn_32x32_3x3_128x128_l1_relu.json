@@ -27,10 +27,7 @@
     "random_batch_size": [128, 128, 3],
     "random_batch_min_difference": 0.1,
     "optimizer": {
-      "type": "ADAM",
-      "beta_1": 0.9,
-      "beta_2": 0.999,
-      "amsgrad": false,
+      "type": "RMSprop",
       "gradient_clipping_by_norm": 1.0,
       "schedule": {
         "type": "exponential_decay",
