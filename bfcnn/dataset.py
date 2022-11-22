@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow_addons as tfa
-from typing import Dict, Callable, Iterator
+from typing import Dict, Callable, Iterator, Tuple
 
 # ---------------------------------------------------------------------
 # local imports
@@ -16,6 +16,7 @@ AUGMENTATION_FN_STR = "augmentation"
 DATASET_TESTING_FN_STR = "dataset_testing"
 DATASET_TRAINING_FN_STR = "dataset_training"
 DATASET_VALIDATION_FN_STR = "dataset_validation"
+
 
 # ---------------------------------------------------------------------
 
@@ -385,6 +386,13 @@ def dataset_builder(
             infer_shape=False,
         )
 
+    @tf.function(
+        input_signature=[
+            tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], None], dtype=tf.float32)])
+    def augmentation_map_fn(
+            x_input: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+        return x_input, noise_augmentations_fn(x_input)
+
     # --- create the dataset
     result = dict()
 
@@ -405,12 +413,13 @@ def dataset_builder(
     # --- create proper batches by sampling from each dataset independently
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
-            .map(
-                map_func=geometric_augmentations_fn,
-                num_parallel_calls=tf.data.AUTOTUNE) \
-            .unbatch()\
-            .shuffle(buffer_size=1024)\
+            .map(map_func=geometric_augmentations_fn,
+                 num_parallel_calls=tf.data.AUTOTUNE) \
+            .unbatch() \
+            .shuffle(buffer_size=1024) \
             .batch(batch_size=batch_size, num_parallel_calls=tf.data.AUTOTUNE) \
+            .map(map_func=augmentation_map_fn,
+                 num_parallel_calls=tf.data.AUTOTUNE) \
             .prefetch(2)
 
     return result

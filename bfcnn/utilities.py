@@ -637,7 +637,7 @@ def layer_denormalize(args):
 
 def layer_normalize(args):
     """
-    Convert input from [v0, v1] to [-1.0, +1.0] range
+    Convert input from [v0, v1] to [-0.5, +0.5] range
     """
     y, v_min, v_max = args
     y_clip = \

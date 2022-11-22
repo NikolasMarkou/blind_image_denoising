@@ -290,179 +290,181 @@ def train_loop(
             model_denoise_weights = \
                 denoiser.trainable_weights
 
+            dataset_training_iterator = iter(dataset_training)
+
             # --- iterate over the batches of the dataset
-            for input_batch in dataset_training:
-                start_time = time.time()
+            while True:
+                try:
+                    start_time = time.time()
+                    input_batch, noisy_batch = dataset_training_iterator.get_next()
 
-                # augment data by mapping, so each image in the tensor
-                # is treated independently and gets a different noise type
-                noisy_batch = augmentation_fn(input_batch)
+                    normalized_noisy_batch = \
+                        normalizer(noisy_batch, training=False)
 
-                normalized_noisy_batch = \
-                    normalizer(noisy_batch, training=False)
+                    same_sample_grads = None
+                    for i in range(same_sample_iterations):
+                        # Open a GradientTape to record the operations run
+                        # during the forward pass,
+                        # which enables auto-differentiation.
+                        with tf.GradientTape() as tape:
+                            # run the forward pass of the layer.
+                            # The operations that the layer applies
+                            # to its inputs are going to be recorded
+                            # on the GradientTape.
+                            denoised_batch, denormalized_denoised_batch = \
+                                denoise_fn(normalized_noisy_batch)
 
-                same_sample_grads = None
-                for i in range(same_sample_iterations):
-                    # Open a GradientTape to record the operations run
-                    # during the forward pass,
-                    # which enables auto-differentiation.
-                    with tf.GradientTape() as tape:
-                        # run the forward pass of the layer.
-                        # The operations that the layer applies
-                        # to its inputs are going to be recorded
-                        # on the GradientTape.
-                        denoised_batch, denormalized_denoised_batch = \
-                            denoise_fn(normalized_noisy_batch)
+                            # compute the loss value for this mini-batch
+                            loss_map = \
+                                loss_fn(
+                                    input_batch=input_batch,
+                                    noisy_batch=noisy_batch,
+                                    model_losses=denoiser.losses,
+                                    prediction_batch=denormalized_denoised_batch)
 
-                        # compute the loss value for this mini-batch
-                        loss_map = \
-                            loss_fn(
-                                input_batch=input_batch,
-                                noisy_batch=noisy_batch,
-                                model_losses=denoiser.losses,
-                                prediction_batch=denormalized_denoised_batch)
+                            # use the gradient tape to automatically retrieve
+                            # the gradients of the trainable variables
+                            # with respect to the loss.
+                            if same_sample_grads is None:
+                                same_sample_grads = \
+                                    tape.gradient(
+                                        target=loss_map[MEAN_TOTAL_LOSS_STR],
+                                        sources=model_denoise_weights)
+                            else:
+                                tmp_grads = \
+                                    tape.gradient(
+                                        target=loss_map[MEAN_TOTAL_LOSS_STR],
+                                        sources=model_denoise_weights)
+                                for j in range(len(tmp_grads)):
+                                    same_sample_grads[j] += tmp_grads[j]
 
-                        # use the gradient tape to automatically retrieve
-                        # the gradients of the trainable variables
-                        # with respect to the loss.
-                        if same_sample_grads is None:
-                            same_sample_grads = \
-                                tape.gradient(
-                                    target=loss_map[MEAN_TOTAL_LOSS_STR],
-                                    sources=model_denoise_weights)
-                        else:
-                            tmp_grads = \
-                                tape.gradient(
-                                    target=loss_map[MEAN_TOTAL_LOSS_STR],
-                                    sources=model_denoise_weights)
-                            for j in range(len(tmp_grads)):
-                                same_sample_grads[j] += tmp_grads[j]
+                        # set it back so we can iterate again
+                        if 1 < same_sample_iterations:
+                            if i == 0:
+                                tmp_loss = loss_map
+                                denoised_batch = clip_tensor(denoised_batch)
+                                noisy_batch = denormalized_denoised_batch
+                                normalized_noisy_batch = denoised_batch
+                            elif i < (same_sample_iterations - 1):
+                                denoised_batch = clip_tensor(denoised_batch)
+                                noisy_batch = denormalized_denoised_batch
+                                normalized_noisy_batch = denoised_batch
+                            elif i == (same_sample_iterations - 1):
+                                loss_map = tmp_loss
 
-                    # set it back so we can iterate again
-                    if 1 < same_sample_iterations:
-                        if i == 0:
-                            tmp_loss = loss_map
-                            denoised_batch = clip_tensor(denoised_batch)
-                            noisy_batch = denormalized_denoised_batch
-                            normalized_noisy_batch = denoised_batch
-                        elif i < (same_sample_iterations - 1):
-                            denoised_batch = clip_tensor(denoised_batch)
-                            noisy_batch = denormalized_denoised_batch
-                            normalized_noisy_batch = denoised_batch
-                        elif i == (same_sample_iterations - 1):
-                            loss_map = tmp_loss
+                    # run one step of gradient descent by updating
+                    # the value of the variables to minimize the loss.
+                    if use_probabilistic_gradient_drop_off:
+                        optimizer.apply_gradients(
+                            grads_and_vars=zip(probabilistic_drop_off(same_sample_grads), model_denoise_weights))
+                    else:
+                        optimizer.apply_gradients(
+                            grads_and_vars=zip(same_sample_grads, model_denoise_weights))
 
-                # run one step of gradient descent by updating
-                # the value of the variables to minimize the loss.
-                if use_probabilistic_gradient_drop_off:
-                    optimizer.apply_gradients(
-                        grads_and_vars=zip(probabilistic_drop_off(same_sample_grads), model_denoise_weights))
-                else:
-                    optimizer.apply_gradients(
-                        grads_and_vars=zip(same_sample_grads, model_denoise_weights))
+                    # --- add loss summaries for tensorboard
+                    for name, key in [
+                        ("loss/mae", MAE_LOSS_STR),
+                        ("loss/kl_loss", KL_LOSS_STR),
+                        ("loss/total", MEAN_TOTAL_LOSS_STR),
+                        ("quality/nae_noise", NAE_NOISE_STR),
+                        ("loss/nae", NAE_PREDICTION_LOSS_STR),
+                        ("quality/signal_to_noise_ratio", SNR_STR),
+                        ("loss/regularization", REGULARIZATION_LOSS_STR),
+                        ("quality/nae_improvement", NAE_IMPROVEMENT_QUALITY_STR)
+                    ]:
+                        if key in loss_map:
+                            tf.summary.scalar(
+                                name=name,
+                                data=loss_map[key],
+                                step=global_step)
 
-                # --- add loss summaries for tensorboard
-                for name, key in [
-                    ("loss/mae", MAE_LOSS_STR),
-                    ("loss/kl_loss", KL_LOSS_STR),
-                    ("loss/total", MEAN_TOTAL_LOSS_STR),
-                    ("quality/nae_noise", NAE_NOISE_STR),
-                    ("loss/nae", NAE_PREDICTION_LOSS_STR),
-                    ("quality/signal_to_noise_ratio", SNR_STR),
-                    ("loss/regularization", REGULARIZATION_LOSS_STR),
-                    ("quality/nae_improvement", NAE_IMPROVEMENT_QUALITY_STR)
-                ]:
-                    if key in loss_map:
-                        tf.summary.scalar(
-                            name=name,
-                            data=loss_map[key],
-                            step=global_step)
+                    # --- add image prediction for tensorboard
+                    if (global_step % visualization_every) == 0:
+                        test_input_batch = None
+                        test_output_batch = None
+                        if use_test_images:
+                            test_input_batch, test_output_batch = denoise_test_batch()
+                        visualize(
+                            global_step=global_step,
+                            input_batch=input_batch,
+                            noisy_batch=noisy_batch,
+                            random_batch=create_random_batch(),
+                            test_input_batch=test_input_batch,
+                            test_output_batch=test_output_batch,
+                            prediction_batch=denormalized_denoised_batch,
+                            visualization_number=visualization_number)
+                        # add weight visualization
+                        tf.summary.histogram(
+                            data=get_conv2d_weights(model=denoiser),
+                            step=global_step,
+                            buckets=weight_buckets,
+                            name="training/weights")
 
-                # --- add image prediction for tensorboard
-                if (global_step % visualization_every) == 0:
-                    test_input_batch = None
-                    test_output_batch = None
-                    if use_test_images:
-                        test_input_batch, test_output_batch = denoise_test_batch()
-                    visualize(
-                        global_step=global_step,
-                        input_batch=input_batch,
-                        noisy_batch=noisy_batch,
-                        random_batch=create_random_batch(),
-                        test_input_batch=test_input_batch,
-                        test_output_batch=test_output_batch,
-                        prediction_batch=denormalized_denoised_batch,
-                        visualization_number=visualization_number)
-                    # add weight visualization
-                    tf.summary.histogram(
-                        data=get_conv2d_weights(model=denoiser),
-                        step=global_step,
-                        buckets=weight_buckets,
-                        name="training/weights")
+                    # --- add image decomposition
+                    if decomposition_every > 0 and \
+                            (global_step % decomposition_every) == 0:
+                        test_image = test_images[0, :, :, :]
+                        test_image = tf.expand_dims(test_image, axis=0)
+                        test_image = tf.image.resize(test_image, size=(128, 128))
+                        decomposed_image = decompose_fn(test_image)
+                        # squash decomposition between [-1, +1] interval
+                        decomposed_image = tf.tanh(decomposed_image)
+                        # move to [0, +1] interval
+                        decomposed_image = (decomposed_image + 1) / 2
+                        decomposed_image = tf.transpose(decomposed_image, perm=(3, 1, 2, 0))
+                        tf.summary.image(
+                            name=f"test_output_decomposition_0",
+                            step=global_step,
+                            data=decomposed_image,
+                            max_outputs=12)
 
-                # --- add image decomposition
-                if decomposition_every > 0 and \
-                        (global_step % decomposition_every) == 0:
-                    test_image = test_images[0, :, :, :]
-                    test_image = tf.expand_dims(test_image, axis=0)
-                    test_image = tf.image.resize(test_image, size=(128, 128))
-                    decomposed_image = decompose_fn(test_image)
-                    # squash decomposition between [-1, +1] interval
-                    decomposed_image = tf.tanh(decomposed_image)
-                    # move to [0, +1] interval
-                    decomposed_image = (decomposed_image + 1) / 2
-                    decomposed_image = tf.transpose(decomposed_image, perm=(3, 1, 2, 0))
-                    tf.summary.image(
-                        name=f"test_output_decomposition_0",
-                        step=global_step,
-                        data=decomposed_image,
-                        max_outputs=12)
+                    # --- prune conv2d
+                    if use_prune and (global_epoch >= prune_start_epoch) and \
+                            (int(prune_steps) != -1) and (global_step % prune_steps == 0):
+                        logger.info(f"pruning weights at step [{int(global_step)}]")
+                        denoiser = prune_fn(model=denoiser)
+                        model_denoise_weights = denoiser.trainable_weights
 
-                # --- prune conv2d
-                if use_prune and (global_epoch >= prune_start_epoch) and \
-                        (int(prune_steps) != -1) and (global_step % prune_steps == 0):
-                    logger.info(f"pruning weights at step [{int(global_step)}]")
-                    denoiser = prune_fn(model=denoiser)
-                    model_denoise_weights = denoiser.trainable_weights
+                    # --- check if it is time to save a checkpoint
+                    if checkpoint_every > 0 and \
+                            (global_step % checkpoint_every == 0):
+                        logger.info("checkpoint at step: {0}".format(
+                            int(global_step)))
+                        manager.save()
+                        # save model so we can visualize it easier
+                        denoiser.save(
+                            os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR))
 
-                # --- check if it is time to save a checkpoint
-                if checkpoint_every > 0 and \
-                        (global_step % checkpoint_every == 0):
-                    logger.info("checkpoint at step: {0}".format(
-                        int(global_step)))
-                    manager.save()
-                    # save model so we can visualize it easier
-                    denoiser.save(
-                        os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR))
+                    # --- keep time of steps per second
+                    stop_time = time.time()
+                    step_time = stop_time - start_time
 
-                # --- keep time of steps per second
-                stop_time = time.time()
-                step_time = stop_time - start_time
+                    tf.summary.scalar(
+                        "training/steps_per_second",
+                        1.0 / (step_time + 0.00001),
+                        step=global_step)
 
-                tf.summary.scalar(
-                    "training/steps_per_second",
-                    1.0 / (step_time + 0.00001),
-                    step=global_step)
+                    tf.summary.scalar(
+                        "training/epoch",
+                        int(global_epoch),
+                        step=global_step)
 
-                tf.summary.scalar(
-                    "training/epoch",
-                    int(global_epoch),
-                    step=global_step)
+                    tf.summary.scalar(
+                        "training/learning_rate",
+                        lr_schedule(int(global_step)),
+                        step=global_step)
 
-                tf.summary.scalar(
-                    "training/learning_rate",
-                    lr_schedule(int(global_step)),
-                    step=global_step)
+                    # ---
+                    global_step.assign_add(1)
 
-                # ---
-                global_step.assign_add(1)
-
-                # --- check if total steps reached
-                if total_steps > 0:
-                    if total_steps <= global_step:
-                        logger.info("total_steps reached [{0}]".format(
-                            int(total_steps)))
-                        break
+                    # --- check if total steps reached
+                    if total_steps > 0:
+                        if total_steps <= global_step:
+                            logger.info("total_steps reached [{0}]".format(
+                                int(total_steps)))
+                            break
+                except tf.errors.OutOfRangeError:
+                    break
 
             # --- end of the epoch
             logger.info("checkpoint at end of epoch: {0}".format(
