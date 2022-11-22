@@ -112,11 +112,23 @@ def dataset_builder(
     # --- set random seed to get the same result
     tf.random.set_seed(0)
 
-    @tf.function
+    @tf.function(
+        input_signature=[
+            tf.TensorSpec(shape=[None,
+                                 None,
+                                 None,
+                                 None],
+                          dtype=tf.uint8)])
     def cast_to_uint8(input_batch: tf.Tensor) -> tf.Tensor:
         return tf.cast(input_batch, tf.uint8)
 
-    @tf.function
+    @tf.function(
+        input_signature=[
+            tf.TensorSpec(shape=[None,
+                                 None,
+                                 None,
+                                 None],
+                          dtype=tf.float32)])
     def cast_to_float32(input_batch: tf.Tensor) -> tf.Tensor:
         return tf.cast(input_batch, tf.float32)
 
@@ -129,14 +141,14 @@ def dataset_builder(
                 label_mode=None,
                 class_names=None,
                 color_mode=color_mode,
-                batch_size=1,
+                batch_size=max(1, int(round(batch_size / len(directory)))),
                 shuffle=True,
                 image_size=s,
                 seed=0,
                 validation_split=None,
                 subset=None,
                 interpolation="area",
-                crop_to_aspect_ratio=True)
+                crop_to_aspect_ratio=True).map(map_func=cast_to_uint8)
             for d, s in zip(directory, dataset_shape)
         ]
     else:
@@ -148,7 +160,7 @@ def dataset_builder(
                                  None,
                                  None,
                                  None],
-                          dtype=tf.float32)])
+                          dtype=tf.uint8)])
     def geometric_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -432,8 +444,13 @@ def dataset_builder(
     # --- create proper batches by sampling from each dataset independently
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
-            .map(map_func=geometric_augmentations_fn) \
-            .rebatch(batch_size=batch_size) \
+            .map(map_func=geometric_augmentations_fn,
+                 num_parallel_calls=len(dataset_training)) \
+            .unbatch() \
+            .shuffle(buffer_size=batch_size * len(dataset_training),
+                     reshuffle_each_iteration=False) \
+            .batch(batch_size=batch_size) \
+            .map(map_func=cast_to_float32) \
             .prefetch(2)
 
     return result
