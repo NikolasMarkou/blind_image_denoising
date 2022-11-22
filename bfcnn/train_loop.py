@@ -65,6 +65,7 @@ def train_loop(
     # --- build dataset
     dataset_res = dataset_builder(config["dataset"])
     dataset_training = dataset_res[DATASET_TRAINING_FN_STR]
+    augmentation_fn = dataset_res[AUGMENTATION_FN_STR]
 
     # --- build loss function
     loss_fn = loss_function_builder(config=config["loss"])
@@ -298,7 +299,8 @@ def train_loop(
                     # --- do this for small batches
                     grads_batch = None
                     for i in range(no_iterations_per_batch):
-                        input_batch, noisy_batch = dataset_training_iterator.get_next()
+                        input_batch = dataset_training_iterator.get_next()
+                        noisy_batch = augmentation_fn(input_batch)
 
                         normalized_noisy_batch = \
                             normalizer(noisy_batch, training=False)

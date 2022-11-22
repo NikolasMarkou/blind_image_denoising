@@ -423,14 +423,12 @@ def dataset_builder(
         result[DATASET_TRAINING_FN_STR] \
             .prefetch(len(dataset_training) * 2) \
             .map(map_func=geometric_augmentations_fn,
-                 num_parallel_calls=tf.data.AUTOTUNE) \
+                 num_parallel_calls=len(dataset_training)) \
             .unbatch() \
             .shuffle(buffer_size=(len(dataset_training) * batch_size * 2),
                      reshuffle_each_iteration=False) \
             .batch(batch_size=batch_size,
                    num_parallel_calls=tf.data.AUTOTUNE) \
-            .map(map_func=augmentation_map_fn,
-                 num_parallel_calls=tf.data.AUTOTUNE) \
             .prefetch(2)
 
     return result
