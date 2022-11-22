@@ -148,7 +148,7 @@ def dataset_builder(
                                  None,
                                  None,
                                  None],
-                          dtype=tf.uint8)])
+                          dtype=tf.float32)])
     def geometric_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
