@@ -136,7 +136,7 @@ def dataset_builder(
                 validation_split=None,
                 subset=None,
                 interpolation="area",
-                crop_to_aspect_ratio=True).prefetch(tf.data.AUTOTUNE)
+                crop_to_aspect_ratio=True)
             for d, s in zip(directory, dataset_shape)
         ]
     else:
@@ -432,9 +432,7 @@ def dataset_builder(
     # --- create proper batches by sampling from each dataset independently
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
-            .map(map_func=geometric_augmentations_fn,
-                 deterministic=False,
-                 num_parallel_calls=tf.data.AUTOTUNE) \
+            .map(map_func=geometric_augmentations_fn) \
             .rebatch(batch_size=batch_size) \
             .prefetch(2)
 
