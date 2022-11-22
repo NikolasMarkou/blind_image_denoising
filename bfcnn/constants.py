@@ -16,7 +16,7 @@ MODEL_DISCRIMINATE_STR = "model_discriminate"
 MODEL_DENOISE_DEFAULT_NAME_STR = "model_denoise.h5"
 MODEL_DISCRIMINATE_DEFAULT_NAME_STR = "model_discriminate.h5"
 
-SNR_STR = "snr"
+PSNR_STR = "psnr"
 KL_LOSS_STR = "kl_loss"
 MAE_LOSS_STR = "mae_loss"
 NAE_NOISE_STR = "nae_noise"

@@ -74,7 +74,7 @@ def dataset_builder(
     # quantization value, -1 disabled, otherwise 2, 4, 8
     quantization = tf.constant(config.get("quantization", -1))
     # min/max scale
-    scale_range = config.get("scale_range", [0.25, 1.0])
+    scale_range = config.get("scale_range", [0.9, 1.1])
     min_scale = tf.constant(scale_range[0], dtype=tf.float32)
     max_scale = tf.constant(scale_range[1], dtype=tf.float32)
     # whether to crop or not
@@ -129,14 +129,14 @@ def dataset_builder(
                 label_mode=None,
                 class_names=None,
                 color_mode=color_mode,
-                batch_size=batch_size,
+                batch_size=1,
                 shuffle=True,
                 image_size=s,
                 seed=0,
                 validation_split=None,
                 subset=None,
                 interpolation="area",
-                crop_to_aspect_ratio=True).map(map_func=cast_to_uint8)
+                crop_to_aspect_ratio=True).prefetch(tf.data.AUTOTUNE)
             for d, s in zip(directory, dataset_shape)
         ]
     else:
@@ -144,7 +144,11 @@ def dataset_builder(
 
     @tf.function(
         input_signature=[
-            tf.TensorSpec(shape=[None, None, None, None], dtype=tf.uint8)])
+            tf.TensorSpec(shape=[None,
+                                 None,
+                                 None,
+                                 None],
+                          dtype=tf.uint8)])
     def geometric_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -161,13 +165,13 @@ def dataset_builder(
                     minval=min_scale,
                     maxval=max_scale,
                     dtype=tf.dtypes.float32)[0]
-            crop_width = \
+            crop_height = \
                 tf.cast(
                     tf.round(
                         random_number *
                         tf.cast(input_shape_inference[1], tf.float32)),
                     dtype=tf.int32)
-            crop_height = \
+            crop_width = \
                 tf.cast(
                     tf.round(
                         random_number *
@@ -192,7 +196,7 @@ def dataset_builder(
         input_batch = \
             tf.image.resize(
                 images=input_batch,
-                method=tf.image.ResizeMethod.AREA,
+                method=tf.image.ResizeMethod.BILINEAR,
                 size=(input_shape[0], input_shape[1]))
 
         # --- flip left right
@@ -224,19 +228,16 @@ def dataset_builder(
         if random_invert and tf.random.uniform(()) > 0.5:
             input_batch = max_value - (input_batch - min_value)
 
-        # interpolation methods produce results out of range so we clip them
-        input_batch = \
-            tf.clip_by_value(
-                input_batch,
-                clip_value_min=min_value,
-                clip_value_max=max_value)
-
         return input_batch
 
     # --- define augmentation function
     @tf.function(
         input_signature=[
-            tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], None], dtype=tf.float32)])
+            tf.TensorSpec(shape=[None,
+                                 input_shape[0],
+                                 input_shape[1],
+                                 None],
+                          dtype=tf.float32)])
     def noise_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -432,12 +433,9 @@ def dataset_builder(
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
             .map(map_func=geometric_augmentations_fn,
-                 num_parallel_calls=len(dataset_training)) \
-            .unbatch() \
-            .shuffle(buffer_size=batch_size * len(dataset_training),
-                     reshuffle_each_iteration=False) \
-            .batch(batch_size=batch_size) \
-            .map(map_func=cast_to_float32) \
+                 deterministic=False,
+                 num_parallel_calls=tf.data.AUTOTUNE) \
+            .rebatch(batch_size=batch_size) \
             .prefetch(2)
 
     return result

@@ -337,12 +337,12 @@ def train_loop(
 
                     # --- add loss summaries for tensorboard
                     for name, key in [
+                        ("quality/psnr", PSNR_STR),
                         ("loss/mae", MAE_LOSS_STR),
                         ("loss/kl_loss", KL_LOSS_STR),
                         ("loss/total", MEAN_TOTAL_LOSS_STR),
                         ("quality/nae_noise", NAE_NOISE_STR),
                         ("loss/nae", NAE_PREDICTION_LOSS_STR),
-                        ("quality/signal_to_noise_ratio", SNR_STR),
                         ("loss/regularization", REGULARIZATION_LOSS_STR),
                         ("quality/nae_improvement", NAE_IMPROVEMENT_QUALITY_STR)
                     ]:

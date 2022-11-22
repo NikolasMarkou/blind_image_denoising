@@ -1,6 +1,7 @@
 r"""Constructs the loss function of the blind image denoising"""
 
 import tensorflow as tf
+import tensorflow_addons as tfa
 from typing import List, Dict, Callable
 
 # ---------------------------------------------------------------------
@@ -77,28 +78,21 @@ def delta(
 # ---------------------------------------------------------------------
 
 
-def snr(
+def psnr(
         original: tf.Tensor,
         prediction: tf.Tensor,
-        multiplier: float = 10.0,
-        base: float = 10.0) -> tf.Tensor:
+        max_val: float = 255.0) -> tf.Tensor:
     """
-    Signal-to-noise ratio expressed in dB
+    Peak signal-to-noise ratio expressed in dB
 
     :param original: original image batch
     :param prediction: denoised image batch
-    :param multiplier:
-    :param base: logarithm base
+    :param max_val:
     """
-    # mse of prediction
-    d_2 = tf.reduce_sum(tf.square(original - prediction), axis=[1, 2, 3])
-    d_prediction = tf.reduce_sum(prediction, axis=[1, 2, 3])
-    # mean over batch
-    result = d_prediction / (d_2 + DEFAULT_EPSILON)
-    return \
-        tf.reduce_mean(
-            tf.math.log(result) * (multiplier / tf.math.log(base)),
-            axis=[0])
+    # psnr of prediction per image pair
+    psnr_batch = tf.image.psnr(original, prediction, max_val=max_val)
+
+    return tf.reduce_mean(psnr_batch, axis=[0])
 
 
 # ---------------------------------------------------------------------
@@ -478,8 +472,8 @@ def loss_function_builder(
         regularization_loss = tf.add_n(model_losses)
 
         # --- snr
-        signal_to_noise_ratio = \
-            snr(input_batch, prediction_batch)
+        peak_signal_to_noise_ratio = \
+            psnr(input_batch, prediction_batch)
 
         # --- add up loss
         mean_total_loss = \
@@ -491,7 +485,7 @@ def loss_function_builder(
         return {
             NAE_NOISE_STR: nae_noise,
             MAE_LOSS_STR: mae_actual,
-            SNR_STR: signal_to_noise_ratio,
+            PSNR_STR: peak_signal_to_noise_ratio,
             NAE_PREDICTION_STR: nae_prediction,
             MEAN_TOTAL_LOSS_STR: mean_total_loss,
             NAE_IMPROVEMENT_STR: nae_improvement,
