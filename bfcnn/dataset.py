@@ -117,6 +117,7 @@ def dataset_builder(
 
     # --- define generator function from directory
     if directory:
+        no_directories = len(directory)
         dataset_training = [
             tf.keras.utils.image_dataset_from_directory(
                 directory=d,
@@ -124,7 +125,7 @@ def dataset_builder(
                 label_mode=None,
                 class_names=None,
                 color_mode=color_mode,
-                batch_size=batch_size,
+                batch_size=int(round(batch_size / no_directories)),
                 shuffle=True,
                 image_size=s,
                 seed=0,
@@ -421,7 +422,7 @@ def dataset_builder(
     # --- create proper batches by sampling from each dataset independently
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
-            .prefetch(len(dataset_training) * 2) \
+            .prefetch(len(dataset_training)) \
             .map(map_func=geometric_augmentations_fn,
                  num_parallel_calls=len(dataset_training)) \
             .unbatch() \
