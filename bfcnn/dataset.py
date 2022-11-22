@@ -421,8 +421,8 @@ def dataset_builder(
     # --- create proper batches by sampling from each dataset independently
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
-            .apply(
-                transformation_func=geometric_augmentations_fn) \
+            .map(map_func=geometric_augmentations_fn,
+                 num_parallel_calls=len(dataset_training)) \
             .unbatch() \
             .shuffle(buffer_size=batch_size * 2,
                      reshuffle_each_iteration=False) \
