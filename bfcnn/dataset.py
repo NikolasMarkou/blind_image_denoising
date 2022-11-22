@@ -136,7 +136,7 @@ def dataset_builder(
                 validation_split=None,
                 subset=None,
                 interpolation="area",
-                crop_to_aspect_ratio=True).apply(transformation_func=cast_to_uint8)
+                crop_to_aspect_ratio=True).map(map_func=cast_to_uint8)
             for d, s in zip(directory, dataset_shape)
         ]
     else:
@@ -437,7 +437,7 @@ def dataset_builder(
             .shuffle(buffer_size=batch_size * 2,
                      reshuffle_each_iteration=False) \
             .batch(batch_size=batch_size) \
-            .apply(transformation_func=cast_to_float32) \
+            .map(map_func=cast_to_float32) \
             .prefetch(2)
 
     return result
