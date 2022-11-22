@@ -421,9 +421,12 @@ def dataset_builder(
     # --- create proper batches by sampling from each dataset independently
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
-            .map(map_func=geometric_augmentations_fn) \
+            .prefetch(len(dataset_training) * 2) \
+            .map(map_func=geometric_augmentations_fn,
+                 num_parallel_calls=tf.data.AUTOTUNE) \
             .unbatch() \
-            .shuffle(buffer_size=(len(dataset_training) * batch_size * 2)) \
+            .shuffle(buffer_size=(len(dataset_training) * batch_size * 2),
+                     reshuffle_each_iteration=False) \
             .batch(batch_size=batch_size,
                    num_parallel_calls=tf.data.AUTOTUNE) \
             .map(map_func=augmentation_map_fn,
