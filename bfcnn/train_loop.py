@@ -264,12 +264,11 @@ def train_loop(
 
         # --- define denoise fn
         @tf.function
-        def denoise_fn(x_input):
+        def denoise_and_denormalize_fn(x_input: tf.Tensor) -> tf.Tensor:
             # denoised merged
             x_denoised = denoiser(x_input, training=True)
             # denoised denormalized
-            x_denoised_denormalized = denormalizer(x_denoised, training=False)
-            return x_denoised, x_denoised_denormalized
+            return denormalizer(x_denoised, training=False)
 
         # --- define decompose fn
         @tf.function
@@ -313,8 +312,8 @@ def train_loop(
                             # The operations that the layer applies
                             # to its inputs are going to be recorded
                             # on the GradientTape.
-                            denoised_batch, denormalized_denoised_batch = \
-                                denoise_fn(normalized_noisy_batch)
+                            denormalized_denoised_batch = \
+                                denoise_and_denormalize_fn(normalized_noisy_batch)
 
                             # compute the loss value for this mini-batch
                             loss_map = \
