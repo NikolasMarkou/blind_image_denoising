@@ -434,7 +434,7 @@ def dataset_builder(
             .map(map_func=geometric_augmentations_fn,
                  num_parallel_calls=len(dataset_training)) \
             .unbatch() \
-            .shuffle(buffer_size=batch_size * 2,
+            .shuffle(buffer_size=batch_size * len(dataset_training),
                      reshuffle_each_iteration=False) \
             .batch(batch_size=batch_size) \
             .map(map_func=cast_to_float32) \
