@@ -52,7 +52,7 @@
     "no_iterations_per_batch": 1,
     "mix_noise_types": false,
     "value_range": [0, 255],
-    "scale_range": [0.9, 1.1],
+    "scale_range": [0.9, 1.0],
     "clip_value": true,
     "random_blur": true,
     "subsample_size": -1,

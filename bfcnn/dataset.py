@@ -74,7 +74,7 @@ def dataset_builder(
     # quantization value, -1 disabled, otherwise 2, 4, 8
     quantization = tf.constant(config.get("quantization", -1))
     # min/max scale
-    scale_range = config.get("scale_range", [0.9, 1.1])
+    scale_range = config.get("scale_range", [0.9, 1.0])
     min_scale = tf.constant(scale_range[0], dtype=tf.float32)
     max_scale = tf.constant(scale_range[1], dtype=tf.float32)
     # whether to crop or not
@@ -136,7 +136,7 @@ def dataset_builder(
                 validation_split=None,
                 subset=None,
                 interpolation="area",
-                crop_to_aspect_ratio=True)
+                crop_to_aspect_ratio=True).prefetch(tf.data.AUTOTUNE)
             for d, s in zip(directory, dataset_shape)
         ]
     else:
@@ -433,11 +433,8 @@ def dataset_builder(
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
             .map(map_func=geometric_augmentations_fn,
-                 num_parallel_calls=len(dataset_training)) \
-            .unbatch() \
-            .shuffle(buffer_size=batch_size * len(dataset_training),
-                     reshuffle_each_iteration=False) \
-            .batch(batch_size=batch_size) \
+                 num_parallel_calls=tf.data.AUTOTUNE) \
+            .rebatch(batch_size=batch_size) \
             .prefetch(2)
 
     return result
