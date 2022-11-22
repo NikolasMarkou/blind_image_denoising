@@ -145,7 +145,6 @@ def dataset_builder(
         """
         perform all the geometric augmentations
         """
-        input_batch = tf.cast(input_batch, dtype=tf.uint8)
         input_shape_inference = tf.shape(input_batch)
 
         # --- crop randomly
@@ -220,14 +219,15 @@ def dataset_builder(
         if random_invert and tf.random.uniform(()) > 0.5:
             input_batch = max_value - (input_batch - min_value)
 
-        input_batch = tf.cast(input_batch, dtype=tf.float32)
-
         # interpolation methods produce results out of range so we clip them
         input_batch = \
             tf.clip_by_value(
                 input_batch,
                 clip_value_min=min_value,
                 clip_value_max=max_value)
+
+        if input_shape_inference[0] == 1:
+            input_batch = tf.squeeze(input_batch, axis=0)
 
         return input_batch
 
@@ -422,10 +422,7 @@ def dataset_builder(
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
             .map(map_func=geometric_augmentations_fn,
-                 num_parallel_calls=len(dataset_training)) \
-            .unbatch() \
-            .shuffle(buffer_size=batch_size * 2,
-                     reshuffle_each_iteration=False) \
+                 num_parallel_calls=tf.data.AUTOTUNE) \
             .batch(batch_size=batch_size) \
             .prefetch(2)
 
