@@ -423,7 +423,7 @@ def dataset_builder(
             .map(map_func=geometric_augmentations_fn,
                  num_parallel_calls=tf.data.AUTOTUNE) \
             .unbatch() \
-            .shuffle(buffer_size=1024) \
+            .shuffle(buffer_size=(len(dataset_training) * batch_size * 2)) \
             .batch(batch_size=batch_size,
                    num_parallel_calls=tf.data.AUTOTUNE) \
             .map(map_func=augmentation_map_fn,
