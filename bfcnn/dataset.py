@@ -77,10 +77,6 @@ def dataset_builder(
     multiplicative_noise = config.get("multiplicative_noise", [])
     # quantization value, -1 disabled, otherwise 2, 4, 8
     quantization = tf.constant(config.get("quantization", -1))
-    # min/max scale
-    scale_range = config.get("scale_range", [0.9, 1.0])
-    min_scale = tf.constant(scale_range[0], dtype=tf.float32)
-    max_scale = tf.constant(scale_range[1], dtype=tf.float32)
     # whether to crop or not
     random_crop = tf.constant(dataset_shape[0][0:2] != input_shape[0:2])
     # mix noise types
@@ -150,30 +146,6 @@ def dataset_builder(
         # --- get shape and options
         input_shape_inference = tf.shape(input_batch)
 
-        # pick random number
-        random_number = \
-            tf.random.uniform(
-                shape=(),
-                minval=min_scale,
-                maxval=max_scale,
-                dtype=tf.dtypes.float32)
-        crop_height = \
-            tf.cast(
-                tf.round(
-                    random_number *
-                    tf.cast(input_shape[0], tf.float32)),
-                dtype=tf.int32)
-        crop_width = \
-            tf.cast(
-                tf.round(
-                    random_number *
-                    tf.cast(input_shape[1], tf.float32)),
-                dtype=tf.int32)
-        crop_size = \
-            tf.math.minimum(
-                x=crop_width,
-                y=crop_height)
-
         # --- crop randomly
         input_batch = \
             tf.cond(
@@ -183,19 +155,12 @@ def dataset_builder(
                         value=input_batch,
                         size=(
                             input_shape_inference[0],
-                            tf.math.minimum(crop_size, input_shape_inference[1]),
-                            tf.math.minimum(crop_size, input_shape_inference[2]),
+                            input_shape[0],
+                            input_shape[1],
                             input_shape_inference[3])
                     ),
                 false_fn=lambda: input_batch)
 
-        # --- resize to input_shape
-        input_batch = \
-            tf.image.resize(
-                images=input_batch,
-                method=tf.image.ResizeMethod.BILINEAR,
-                size=(input_shape[0], input_shape[1]))
-        
         return input_batch
 
     @tf.function(
