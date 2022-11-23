@@ -477,7 +477,7 @@ def dataset_builder(
             .prefetch(buffer_size=(len(directory) * 2)) \
             .rebatch(batch_size=batch_size) \
             .prefetch(2) \
-            .options(options)
+            .with_options(options)
 
     return result
 
