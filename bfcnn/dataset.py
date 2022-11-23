@@ -188,6 +188,14 @@ def dataset_builder(
                             input_shape_inference[3])
                     ),
                 false_fn=lambda: input_batch)
+
+        # --- resize to input_shape
+        input_batch = \
+            tf.image.resize(
+                images=input_batch,
+                method=tf.image.ResizeMethod.BILINEAR,
+                size=(input_shape[0], input_shape[1]))
+        
         return input_batch
 
     @tf.function(
