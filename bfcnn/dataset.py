@@ -414,11 +414,13 @@ def dataset_builder(
                     seed=0,
                     validation_split=None,
                     subset=None,
-                    interpolation="bilinear",
-                    crop_to_aspect_ratio=True).map(
-                        map_func=crop_fn,
-                        num_parallel_calls=tf.data.AUTOTUNE,
-                        deterministic=False)
+                    interpolation="area",
+                    crop_to_aspect_ratio=True)
+                .prefetch(2)
+                .map(
+                    map_func=crop_fn,
+                    num_parallel_calls=tf.data.AUTOTUNE,
+                    deterministic=False)
             for d, s in zip(directory, dataset_shape)
         ]
     else:
