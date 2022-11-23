@@ -350,8 +350,8 @@ def dataset_builder(
         noisy_batch = \
             tf.cond(
                 pred=round_values,
-                true_fn=lambda : tf.round(noisy_batch),
-                false_fn=lambda : noisy_batch)
+                true_fn=lambda: tf.round(noisy_batch),
+                false_fn=lambda: noisy_batch)
 
         # --- clip values within boundaries
         noisy_batch = \
@@ -418,7 +418,8 @@ def dataset_builder(
                     validation_split=None,
                     subset=None,
                     interpolation="area",
-                    crop_to_aspect_ratio=True)
+                    crop_to_aspect_ratio=True).map(
+                        map_func=geometric_augmentations_fn)
             for d, s in zip(directory, dataset_shape)
         ]
     else:
@@ -468,9 +469,6 @@ def dataset_builder(
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
             .prefetch(buffer_size=(len(directory) * 2)) \
-            .map(map_func=geometric_augmentations_fn,
-                 deterministic=False,
-                 num_parallel_calls=len(directory) * 2) \
             .rebatch(batch_size=batch_size) \
             .prefetch(2)
 
