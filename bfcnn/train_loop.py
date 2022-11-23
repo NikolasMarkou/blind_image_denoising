@@ -20,7 +20,8 @@ from .utilities import load_config, load_image, probabilistic_drop_off, clip_ten
 from .dataset import \
     dataset_builder, \
     AUGMENTATION_FN_STR, \
-    DATASET_TRAINING_FN_STR
+    DATASET_TRAINING_FN_STR, \
+    GEOMETRIC_AUGMENTATION_FN_STR
 
 # ---------------------------------------------------------------------
 
@@ -66,6 +67,7 @@ def train_loop(
     dataset_res = dataset_builder(config["dataset"])
     dataset_training = dataset_res[DATASET_TRAINING_FN_STR]
     augmentation_fn = dataset_res[AUGMENTATION_FN_STR]
+    geometric_augmentation_fn = dataset_res[GEOMETRIC_AUGMENTATION_FN_STR]
 
     # --- build loss function
     loss_fn = loss_function_builder(config=config["loss"])
@@ -302,6 +304,7 @@ def train_loop(
                     grads_batch = None
                     for i in range(no_iterations_per_batch):
                         input_batch = dataset_training_iterator.get_next()
+                        input_batch = geometric_augmentation_fn(input_batch)
                         noisy_batch = augmentation_fn(input_batch)
 
                         # Open a GradientTape to record the operations run

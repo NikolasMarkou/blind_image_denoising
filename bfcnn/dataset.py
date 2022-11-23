@@ -15,6 +15,7 @@ AUGMENTATION_FN_STR = "augmentation"
 DATASET_TESTING_FN_STR = "dataset_testing"
 DATASET_TRAINING_FN_STR = "dataset_training"
 DATASET_VALIDATION_FN_STR = "dataset_validation"
+GEOMETRIC_AUGMENTATION_FN_STR = "geometric_augmentation"
 
 # ---------------------------------------------------------------------
 
@@ -140,7 +141,7 @@ def dataset_builder(
                           dtype=tf.float32)],
         reduce_retracing=True,
         jit_compile=False)
-    def geometric_augmentations_fn(
+    def crop_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
         perform all the geometric augmentations
@@ -148,9 +149,6 @@ def dataset_builder(
 
         # --- get shape and options
         input_shape_inference = tf.shape(input_batch)
-        random_uniform_option_1 = tf.greater(tf.random.uniform(()), tf.constant(0.5))
-        random_uniform_option_2 = tf.greater(tf.random.uniform(()), tf.constant(0.5))
-        random_uniform_option_3 = tf.greater(tf.random.uniform(()), tf.constant(0.5))
 
         # pick random number
         random_number = \
@@ -190,16 +188,28 @@ def dataset_builder(
                             input_shape_inference[3])
                     ),
                 false_fn=lambda: input_batch)
+        return input_batch
 
-        # --- cast to uint8
-        input_batch = tf.cast(input_batch, dtype=tf.uint8)
+    @tf.function(
+        input_signature=[
+            tf.TensorSpec(shape=[None,
+                                 None,
+                                 None,
+                                 channels],
+                          dtype=tf.float32)],
+        reduce_retracing=True,
+        jit_compile=False)
+    def geometric_augmentations_fn(
+            input_batch: tf.Tensor) -> tf.Tensor:
+        """
+        perform all the geometric augmentations
+        """
 
-        # --- resize to input_shape
-        input_batch = \
-            tf.image.resize(
-                images=input_batch,
-                method=tf.image.ResizeMethod.BILINEAR,
-                size=(input_shape[0], input_shape[1]))
+        # --- get shape and options
+        input_shape_inference = tf.shape(input_batch)
+        random_uniform_option_1 = tf.greater(tf.random.uniform(()), tf.constant(0.5))
+        random_uniform_option_2 = tf.greater(tf.random.uniform(()), tf.constant(0.5))
+        random_uniform_option_3 = tf.greater(tf.random.uniform(()), tf.constant(0.5))
 
         # --- flip left right
         input_batch = \
@@ -431,9 +441,9 @@ def dataset_builder(
                     seed=0,
                     validation_split=None,
                     subset=None,
-                    interpolation="area",
+                    interpolation="bilinear",
                     crop_to_aspect_ratio=True).map(
-                        map_func=geometric_augmentations_fn,
+                        map_func=crop_fn,
                         num_parallel_calls=tf.data.AUTOTUNE,
                         deterministic=False)
             for d, s in zip(directory, dataset_shape)
@@ -443,6 +453,7 @@ def dataset_builder(
 
     # --- create the dataset
     result = dict()
+    result[GEOMETRIC_AUGMENTATION_FN_STR] = geometric_augmentations_fn
 
     if mix_noise_types:
         result[AUGMENTATION_FN_STR] = noise_augmentations_mix_fn
@@ -482,18 +493,10 @@ def dataset_builder(
                 .sample_from_datasets(datasets=dataset_training)
 
     # --- create proper batches by sampling from each dataset independently
-    options = tf.data.Options()
-    options.deterministic = False
-    options.threading.private_threadpool_size = 32
-
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
             .rebatch(batch_size=batch_size) \
-            .map(map_func=cast_to_float32,
-                 num_parallel_calls=tf.data.AUTOTUNE,
-                 deterministic=False)\
-            .prefetch(1) \
-            .with_options(options)
+            .prefetch(1)
 
     return result
 
