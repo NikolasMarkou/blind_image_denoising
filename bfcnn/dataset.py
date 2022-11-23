@@ -191,6 +191,9 @@ def dataset_builder(
                     ),
                 false_fn=lambda: input_batch)
 
+        # --- cast to uint8
+        input_batch = tf.cast(input_batch, dtype=tf.uint8)
+
         # --- resize to input_shape
         input_batch = \
             tf.image.resize(
@@ -485,9 +488,12 @@ def dataset_builder(
 
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
-            .prefetch(buffer_size=(len(directory) * 2)) \
+            .prefetch(buffer_size=tf.data.AUTOTUNE) \
             .rebatch(batch_size=batch_size) \
-            .prefetch(2) \
+            .map(map_func=cast_to_float32,
+                 num_parallel_calls=tf.data.AUTOTUNE,
+                 deterministic=False)\
+            .prefetch(1) \
             .with_options(options)
 
     return result
