@@ -280,9 +280,9 @@ def dataset_builder(
             noisy_batch = \
                 tf.cond(
                     pred=tf.math.logical_and(
-                        random_blur and
+                        random_blur,
                         tf.random.uniform(()) > tf.constant(0.5)),
-                    true_fn=lambda :
+                    true_fn=lambda:
                         tfa.image.gaussian_filter2d(
                             image=noisy_batch,
                             sigma=1,
@@ -315,7 +315,7 @@ def dataset_builder(
             noisy_batch = \
                 tf.cond(
                     pred=tf.math.logical_and(
-                        random_blur and
+                        random_blur,
                         tf.random.uniform(()) > tf.constant(0.5)),
                     true_fn=lambda:
                         tfa.image.gaussian_filter2d(
