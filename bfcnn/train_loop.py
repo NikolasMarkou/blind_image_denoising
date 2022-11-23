@@ -66,7 +66,7 @@ def train_loop(
     # --- build dataset
     dataset_res = dataset_builder(config["dataset"])
     dataset_training = dataset_res[DATASET_TRAINING_FN_STR]
-    augmentation_fn = dataset_res[AUGMENTATION_FN_STR]
+    noise_augmentation_fn = dataset_res[AUGMENTATION_FN_STR]
     geometric_augmentation_fn = dataset_res[GEOMETRIC_AUGMENTATION_FN_STR]
 
     # --- build loss function
@@ -280,6 +280,14 @@ def train_loop(
         def decompose_fn(x_input):
             return denoiser_decomposition(x_input, training=False)
 
+        # --- dataset options
+        options = tf.data.Options()
+        options.deterministic = False
+        options.autotune.enabled = True
+        options.autotune.cpu_budget = 6
+        options.threading.max_intra_op_parallelism = 4
+        options.threading.private_threadpool_size = 16
+
         # ---
         while global_epoch < global_total_epochs:
             logger.info("epoch: {0}, step: {1}".format(
@@ -292,8 +300,8 @@ def train_loop(
 
             model_denoise_weights = \
                 denoiser.trainable_weights
-
-            dataset_training_iterator = iter(dataset_training)
+            dataset_training_iterator = \
+                iter(dataset_training.with_options(options))
 
             # --- iterate over the batches of the dataset
             while True:
@@ -305,7 +313,7 @@ def train_loop(
                     for i in range(no_iterations_per_batch):
                         input_batch = dataset_training_iterator.get_next()
                         input_batch = geometric_augmentation_fn(input_batch)
-                        noisy_batch = augmentation_fn(input_batch)
+                        noisy_batch = noise_augmentation_fn(input_batch)
 
                         # Open a GradientTape to record the operations run
                         # during the forward pass,
