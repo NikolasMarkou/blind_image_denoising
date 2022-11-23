@@ -116,27 +116,7 @@ def dataset_builder(
     # --- set random seed to get the same result
     tf.random.set_seed(0)
 
-    @tf.function(
-        input_signature=[
-            tf.TensorSpec(shape=[None,
-                                 None,
-                                 None,
-                                 channels],
-                          dtype=tf.float32)],
-        reduce_retracing=True,
-        jit_compile=False)
-    def cast_to_uint8(input_batch: tf.Tensor) -> tf.Tensor:
-        return tf.cast(input_batch, tf.uint8)
-
-    @tf.function(
-        input_signature=[
-            tf.TensorSpec(shape=[None,
-                                 None,
-                                 None,
-                                 channels],
-                          dtype=tf.uint8)],
-        reduce_retracing=True,
-        jit_compile=False)
+    @tf.function
     def cast_to_float32(input_batch: tf.Tensor) -> tf.Tensor:
         return tf.cast(input_batch, tf.float32)
 
