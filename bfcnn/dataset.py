@@ -149,10 +149,10 @@ def dataset_builder(
         # pick random number
         random_number = \
             tf.random.uniform(
-                shape=(1,),
+                shape=(),
                 minval=min_scale,
                 maxval=max_scale,
-                dtype=tf.dtypes.float32)[0]
+                dtype=tf.dtypes.float32)
         crop_height = \
             tf.cast(
                 tf.round(
