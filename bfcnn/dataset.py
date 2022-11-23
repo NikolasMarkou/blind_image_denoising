@@ -8,7 +8,6 @@ from typing import Dict, Callable, Iterator, Tuple
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .utilities import random_choice
 
 # ---------------------------------------------------------------------
 
@@ -16,6 +15,8 @@ AUGMENTATION_FN_STR = "augmentation"
 DATASET_TESTING_FN_STR = "dataset_testing"
 DATASET_TRAINING_FN_STR = "dataset_training"
 DATASET_VALIDATION_FN_STR = "dataset_validation"
+
+
 
 
 # ---------------------------------------------------------------------
@@ -120,6 +121,19 @@ def dataset_builder(
     def cast_to_float32(input_batch: tf.Tensor) -> tf.Tensor:
         return tf.cast(input_batch, tf.float32)
 
+    @tf.function
+    def random_choice(
+            x: tf.Tensor,
+            size=tf.constant(1, dtype=tf.int64),
+            axis=tf.constant(0, dtype=tf.int64)) -> tf.Tensor:
+        """
+        Randomly select size options from x
+        """
+        dim_x = tf.cast(tf.shape(x)[axis], tf.int64)
+        indices = tf.range(0, dim_x, dtype=tf.int64)
+        sample_index = tf.random.shuffle(indices)[:size]
+        return tf.gather(x, sample_index, axis=axis)
+
     @tf.function(
         input_signature=[
             tf.TensorSpec(shape=[None,
@@ -128,7 +142,7 @@ def dataset_builder(
                                  channels],
                           dtype=tf.float32)],
         reduce_retracing=True,
-        jit_compile=False)
+        jit_compile=True)
     def geometric_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -169,24 +183,11 @@ def dataset_builder(
                         value=input_batch,
                         size=(
                             input_shape_inference[0],
-                            crop_size,
-                            crop_size,
+                            tf.math.minimum(crop_size, input_shape_inference[1]),
+                            tf.math.minimum(crop_size, input_shape_inference[2]),
                             input_shape_inference[3])
                     ),
                 false_fn=lambda: input_batch)
-        # if random_crop:
-        #     input_batch = \
-        #         tf.image.random_crop(
-        #             value=input_batch,
-        #             size=(
-        #                 input_shape_inference[0],
-        #                 crop_size,
-        #                 crop_size,
-        #                 input_shape_inference[3])
-        #         )
-
-        # --- cast down to get memory boost
-        input_batch = tf.cast(input_batch, dtype=tf.uint8)
 
         # --- resize to input_shape
         input_batch = \
@@ -202,20 +203,12 @@ def dataset_builder(
                 true_fn=lambda: tf.image.flip_left_right(input_batch),
                 false_fn=lambda: input_batch)
 
-        # if random_left_right and tf.random.uniform(()) > tf.constant(0.5):
-        #     input_batch = \
-        #         tf.image.flip_left_right(input_batch)
-
         # --- flip up down
         input_batch = \
             tf.cond(
                 pred=tf.math.logical_and(random_up_down, tf.random.uniform(()) > tf.constant(0.5)),
                 true_fn=lambda: tf.image.flip_up_down(input_batch),
                 false_fn=lambda: input_batch)
-
-        # if random_up_down and tf.random.uniform(()) > tf.constant(0.5):
-        #     input_batch = \
-        #         tf.image.flip_up_down(input_batch)
 
         # --- randomly rotate input
         input_batch = \
@@ -232,20 +225,6 @@ def dataset_builder(
                         fill_mode="reflect",
                         interpolation="bilinear"),
                 false_fn=lambda: input_batch)
-
-        # if use_random_rotate and tf.random.uniform(()) > tf.constant(0.5):
-        #     angles = \
-        #         tf.random.uniform(
-        #             dtype=tf.float32,
-        #             minval=-random_rotate,
-        #             maxval=random_rotate,
-        #             shape=(input_shape_inference[0],))
-        #     input_batch = \
-        #         tfa.image.rotate(
-        #             angles=angles,
-        #             images=input_batch,
-        #             fill_mode="reflect",
-        #             interpolation="bilinear")
 
         return input_batch
 
@@ -487,8 +466,6 @@ def dataset_builder(
         result[DATASET_TRAINING_FN_STR] \
             .prefetch(buffer_size=(batch_size * 2)) \
             .rebatch(batch_size=batch_size) \
-            .map(map_func=cast_to_float32,
-                 num_parallel_calls=2) \
             .prefetch(2)
 
     return result

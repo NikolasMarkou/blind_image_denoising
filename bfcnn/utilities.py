@@ -215,17 +215,7 @@ def normal_empirical_cdf(
 # ---------------------------------------------------------------------
 
 
-def random_choice(
-        x: tf.Tensor,
-        size: int = 1,
-        axis: int = 0) -> tf.Tensor:
-    """
-    Randomly select size options from x
-    """
-    dim_x = tf.cast(tf.shape(x)[axis], tf.int64)
-    indices = tf.range(0, dim_x, dtype=tf.int64)
-    sample_index = tf.random.shuffle(indices)[:size]
-    return tf.gather(x, sample_index, axis=axis)
+
 
 # ---------------------------------------------------------------------
 
