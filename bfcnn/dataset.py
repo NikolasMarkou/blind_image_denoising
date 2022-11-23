@@ -488,7 +488,6 @@ def dataset_builder(
 
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
-            .prefetch(buffer_size=tf.data.AUTOTUNE) \
             .rebatch(batch_size=batch_size) \
             .map(map_func=cast_to_float32,
                  num_parallel_calls=tf.data.AUTOTUNE,
