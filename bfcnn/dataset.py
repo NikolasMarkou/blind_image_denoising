@@ -373,20 +373,23 @@ def dataset_builder(
     # --- define generator function from directory
     if directory:
         dataset_training = [
-            tf.keras.utils.image_dataset_from_directory(
-                directory=d,
-                labels=None,
-                label_mode=None,
-                class_names=None,
-                color_mode=color_mode,
-                batch_size=max(1, int(round(batch_size/len(directory)))),
-                shuffle=True,
-                image_size=s,
-                seed=0,
-                validation_split=None,
-                subset=None,
-                interpolation="area",
-                crop_to_aspect_ratio=True)
+            tf.keras.utils
+                .image_dataset_from_directory(
+                    directory=d,
+                    labels=None,
+                    label_mode=None,
+                    class_names=None,
+                    color_mode=color_mode,
+                    batch_size=max(1, int(round(batch_size / len(directory)))),
+                    shuffle=True,
+                    image_size=s,
+                    seed=0,
+                    validation_split=None,
+                    subset=None,
+                    interpolation="area",
+                    crop_to_aspect_ratio=True)
+                .map(
+                    map_func=geometric_augmentations_fn)
             for d, s in zip(directory, dataset_shape)
         ]
     else:
@@ -429,17 +432,13 @@ def dataset_builder(
         result[DATASET_TRAINING_FN_STR] = dataset_training[0]
     else:
         result[DATASET_TRAINING_FN_STR] = \
-            tf.data.Dataset\
+            tf.data.Dataset \
                 .sample_from_datasets(dataset_training)
 
     # --- create proper batches by sampling from each dataset independently
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
             .prefetch(batch_size * 2) \
-            .map(
-                map_func=geometric_augmentations_fn,
-                deterministic=False,
-                num_parallel_calls=len(directory)) \
             .rebatch(batch_size=batch_size) \
             .prefetch(2)
 
