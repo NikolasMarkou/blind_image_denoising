@@ -161,16 +161,29 @@ def dataset_builder(
                 y=crop_height)
 
         # --- crop randomly
-        if random_crop:
-            input_batch = \
-                tf.image.random_crop(
-                    value=input_batch,
-                    size=(
-                        input_shape_inference[0],
-                        crop_size,
-                        crop_size,
-                        input_shape_inference[3])
-                )
+        input_batch = \
+            tf.cond(
+                pred=random_crop,
+                true_fn=lambda:
+                    tf.image.random_crop(
+                        value=input_batch,
+                        size=(
+                            input_shape_inference[0],
+                            crop_size,
+                            crop_size,
+                            input_shape_inference[3])
+                    ),
+                false_fn=lambda: input_batch)
+        # if random_crop:
+        #     input_batch = \
+        #         tf.image.random_crop(
+        #             value=input_batch,
+        #             size=(
+        #                 input_shape_inference[0],
+        #                 crop_size,
+        #                 crop_size,
+        #                 input_shape_inference[3])
+        #         )
 
         # --- cast down to get memory boost
         input_batch = tf.cast(input_batch, dtype=tf.uint8)
@@ -183,56 +196,56 @@ def dataset_builder(
                 size=(input_shape[0], input_shape[1]))
 
         # --- flip left right
-        # input_batch = \
-        #     tf.cond(
-        #         pred=tf.math.logical_and(random_left_right, tf.random.uniform(()) > tf.constant(0.5)),
-        #         true_fn=lambda: tf.image.flip_left_right(input_batch),
-        #         false_fn=lambda: input_batch)
+        input_batch = \
+            tf.cond(
+                pred=tf.math.logical_and(random_left_right, tf.random.uniform(()) > tf.constant(0.5)),
+                true_fn=lambda: tf.image.flip_left_right(input_batch),
+                false_fn=lambda: input_batch)
 
-        if random_left_right and tf.random.uniform(()) > tf.constant(0.5):
-            input_batch = \
-                tf.image.flip_left_right(input_batch)
+        # if random_left_right and tf.random.uniform(()) > tf.constant(0.5):
+        #     input_batch = \
+        #         tf.image.flip_left_right(input_batch)
 
         # --- flip up down
-        # input_batch = \
-        #     tf.cond(
-        #         pred=tf.math.logical_and(random_up_down, tf.random.uniform(()) > tf.constant(0.5)),
-        #         true_fn=lambda: tf.image.flip_up_down(input_batch),
-        #         false_fn=lambda: input_batch)
+        input_batch = \
+            tf.cond(
+                pred=tf.math.logical_and(random_up_down, tf.random.uniform(()) > tf.constant(0.5)),
+                true_fn=lambda: tf.image.flip_up_down(input_batch),
+                false_fn=lambda: input_batch)
 
-        if random_up_down and tf.random.uniform(()) > tf.constant(0.5):
-            input_batch = \
-                tf.image.flip_up_down(input_batch)
+        # if random_up_down and tf.random.uniform(()) > tf.constant(0.5):
+        #     input_batch = \
+        #         tf.image.flip_up_down(input_batch)
 
         # --- randomly rotate input
-        # input_batch = \
-        #     tf.cond(
-        #         pred=tf.math.logical_and(use_random_rotate, tf.random.uniform(()) > tf.constant(0.5)),
-        #         true_fn=lambda:
-        #             tfa.image.rotate(
-        #                 angles=tf.random.uniform(
-        #                     dtype=tf.float32,
-        #                     minval=-random_rotate,
-        #                     maxval=random_rotate,
-        #                     shape=(input_shape_inference[0],)),
-        #                 images=input_batch,
-        #                 fill_mode="reflect",
-        #                 interpolation="bilinear"),
-        #         false_fn=lambda: input_batch)
+        input_batch = \
+            tf.cond(
+                pred=tf.math.logical_and(use_random_rotate, tf.random.uniform(()) > tf.constant(0.5)),
+                true_fn=lambda:
+                    tfa.image.rotate(
+                        angles=tf.random.uniform(
+                            dtype=tf.float32,
+                            minval=-random_rotate,
+                            maxval=random_rotate,
+                            shape=(input_shape_inference[0],)),
+                        images=input_batch,
+                        fill_mode="reflect",
+                        interpolation="bilinear"),
+                false_fn=lambda: input_batch)
 
-        if use_random_rotate and tf.random.uniform(()) > tf.constant(0.5):
-            angles = \
-                tf.random.uniform(
-                    dtype=tf.float32,
-                    minval=-random_rotate,
-                    maxval=random_rotate,
-                    shape=(input_shape_inference[0],))
-            input_batch = \
-                tfa.image.rotate(
-                    angles=angles,
-                    images=input_batch,
-                    fill_mode="reflect",
-                    interpolation="bilinear")
+        # if use_random_rotate and tf.random.uniform(()) > tf.constant(0.5):
+        #     angles = \
+        #         tf.random.uniform(
+        #             dtype=tf.float32,
+        #             minval=-random_rotate,
+        #             maxval=random_rotate,
+        #             shape=(input_shape_inference[0],))
+        #     input_batch = \
+        #         tfa.image.rotate(
+        #             angles=angles,
+        #             images=input_batch,
+        #             fill_mode="reflect",
+        #             interpolation="bilinear")
 
         return input_batch
 
