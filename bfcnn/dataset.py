@@ -30,8 +30,15 @@ def dataset_builder(
     batch_size = config["batch_size"]
     # crop image from dataset
     input_shape = config["input_shape"]
-    color_mode = config.get("color_mode", "rgb")
-
+    color_mode = config.get("color_mode", "rgb").strip().lower()
+    if color_mode == "grayscale":
+        channels = 1
+    elif color_mode == "rgb":
+        channels = 3
+    elif color_mode == "rgba":
+        channels = 4
+    else:
+        raise ValueError(f"don't know how to handle color_mode [{color_mode}]")
     # ---
     inputs = config["inputs"]
     # directory to load data from
@@ -129,14 +136,14 @@ def dataset_builder(
                 label_mode=None,
                 class_names=None,
                 color_mode=color_mode,
-                batch_size=batch_size,
+                batch_size=max(1, int(round(batch_size/len(directory)))),
                 shuffle=True,
                 image_size=s,
                 seed=0,
                 validation_split=None,
                 subset=None,
                 interpolation="area",
-                crop_to_aspect_ratio=True).map(map_func=cast_to_uint8).prefetch(2)
+                crop_to_aspect_ratio=True).map(map_func=cast_to_uint8).prefetch(len(directory))
             for d, s in zip(directory, dataset_shape)
         ]
     else:
@@ -147,7 +154,7 @@ def dataset_builder(
             tf.TensorSpec(shape=[None,
                                  None,
                                  None,
-                                 None],
+                                 channels],
                           dtype=tf.uint8)])
     def geometric_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
@@ -200,17 +207,17 @@ def dataset_builder(
                 size=(input_shape[0], input_shape[1]))
 
         # --- flip left right
-        if random_left_right and tf.random.uniform(()) > 0.5:
+        if random_left_right and tf.random.uniform(()) > tf.constant(0.5):
             input_batch = \
                 tf.image.flip_left_right(input_batch)
 
         # --- flip up down
-        if random_up_down and tf.random.uniform(()) > 0.5:
+        if random_up_down and tf.random.uniform(()) > tf.constant(0.5):
             input_batch = \
                 tf.image.flip_up_down(input_batch)
 
         # --- randomly rotate input
-        if use_random_rotate and tf.random.uniform(()) > 0.5:
+        if use_random_rotate and tf.random.uniform(()) > tf.constant(0.5):
             angles = \
                 tf.random.uniform(
                     dtype=tf.float32,
@@ -225,7 +232,7 @@ def dataset_builder(
                     interpolation="bilinear")
 
         # --- random invert colors
-        if random_invert and tf.random.uniform(()) > 0.5:
+        if random_invert and tf.random.uniform(()) > tf.constant(0.5):
             input_batch = max_value - (input_batch - min_value)
 
         return input_batch
@@ -236,7 +243,7 @@ def dataset_builder(
             tf.TensorSpec(shape=[None,
                                  input_shape[0],
                                  input_shape[1],
-                                 None],
+                                 channels],
                           dtype=tf.float32)])
     def noise_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
@@ -259,7 +266,7 @@ def dataset_builder(
 
         if noise_type == tf.constant(0, dtype=tf.int64):
             # additional noise
-            if tf.random.uniform(()) > 0.5:
+            if tf.random.uniform(()) > tf.constant(0.5):
                 # channel independent noise
                 noisy_batch = \
                     noisy_batch + \
@@ -285,7 +292,7 @@ def dataset_builder(
                 noisy_batch = noisy_batch + tmp_noisy_batch
             # blur to embed noise
             if random_blur:
-                if tf.random.uniform(()) > 0.5:
+                if tf.random.uniform(()) > tf.constant(0.5):
                     noisy_batch = \
                         tfa.image.gaussian_filter2d(
                             image=noisy_batch,
@@ -293,7 +300,7 @@ def dataset_builder(
                             filter_shape=(3, 3))
         elif noise_type == tf.constant(1, dtype=tf.int64):
             # multiplicative noise
-            if tf.random.uniform(()) > 0.5:
+            if tf.random.uniform(()) > tf.constant(0.5):
                 # channel independent noise
                 noisy_batch = \
                     noisy_batch * \
@@ -320,7 +327,7 @@ def dataset_builder(
 
             # blur to embed noise
             if random_blur:
-                if tf.random.uniform(()) > 0.5:
+                if tf.random.uniform(()) > tf.constant(0.5):
                     noisy_batch = \
                         tfa.image.gaussian_filter2d(
                             image=noisy_batch,
@@ -367,7 +374,10 @@ def dataset_builder(
     # is treated independently and gets a different noise type
     @tf.function(
         input_signature=[
-            tf.TensorSpec(shape=[input_shape[0], input_shape[1], None], dtype=tf.float32)])
+            tf.TensorSpec(shape=[input_shape[0],
+                                 input_shape[1],
+                                 channels],
+                          dtype=tf.float32)])
     def noise_augmentations_map_fn(
             x_input: tf.Tensor) -> tf.Tensor:
         x_input = tf.expand_dims(x_input, axis=0)
@@ -377,7 +387,11 @@ def dataset_builder(
 
     @tf.function(
         input_signature=[
-            tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], None], dtype=tf.float32)])
+            tf.TensorSpec(shape=[None,
+                                 input_shape[0],
+                                 input_shape[1],
+                                 channels],
+                          dtype=tf.float32)])
     def noise_augmentations_mix_fn(
             x_input: tf.Tensor) -> tf.Tensor:
         return tf.map_fn(
@@ -401,7 +415,7 @@ def dataset_builder(
                 tf.TensorSpec(shape=[None,
                                      input_shape[0],
                                      input_shape[1],
-                                     None],
+                                     channels],
                               dtype=tf.float32)])
         def augmentation_map_fn(
                 x_input: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
@@ -414,7 +428,7 @@ def dataset_builder(
                 tf.TensorSpec(shape=[None,
                                      input_shape[0],
                                      input_shape[1],
-                                     None],
+                                     channels],
                               dtype=tf.float32)])
         def augmentation_map_fn(
                 x_input: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
@@ -432,16 +446,14 @@ def dataset_builder(
     # --- create proper batches by sampling from each dataset independently
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
-            .map(map_func=geometric_augmentations_fn,
-                 deterministic=False,
-                 num_parallel_calls=len(dataset_training)) \
-            .unbatch() \
-            .shuffle(buffer_size=batch_size * len(dataset_training),
-                     reshuffle_each_iteration=False) \
-            .map(map_func=cast_to_float32,
-                 deterministic=False,
-                 num_parallel_calls=batch_size) \
-            .batch(batch_size=batch_size) \
+            .interleave(
+                map_func=geometric_augmentations_fn,
+                cycle_length=batch_size,
+                deterministic=False,
+                block_length=1,
+                num_parallel_calls=tf.data.AUTOTUNE) \
+            .rebatch(batch_size=batch_size) \
+            .map(map_func=cast_to_float32) \
             .prefetch(2)
 
     return result
