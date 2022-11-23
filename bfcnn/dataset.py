@@ -123,8 +123,7 @@ def dataset_builder(
                                  None,
                                  channels],
                           dtype=tf.float32)],
-        reduce_retracing=True,
-        jit_compile=True)
+        reduce_retracing=True)
     def geometric_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
