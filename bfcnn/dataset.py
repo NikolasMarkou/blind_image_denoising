@@ -466,11 +466,16 @@ def dataset_builder(
                 .sample_from_datasets(datasets=dataset_training)
 
     # --- create proper batches by sampling from each dataset independently
+    options = tf.data.Options()
+    options.deterministic = False
+    options.threading.private_threadpool_size = 32
+
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
             .prefetch(buffer_size=(len(directory) * 2)) \
             .rebatch(batch_size=batch_size) \
-            .prefetch(2)
+            .prefetch(2) \
+            .options(options)
 
     return result
 
