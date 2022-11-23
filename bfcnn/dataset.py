@@ -70,8 +70,6 @@ def dataset_builder(
     # in radians
     random_rotate = tf.constant(config.get("random_rotate", 0.0))
     use_random_rotate = tf.constant(random_rotate > 0.0)
-    # if true randomly invert
-    random_invert = tf.constant(config.get("random_invert", False))
     # if true randomly invert upside down image
     random_up_down = tf.constant(config.get("random_up_down", False))
     # if true randomly invert left right image
@@ -85,8 +83,7 @@ def dataset_builder(
     min_scale = tf.constant(scale_range[0], dtype=tf.float32)
     max_scale = tf.constant(scale_range[1], dtype=tf.float32)
     # whether to crop or not
-    random_crop = dataset_shape[0][0:2] != input_shape[0:2]
-    random_crop = tf.constant(random_crop)
+    random_crop = tf.constant(dataset_shape[0][0:2] != input_shape[0:2])
     # mix noise types
     mix_noise_types = config.get("mix_noise_types", False)
 
@@ -118,36 +115,6 @@ def dataset_builder(
 
     # --- set random seed to get the same result
     tf.random.set_seed(0)
-
-    @tf.function
-    def cast_to_uint8(input_batch: tf.Tensor) -> tf.Tensor:
-        return tf.cast(input_batch, tf.uint8)
-
-    @tf.function
-    def cast_to_float32(input_batch: tf.Tensor) -> tf.Tensor:
-        return tf.cast(input_batch, tf.float32)
-
-    # --- define generator function from directory
-    if directory:
-        dataset_training = [
-            tf.keras.utils.image_dataset_from_directory(
-                directory=d,
-                labels=None,
-                label_mode=None,
-                class_names=None,
-                color_mode=color_mode,
-                batch_size=max(1, int(round(batch_size/len(directory)))),
-                shuffle=True,
-                image_size=s,
-                seed=0,
-                validation_split=None,
-                subset=None,
-                interpolation="area",
-                crop_to_aspect_ratio=True)
-            for d, s in zip(directory, dataset_shape)
-        ]
-    else:
-        raise ValueError("don't know how to handle non directory datasets")
 
     @tf.function(
         input_signature=[
@@ -230,10 +197,6 @@ def dataset_builder(
                     images=input_batch,
                     fill_mode="reflect",
                     interpolation="bilinear")
-
-        # --- random invert colors
-        if random_invert and tf.random.uniform(()) > tf.constant(0.5):
-            input_batch = max_value - (input_batch - min_value)
 
         return input_batch
 
@@ -405,6 +368,29 @@ def dataset_builder(
             infer_shape=False,
         )
 
+    # --- define generator function from directory
+    if directory:
+        dataset_training = [
+            tf.keras.utils.image_dataset_from_directory(
+                directory=d,
+                labels=None,
+                label_mode=None,
+                class_names=None,
+                color_mode=color_mode,
+                batch_size=max(1, int(round(batch_size/len(directory)))),
+                shuffle=True,
+                image_size=s,
+                seed=0,
+                validation_split=None,
+                subset=None,
+                interpolation="area",
+                crop_to_aspect_ratio=True).map(
+                    map_func=geometric_augmentations_fn)
+            for d, s in zip(directory, dataset_shape)
+        ]
+    else:
+        raise ValueError("don't know how to handle non directory datasets")
+
     # --- create the dataset
     result = dict()
 
@@ -447,10 +433,6 @@ def dataset_builder(
     # --- create proper batches by sampling from each dataset independently
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
-            .map(
-                map_func=geometric_augmentations_fn,
-                deterministic=False,
-                num_parallel_calls=tf.data.AUTOTUNE) \
             .rebatch(batch_size=batch_size) \
             .prefetch(2)
 
