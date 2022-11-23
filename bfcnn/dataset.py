@@ -408,7 +408,7 @@ def dataset_builder(
                     label_mode=None,
                     class_names=None,
                     color_mode=color_mode,
-                    batch_size=max(1, int(round(batch_size / len(directory)))),
+                    batch_size=batch_size,
                     shuffle=True,
                     image_size=s,
                     seed=0,
@@ -470,7 +470,11 @@ def dataset_builder(
                 map_func=crop_fn,
                 num_parallel_calls=tf.data.AUTOTUNE,
                 deterministic=False) \
-            .rebatch(batch_size=batch_size) \
+            .unbatch()\
+            .shuffle(buffer_size=batch_size * len(directory))\
+            .batch(
+                batch_size=batch_size,
+                num_parallel_calls=tf.data.AUTOTUNE) \
             .prefetch(1)
 
     return result

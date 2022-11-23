@@ -265,8 +265,7 @@ def train_loop(
             checkpoint.restore(manager.latest_checkpoint).expect_partial()
 
         # --- define denoise fn
-        @tf.function(
-            reduce_retracing=True)
+        @tf.function
         def denoise_fn(x_input: tf.Tensor) -> tf.Tensor:
             # normalize
             x_tmp = normalizer(x_input, training=False)
