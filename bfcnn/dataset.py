@@ -416,11 +416,7 @@ def dataset_builder(
                     subset=None,
                     interpolation="area",
                     crop_to_aspect_ratio=True)
-                .prefetch(2)
-                .map(
-                    map_func=crop_fn,
-                    num_parallel_calls=tf.data.AUTOTUNE,
-                    deterministic=False)
+                .prefetch(1)
             for d, s in zip(directory, dataset_shape)
         ]
     else:
@@ -470,6 +466,10 @@ def dataset_builder(
     # --- create proper batches by sampling from each dataset independently
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
+            .map(
+                map_func=crop_fn,
+                num_parallel_calls=tf.data.AUTOTUNE,
+                deterministic=False) \
             .rebatch(batch_size=batch_size) \
             .prefetch(1)
 
