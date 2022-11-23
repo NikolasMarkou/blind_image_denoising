@@ -122,7 +122,9 @@ def dataset_builder(
                                  None,
                                  None,
                                  channels],
-                          dtype=tf.float32)])
+                          dtype=tf.float32)],
+        reduce_retracing=True,
+        jit_compile=True)
     def geometric_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -207,7 +209,9 @@ def dataset_builder(
                                  input_shape[0],
                                  input_shape[1],
                                  channels],
-                          dtype=tf.float32)])
+                          dtype=tf.float32)],
+        reduce_retracing=True,
+        jit_compile=True)
     def noise_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -384,8 +388,7 @@ def dataset_builder(
                 validation_split=None,
                 subset=None,
                 interpolation="area",
-                crop_to_aspect_ratio=True).map(
-                    map_func=geometric_augmentations_fn)
+                crop_to_aspect_ratio=True)
             for d, s in zip(directory, dataset_shape)
         ]
     else:
@@ -429,14 +432,18 @@ def dataset_builder(
     else:
         result[DATASET_TRAINING_FN_STR] = \
             tf.data.Dataset\
-                .sample_from_datasets(dataset_training)\
-                .prefetch(batch_size * 2)
+                .sample_from_datasets(dataset_training)
 
     # --- create proper batches by sampling from each dataset independently
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
+            .prefetch(batch_size * 2) \
+            .map(
+                map_func=geometric_augmentations_fn,
+                deterministic=False,
+                num_parallel_calls=len(directory)) \
             .rebatch(batch_size=batch_size) \
-            .prefetch(tf.data.AUTOTUNE)
+            .prefetch(2)
 
     return result
 
