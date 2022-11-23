@@ -418,10 +418,7 @@ def dataset_builder(
                     validation_split=None,
                     subset=None,
                     interpolation="area",
-                    crop_to_aspect_ratio=True).map(
-                        map_func=lambda x -> tf.ra,
-                        deterministic=False,
-                        num_parallel_calls=len(directory) * 2)
+                    crop_to_aspect_ratio=True)
             for d, s in zip(directory, dataset_shape)
         ]
     else:
