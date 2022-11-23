@@ -16,6 +16,9 @@ DATASET_TESTING_FN_STR = "dataset_testing"
 DATASET_TRAINING_FN_STR = "dataset_training"
 DATASET_VALIDATION_FN_STR = "dataset_validation"
 
+
+
+
 # ---------------------------------------------------------------------
 
 
@@ -135,10 +138,11 @@ def dataset_builder(
         input_signature=[
             tf.TensorSpec(shape=[None,
                                  None,
+                                 None,
                                  channels],
                           dtype=tf.float32)],
         reduce_retracing=True,
-        jit_compile=False)
+        jit_compile=True)
     def geometric_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -178,6 +182,7 @@ def dataset_builder(
                     tf.image.random_crop(
                         value=input_batch,
                         size=(
+                            input_shape_inference[0],
                             tf.math.minimum(crop_size, input_shape_inference[1]),
                             tf.math.minimum(crop_size, input_shape_inference[2]),
                             input_shape_inference[3])
@@ -206,7 +211,6 @@ def dataset_builder(
                 false_fn=lambda: input_batch)
 
         # --- randomly rotate input
-        # !!! this is not an XLA JIT compatible operation !!!
         input_batch = \
             tf.cond(
                 pred=tf.math.logical_and(use_random_rotate, tf.random.uniform(()) > tf.constant(0.5)),
@@ -216,7 +220,7 @@ def dataset_builder(
                             dtype=tf.float32,
                             minval=-random_rotate,
                             maxval=random_rotate,
-                            shape=()),
+                            shape=(input_shape_inference[0],)),
                         images=input_batch,
                         fill_mode="reflect",
                         interpolation="bilinear"),
@@ -402,7 +406,7 @@ def dataset_builder(
                     label_mode=None,
                     class_names=None,
                     color_mode=color_mode,
-                    batch_size=None,
+                    batch_size=max(1, int(round(batch_size / len(directory)))),
                     shuffle=True,
                     image_size=s,
                     seed=0,
@@ -411,8 +415,7 @@ def dataset_builder(
                     interpolation="area",
                     crop_to_aspect_ratio=True)
                 .map(
-                    map_func=geometric_augmentations_fn,
-                    deterministic=False)
+                    map_func=geometric_augmentations_fn)
             for d, s in zip(directory, dataset_shape)
         ]
     else:
@@ -462,9 +465,7 @@ def dataset_builder(
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
             .prefetch(buffer_size=(batch_size * 2)) \
-            .batch(batch_size=batch_size,
-                   num_parallel_calls=2,
-                   deterministic=False) \
+            .rebatch(batch_size=batch_size) \
             .prefetch(2)
 
     return result

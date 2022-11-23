@@ -433,10 +433,11 @@ def train_loop(
                     global_step.assign_add(1)
 
                     # --- check if total steps reached
-                    if 0 < total_steps <= global_step:
-                        logger.info("total_steps reached [{0}]".format(
-                            int(total_steps)))
-                        break
+                    if total_steps > 0:
+                        if total_steps <= global_step:
+                            logger.info("total_steps reached [{0}]".format(
+                                int(total_steps)))
+                            break
                 except tf.errors.OutOfRangeError:
                     break
 
