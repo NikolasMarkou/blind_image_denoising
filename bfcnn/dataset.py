@@ -446,11 +446,9 @@ def dataset_builder(
     # --- create proper batches by sampling from each dataset independently
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
-            .interleave(
+            .map(
                 map_func=geometric_augmentations_fn,
-                cycle_length=batch_size,
                 deterministic=False,
-                block_length=1,
                 num_parallel_calls=tf.data.AUTOTUNE) \
             .rebatch(batch_size=batch_size) \
             .map(map_func=cast_to_float32) \
