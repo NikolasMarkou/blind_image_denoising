@@ -123,7 +123,8 @@ def dataset_builder(
                                  None,
                                  channels],
                           dtype=tf.float32)],
-        reduce_retracing=True)
+        reduce_retracing=True,
+        jit_compile=False)
     def geometric_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -210,7 +211,7 @@ def dataset_builder(
                                  channels],
                           dtype=tf.float32)],
         reduce_retracing=True,
-        jit_compile=True)
+        jit_compile=False)
     def noise_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -235,11 +236,12 @@ def dataset_builder(
             if tf.random.uniform(()) > tf.constant(0.5):
                 # channel independent noise
                 noisy_batch = \
-                    noisy_batch + \
-                    tf.random.truncated_normal(
-                        mean=0,
-                        stddev=additional_noise_std,
-                        shape=input_shape_inference)
+                    tf.math.add(
+                        noisy_batch,
+                        tf.random.truncated_normal(
+                            mean=0,
+                            stddev=additional_noise_std,
+                            shape=input_shape_inference))
             else:
                 # channel dependent noise
                 tmp_noisy_batch = \
@@ -255,15 +257,14 @@ def dataset_builder(
                         tmp_noisy_batch,
                         axis=3,
                         repeats=[input_shape_inference[3]])
-                noisy_batch = noisy_batch + tmp_noisy_batch
+                noisy_batch = tf.math.add(noisy_batch, tmp_noisy_batch)
             # blur to embed noise
-            if random_blur:
-                if tf.random.uniform(()) > tf.constant(0.5):
-                    noisy_batch = \
-                        tfa.image.gaussian_filter2d(
-                            image=noisy_batch,
-                            sigma=1,
-                            filter_shape=(3, 3))
+            if random_blur and tf.random.uniform(()) > tf.constant(0.5):
+                noisy_batch = \
+                    tfa.image.gaussian_filter2d(
+                        image=noisy_batch,
+                        sigma=1,
+                        filter_shape=(3, 3))
         elif noise_type == tf.constant(1, dtype=tf.int64):
             # multiplicative noise
             if tf.random.uniform(()) > tf.constant(0.5):
@@ -289,16 +290,14 @@ def dataset_builder(
                         tmp_noisy_batch,
                         axis=3,
                         repeats=[input_shape_inference[3]])
-                noisy_batch = noisy_batch * tmp_noisy_batch
-
+                noisy_batch = tf.math.add(noisy_batch, tmp_noisy_batch)
             # blur to embed noise
-            if random_blur:
-                if tf.random.uniform(()) > tf.constant(0.5):
-                    noisy_batch = \
-                        tfa.image.gaussian_filter2d(
-                            image=noisy_batch,
-                            sigma=1,
-                            filter_shape=(3, 3))
+            if random_blur and tf.random.uniform(()) > tf.constant(0.5):
+                noisy_batch = \
+                    tfa.image.gaussian_filter2d(
+                        image=noisy_batch,
+                        sigma=1,
+                        filter_shape=(3, 3))
         elif noise_type == tf.constant(2, dtype=tf.int64):
             # downsample and upsample
             noisy_batch = \
@@ -322,6 +321,10 @@ def dataset_builder(
                 "don't know how to handle noise_type [{0}]".format(
                     noise_type))
 
+        # --- round values to nearest integer
+        if round_values:
+            noisy_batch = tf.round(noisy_batch)
+
         # --- clip values within boundaries
         if clip_value:
             noisy_batch = \
@@ -329,10 +332,6 @@ def dataset_builder(
                     noisy_batch,
                     clip_value_min=min_value,
                     clip_value_max=max_value)
-
-        # --- round values to nearest integer
-        if round_values:
-            noisy_batch = tf.round(noisy_batch)
 
         return noisy_batch
 
