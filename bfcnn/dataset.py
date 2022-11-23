@@ -16,9 +16,6 @@ DATASET_TESTING_FN_STR = "dataset_testing"
 DATASET_TRAINING_FN_STR = "dataset_training"
 DATASET_VALIDATION_FN_STR = "dataset_validation"
 
-
-
-
 # ---------------------------------------------------------------------
 
 
@@ -142,7 +139,7 @@ def dataset_builder(
                                  channels],
                           dtype=tf.float32)],
         reduce_retracing=True,
-        jit_compile=True)
+        jit_compile=False)
     def geometric_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -199,21 +196,24 @@ def dataset_builder(
         # --- flip left right
         input_batch = \
             tf.cond(
-                pred=tf.math.logical_and(random_left_right, tf.random.uniform(()) > tf.constant(0.5)),
+                pred=tf.math.logical_and(random_left_right,
+                                         tf.random.uniform(()) > tf.constant(0.5)),
                 true_fn=lambda: tf.image.flip_left_right(input_batch),
                 false_fn=lambda: input_batch)
 
         # --- flip up down
         input_batch = \
             tf.cond(
-                pred=tf.math.logical_and(random_up_down, tf.random.uniform(()) > tf.constant(0.5)),
+                pred=tf.math.logical_and(random_up_down,
+                                         tf.random.uniform(()) > tf.constant(0.5)),
                 true_fn=lambda: tf.image.flip_up_down(input_batch),
                 false_fn=lambda: input_batch)
 
         # --- randomly rotate input
         input_batch = \
             tf.cond(
-                pred=tf.math.logical_and(use_random_rotate, tf.random.uniform(()) > tf.constant(0.5)),
+                pred=tf.math.logical_and(use_random_rotate,
+                                         tf.random.uniform(()) > tf.constant(0.5)),
                 true_fn=lambda:
                     tfa.image.rotate(
                         angles=tf.random.uniform(
