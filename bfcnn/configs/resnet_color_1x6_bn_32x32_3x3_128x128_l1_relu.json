@@ -48,7 +48,7 @@
     "count_non_zero_mean": false
   },
   "dataset": {
-    "batch_size": 16,
+    "batch_size": 32,
     "no_iterations_per_batch": 1,
     "mix_noise_types": false,
     "value_range": [0, 255],
