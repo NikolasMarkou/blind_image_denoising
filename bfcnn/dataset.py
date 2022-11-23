@@ -125,6 +125,30 @@ def dataset_builder(
                           dtype=tf.float32)],
         reduce_retracing=True,
         jit_compile=False)
+    def cast_to_uint8(input_batch: tf.Tensor) -> tf.Tensor:
+        return tf.cast(input_batch, tf.uint8)
+
+    @tf.function(
+        input_signature=[
+            tf.TensorSpec(shape=[None,
+                                 None,
+                                 None,
+                                 channels],
+                          dtype=tf.uint8)],
+        reduce_retracing=True,
+        jit_compile=False)
+    def cast_to_float32(input_batch: tf.Tensor) -> tf.Tensor:
+        return tf.cast(input_batch, tf.float32)
+
+    @tf.function(
+        input_signature=[
+            tf.TensorSpec(shape=[None,
+                                 None,
+                                 None,
+                                 channels],
+                          dtype=tf.float32)],
+        reduce_retracing=True,
+        jit_compile=False)
     def geometric_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -167,6 +191,9 @@ def dataset_builder(
                         crop_size,
                         input_shape_inference[3])
                 )
+
+        # --- cast down to get memory boost
+        input_batch = tf.cast(input_batch, dtype=tf.uint8)
 
         # --- resize to input_shape
         input_batch = \
@@ -440,6 +467,8 @@ def dataset_builder(
         result[DATASET_TRAINING_FN_STR] \
             .prefetch(buffer_size=(batch_size * 2)) \
             .rebatch(batch_size=batch_size) \
+            .map(map_func=cast_to_float32,
+                 num_parallel_calls=2) \
             .prefetch(2)
 
     return result
