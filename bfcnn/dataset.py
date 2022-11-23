@@ -153,22 +153,13 @@ def dataset_builder(
                 minval=min_scale,
                 maxval=max_scale,
                 dtype=tf.dtypes.float32)
-        crop_height = \
-            tf.cast(
-                tf.round(
-                    random_number *
-                    tf.cast(input_shape[0], tf.float32)),
-                dtype=tf.int32)
-        crop_width = \
-            tf.cast(
-                tf.round(
-                    random_number *
-                    tf.cast(input_shape[1], tf.float32)),
-                dtype=tf.int32)
+        crop_height = random_number * tf.cast(input_shape[0], tf.float32)
+        crop_width = random_number * tf.cast(input_shape[1], tf.float32)
         crop_size = \
             tf.math.minimum(
                 x=crop_width,
                 y=crop_height)
+        crop_size = tf.cast(tf.round(crop_size), dtype=tf.int32)
 
         # --- crop randomly
         input_batch = \
@@ -178,9 +169,9 @@ def dataset_builder(
                     tf.image.random_crop(
                         value=input_batch,
                         size=(
+                            tf.math.minimum(crop_size, input_shape_inference[0]),
                             tf.math.minimum(crop_size, input_shape_inference[1]),
-                            tf.math.minimum(crop_size, input_shape_inference[2]),
-                            input_shape_inference[3])
+                            input_shape_inference[2])
                     ),
                 false_fn=lambda: input_batch)
 
