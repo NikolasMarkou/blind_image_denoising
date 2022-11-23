@@ -420,7 +420,7 @@ def dataset_builder(
                     interpolation="area",
                     crop_to_aspect_ratio=True).map(
                         map_func=geometric_augmentations_fn,
-                        num_parallel_calls=2,
+                        num_parallel_calls=tf.data.AUTOTUNE,
                         deterministic=False)
             for d, s in zip(directory, dataset_shape)
         ]
