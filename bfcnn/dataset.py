@@ -428,13 +428,15 @@ def dataset_builder(
         result[DATASET_TRAINING_FN_STR] = dataset_training[0]
     else:
         result[DATASET_TRAINING_FN_STR] = \
-            tf.data.Dataset.sample_from_datasets(dataset_training).prefetch(batch_size)
+            tf.data.Dataset\
+                .sample_from_datasets(dataset_training)\
+                .prefetch(batch_size * 2)
 
     # --- create proper batches by sampling from each dataset independently
     result[DATASET_TRAINING_FN_STR] = \
         result[DATASET_TRAINING_FN_STR] \
             .rebatch(batch_size=batch_size) \
-            .prefetch(2)
+            .prefetch(tf.data.AUTOTUNE)
 
     return result
 
