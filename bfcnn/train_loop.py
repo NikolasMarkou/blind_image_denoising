@@ -264,8 +264,7 @@ def train_loop(
 
         # --- define denoise fn
         @tf.function(
-            reduce_retracing=True,
-            jit_compile=True)
+            reduce_retracing=True)
         def denoise_fn(x_input: tf.Tensor) -> tf.Tensor:
             # normalize
             x_tmp = normalizer(x_input, training=False)
