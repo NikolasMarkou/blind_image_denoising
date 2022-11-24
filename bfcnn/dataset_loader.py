@@ -175,8 +175,6 @@ def image_dataset_from_directory(
             '`color_mode` must be one of {"rgb", "rgba", "grayscale"}. '
             f"Received: color_mode={color_mode}"
         )
-    if batch_size is None:
-        raise ValueError("batch size cannot be None")
     if random_crop is not None:
         random_crop = (random_crop[0], random_crop[1], num_channels)
     interpolation = image_utils.get_interpolation(interpolation)
@@ -219,17 +217,17 @@ def image_dataset_from_directory(
         crop_to_aspect_ratio=crop_to_aspect_ratio,
         random_crop=random_crop
     )
+    dataset = dataset.prefetch(tf.data.AUTOTUNE)
+    if batch_size is not None:
+        if shuffle:
+            # Shuffle locally at each iteration
+            dataset = dataset.shuffle(buffer_size=batch_size * 8, seed=seed)
+        dataset = dataset.batch(batch_size)
+    else:
+        if shuffle:
+            dataset = dataset.shuffle(buffer_size=1024, seed=seed)
 
-    if shuffle:
-        dataset = \
-            dataset.shuffle(
-                buffer_size=batch_size * 8,
-                seed=seed,
-                reshuffle_each_iteration=False)
-    return \
-        dataset.batch(batch_size=batch_size,
-                      deterministic=False,
-                      num_parallel_calls=tf.data.AUTOTUNE)
+    return dataset
 
 # ---------------------------------------------------------------------
 
@@ -244,26 +242,34 @@ def paths_and_labels_to_dataset(
 ):
     """Constructs a dataset of images and labels."""
     path_ds = tf.data.Dataset.from_tensor_slices(image_paths)
-    args = (num_channels, random_crop)
+    args = (image_size, num_channels, interpolation, crop_to_aspect_ratio, random_crop)
     return path_ds.map(
-        map_func=lambda x: load_image(x, *args),
-        num_parallel_calls=tf.data.AUTOTUNE
+        lambda x: load_image(x, *args), num_parallel_calls=tf.data.AUTOTUNE
     )
 
 # ---------------------------------------------------------------------
 
 
 def load_image(
-        path,
-        num_channels,
+        path, image_size, num_channels, interpolation,
+        crop_to_aspect_ratio=False,
         random_crop: Tuple[int, int, int] = None
 ):
-    """Load an image from a path and crop it."""
+    """Load an image from a path and resize it."""
     img = tf.io.read_file(path)
     img = tf.image.decode_image(
         img, channels=num_channels, expand_animations=False
     )
-    img = tf.image.random_crop(img, size=random_crop)
+    if crop_to_aspect_ratio:
+        img = image_utils.smart_resize(
+            img, image_size, interpolation=interpolation
+        )
+    else:
+        img = tf.image.resize(img, image_size, method=interpolation)
+
+    img.set_shape((image_size[0], image_size[1], num_channels))
+    if random_crop is not None:
+        img = tf.image.random_crop(img, size=random_crop)
     return tf.cast(img, dtype=tf.uint8)
 
 # ---------------------------------------------------------------------
