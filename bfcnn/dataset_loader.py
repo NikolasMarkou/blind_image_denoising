@@ -1,25 +1,16 @@
 import os
-import numpy as np
-import multiprocessing
 import tensorflow as tf
 from typing import Tuple
 from keras.utils import dataset_utils
 from keras.utils import image_utils
-
-ALLOWLIST_FORMATS = (".bmp", ".gif", ".jpeg", ".jpg", ".png")
-
 
 # ---------------------------------------------------------------------
 
 
 def image_dataset_from_directory(
         directory,
-        labels="inferred",
-        label_mode="int",
-        class_names=None,
         color_mode="rgb",
         image_size=(256, 256),
-        seed=None,
         interpolation="bilinear",
         follow_links=False,
         crop_to_aspect_ratio=False,
@@ -50,7 +41,7 @@ def image_dataset_from_directory(
         for img_path in \
                 index_directory(
                     directory=directory,
-                    formats=ALLOWLIST_FORMATS,
+                    formats=(".bmp", ".gif", ".jpeg", ".jpg", ".png"),
                     follow_links=follow_links):
             yield \
                 load_image(
@@ -61,14 +52,14 @@ def image_dataset_from_directory(
                     crop_to_aspect_ratio=crop_to_aspect_ratio,
                     random_crop=random_crop)
 
-    dataset = tf.data.Dataset.from_generator(
-        generator=generator_fn,
-        output_signature=(
-            tf.TensorSpec(shape=(random_crop[0],
-                                 random_crop[1],
-                                 num_channels),
-                          dtype=tf.uint8)
-        ))
+    dataset = \
+        tf.data.Dataset.from_generator(
+            generator=generator_fn,
+            output_signature=(
+                tf.TensorSpec(
+                    shape=(random_crop[0], random_crop[1], num_channels),
+                    dtype=tf.uint8)
+            ))
 
     return dataset
 
@@ -77,8 +68,11 @@ def image_dataset_from_directory(
 
 
 def load_image(
-        path, image_size, num_channels, interpolation,
-        crop_to_aspect_ratio=False,
+        path,
+        image_size,
+        num_channels,
+        interpolation,
+        crop_to_aspect_ratio: bool = False,
         random_crop: Tuple[int, int, int] = None
 ):
     """Load an image from a path and resize it."""
@@ -86,13 +80,12 @@ def load_image(
     img = tf.image.decode_image(
         img, channels=num_channels, expand_animations=False
     )
-    if crop_to_aspect_ratio:
-        img = image_utils.smart_resize(
-            img, image_size, interpolation=interpolation
-        )
-    else:
-        img = tf.image.resize(img, image_size, method=interpolation)
-
+    # if crop_to_aspect_ratio:
+    #     img = image_utils.smart_resize(
+    #         img, image_size, interpolation=interpolation
+    #     )
+    # else:
+    img = tf.image.resize(img, image_size, method=interpolation)
     img.set_shape((image_size[0], image_size[1], num_channels))
     img = tf.image.random_crop(img, size=random_crop)
     return tf.cast(img, dtype=tf.uint8)
@@ -104,7 +97,7 @@ def load_image(
 def index_directory(
         directory,
         formats,
-        follow_links=False):
+        follow_links: bool = False):
     """Make list of all files in the subdirs of `directory`
 
     Args:
