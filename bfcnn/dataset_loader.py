@@ -51,7 +51,6 @@ def image_dataset_from_directory(
     def generator_fn():
         allowed_formats = set(ALLOWED_FORMATS)
         for file_path in glob.iglob(pathname=os.path.join(directory, "**"), recursive=True):
-
             # check if directory
             if os.path.isdir(file_path):
                 continue
@@ -59,7 +58,7 @@ def image_dataset_from_directory(
             suffix = suffix.strip().lower()
             if suffix not in allowed_formats:
                 continue
-            yield \
+            img = \
                 load_image(
                     path=file_path,
                     image_size=image_size,
@@ -67,6 +66,10 @@ def image_dataset_from_directory(
                     interpolation=interpolation,
                     crop_to_aspect_ratio=crop_to_aspect_ratio,
                     random_crop=random_crop)
+            if img is None:
+                continue
+            yield img
+
 
     dataset = \
         tf.data.Dataset.from_generator(
@@ -119,6 +122,6 @@ def load_image(
         return img
     except Exception as e:
         logger.info(f"failed: {img.shape}:{path}:{e}")
-        return tf.zeros(shape=(random_crop[0], random_crop[1], num_channels), dtype=tf.uint8)
+        return None
 
 # ---------------------------------------------------------------------
