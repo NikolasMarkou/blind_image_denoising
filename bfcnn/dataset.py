@@ -369,8 +369,12 @@ def dataset_builder(
         dataset_training = [
             image_dataset_from_directory(
                     directory=d,
+                    labels=None,
+                    label_mode=None,
+                    class_names=None,
                     color_mode=color_mode,
                     image_size=s,
+                    seed=0,
                     interpolation="area",
                     crop_to_aspect_ratio=True,
                     random_crop=(input_shape[0], input_shape[1]))
