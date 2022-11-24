@@ -1,4 +1,3 @@
-import random
 import numpy as np
 import tensorflow as tf
 from keras.utils import dataset_utils
@@ -86,6 +85,8 @@ def image_dataset_from_directory(
           specified as `(height, width)`. Defaults to `(256, 256)`.
           Since the pipeline processes batches of images that must all have
           the same size, this must be provided.
+      shuffle: Whether to shuffle the data. Default: True.
+          If set to False, sorts the data in alphanumeric order.
       seed: Optional random seed for shuffling and transformations.
       validation_split: Optional float between 0 and 1,
           fraction of data to reserve for validation.
@@ -174,14 +175,18 @@ def image_dataset_from_directory(
             '`color_mode` must be one of {"rgb", "rgba", "grayscale"}. '
             f"Received: color_mode={color_mode}"
         )
+    if batch_size is None:
+        raise ValueError("batch size cannot be None")
     if random_crop is not None:
         random_crop = (random_crop[0], random_crop[1], num_channels)
     interpolation = image_utils.get_interpolation(interpolation)
+    dataset_utils.check_validation_split_arg(
+        validation_split, subset, shuffle, seed
+    )
 
     if seed is None:
         seed = np.random.randint(1e6)
-
-    image_paths, _, _ = dataset_utils.index_directory(
+    image_paths, labels, class_names = dataset_utils.index_directory(
         directory,
         labels,
         formats=ALLOWLIST_FORMATS,
@@ -191,9 +196,22 @@ def image_dataset_from_directory(
         follow_links=follow_links,
     )
 
-    random.shuffle(image_paths)
+    if label_mode == "binary" and len(class_names) != 2:
+        raise ValueError(
+            'When passing `label_mode="binary"`, there must be exactly 2 '
+            f"class_names. Received: class_names={class_names}"
+        )
 
-    dataset = paths_to_dataset(
+    image_paths, labels = dataset_utils.get_training_or_validation_split(
+        image_paths, labels, validation_split, subset
+    )
+    if not image_paths:
+        raise ValueError(
+            f"No images found in directory {directory}. "
+            f"Allowed formats: {ALLOWLIST_FORMATS}"
+        )
+
+    dataset = paths_and_labels_to_dataset(
         image_paths=image_paths,
         image_size=image_size,
         num_channels=num_channels,
@@ -202,12 +220,21 @@ def image_dataset_from_directory(
         random_crop=random_crop
     )
 
-    return dataset
+    if shuffle:
+        dataset = \
+            dataset.shuffle(
+                buffer_size=batch_size * 8,
+                seed=seed,
+                reshuffle_each_iteration=False)
+    return \
+        dataset.batch(batch_size=batch_size,
+                      deterministic=False,
+                      num_parallel_calls=tf.data.AUTOTUNE)
 
 # ---------------------------------------------------------------------
 
 
-def paths_to_dataset(
+def paths_and_labels_to_dataset(
         image_paths,
         image_size,
         num_channels,
