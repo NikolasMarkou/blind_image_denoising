@@ -471,7 +471,7 @@ def dataset_builder(
                 generator=generator_fn,
                 output_signature=(
                     tf.TensorSpec(shape=(None, input_shape[0], input_shape[1], channels),
-                                  dtype=tf.float32)
+                                  dtype=tf.uint8)
                 )) \
             .unbatch() \
             .shuffle(
