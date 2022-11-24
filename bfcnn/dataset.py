@@ -477,21 +477,21 @@ def dataset_builder(
     #         tf.data.Dataset \
     #             .sample_from_datasets(datasets=dataset_training)
 
-    result[DATASET_TRAINING_FN_STR] = merge_iterators(*dataset_training)
+    #result[DATASET_TRAINING_FN_STR] = iter(merge_iterators(*dataset_training))
 
-    # result[DATASET_TRAINING_FN_STR] = \
-    #     tf.data.Dataset.from_generator(
-    #         generator=generator,
-    #         output_signature=(
-    #             tf.TensorSpec(shape=(None, input_shape[0], input_shape[1], channels),
-    #                           dtype=tf.float32)
-    #         ))\
-    #     .unbatch() \
-    #     .shuffle(buffer_size=batch_size * len(directory)) \
-    #     .batch(
-    #         batch_size=batch_size,
-    #         num_parallel_calls=tf.data.AUTOTUNE) \
-    #     .prefetch(1)
+    result[DATASET_TRAINING_FN_STR] = \
+        tf.data.Dataset.from_generator(
+            generator=iter(merge_iterators(*dataset_training)),
+            output_signature=(
+                tf.TensorSpec(shape=(None, input_shape[0], input_shape[1], channels),
+                              dtype=tf.float32)
+            ))\
+        .unbatch() \
+        .shuffle(buffer_size=batch_size * len(directory)) \
+        .batch(
+            batch_size=batch_size,
+            num_parallel_calls=tf.data.AUTOTUNE) \
+        .prefetch(1)
 
     # --- create proper batches by sampling from each dataset independently
     # result[DATASET_TRAINING_FN_STR] = \
