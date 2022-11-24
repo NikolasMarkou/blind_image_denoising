@@ -8,6 +8,7 @@ from typing import Dict, Callable, Iterator, Tuple
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
+from .dataset_loader import image_dataset_from_directory
 
 # ---------------------------------------------------------------------
 
@@ -366,8 +367,7 @@ def dataset_builder(
     # --- define generator function from directory
     if directory:
         dataset_training = [
-            tf.keras.utils
-                .image_dataset_from_directory(
+            image_dataset_from_directory(
                     directory=d,
                     labels=None,
                     label_mode=None,
@@ -380,11 +380,8 @@ def dataset_builder(
                     validation_split=None,
                     subset=None,
                     interpolation="area",
-                    crop_to_aspect_ratio=True)
-                .map(
-                    map_func=crop_fn,
-                    num_parallel_calls=tf.data.AUTOTUNE,
-                    deterministic=False)\
+                    crop_to_aspect_ratio=True,
+                    random_crop=(input_shape[0], input_shape[1]))
             for d, s in zip(directory, dataset_shape)
         ]
     else:
