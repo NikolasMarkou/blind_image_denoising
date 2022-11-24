@@ -1,17 +1,12 @@
 import os
 import glob
+import pathlib
 import tensorflow as tf
 from typing import Tuple
+from keras.utils import dataset_utils
 from keras.utils import image_utils
 
-# ---------------------------------------------------------------------
-# local imports
-# ---------------------------------------------------------------------
-
-from .custom_logger import logger
-
 ALLOWED_FORMATS = [".bmp", ".gif", ".jpeg", ".jpg", ".png"]
-
 # ---------------------------------------------------------------------
 
 
@@ -20,8 +15,9 @@ def image_dataset_from_directory(
         color_mode="rgb",
         image_size=(256, 256),
         interpolation="bilinear",
+        follow_links=False,
         crop_to_aspect_ratio=False,
-        random_crop: Tuple[int, int] = (32, 32),
+        random_crop: Tuple[int, int] = None,
         **kwargs,
 ):
     """Generates a `tf.data.Dataset` from image files in a directory"""
@@ -40,17 +36,13 @@ def image_dataset_from_directory(
             '`color_mode` must be one of {"rgb", "rgba", "grayscale"}. '
             f"Received: color_mode={color_mode}"
         )
-    if random_crop is  None:
-        raise ValueError("random_crop cannot be None")
-
-    # --- set utilities
-    random_crop = (random_crop[0], random_crop[1], num_channels)
+    if random_crop is not None:
+        random_crop = (random_crop[0], random_crop[1], num_channels)
     interpolation = image_utils.get_interpolation(interpolation)
 
     def generator_fn():
         allowed_formats = set(ALLOWED_FORMATS)
         for file_path in glob.iglob(pathname=os.path.join(directory, "**"), recursive=True):
-            logger.info(f"glob.iglob: {file_path}")
             # check if directory
             if os.path.isdir(file_path):
                 continue
@@ -91,7 +83,7 @@ def load_image(
         random_crop: Tuple[int, int, int] = None):
     """Load an image from a path and resize it."""
 
-    if (path is None) or (not os.path.isfile(path)):
+    if not os.path.isfile(path):
         return tf.zeros(shape=(random_crop[0], random_crop[1], num_channels), dtype=tf.uint8)
 
     img = tf.io.read_file(path)
@@ -107,6 +99,6 @@ def load_image(
     img.set_shape((image_size[0], image_size[1], num_channels))
     img = tf.image.random_crop(img, size=random_crop)
     return tf.cast(img, dtype=tf.uint8)
-    return tf.zeros(shape=(random_crop[0], random_crop[1], num_channels), dtype=tf.uint8)
+    #return tf.zeros(shape=(random_crop[0], random_crop[1], num_channels), dtype=tf.uint8)
 
 # ---------------------------------------------------------------------
