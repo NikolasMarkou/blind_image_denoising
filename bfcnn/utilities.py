@@ -1,9 +1,7 @@
 import os
 import json
-import itertools
-from enum import Enum
-
 import numpy as np
+from enum import Enum
 import tensorflow as tf
 from pathlib import Path
 from tensorflow import keras
@@ -106,22 +104,6 @@ def input_shape_fixer(
                 shape == "-1":
             input_shape[i] = None
     return input_shape
-
-# ---------------------------------------------------------------------
-
-
-def merge_iterators(
-        *iterators):
-    """
-    Merge different iterators together
-
-    :param iterators:
-    """
-    empty = {}
-    for values in itertools.zip_longest(*iterators, fillvalue=empty):
-        for value in values:
-            if value is not empty:
-                yield value
 
 # ---------------------------------------------------------------------
 
