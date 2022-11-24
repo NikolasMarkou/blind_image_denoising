@@ -247,25 +247,16 @@ def train_loop(
         random_noise_batch = denormalizer(random_noise_batch, training=False)
 
         # --- define denoise fn
-        @tf.function(
-            input_signature=[
-                tf.TensorSpec(shape=[None, None, None, None],
-                              dtype=tf.float32)],
-            reduce_retracing=True)
-        def denoise_fn(x_input: tf.Tensor) -> tf.Tensor:
+        def denoise_fn(x_input: tf.Tensor,
+                       training: bool = True) -> tf.Tensor:
             # normalize
             x_tmp = normalizer(x_input, training=False)
             # denoise
-            x_tmp = denoiser(x_tmp, training=True)
+            x_tmp = denoiser(x_tmp, training=training)
             # denormalize
             return denormalizer(x_tmp, training=False)
 
         # --- define decompose fn
-        @tf.function(
-            input_signature=[
-                tf.TensorSpec(shape=[None, None, None, None],
-                              dtype=tf.float32)],
-            reduce_retracing=True)
         def decompose_fn(x_input):
             return denoiser_decomposition(x_input, training=False)
 
@@ -331,7 +322,7 @@ def train_loop(
                         # The operations that the layer applies
                         # to its inputs are going to be recorded
                         # on the GradientTape.
-                        denoised_batch = denoise_fn(noisy_batch)
+                        denoised_batch = denoise_fn(noisy_batch, training=True)
 
                         # compute the loss value for this mini-batch
                         loss_map = \
@@ -378,9 +369,9 @@ def train_loop(
                         global_step=global_step,
                         input_batch=input_batch,
                         noisy_batch=noisy_batch,
-                        random_batch=denoise_fn(random_noise_batch),
-                        test_input_batch=test_images_noisy,
-                        test_output_batch=denoise_fn(test_images_noisy),
+                        random_batch=denoise_fn(random_noise_batch, training=False),
+                        test_input_batch=None,
+                        test_output_batch=denoise_fn(test_images_noisy, training=False),
                         prediction_batch=denoised_batch,
                         visualization_number=visualization_number)
                     # add weight visualization
