@@ -346,44 +346,43 @@ def loss_function_builder(
     logger.info("building loss_function with config [{0}]".format(config))
 
     # ---
-    hinge = tf.constant(config.get("hinge", 0.0))
-    cutoff = tf.constant(config.get("cutoff", 255.0))
+    hinge = config.get("hinge", 0.0)
+    cutoff = config.get("cutoff", 255.0)
 
     # --- mae
-    mae_multiplier = tf.constant(config.get("mae_multiplier", 1.0))
-    use_mae = tf.constant(mae_multiplier > 0.0)
+    mae_multiplier = config.get("mae_multiplier", 1.0)
+    use_mae = mae_multiplier > 0.0
 
     # --- mse
-    mse_multiplier = tf.constant(config.get("mse_multiplier", 0.0))
-    use_mse = tf.constant(mse_multiplier > 0.0)
+    mse_multiplier = config.get("mse_multiplier", 0.0)
+    use_mse = mse_multiplier > 0.0
 
     # --- count non zero
-    count_non_zero_mean = tf.constant(config.get("count_non_zero_mean", False))
+    count_non_zero_mean = config.get("count_non_zero_mean", False)
 
     # --- delta
-    use_delta = tf.constant(config.get("use_delta", False))
+    use_delta = config.get("use_delta", False)
 
     # --- regularization
-    regularization_multiplier = tf.constant(config.get("regularization", 1.0))
+    regularization_multiplier = config.get("regularization", 1.0)
 
     # --- features
-    features_multiplier = tf.constant(config.get("features_multiplier", 0.0))
-    use_features = tf.constant(features_multiplier > 0.0)
+    features_multiplier = config.get("features_multiplier", 0.0)
+    use_features = features_multiplier > 0.0
 
     # --- multiscale mae
-    use_multiscale = tf.constant(config.get("use_multiscale", False))
+    use_multiscale = config.get("use_multiscale", False)
     laplacian_config = {
         "levels": 3,
         "type": "laplacian",
         "xy_max": (1.0, 1.0),
-        "kernel_size": (5, 5)
+        "kernel_size": (3, 3)
     }
     pyramid_model = \
         build_pyramid_model(
-            input_dims=(None, None, 3),
+            input_dims=(None, None, None),
             config=laplacian_config)
-    pyramid_levels = \
-        tf.constant(laplacian_config["levels"])
+    pyramid_levels = laplacian_config["levels"]
 
     def loss_function(
             input_batch: tf.Tensor,
@@ -428,7 +427,8 @@ def loss_function_builder(
                             hinge=hinge,
                             cutoff=cutoff,
                             count_non_zero_mean=count_non_zero_mean)
-                mae_prediction_loss /= pyramid_levels
+                mae_prediction_loss = \
+                    mae_prediction_loss / float(pyramid_levels)
             elif use_delta:
                 mae_prediction_loss += \
                     mae_weighted_delta(
