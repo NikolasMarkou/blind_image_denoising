@@ -77,12 +77,9 @@ def load_image(
         num_channels,
         interpolation,
         crop_to_aspect_ratio: bool = False,
-        random_crop: Tuple[int, int, int] = None):
+        random_crop: Tuple[int, int, int] = None
+):
     """Load an image from a path and resize it."""
-    
-    if not os.path.isfile(path):
-        return tf.zeros(shape=(random_crop[0], random_crop[1], num_channels), dtype=tf.uint8)
-
     img = tf.io.read_file(path)
     img = tf.image.decode_image(
         img, channels=num_channels, expand_animations=False
