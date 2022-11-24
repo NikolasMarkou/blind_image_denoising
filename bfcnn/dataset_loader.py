@@ -1,11 +1,13 @@
-import random
+import os
 import numpy as np
+import multiprocessing
 import tensorflow as tf
+from typing import Tuple
 from keras.utils import dataset_utils
 from keras.utils import image_utils
-from typing import Tuple
 
 ALLOWLIST_FORMATS = (".bmp", ".gif", ".jpeg", ".jpg", ".png")
+
 
 # ---------------------------------------------------------------------
 
@@ -16,12 +18,9 @@ def image_dataset_from_directory(
         label_mode="int",
         class_names=None,
         color_mode="rgb",
-        batch_size=32,
         image_size=(256, 256),
         shuffle=True,
         seed=None,
-        validation_split=None,
-        subset=None,
         interpolation="bilinear",
         follow_links=False,
         crop_to_aspect_ratio=False,
@@ -162,7 +161,6 @@ def image_dataset_from_directory(
         )
     if labels is None or label_mode is None:
         labels = None
-        label_mode = None
     if color_mode == "rgb":
         num_channels = 3
     elif color_mode == "rgba":
@@ -178,50 +176,31 @@ def image_dataset_from_directory(
         random_crop = (random_crop[0], random_crop[1], num_channels)
     interpolation = image_utils.get_interpolation(interpolation)
 
-    if seed is None:
-        seed = np.random.randint(1e6)
+    def generator_fn():
+        for img_path in \
+                index_directory(
+                    directory=directory,
+                    formats=ALLOWLIST_FORMATS,
+                    follow_links=follow_links):
+            yield \
+                load_image(
+                    path=img_path,
+                    image_size=image_size,
+                    num_channels=num_channels,
+                    interpolation=interpolation,
+                    crop_to_aspect_ratio=crop_to_aspect_ratio,
+                    random_crop=random_crop)
 
-    image_paths, _, _ = dataset_utils.index_directory(
-        directory,
-        labels,
-        formats=ALLOWLIST_FORMATS,
-        class_names=class_names,
-        shuffle=shuffle,
-        seed=seed,
-        follow_links=follow_links,
-    )
-
-    random.shuffle(image_paths)
-
-    dataset = paths_to_dataset(
-        image_paths=image_paths,
-        image_size=image_size,
-        num_channels=num_channels,
-        interpolation=interpolation,
-        crop_to_aspect_ratio=crop_to_aspect_ratio,
-        random_crop=random_crop
-    )
+    dataset = tf.data.Dataset.from_generator(
+        generator=generator_fn,
+        output_signature=(
+            tf.TensorSpec(shape=(random_crop[0],
+                                 random_crop[1],
+                                 num_channels),
+                          dtype=tf.uint8)
+        ))
 
     return dataset
-
-# ---------------------------------------------------------------------
-
-
-def paths_to_dataset(
-        image_paths,
-        image_size,
-        num_channels,
-        interpolation,
-        crop_to_aspect_ratio=False,
-        random_crop: Tuple[int, int, int] = None
-):
-    """Constructs a dataset of images and labels."""
-    path_ds = tf.data.Dataset.from_tensor_slices(image_paths)
-    args = (image_size, num_channels, interpolation, crop_to_aspect_ratio, random_crop)
-    return path_ds.map(
-        lambda x: load_image(x, *args),
-        num_parallel_calls=tf.data.AUTOTUNE
-    )
 
 
 # ---------------------------------------------------------------------
@@ -249,5 +228,64 @@ def load_image(
         img = tf.image.random_crop(img, size=random_crop)
     return tf.cast(img, dtype=tf.uint8)
 
+
 # ---------------------------------------------------------------------
 
+
+def index_directory(
+        directory,
+        formats,
+        follow_links=False):
+    """Make list of all files in the subdirs of `directory`
+
+    Args:
+      directory: The target directory (string).
+      formats: Allowlist of file extensions to index (e.g. ".jpg", ".txt").
+      follow_links: Whether to visits subdirectories pointed to by symlinks.
+
+    Returns:
+      tuple (file_paths, labels, class_names).
+        file_paths: list of file paths (strings).
+        labels: list of matching integer labels (same length as file_paths)
+        class_names: names of the classes corresponding to these labels, in
+          order.
+    """
+    subdirs = []
+    for subdir in sorted(tf.io.gfile.listdir(directory)):
+        if tf.io.gfile.isdir(tf.io.gfile.join(directory, subdir)):
+            if subdir.endswith("/"):
+                subdir = subdir[:-1]
+            subdirs.append(subdir)
+
+    for dirpath in (tf.io.gfile.join(directory, subdir) for subdir in subdirs):
+        for partial_filename in index_subdirectory(dirpath, follow_links, formats):
+            yield tf.io.gfile.join(directory, partial_filename)
+
+
+# ---------------------------------------------------------------------
+
+
+def index_subdirectory(directory, follow_links, formats):
+    """Recursively walks directory and list image paths and their class index.
+
+    Args:
+      directory: string, target directory.
+      follow_links: boolean, whether to recursively follow subdirectories
+        (if False, we only list top-level images in `directory`).
+      formats: Allowlist of file extensions to index (e.g. ".jpg", ".txt").
+
+    Returns:
+      tuple `(filenames, labels)`. `filenames` is a list of relative file
+        paths, and `labels` is a list of integer labels corresponding to these
+        files.
+    """
+    dirname = os.path.basename(directory)
+    valid_files = dataset_utils.iter_valid_files(directory, follow_links, formats)
+    for root, fname in valid_files:
+        absolute_path = tf.io.gfile.join(root, fname)
+        relative_path = tf.io.gfile.join(
+            dirname, os.path.relpath(absolute_path, directory)
+        )
+        yield relative_path
+
+# ---------------------------------------------------------------------
