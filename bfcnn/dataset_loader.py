@@ -43,13 +43,16 @@ def image_dataset_from_directory(
     def generator_fn():
         allowed_formats = set(ALLOWED_FORMATS)
         for file_path in glob.iglob(pathname=os.path.join(directory, "**"), recursive=True):
-            file_path = pathlib.Path(file_path)
-            suffix = file_path.suffix.strip().lower()
+            # check if directory
+            if os.path.isdir(file_path):
+                continue
+            suffix = os.path.splitext(file_path)[-1]
+            suffix = suffix.suffix.strip().lower()
             if suffix not in allowed_formats:
                 continue
             yield \
                 load_image(
-                    path=str(file_path),
+                    path=file_path,
                     image_size=image_size,
                     num_channels=num_channels,
                     interpolation=interpolation,
@@ -79,7 +82,7 @@ def load_image(
         crop_to_aspect_ratio: bool = False,
         random_crop: Tuple[int, int, int] = None):
     """Load an image from a path and resize it."""
-    
+
     if not os.path.isfile(path):
         return tf.zeros(shape=(random_crop[0], random_crop[1], num_channels), dtype=tf.uint8)
 
