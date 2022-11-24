@@ -8,6 +8,7 @@ from typing import Dict, Callable, Iterator, Tuple
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
+from .utilities import merge_iterators
 
 # ---------------------------------------------------------------------
 
@@ -416,6 +417,10 @@ def dataset_builder(
                     subset=None,
                     interpolation="area",
                     crop_to_aspect_ratio=True)
+                .map(
+                    map_func=crop_fn,
+                    num_parallel_calls=tf.data.AUTOTUNE,
+                    deterministic=False) \
                 .prefetch(1)
             for d, s in zip(directory, dataset_shape)
         ]
@@ -456,26 +461,37 @@ def dataset_builder(
     # dataset produces the dataset with basic geometric distortions
     if len(dataset_training) == 0:
         raise ValueError("don't know how to handle zero datasets")
-    elif len(dataset_training) == 1:
-        result[DATASET_TRAINING_FN_STR] = dataset_training[0]
-    else:
-        result[DATASET_TRAINING_FN_STR] = \
-            tf.data.Dataset \
-                .sample_from_datasets(datasets=dataset_training)
+
+    # elif len(dataset_training) == 1:
+    #     result[DATASET_TRAINING_FN_STR] = dataset_training[0]
+    # else:
+    #     result[DATASET_TRAINING_FN_STR] = \
+    #         tf.data.Dataset \
+    #             .sample_from_datasets(datasets=dataset_training)
+
+    result[DATASET_TRAINING_FN_STR] = \
+        tf.data.Dataset.from_generator(
+            gen=merge_iterators(dataset_training),
+            output_signature=(
+                tf.TensorSpec(shape=(None, input_shape[0], input_shape[1], channels),
+                              dtype=tf.float32)
+            ))\
+        .unbatch() \
+        .shuffle(buffer_size=batch_size * len(directory)) \
+        .batch(
+            batch_size=batch_size,
+            num_parallel_calls=tf.data.AUTOTUNE) \
+        .prefetch(1)
 
     # --- create proper batches by sampling from each dataset independently
-    result[DATASET_TRAINING_FN_STR] = \
-        result[DATASET_TRAINING_FN_STR] \
-            .map(
-                map_func=crop_fn,
-                num_parallel_calls=tf.data.AUTOTUNE,
-                deterministic=False) \
-            .unbatch()\
-            .shuffle(buffer_size=batch_size * len(directory))\
-            .batch(
-                batch_size=batch_size,
-                num_parallel_calls=tf.data.AUTOTUNE) \
-            .prefetch(1)
+    # result[DATASET_TRAINING_FN_STR] = \
+    #     result[DATASET_TRAINING_FN_STR] \
+    #         .unbatch()\
+    #         .shuffle(buffer_size=batch_size * len(directory))\
+    #         .batch(
+    #             batch_size=batch_size,
+    #             num_parallel_calls=tf.data.AUTOTUNE) \
+    #         .prefetch(1)
 
     return result
 
