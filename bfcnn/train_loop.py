@@ -322,8 +322,9 @@ def train_loop(
             dataset_training_iterator = iter(dataset_training)
 
             # --- iterate over the batches of the dataset
-            while True:
-                start_time = time.time()
+            more_epoch = True
+            while more_epoch:
+                start_time_step = time.time()
 
                 # --- do this for small batches
                 grads_batch = None
@@ -331,6 +332,7 @@ def train_loop(
                     try:
                         input_batch = next(dataset_training_iterator)
                     except Exception:
+                        more_epoch = False
                         break
                     input_batch = geometric_augmentation_fn(input_batch)
                     input_batch = tf.cast(input_batch, dtype=tf.float32)
@@ -439,12 +441,12 @@ def train_loop(
                         os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR))
 
                 # --- keep time of steps per second
-                stop_time = time.time()
-                step_time = stop_time - start_time
+                stop_time_step = time.time()
+                step_time_in_seconds = stop_time_step - start_time_step
 
                 tf.summary.scalar(
-                    "training/steps_per_second",
-                    1.0 / (step_time + 0.00001),
+                    "training/step_time_in_seconds",
+                    data=step_time_in_seconds,
                     step=global_step)
 
                 tf.summary.scalar(
