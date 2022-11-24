@@ -104,12 +104,16 @@ def load_image(
         img = \
             tf.image.resize(
                 images=img,
-                size=(128, 128),
+                size=image_size,
                 method=interpolation,
                 preserve_aspect_ratio=crop_to_aspect_ratio)
-        # img = tf.expand_dims(img, axis=0)
-        # img = tf.image.random_crop(img, size=(1, 128, 128, 3))
-        # img = tf.squeeze(img, axis=0)
+        # img = tf.image.resize_with_crop_or_pad(
+        #     img, target_height=image_size[0], target_width=image_size[1]
+        # )
+        img = tf.expand_dims(img, axis=0)
+        img = tf.image.random_crop(img, size=(1, 128, 128, 3))
+        img = tf.squeeze(img, axis=0)
+        #img = tf.cast(img, dtype=tf.uint8)
         return img
     except Exception as e:
         logger.info(f"failed: {img.shape}:{path}:{e}")
