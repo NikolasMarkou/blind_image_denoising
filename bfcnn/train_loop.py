@@ -279,8 +279,6 @@ def train_loop(
         def decompose_fn(x_input):
             return denoiser_decomposition(x_input, training=False)
 
-
-
         # ---
         while global_epoch < global_total_epochs:
             logger.info("epoch: {0}, step: {1}".format(
@@ -304,7 +302,7 @@ def train_loop(
                     # --- do this for small batches
                     grads_batch = None
                     for i in range(no_iterations_per_batch):
-                        input_batch = dataset_training_iterator.get_next()
+                        input_batch = next(dataset_training_iterator)
                         input_batch = geometric_augmentation_fn(input_batch)
                         noisy_batch = noise_augmentation_fn(input_batch)
 
