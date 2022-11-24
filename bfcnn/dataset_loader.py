@@ -50,7 +50,7 @@ def image_dataset_from_directory(
     def generator_fn():
         allowed_formats = set(ALLOWED_FORMATS)
         for file_path in glob.iglob(pathname=os.path.join(directory, "**"), recursive=True):
-            logger.info(f"glob.iglob: {file_path}")
+
             # check if directory
             if os.path.isdir(file_path):
                 continue
@@ -94,6 +94,7 @@ def load_image(
     if (path is None) or (not os.path.isfile(path)):
         return tf.zeros(shape=(random_crop[0], random_crop[1], num_channels), dtype=tf.uint8)
 
+    logger.info(f"load_image: {path}")
     img = tf.io.read_file(path)
     img = tf.image.decode_image(
         img, channels=num_channels, expand_animations=False
@@ -105,9 +106,10 @@ def load_image(
     # else:
     #     img = tf.image.resize(img, image_size, method=interpolation)
     img = tf.image.resize(img, image_size, method=interpolation)
-    img.set_shape((image_size[0], image_size[1], num_channels))
+    #img.set_shape((image_size[0], image_size[1], num_channels))
     img = tf.image.random_crop(img, size=random_crop)
-    return tf.cast(img, dtype=tf.uint8)
+    img = tf.cast(img, dtype=tf.uint8)
+    return img
     #return tf.zeros(shape=(random_crop[0], random_crop[1], num_channels), dtype=tf.uint8)
 
 # ---------------------------------------------------------------------
