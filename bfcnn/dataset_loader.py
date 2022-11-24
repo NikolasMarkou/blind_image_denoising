@@ -96,7 +96,7 @@ def load_image(
     """Load an image from a path and resize it."""
 
     if (path is None) or (not os.path.isfile(path)):
-        return None
+        return tf.zeros(shape=(random_crop[0], random_crop[1], num_channels), dtype=tf.uint8)
 
     try:
         # img = \
