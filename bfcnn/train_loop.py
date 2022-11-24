@@ -70,7 +70,7 @@ def train_loop(
     geometric_augmentation_fn = dataset_res[GEOMETRIC_AUGMENTATION_FN_STR]
 
     # --- build loss function
-    loss_fn = tf.function(loss_function_builder(config=config["loss"]))
+    loss_fn = loss_function_builder(config=config["loss"])
 
     # --- build optimizer
     optimizer, lr_schedule = \
@@ -265,7 +265,11 @@ def train_loop(
             checkpoint.restore(manager.latest_checkpoint).expect_partial()
 
         # --- define denoise fn
-        @tf.function
+        @tf.function(
+            input_signature=[
+                tf.TensorSpec(shape=[None, None, None, None],
+                              dtype=tf.float32)],
+            reduce_retracing=True)
         def denoise_fn(x_input: tf.Tensor) -> tf.Tensor:
             # normalize
             x_tmp = normalizer(x_input, training=False)
@@ -275,9 +279,37 @@ def train_loop(
             return denormalizer(x_tmp, training=False)
 
         # --- define decompose fn
-        @tf.function
+        @tf.function(
+            input_signature=[
+                tf.TensorSpec(shape=[None, None, None, None],
+                              dtype=tf.float32)],
+            reduce_retracing=True)
         def decompose_fn(x_input):
             return denoiser_decomposition(x_input, training=False)
+
+        noise_augmentation_fn = \
+            tf.function(
+                func=noise_augmentation_fn,
+                input_signature=[
+                    tf.TensorSpec(shape=[None, None, None, None],
+                                  dtype=tf.float32)],
+                reduce_retracing=True,
+                jit_compile=False)
+
+        geometric_augmentation_fn = \
+            tf.function(
+                func=geometric_augmentation_fn,
+                input_signature=[
+                    tf.TensorSpec(shape=[None, None, None, None],
+                                  dtype=tf.uint8)],
+                reduce_retracing=True,
+                jit_compile=False)
+
+        loss_fn = \
+            tf.function(
+                func=loss_fn,
+                reduce_retracing=True,
+                jit_compile=False)
 
         # ---
         while global_epoch < global_total_epochs:
@@ -289,10 +321,8 @@ def train_loop(
                 logger.info(f"pruning weights at step [{int(global_step)}]")
                 denoiser = prune_fn(model=denoiser)
 
-            model_denoise_weights = \
-                denoiser.trainable_weights
-            dataset_training_iterator = \
-                iter(dataset_training)
+            model_denoise_weights = denoiser.trainable_weights
+            dataset_training_iterator = iter(dataset_training)
 
             # --- iterate over the batches of the dataset
             while True:
@@ -304,6 +334,7 @@ def train_loop(
                     for i in range(no_iterations_per_batch):
                         input_batch = next(dataset_training_iterator)
                         input_batch = geometric_augmentation_fn(input_batch)
+                        input_batch = tf.cast(input_batch, dtype=tf.float32)
                         noisy_batch = noise_augmentation_fn(input_batch)
 
                         # Open a GradientTape to record the operations run
