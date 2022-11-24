@@ -463,10 +463,10 @@ def dataset_builder(
 
     result[DATASET_TRAINING_FN_STR] = \
         tf.data.Dataset\
-            .sample_from_datasets(datasets=directory)\
+            .sample_from_datasets(datasets=dataset_training)\
             .unbatch() \
             .shuffle(
-                buffer_size=batch_size * len(directory),
+                buffer_size=batch_size * len(dataset_training),
                 reshuffle_each_iteration=False) \
             .batch(
                 batch_size=batch_size,
