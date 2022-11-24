@@ -134,7 +134,7 @@ def test_dataset_builder_build(config):
 
         assert np.min(input_batch) >= config["value_range"][0]
         assert np.max(input_batch) <= config["value_range"][1]
-        assert input_batch.dtype == np.float32
+        assert input_batch.dtype == np.uint8
 
 # ---------------------------------------------------------------------
 
