@@ -244,26 +244,36 @@ def paths_and_labels_to_dataset(
 ):
     """Constructs a dataset of images and labels."""
     path_ds = tf.data.Dataset.from_tensor_slices(image_paths)
-    args = (num_channels, random_crop)
+    args = (image_size, num_channels, interpolation, crop_to_aspect_ratio, random_crop)
     return path_ds.map(
-        map_func=lambda x: load_image(x, *args),
+        lambda x: load_image(x, *args),
         num_parallel_calls=tf.data.AUTOTUNE
     )
+
 
 # ---------------------------------------------------------------------
 
 
 def load_image(
-        path,
-        num_channels,
+        path, image_size, num_channels, interpolation,
+        crop_to_aspect_ratio=False,
         random_crop: Tuple[int, int, int] = None
 ):
-    """Load an image from a path and crop it."""
+    """Load an image from a path and resize it."""
     img = tf.io.read_file(path)
     img = tf.image.decode_image(
         img, channels=num_channels, expand_animations=False
     )
-    img = tf.image.random_crop(img, size=random_crop)
+    if crop_to_aspect_ratio:
+        img = image_utils.smart_resize(
+            img, image_size, interpolation=interpolation
+        )
+    else:
+        img = tf.image.resize(img, image_size, method=interpolation)
+
+    img.set_shape((image_size[0], image_size[1], num_channels))
+    if random_crop is not None:
+        img = tf.image.random_crop(img, size=random_crop)
     return tf.cast(img, dtype=tf.uint8)
 
 # ---------------------------------------------------------------------
