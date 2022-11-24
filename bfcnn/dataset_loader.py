@@ -100,7 +100,7 @@ def load_image(
                 path=path,
                 color_mode="rgb",
                 target_size=image_size,
-                interpolation=interpolation)
+                interpolation="bilinear")
         img = tf.keras.preprocessing.image.img_to_array(img=img)
 
         # img = tf.io.read_file(path)
