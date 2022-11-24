@@ -471,7 +471,7 @@ def dataset_builder(
 
     result[DATASET_TRAINING_FN_STR] = \
         tf.data.Dataset.from_generator(
-            generator=merge_iterators(**dataset_training),
+            generator=merge_iterators(*dataset_training),
             output_signature=(
                 tf.TensorSpec(shape=(None, input_shape[0], input_shape[1], channels),
                               dtype=tf.float32)
