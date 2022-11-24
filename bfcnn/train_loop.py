@@ -180,7 +180,7 @@ def train_loop(
 
         # The function to be traced.
         @tf.function
-        def fn(x_input):
+        def optimized_model(x_input):
             return models.denoiser(x_input, training=False)
 
         x = \
@@ -189,7 +189,7 @@ def train_loop(
                 mean=0.0,
                 stddev=0.25,
                 shape=random_batch_size)
-        _ = fn(x)
+        _ = optimized_model(x)
         tf.summary.trace_export(
             step=0,
             name="denoiser")
@@ -228,23 +228,38 @@ def train_loop(
         status = \
             checkpoint.restore(manager.latest_checkpoint).expect_partial()
 
-        test_images_noisy = \
-            tf.random.truncated_normal(
-                seed=0,
-                mean=0.0,
-                stddev=0.1,
-                shape=test_images.shape) + test_images
-        test_images_noisy = clip_tensor(test_images_noisy)
-        test_images_noisy = denormalizer(test_images_noisy, training=False)
+        # --- test image
+        # @tf.function
+        # def denoise_test_batch():
+        #     x_noisy = \
+        #         tf.random.truncated_normal(
+        #             seed=0,
+        #             mean=0.0,
+        #             stddev=0.1,
+        #             shape=test_images.shape) + \
+        #         test_images
+        #     x_noisy = clip_tensor(x_noisy)
+        #     x_noisy_denormalized = \
+        #         denormalizer(
+        #             x_noisy,
+        #             training=False)
+        #     x_denoised = \
+        #         denoiser(x_noisy, training=False)
+        #     x_denoised_denormalized = \
+        #         denormalizer(x_denoised, training=False)
+        #     return x_noisy_denormalized, x_denoised_denormalized
 
-        random_noise_batch = \
-            tf.random.truncated_normal(
-                seed=0,
-                mean=0.0,
-                stddev=0.1,
-                shape=random_batch_size)
-        random_noise_batch = clip_tensor(random_noise_batch)
-        random_noise_batch = denormalizer(random_noise_batch, training=False)
+        # --- create random image and iterate through the model
+        # @tf.function
+        # def create_random_batch():
+        #     x_random = \
+        #         tf.random.truncated_normal(
+        #             seed=0,
+        #             mean=0.0,
+        #             stddev=0.1,
+        #             shape=random_batch_size)
+        #     x_random = denoiser(x_random, training=False)
+        #     return denormalizer(x_random, training=False)
 
         # --- define denoise fn
         @tf.function(
@@ -378,9 +393,9 @@ def train_loop(
                         global_step=global_step,
                         input_batch=input_batch,
                         noisy_batch=noisy_batch,
-                        random_batch=denoise_fn(random_noise_batch),
-                        test_input_batch=test_images_noisy,
-                        test_output_batch=denoise_fn(test_images_noisy),
+                        random_batch=None,
+                        test_input_batch=None,
+                        test_output_batch=None,
                         prediction_batch=denoised_batch,
                         visualization_number=visualization_number)
                     # add weight visualization
@@ -428,16 +443,10 @@ def train_loop(
                 # --- keep time of steps per second
                 stop_time_step = time.time()
                 step_time_in_seconds = stop_time_step - start_time_step
-                steps_per_second = 1.0 / (step_time_in_seconds + 1e-10)
 
                 tf.summary.scalar(
                     "training/step_time_in_seconds",
                     data=step_time_in_seconds,
-                    step=global_step)
-
-                tf.summary.scalar(
-                    "training/steps_per_second",
-                    data=steps_per_second,
                     step=global_step)
 
                 tf.summary.scalar(
