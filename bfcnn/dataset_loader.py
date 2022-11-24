@@ -114,7 +114,7 @@ def load_image(
         #     img = tf.image.resize(img, image_size, method=interpolation)
         img = tf.image.resize(images=img, size=image_size, method=interpolation)
         #img.set_shape((image_size[0], image_size[1], num_channels))
-        img = tf.image.random_crop(img, size=(1,) + random_crop)
+        img = tf.image.random_crop(img, size=random_crop)
         img = tf.cast(img, dtype=tf.uint8)
         return img
     except Exception as e:
