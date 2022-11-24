@@ -98,15 +98,16 @@ def load_image(
     img = tf.image.decode_image(
         img, channels=num_channels, expand_animations=False
     )
-    if crop_to_aspect_ratio:
-        img = image_utils.smart_resize(
-            img, image_size, interpolation=interpolation
-        )
-    else:
-        img = tf.image.resize(img, image_size, method=interpolation)
+    # if crop_to_aspect_ratio:
+    #     img = image_utils.smart_resize(
+    #         img, image_size, interpolation=interpolation
+    #     )
+    # else:
+    #     img = tf.image.resize(img, image_size, method=interpolation)
+    img = tf.image.resize(img, image_size, method=interpolation)
     img.set_shape((image_size[0], image_size[1], num_channels))
     img = tf.image.random_crop(img, size=random_crop)
     return tf.cast(img, dtype=tf.uint8)
-    return tf.zeros(shape=(random_crop[0], random_crop[1], num_channels), dtype=tf.uint8)
+    #return tf.zeros(shape=(random_crop[0], random_crop[1], num_channels), dtype=tf.uint8)
 
 # ---------------------------------------------------------------------
