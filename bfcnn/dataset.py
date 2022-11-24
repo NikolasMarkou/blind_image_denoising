@@ -374,7 +374,6 @@ def dataset_builder(
                     class_names=None,
                     color_mode=color_mode,
                     batch_size=max(1, int(round(batch_size/4))),
-                    shuffle=True,
                     image_size=s,
                     seed=0,
                     validation_split=None,
@@ -410,13 +409,13 @@ def dataset_builder(
         tf.data.Dataset.from_generator(
                 generator=generator_fn,
                 output_signature=(
-                    tf.TensorSpec(shape=(None,
-                                         input_shape[0],
+                    tf.TensorSpec(shape=(input_shape[0],
                                          input_shape[1],
                                          channels),
                                   dtype=tf.uint8)
                 )) \
-            .rebatch(batch_size=batch_size) \
+            .batch(batch_size=batch_size,
+                   num_parallel_calls=tf.data.AUTOTUNE) \
             .prefetch(1)
 
     return result
