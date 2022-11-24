@@ -279,13 +279,7 @@ def train_loop(
         def decompose_fn(x_input):
             return denoiser_decomposition(x_input, training=False)
 
-        # --- dataset options
-        options = tf.data.Options()
-        options.deterministic = False
-        options.autotune.enabled = True
-        options.autotune.cpu_budget = 6
-        options.threading.max_intra_op_parallelism = 4
-        options.threading.private_threadpool_size = 16
+
 
         # ---
         while global_epoch < global_total_epochs:
@@ -300,7 +294,7 @@ def train_loop(
             model_denoise_weights = \
                 denoiser.trainable_weights
             dataset_training_iterator = \
-                iter(dataset_training.with_options(options))
+                iter(dataset_training)
 
             # --- iterate over the batches of the dataset
             while True:

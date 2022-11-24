@@ -462,6 +462,14 @@ def dataset_builder(
     if len(dataset_training) == 0:
         raise ValueError("don't know how to handle zero datasets")
 
+    # --- dataset options
+    options = tf.data.Options()
+    options.deterministic = False
+    options.autotune.enabled = True
+    options.autotune.cpu_budget = 6
+    options.threading.max_intra_op_parallelism = 4
+    options.threading.private_threadpool_size = 16
+
     # elif len(dataset_training) == 1:
     #     result[DATASET_TRAINING_FN_STR] = dataset_training[0]
     # else:
