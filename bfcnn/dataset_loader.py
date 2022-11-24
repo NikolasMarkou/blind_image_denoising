@@ -47,7 +47,7 @@ def image_dataset_from_directory(
             if os.path.isdir(file_path):
                 continue
             suffix = os.path.splitext(file_path)[-1]
-            suffix = suffix.suffix.strip().lower()
+            suffix = suffix.strip().lower()
             if suffix not in allowed_formats:
                 continue
             yield \
