@@ -58,10 +58,10 @@ def load_image(
         tf.keras.preprocessing.image.load_img(
             path=path,
             color_mode=color_mode,
-            target_size=target_size)
-
-    x = tf.keras.preprocessing.image.img_to_array(x)
-    x = np.array([x])
+            target_size=target_size,
+            interpolation="bilinear")
+    x = tf.keras.preprocessing.image.img_to_array(img=x)
+    x = tf.expand_dims(x, axis=0)
     if normalize:
         x = layer_normalize((x, 0.0, 255.0))
     return x
@@ -211,11 +211,6 @@ def normal_empirical_cdf(
             return x1[i]
 
     return -1
-
-# ---------------------------------------------------------------------
-
-
-
 
 # ---------------------------------------------------------------------
 
