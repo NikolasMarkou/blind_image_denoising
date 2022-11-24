@@ -325,7 +325,8 @@ def train_loop(
             dataset_training_iterator = iter(dataset_training)
 
             # --- iterate over the batches of the dataset
-            while True:
+            end_of_epoch = False
+            while not end_of_epoch:
                 try:
                     start_time = time.time()
 
@@ -472,6 +473,7 @@ def train_loop(
                                 int(total_steps)))
                             break
                 except tf.errors.OutOfRangeError:
+                    end_of_epoch = True
                     break
 
             # --- end of the epoch
