@@ -384,8 +384,7 @@ def dataset_builder(
                 .map(
                     map_func=crop_fn,
                     num_parallel_calls=tf.data.AUTOTUNE,
-                    deterministic=False) \
-                .prefetch(tf.data.AUTOTUNE)
+                    deterministic=False)\
             for d, s in zip(directory, dataset_shape)
         ]
     else:
