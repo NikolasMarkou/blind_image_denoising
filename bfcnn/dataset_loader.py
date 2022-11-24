@@ -115,11 +115,11 @@ def load_image(
         #     )
         # else:
         #     img = tf.image.resize(img, image_size, method=interpolation)
-        img = tf.image.resize(images=img, size=image_size, method=interpolation)
+        img = tf.image.resize(images=img, size=(128, 128), method=interpolation)
         #img.set_shape((image_size[0], image_size[1], num_channels))
         #img = tf.image.random_crop(img, size=random_crop)
         #img = tf.cast(img, dtype=tf.uint8)
-        return tf.zeros(shape=(random_crop[0], random_crop[1], num_channels), dtype=tf.uint8)
+        return img
     except Exception as e:
         logger.info(f"failed: {img.shape}:{path}:{e}")
         return None
