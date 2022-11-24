@@ -409,7 +409,7 @@ def dataset_builder(
                     label_mode=None,
                     class_names=None,
                     color_mode=color_mode,
-                    batch_size=max(1, int(round(batch_size/4))),
+                    batch_size=batch_size,
                     shuffle=True,
                     image_size=s,
                     seed=0,
@@ -420,8 +420,7 @@ def dataset_builder(
                 .map(
                     map_func=crop_fn,
                     num_parallel_calls=tf.data.AUTOTUNE,
-                    deterministic=False) \
-                .prefetch(1)
+                    deterministic=False)\
             for d, s in zip(directory, dataset_shape)
         ]
     else:
@@ -466,34 +465,21 @@ def dataset_builder(
         for x in merge_iterators(*dataset_training):
             yield x
 
-    # result[DATASET_TRAINING_FN_STR] = \
-    #     tf.data.Dataset.from_generator(
-    #             generator=generator_fn,
-    #             output_signature=(
-    #                 tf.TensorSpec(shape=(None, input_shape[0], input_shape[1], channels),
-    #                               dtype=tf.uint8)
-    #             )) \
-    #         .unbatch() \
-    #         .shuffle(
-    #             buffer_size=batch_size * len(directory),
-    #             reshuffle_each_iteration=False) \
-    #         .batch(
-    #             batch_size=batch_size,
-    #             deterministic=False,
-    #             num_parallel_calls=tf.data.AUTOTUNE) \
-    #         .prefetch(1)
-
     result[DATASET_TRAINING_FN_STR] = \
         tf.data.Dataset.from_generator(
                 generator=generator_fn,
                 output_signature=(
-                    tf.TensorSpec(shape=(None,
-                                         input_shape[0],
-                                         input_shape[1],
-                                         channels),
+                    tf.TensorSpec(shape=(None, input_shape[0], input_shape[1], channels),
                                   dtype=tf.uint8)
                 )) \
-            .rebatch(batch_size=batch_size) \
+            .unbatch() \
+            .shuffle(
+                buffer_size=batch_size * len(directory),
+                reshuffle_each_iteration=False) \
+            .batch(
+                batch_size=batch_size,
+                deterministic=False,
+                num_parallel_calls=tf.data.AUTOTUNE) \
             .prefetch(1)
 
     return result
