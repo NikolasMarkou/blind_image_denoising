@@ -99,19 +99,24 @@ def load_image(
         return None
 
     try:
+        # img = \
+        #     tf.keras.preprocessing.image.load_img(
+        #         path=path,
+        #         color_mode="rgb",
+        #         target_size=image_size,
+        #         interpolation="bilinear")
+        # img = tf.keras.preprocessing.image.img_to_array(img=img)
+        # img = np.array([img])
         img = tf.io.read_file(path)
         img = tf.image.decode_image(img, channels=num_channels, expand_animations=False, dtype=tf.uint8)
-        # img is [H, W, 3]
-        img = \
-            tf.image.resize(
-                images=img,
-                size=image_size,
-                method=interpolation,
-                preserve_aspect_ratio=True)
-        img = tf.image.resize_with_crop_or_pad(
-            img, target_height=image_size[0], target_width=image_size[1]
-        )
-
+        # if crop_to_aspect_ratio:
+        #     img = image_utils.smart_resize(
+        #         img, image_size, interpolation=interpolation
+        #     )
+        # else:
+        #     img = tf.image.resize(img, image_size, method=interpolation)
+        img = tf.image.resize(images=img, size=(128, 128), method=interpolation)
+        #img.set_shape((image_size[0], image_size[1], num_channels))
         #img = tf.image.random_crop(img, size=random_crop)
         #img = tf.cast(img, dtype=tf.uint8)
         return img
