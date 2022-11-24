@@ -373,11 +373,8 @@ def dataset_builder(
                     label_mode=None,
                     class_names=None,
                     color_mode=color_mode,
-                    batch_size=max(1, int(round(batch_size/4))),
                     image_size=s,
                     seed=0,
-                    validation_split=None,
-                    subset=None,
                     interpolation="area",
                     crop_to_aspect_ratio=True,
                     random_crop=(input_shape[0], input_shape[1]))
