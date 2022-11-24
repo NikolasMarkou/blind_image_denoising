@@ -22,7 +22,7 @@ def image_dataset_from_directory(
         image_size=(256, 256),
         interpolation="bilinear",
         crop_to_aspect_ratio=False,
-        random_crop: Tuple[int, int] = None,
+        random_crop: Tuple[int, int] = (32, 32),
         **kwargs,
 ):
     """Generates a `tf.data.Dataset` from image files in a directory"""
@@ -41,7 +41,7 @@ def image_dataset_from_directory(
             '`color_mode` must be one of {"rgb", "rgba", "grayscale"}. '
             f"Received: color_mode={color_mode}"
         )
-    if random_crop is None:
+    if random_crop is  None:
         raise ValueError("random_crop cannot be None")
 
     # --- set utilities
@@ -69,6 +69,7 @@ def image_dataset_from_directory(
             if img is None:
                 continue
             yield img
+
 
     dataset = \
         tf.data.Dataset.from_generator(
@@ -106,13 +107,12 @@ def load_image(
                 images=img,
                 size=image_size,
                 method=interpolation,
-                preserve_aspect_ratio=crop_to_aspect_ratio)
-        # img = tf.image.resize_with_crop_or_pad(
-        #     img, target_height=image_size[0], target_width=image_size[1]
-        # )
-        img = tf.expand_dims(img, axis=0)
-        img = tf.image.random_crop(img, size=(1, 128, 128, 3))
-        img = tf.squeeze(img, axis=0)
+                preserve_aspect_ratio=True)
+        img = tf.image.resize_with_crop_or_pad(
+            img, target_height=image_size[0], target_width=image_size[1]
+        )
+
+        #img = tf.image.random_crop(img, size=random_crop)
         #img = tf.cast(img, dtype=tf.uint8)
         return img
     except Exception as e:
