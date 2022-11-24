@@ -1,5 +1,6 @@
 import os
 import glob
+import numpy as np
 import tensorflow as tf
 from typing import Tuple
 from keras.utils import image_utils
@@ -95,31 +96,29 @@ def load_image(
         return tf.zeros(shape=(random_crop[0], random_crop[1], num_channels), dtype=tf.uint8)
 
     try:
-        img = \
-            tf.keras.preprocessing.image.load_img(
-                path=path,
-                color_mode="rgb",
-                target_size=image_size,
-                interpolation="bilinear")
-        img = tf.keras.preprocessing.image.img_to_array(img=img)
-
-        # img = tf.io.read_file(path)
-        # img = tf.image.decode_image(
-        #     img, channels=num_channels, expand_animations=False
-        # )
+        # img = \
+        #     tf.keras.preprocessing.image.load_img(
+        #         path=path,
+        #         color_mode="rgb",
+        #         target_size=image_size,
+        #         interpolation="bilinear")
+        # img = tf.keras.preprocessing.image.img_to_array(img=img)
+        # img = np.array([img])
+        img = tf.io.read_file(path)
+        img = tf.image.decode_image(img, channels=num_channels, expand_animations=False, dtype=tf.uint8)
         # if crop_to_aspect_ratio:
         #     img = image_utils.smart_resize(
         #         img, image_size, interpolation=interpolation
         #     )
         # else:
         #     img = tf.image.resize(img, image_size, method=interpolation)
-        # img = tf.image.resize(img, image_size, method=interpolation)
-        # img.set_shape((image_size[0], image_size[1], num_channels))
-        img = tf.image.random_crop(img, size=random_crop)
+        img = tf.image.resize(images=img, size=image_size, method=interpolation)
+        #img.set_shape((image_size[0], image_size[1], num_channels))
+        img = tf.image.random_crop(img, size=(1,) + random_crop)
         img = tf.cast(img, dtype=tf.uint8)
         return img
-    except Exception:
-        logger.info(f"failed: {img.shape}:{path}")
+    except Exception as e:
+        logger.info(f"failed: {img.shape}:{path}:{e}")
         return tf.zeros(shape=(random_crop[0], random_crop[1], num_channels), dtype=tf.uint8)
 
 # ---------------------------------------------------------------------
