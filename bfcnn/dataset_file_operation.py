@@ -257,7 +257,7 @@ def image_dataset_from_directory_gen(
         seed = np.random.randint(1e6)
 
     def gen_fn():
-        for x in index_directory(
+        for x in index_directory_gen(
                     directory=directory,
                     formats=ALLOWLIST_FORMATS,
                     shuffle=shuffle,
