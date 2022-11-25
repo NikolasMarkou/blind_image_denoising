@@ -165,11 +165,11 @@ def index_directory(
 
     for dir_path in (os.path.join(directory, subdir) for subdir in sub_dirs):
         results.append(
-            pool.apply_async(index_subdirectory_gen,
+            pool.apply_async(index_subdirectory,
                              (dir_path, follow_links, formats)))
 
     for res in results:
-        partial_filenames, partial_labels = res.get()
+        partial_filenames = res.get()
         filenames += partial_filenames
 
     logger.info('Found %d files.' % (len(filenames),))
@@ -185,33 +185,6 @@ def index_directory(
         rng.shuffle(file_paths)
     return file_paths
 
-
-# ---------------------------------------------------------------------
-
-
-def index_subdirectory_gen(
-        directory,
-        follow_links,
-        formats):
-    """Recursively walks directory and list image paths and their class index.
-
-    Args:
-        directory: string, target directory.
-        follow_links: boolean, whether to recursively follow subdirectories
-          (if False, we only list top-level images in `directory`).
-        formats: Allowlist of file extensions to index (e.g. ".jpg", ".txt").
-
-    Returns:
-        tuple `(filenames, labels)`. `filenames` is a list of relative file
-        paths, and `labels` is a list of integer labels corresponding to these
-        files.
-    """
-    dirname = os.path.basename(directory)
-    for root, filename in iter_valid_files(directory, follow_links, formats):
-        absolute_path = os.path.join(root, filename)
-        relative_path = os.path.join(
-            dirname, os.path.relpath(absolute_path, directory))
-        yield relative_path
 
 # ---------------------------------------------------------------------
 
@@ -243,6 +216,90 @@ def index_subdirectory(
         filenames.append(relative_path)
     return filenames
 
+
+# ---------------------------------------------------------------------
+
+
+def index_directory_gen(
+        directory,
+        formats,
+        shuffle=True,
+        seed=None,
+        follow_links=False):
+    """
+    Make list of all files in the subdirs of `directory`, with their labels.
+
+      Args:
+        directory: The target directory (string).
+        formats: Allowlist of file extensions to index (e.g. ".jpg", ".txt").
+        shuffle: Whether to shuffle the data. Default: True.
+            If set to False, sorts the data in alphanumeric order.
+        seed: Optional random seed for shuffling.
+        follow_links: Whether to visits subdirectories pointed to by symlinks.
+
+      Returns:
+        tuple (file_paths, labels, class_names).
+          file_paths: list of file paths (strings).
+          labels: list of matching integer labels (same length as file_paths)
+          class_names: names of the classes corresponding to these labels, in order.
+    """
+    # in the no-label case, index from the parent directory down.
+    sub_dirs = ['']
+
+    # Build an index of the files
+    # in the different class sub-folders.
+    pool = multiprocessing.pool.ThreadPool()
+    results = []
+    filenames = []
+
+    for dir_path in (os.path.join(directory, subdir) for subdir in sub_dirs):
+        results.append(
+            pool.apply_async(index_subdirectory,
+                             (dir_path, follow_links, formats)))
+
+    for res in results:
+        partial_filenames, partial_labels = res.get()
+        filenames += partial_filenames
+
+    logger.info('Found %d files.' % (len(filenames),))
+    pool.close()
+    pool.join()
+    file_paths = [os.path.join(directory, filename) for filename in filenames]
+
+    if shuffle:
+        # Shuffle globally to erase macro-structure
+        if seed is None:
+            seed = np.random.randint(1e6)
+        rng = np.random.RandomState(seed)
+        rng.shuffle(file_paths)
+    return file_paths
+
+# ---------------------------------------------------------------------
+
+
+def index_subdirectory_gen(
+        directory,
+        follow_links,
+        formats):
+    """Recursively walks directory and list image paths and their class index.
+
+    Args:
+        directory: string, target directory.
+        follow_links: boolean, whether to recursively follow subdirectories
+          (if False, we only list top-level images in `directory`).
+        formats: Allowlist of file extensions to index (e.g. ".jpg", ".txt").
+
+    Returns:
+        tuple `(filenames, labels)`. `filenames` is a list of relative file
+        paths, and `labels` is a list of integer labels corresponding to these
+        files.
+    """
+    dirname = os.path.basename(directory)
+    for root, filename in iter_valid_files(directory, follow_links, formats):
+        absolute_path = os.path.join(root, filename)
+        relative_path = os.path.join(
+            dirname, os.path.relpath(absolute_path, directory))
+        yield relative_path
 
 # ---------------------------------------------------------------------
 
