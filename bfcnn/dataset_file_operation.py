@@ -83,7 +83,7 @@ def image_dataset_from_directory(
     if seed is None:
         seed = np.random.randint(1e6)
 
-    image_paths, _, _ = \
+    image_paths = \
         index_directory(
             directory=directory,
             formats=ALLOWLIST_FORMATS,
