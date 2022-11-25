@@ -322,10 +322,11 @@ def train_loop(
                 denoiser = prune_fn(model=denoiser)
 
             model_denoise_weights = denoiser.trainable_weights
+            start_time_epoch = time.time()
 
             # --- iterate over the batches of the dataset
             for input_batch in dataset_training:
-                start_time = time.time()
+                start_time_forward_backward = time.time()
 
                 input_batch = geometric_augmentation_fn(input_batch)
                 input_batch = tf.cast(input_batch, dtype=tf.float32)
@@ -432,12 +433,12 @@ def train_loop(
                         os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR))
 
                 # --- keep time of steps per second
-                stop_time = time.time()
-                step_time = stop_time - start_time
+                stop_time_forward_backward = time.time()
+                step_time_forward_backward = stop_time_forward_backward - start_time_forward_backward
 
                 tf.summary.scalar(
                     "training/steps_per_second",
-                    1.0 / (step_time + 0.00001),
+                    1.0 / (step_time_forward_backward + 0.00001),
                     step=global_step)
 
                 tf.summary.scalar(
@@ -460,9 +461,12 @@ def train_loop(
                             int(total_steps)))
                         break
 
+            end_time_epoch = time.time()
+            epoch_time = end_time_epoch - start_time_epoch
+
             # --- end of the epoch
-            logger.info("checkpoint at end of epoch: {0}".format(
-                int(global_epoch)))
+            logger.info("checkpoint at end of epoch [{0}], took [{1}] minutes".format(
+                int(global_epoch)), int(round(epoch_time/60)))
             global_epoch.assign_add(1)
             manager.save()
             # save model so we can visualize it easier
