@@ -36,6 +36,7 @@ def random_crops(
     :param crop_size: final crop size output
     :param x_range: manually set x_range
     :param y_range: manually set y_range
+    :param extrapolation_value: value set to beyond the image crop
     :param interpolation_method: interpolation method
     :return: tensor with shape
         [input_batch[0] * no_crops_per_image,
@@ -49,19 +50,21 @@ def random_crops(
     total_crops = no_crops_per_image * batch_size
 
     # fill y_range, x_range based on crop size and input batch size
-    if x_range is None:
-        x_range = (float(crop_size[1] / shape[2]),
-                   float(crop_size[1] / shape[2] + 0.01))
-
     if y_range is None:
         y_range = (float(crop_size[0] / shape[1]),
                    float(crop_size[0] / shape[1] + 0.01))
 
+    if x_range is None:
+        x_range = (float(crop_size[1] / shape[2]),
+                   float(crop_size[1] / shape[2] + 0.01))
+
+    #
     y1 = tf.random.uniform(
         shape=(total_crops, 1), minval=0.0, maxval=1.0 - y_range[0])
     y2 = y1 + \
          tf.random.uniform(
              shape=(total_crops, 1), minval=y_range[0], maxval=y_range[1])
+    #
     x1 = tf.random.uniform(
         shape=(total_crops, 1), minval=0.0, maxval=1.0 - x_range[0])
     x2 = x1 + \
@@ -160,7 +163,7 @@ def dataset_builder(
     # mix noise types
     mix_noise_types = config.get("mix_noise_types", False)
     # no crops per image
-    no_crops_per_image = config.get("no_crops_per_image", 16)
+    no_crops_per_image = config.get("no_crops_per_image", 1)
 
     # --- build noise options
     noise_choices = []
@@ -473,8 +476,7 @@ def dataset_builder(
                     image_size=s,
                     interpolation=tf.image.ResizeMethod.AREA,
                     color_mode=color_mode,
-                    batch_size=batch_size,
-                    crop_to_aspect_ratio=True)
+                    batch_size=batch_size)
                 .map(
                     map_func=crop_fn,
                     num_parallel_calls=tf.data.AUTOTUNE,
@@ -513,8 +515,10 @@ def dataset_builder(
             )) \
             .unbatch() \
             .shuffle(
-                buffer_size=no_crops_per_image * batch_size * len(dataset_training),
-                reshuffle_each_iteration=False) \
+                buffer_size=(no_crops_per_image *
+                             batch_size *
+                             len(dataset_training)),
+                reshuffle_each_iteration=True) \
             .batch(
                 batch_size=batch_size,
                 deterministic=False,
