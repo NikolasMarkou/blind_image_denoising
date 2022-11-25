@@ -90,13 +90,13 @@ def image_dataset_from_directory(
         )
 
     dataset = tf.data.Dataset.from_tensor_slices(image_paths)
-    args = (image_size, num_channels, interpolation, crop_to_aspect_ratio)
+    args = (image_size, num_channels, interpolation)
     dataset = dataset.map(
         lambda x: load_image(x, *args), num_parallel_calls=tf.data.AUTOTUNE
     )
     dataset = dataset.batch(batch_size, num_parallel_calls=tf.data.AUTOTUNE)
     dataset = dataset.prefetch(tf.data.AUTOTUNE)
-    
+
     return dataset
 
 
