@@ -469,16 +469,11 @@ def dataset_builder(
                 image_dataset_from_directory(
                     seed=0,
                     directory=d,
-                    labels=None,
                     shuffle=True,
                     image_size=s,
-                    subset=None,
-                    label_mode=None,
-                    class_names=None,
                     interpolation=tf.image.ResizeMethod.AREA,
                     color_mode=color_mode,
                     batch_size=batch_size,
-                    validation_split=None,
                     crop_to_aspect_ratio=True)
                 .map(
                     map_func=crop_fn,

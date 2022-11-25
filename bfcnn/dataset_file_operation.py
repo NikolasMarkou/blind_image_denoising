@@ -94,8 +94,9 @@ def image_dataset_from_directory(
     dataset = dataset.map(
         lambda x: load_image(x, *args), num_parallel_calls=tf.data.AUTOTUNE
     )
+    dataset = dataset.batch(batch_size, num_parallel_calls=tf.data.AUTOTUNE)
     dataset = dataset.prefetch(tf.data.AUTOTUNE)
-
+    
     return dataset
 
 
