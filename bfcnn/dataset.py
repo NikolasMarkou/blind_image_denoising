@@ -9,6 +9,7 @@ from typing import Dict, Callable, Iterator, Tuple
 
 from .custom_logger import logger
 from .utilities import merge_iterators
+from .dataset_file_operation import image_dataset_from_directory
 
 # ---------------------------------------------------------------------
 
@@ -465,8 +466,7 @@ def dataset_builder(
     # --- define generator function from directory
     if directory:
         dataset_training = [
-            tf.keras.utils
-                .image_dataset_from_directory(
+                image_dataset_from_directory(
                     seed=0,
                     directory=d,
                     labels=None,
