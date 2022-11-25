@@ -469,18 +469,16 @@ def dataset_builder(
     # --- define generator function from directory
     if directory:
         dataset_training = [
-                image_dataset_from_directory_gen(
-                    seed=0,
-                    directory=d,
-                    shuffle=True,
-                    image_size=s,
-                    interpolation=tf.image.ResizeMethod.AREA,
-                    color_mode=color_mode,
-                    batch_size=batch_size)
-                .map(
-                    map_func=crop_fn,
-                    num_parallel_calls=tf.data.AUTOTUNE,
-                    deterministic=False)\
+            image_dataset_from_directory_gen(
+                seed=0,
+                directory=d,
+                shuffle=True,
+                image_size=s,
+                interpolation=tf.image.ResizeMethod.AREA,
+                color_mode=color_mode,
+                batch_size=batch_size,
+                no_crops_per_image=no_crops_per_image,
+                crop_size=(input_shape[0], input_shape[1]))
             for d, s in zip(directory, dataset_shape)
         ]
     else:
@@ -515,14 +513,14 @@ def dataset_builder(
             )) \
             .unbatch() \
             .shuffle(
-                buffer_size=(no_crops_per_image *
-                             batch_size *
-                             len(dataset_training)),
-                reshuffle_each_iteration=True) \
+            buffer_size=(no_crops_per_image *
+                         batch_size *
+                         len(dataset_training)),
+            reshuffle_each_iteration=True) \
             .batch(
-                batch_size=batch_size,
-                deterministic=False,
-                num_parallel_calls=tf.data.AUTOTUNE) \
+            batch_size=batch_size,
+            deterministic=False,
+            num_parallel_calls=tf.data.AUTOTUNE) \
             .prefetch(1)
 
     return result
