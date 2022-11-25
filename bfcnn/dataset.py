@@ -228,8 +228,7 @@ def dataset_builder(
                 random_crops(
                     input_batch=input_batch,
                     crop_size=(input_shape[0], input_shape[1]),
-                    no_crops_per_image=no_crops_per_image,
-                    cast_to_uint8=False),
+                    no_crops_per_image=no_crops_per_image),
                 false_fn=lambda: input_batch)
         return tf.cast(input_batch, dtype=tf.uint8)
 
