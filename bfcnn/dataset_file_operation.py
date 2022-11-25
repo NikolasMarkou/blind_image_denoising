@@ -260,24 +260,28 @@ def image_dataset_from_directory_gen(
         for x in index_directory_gen(
                     directory=directory,
                     formats=ALLOWLIST_FORMATS,
-                    shuffle=shuffle,
-                    seed=seed,
                     follow_links=follow_links):
             yield x
+
+    def load_image_fn(x):
+        return load_image(x, image_size, num_channels, interpolation)
 
     dataset = \
         tf.data.Dataset.from_generator(
             generator=gen_fn,
             output_signature=(
                 tf.TensorSpec(shape=(), dtype=tf.string)
-            ))
-
-    args = (image_size, num_channels, interpolation)
-    dataset = dataset.map(
-        lambda x: load_image(x, *args), num_parallel_calls=tf.data.AUTOTUNE
-    )
-    dataset = dataset.batch(batch_size, num_parallel_calls=tf.data.AUTOTUNE)
-    dataset = dataset.prefetch(tf.data.AUTOTUNE)
+            )) \
+        .shuffle(
+            buffer_size=1024,
+            reshuffle_each_iteration=True)\
+        .map(
+            map_func=load_image_fn,
+            num_parallel_calls=tf.data.AUTOTUNE)\
+        .batch(
+            batch_size=batch_size,
+            num_parallel_calls=tf.data.AUTOTUNE) \
+        .prefetch(tf.data.AUTOTUNE)
 
     return dataset
 
@@ -287,8 +291,6 @@ def image_dataset_from_directory_gen(
 def index_directory_gen(
         directory,
         formats,
-        shuffle=True,
-        seed=None,
         follow_links=False):
     """
     Make list of all files in the subdirs of `directory`, with their labels.
