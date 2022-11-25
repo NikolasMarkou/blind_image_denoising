@@ -475,7 +475,7 @@ def dataset_builder(
                     subset=None,
                     label_mode=None,
                     class_names=None,
-                    interpolation="area",
+                    interpolation=tf.image.ResizeMethod.AREA,
                     color_mode=color_mode,
                     batch_size=batch_size,
                     validation_split=None,

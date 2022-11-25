@@ -13,7 +13,7 @@ def image_dataset_from_directory(
         image_size=(256, 256),
         shuffle=True,
         seed=None,
-        interpolation=tf.ResizeMethod.BILINEAR,
+        interpolation=tf.image.ResizeMethod.BILINEAR,
         follow_links=False,
         crop_to_aspect_ratio=False,
         **kwargs):
