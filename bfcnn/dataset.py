@@ -369,19 +369,6 @@ def dataset_builder(
     # is treated independently and gets a different noise type
     @tf.function(
         input_signature=[
-            tf.TensorSpec(shape=[input_shape[0],
-                                 input_shape[1],
-                                 channels],
-                          dtype=tf.float32)])
-    def noise_augmentations_map_fn(
-            x_input: tf.Tensor) -> tf.Tensor:
-        x_input = tf.expand_dims(x_input, axis=0)
-        x_input = noise_augmentations_fn(x_input)
-        x_input = tf.squeeze(x_input, axis=0)
-        return x_input
-
-    @tf.function(
-        input_signature=[
             tf.TensorSpec(shape=[None,
                                  input_shape[0],
                                  input_shape[1],
@@ -389,6 +376,14 @@ def dataset_builder(
                           dtype=tf.float32)])
     def noise_augmentations_mix_fn(
             x_input: tf.Tensor) -> tf.Tensor:
+
+        def noise_augmentations_map_fn(
+                x: tf.Tensor) -> tf.Tensor:
+            x = tf.expand_dims(x, axis=0)
+            x = noise_augmentations_fn(x)
+            x = tf.squeeze(x, axis=0)
+            return x
+
         return tf.map_fn(
             fn=noise_augmentations_map_fn,
             elems=x_input,
@@ -404,18 +399,18 @@ def dataset_builder(
         dataset_training = [
             tf.keras.utils
                 .image_dataset_from_directory(
+                    seed=0,
                     directory=d,
                     labels=None,
-                    label_mode=None,
-                    class_names=None,
-                    color_mode=color_mode,
-                    batch_size=batch_size,
                     shuffle=True,
                     image_size=s,
-                    seed=0,
-                    validation_split=None,
                     subset=None,
+                    label_mode=None,
+                    class_names=None,
                     interpolation="area",
+                    color_mode=color_mode,
+                    batch_size=batch_size,
+                    validation_split=None,
                     crop_to_aspect_ratio=True)
                 .map(
                     map_func=crop_fn,
@@ -432,30 +427,8 @@ def dataset_builder(
 
     if mix_noise_types:
         result[AUGMENTATION_FN_STR] = noise_augmentations_mix_fn
-
-        @tf.function(
-            input_signature=[
-                tf.TensorSpec(shape=[None,
-                                     input_shape[0],
-                                     input_shape[1],
-                                     channels],
-                              dtype=tf.float32)])
-        def augmentation_map_fn(
-                x_input: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
-            return x_input, noise_augmentations_mix_fn(x_input)
     else:
         result[AUGMENTATION_FN_STR] = noise_augmentations_fn
-
-        @tf.function(
-            input_signature=[
-                tf.TensorSpec(shape=[None,
-                                     input_shape[0],
-                                     input_shape[1],
-                                     channels],
-                              dtype=tf.float32)])
-        def augmentation_map_fn(
-                x_input: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
-            return x_input, noise_augmentations_fn(x_input)
 
     # dataset produces the dataset with basic geometric distortions
     if len(dataset_training) == 0:
@@ -469,7 +442,10 @@ def dataset_builder(
         tf.data.Dataset.from_generator(
                 generator=generator_fn,
                 output_signature=(
-                    tf.TensorSpec(shape=(None, input_shape[0], input_shape[1], channels),
+                    tf.TensorSpec(shape=(None,
+                                         input_shape[0],
+                                         input_shape[1],
+                                         channels),
                                   dtype=tf.uint8)
                 )) \
             .unbatch() \
