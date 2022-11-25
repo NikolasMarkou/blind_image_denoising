@@ -404,7 +404,7 @@ def load_image_crop(
         antialias=False
     )
 
-    img = img.cast(img, dtype=tf.uint8)
+    img = tf.cast(img, dtype=tf.uint8)
     img = tf.expand_dims(img, axis=0)
 
     return \
