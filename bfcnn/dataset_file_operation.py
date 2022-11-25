@@ -269,7 +269,7 @@ def image_dataset_from_directory_gen(
         tf.data.Dataset.from_generator(
             generator=gen_fn,
             output_signature=(
-                tf.TensorSpec(shape=(1,), dtype=tf.string)
+                tf.TensorSpec(shape=(), dtype=tf.string)
             ))
 
     args = (image_size, num_channels, interpolation)
