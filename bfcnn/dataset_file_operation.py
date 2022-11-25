@@ -103,6 +103,7 @@ def image_dataset_from_directory(
 
     return dataset
 
+
 # ---------------------------------------------------------------------
 
 
@@ -191,6 +192,7 @@ def index_subdirectory(
         filenames.append(relative_path)
     return filenames
 
+
 # ---------------------------------------------------------------------
 
 
@@ -261,9 +263,9 @@ def image_dataset_from_directory_gen(
 
     def gen_fn():
         for x in index_directory_gen(
-                    directory=directory,
-                    formats=ALLOWLIST_FORMATS,
-                    follow_links=follow_links):
+                directory=directory,
+                formats=ALLOWLIST_FORMATS,
+                follow_links=follow_links):
             yield x
 
     def load_image_fn(x):
@@ -276,21 +278,27 @@ def image_dataset_from_directory_gen(
             generator=gen_fn,
             output_signature=(
                 tf.TensorSpec(shape=(), dtype=tf.string)
-            )) \
-        .shuffle(
+            ))
+
+    if shuffle:
+        dataset = dataset.shuffle(
             seed=seed,
             buffer_size=1024,
-            reshuffle_each_iteration=True)\
-        .map(
-            map_func=load_image_fn,
-            num_parallel_calls=tf.data.AUTOTUNE)\
-        .unbatch()\
-        .batch(
-            batch_size=batch_size,
-            num_parallel_calls=tf.data.AUTOTUNE) \
-        .prefetch(tf.data.AUTOTUNE)
+            reshuffle_each_iteration=True)
+
+    dataset = \
+        dataset\
+            .map(
+                map_func=load_image_fn,
+                num_parallel_calls=tf.data.AUTOTUNE) \
+            .unbatch() \
+            .batch(
+                batch_size=batch_size,
+                num_parallel_calls=tf.data.AUTOTUNE) \
+            .prefetch(tf.data.AUTOTUNE)
 
     return dataset
+
 
 # ---------------------------------------------------------------------
 
@@ -316,8 +324,9 @@ def index_directory_gen(
     # Build an index of the files
     # in the different class sub-folders.
     for dir_path in (os.path.join(directory, subdir) for subdir in sub_dirs):
-        for partial_filename in index_subdirectory(dir_path, follow_links, formats):
+        for partial_filename in index_subdirectory_gen(dir_path, follow_links, formats):
             yield os.path.join(directory, partial_filename)
+
 
 # ---------------------------------------------------------------------
 
@@ -346,6 +355,7 @@ def index_subdirectory_gen(
             dirname, os.path.relpath(absolute_path, directory))
         yield relative_path
 
+
 # ---------------------------------------------------------------------
 
 
@@ -355,6 +365,7 @@ def iter_valid_files(directory, follow_links, formats):
         for filename in sorted(files):
             if filename.lower().endswith(formats):
                 yield root, filename
+
 
 # ---------------------------------------------------------------------
 
@@ -380,6 +391,7 @@ def load_image(
 
     return img
 
+
 # ---------------------------------------------------------------------
 
 
@@ -389,7 +401,7 @@ def load_image_crop(
         num_channels,
         interpolation,
         no_crops_per_image: int = 16,
-        crop_size: Tuple[int, int] = (64, 64),):
+        crop_size: Tuple[int, int] = (64, 64), ):
     """Load an image from a path and resize it."""
     img = tf.io.read_file(path)
     img = tf.image.decode_image(
@@ -412,6 +424,7 @@ def load_image_crop(
             input_batch=img,
             crop_size=crop_size,
             no_crops_per_image=no_crops_per_image)
+
 
 # ---------------------------------------------------------------------
 
