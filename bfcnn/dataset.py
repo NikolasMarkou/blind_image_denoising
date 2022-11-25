@@ -25,8 +25,8 @@ def random_crops(
         crop_size: Tuple[int, int] = (64, 64),
         x_range: Tuple[float, float] = None,
         y_range: Tuple[float, float] = None,
-        interpolation_method: str = "bilinear",
-        cast_to_uint8: bool = True) -> tf.Tensor:
+        extrapolation_value: float = 0.0,
+        interpolation_method: str = "bilinear") -> tf.Tensor:
     """
     random crop from each image in the batch
 
@@ -36,7 +36,6 @@ def random_crops(
     :param x_range: manually set x_range
     :param y_range: manually set y_range
     :param interpolation_method: interpolation method
-    :param cast_to_uint8: cast the final batch to uint8
     :return: tensor with shape
         [input_batch[0] * no_crops_per_image,
          crop_size[0],
@@ -90,10 +89,7 @@ def random_crops(
             box_indices,
             crop_size,
             method=interpolation_method,
-            extrapolation_value=0.0)
-
-    if cast_to_uint8:
-        result = tf.cast(result, dtype=tf.uint8)
+            extrapolation_value=extrapolation_value)
 
     return result
 
@@ -225,7 +221,7 @@ def dataset_builder(
         """
         crop patches from input
         """
-        return \
+        input_batch = \
             tf.cond(
                 pred=random_crop,
                 true_fn=lambda:
@@ -233,8 +229,9 @@ def dataset_builder(
                     input_batch=input_batch,
                     crop_size=(input_shape[0], input_shape[1]),
                     no_crops_per_image=no_crops_per_image,
-                    cast_to_uint8=True),
+                    cast_to_uint8=False),
                 false_fn=lambda: input_batch)
+        return tf.cast(input_batch, dtype=tf.uint8)
 
     @tf.function(
         input_signature=[
