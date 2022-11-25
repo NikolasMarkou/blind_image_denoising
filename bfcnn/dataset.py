@@ -522,7 +522,7 @@ def dataset_builder(
             )) \
             .unbatch() \
             .shuffle(
-                buffer_size=batch_size * len(dataset_training),
+                buffer_size=no_crops_per_image * batch_size * len(dataset_training),
                 reshuffle_each_iteration=False) \
             .batch(
                 batch_size=batch_size,
