@@ -532,20 +532,12 @@ def dataset_builder(
                     tf.TensorSpec(
                         shape=(),
                         dtype=tf.string)
-            ))\
-            .shuffle(
-                seed=0,
-                buffer_size=1024,
-                reshuffle_each_iteration=False)\
+            )) \
+            .prefetch(24)\
             .map(
                 map_func=load_image_fn,
-                num_parallel_calls=tf.data.AUTOTUNE) \
+                num_parallel_calls=12) \
             .unbatch() \
-            .shuffle(
-                buffer_size=(no_crops_per_image *
-                             batch_size *
-                             len(dataset_training)),
-                reshuffle_each_iteration=False) \
             .batch(
                 batch_size=batch_size,
                 deterministic=False,

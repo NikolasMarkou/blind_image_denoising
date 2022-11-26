@@ -48,7 +48,7 @@ def image_filenames_dataset_from_directory_gen(
             buffer_size=1024,
             reshuffle_each_iteration=True)
 
-    return dataset.prefetch(tf.data.AUTOTUNE)
+    return dataset
 
 # ---------------------------------------------------------------------
 
