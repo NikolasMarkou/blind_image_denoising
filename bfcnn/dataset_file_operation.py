@@ -17,7 +17,6 @@ ALLOWLIST_FORMATS = (".bmp", ".gif", ".jpeg", ".jpg", ".png")
 def image_dataset_from_directory_gen(
         directory,
         color_mode="rgb",
-        batch_size=32,
         image_size=(256, 256),
         shuffle=True,
         seed=None,
@@ -188,31 +187,37 @@ def load_image_crop(
         image_size,
         num_channels,
         interpolation,
-        no_crops_per_image: int = 16,
-        crop_size: Tuple[int, int] = (64, 64), ):
-    """Load an image from a path and resize it."""
+        no_crops_per_image: int = 1,
+        crop_size: Tuple[int, int] = (64, 64)):
+    """
+    Load an image from a path
+    and resize it
+    and crop it
+    """
     img = tf.io.read_file(path)
-    img = tf.image.decode_image(
-        img, channels=num_channels, expand_animations=False
-    )
+    img = tf.image.decode_image(img,
+                                channels=num_channels,
+                                expand_animations=False)
 
-    img = tf.image.resize_with_pad(
-        image=img,
-        target_height=image_size[0],
-        target_width=image_size[1],
-        method=interpolation,
-        antialias=False
-    )
+    if image_size is not None:
+        img = tf.image.resize_with_pad(
+            image=img,
+            target_height=image_size[0],
+            target_width=image_size[1],
+            method=interpolation,
+            antialias=False
+        )
 
     img = tf.cast(img, dtype=tf.uint8)
     img = tf.expand_dims(img, axis=0)
 
-    return \
-        random_crops(
-            input_batch=img,
-            crop_size=crop_size,
-            no_crops_per_image=no_crops_per_image)
-
+    if no_crops_per_image > 0:
+        img =  \
+            random_crops(
+                input_batch=img,
+                crop_size=crop_size,
+                no_crops_per_image=no_crops_per_image)
+    return img
 
 # ---------------------------------------------------------------------
 
