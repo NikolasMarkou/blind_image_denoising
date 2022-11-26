@@ -466,7 +466,7 @@ def train_loop(
 
             # --- end of the epoch
             logger.info("checkpoint at end of epoch [{0}], took [{1}] minutes".format(
-                int(global_epoch)), int(round(epoch_time/60)))
+                int(global_epoch), int(round(epoch_time/60))))
             global_epoch.assign_add(1)
             manager.save()
             # save model so we can visualize it easier

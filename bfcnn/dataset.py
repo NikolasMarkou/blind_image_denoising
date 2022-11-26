@@ -476,7 +476,6 @@ def dataset_builder(
                 image_size=s,
                 interpolation=tf.image.ResizeMethod.AREA,
                 color_mode=color_mode,
-                batch_size=batch_size,
                 no_crops_per_image=no_crops_per_image,
                 crop_size=(input_shape[0], input_shape[1]))
             for d, s in zip(directory, dataset_shape)
@@ -505,22 +504,23 @@ def dataset_builder(
         tf.data.Dataset.from_generator(
             generator=generator_fn,
             output_signature=(
-                tf.TensorSpec(shape=(None,
-                                     input_shape[0],
-                                     input_shape[1],
-                                     channels),
-                              dtype=tf.uint8)
+                tf.TensorSpec(
+                    shape=(None,
+                           input_shape[0],
+                           input_shape[1],
+                           channels),
+                    dtype=tf.uint8)
             )) \
             .unbatch() \
             .shuffle(
-            buffer_size=(no_crops_per_image *
-                         batch_size *
-                         len(dataset_training)),
-            reshuffle_each_iteration=True) \
+                buffer_size=(no_crops_per_image *
+                             batch_size *
+                             len(dataset_training)),
+                reshuffle_each_iteration=True) \
             .batch(
-            batch_size=batch_size,
-            deterministic=False,
-            num_parallel_calls=tf.data.AUTOTUNE) \
+                batch_size=batch_size,
+                deterministic=False,
+                num_parallel_calls=tf.data.AUTOTUNE) \
             .prefetch(1)
 
     return result
