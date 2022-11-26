@@ -14,6 +14,45 @@ ALLOWLIST_FORMATS = (".bmp", ".gif", ".jpeg", ".jpg", ".png")
 # ---------------------------------------------------------------------
 
 
+def image_filenames_dataset_from_directory_gen(
+        directory,
+        shuffle=True,
+        seed=None,
+        follow_links=False,
+        **kwargs):
+    """Generates a `tf.data.Dataset` from image filenames in a directory."""
+
+    if kwargs:
+        raise TypeError(f"Unknown keywords argument(s): {tuple(kwargs.keys())}")
+
+    if seed is None:
+        seed = np.random.randint(1e6)
+
+    def gen_fn():
+        for x in index_directory_gen(
+                directory=directory,
+                formats=ALLOWLIST_FORMATS,
+                follow_links=follow_links):
+            yield x
+
+    dataset = \
+        tf.data.Dataset.from_generator(
+            generator=gen_fn,
+            output_signature=(
+                tf.TensorSpec(shape=(), dtype=tf.string)
+            ))
+
+    if shuffle:
+        dataset = dataset.shuffle(
+            seed=seed,
+            buffer_size=1024,
+            reshuffle_each_iteration=True)
+
+    return dataset.prefetch(tf.data.AUTOTUNE)
+
+# ---------------------------------------------------------------------
+
+
 def image_dataset_from_directory_gen(
         directory,
         color_mode="rgb",
@@ -188,7 +227,9 @@ def load_image_crop(
         num_channels,
         interpolation,
         no_crops_per_image: int = 1,
-        crop_size: Tuple[int, int] = (64, 64)):
+        crop_size: Tuple[int, int] = (64, 64),
+        x_range: Tuple[float, float] = None,
+        y_range: Tuple[float, float] = None):
     """
     Load an image from a path
     and resize it
@@ -216,6 +257,8 @@ def load_image_crop(
             random_crops(
                 input_batch=img,
                 crop_size=crop_size,
+                x_range=x_range,
+                y_range=y_range,
                 no_crops_per_image=no_crops_per_image)
     return img
 

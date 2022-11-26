@@ -9,7 +9,10 @@ from typing import Dict, Callable, Iterator, Tuple
 
 from .custom_logger import logger
 from .utilities import merge_iterators
-from .dataset_file_operation import image_dataset_from_directory_gen
+from .dataset_file_operation import \
+    image_dataset_from_directory_gen, \
+    image_filenames_dataset_from_directory_gen, \
+    load_image_crop
 
 # ---------------------------------------------------------------------
 
@@ -469,16 +472,12 @@ def dataset_builder(
     # --- define generator function from directory
     if directory:
         dataset_training = [
-            image_dataset_from_directory_gen(
+            image_filenames_dataset_from_directory_gen(
                 seed=0,
                 directory=d,
                 shuffle=True,
-                image_size=s,
-                interpolation=tf.image.ResizeMethod.AREA,
-                color_mode=color_mode,
-                no_crops_per_image=no_crops_per_image,
-                crop_size=(input_shape[0], input_shape[1]))
-            for d, s in zip(directory, dataset_shape)
+                follow_links=True)
+            for d in directory
         ]
     else:
         raise ValueError("don't know how to handle non directory datasets")
@@ -496,27 +495,55 @@ def dataset_builder(
     if len(dataset_training) == 0:
         raise ValueError("don't know how to handle zero datasets")
 
-    def generator_fn():
+    def gen_fn():
         for x in merge_iterators(*dataset_training):
             yield x
 
+    if color_mode == "rgb":
+        num_channels = 3
+    elif color_mode == "rgba":
+        num_channels = 4
+    elif color_mode == "grayscale":
+        num_channels = 1
+    else:
+        raise ValueError(
+            '`color_mode` must be one of {"rgb", "rgba", "grayscale"}. '
+            f"Received: color_mode={color_mode}"
+        )
+
+    def load_image_fn(x):
+        return load_image_crop(
+            path=x,
+            image_size=None,
+            num_channels=num_channels,
+            interpolation=tf.image.ResizeMethod.BILINEAR,
+            crop_size=(input_shape[0], input_shape[1]),
+            x_range=None,
+            y_range=None,
+            no_crops_per_image=no_crops_per_image)
+
     result[DATASET_TRAINING_FN_STR] = \
-        tf.data.Dataset.from_generator(
-            generator=generator_fn,
-            output_signature=(
-                tf.TensorSpec(
-                    shape=(None,
-                           input_shape[0],
-                           input_shape[1],
-                           channels),
-                    dtype=tf.uint8)
-            )) \
+        tf.data.Dataset\
+            .from_generator(
+                generator=gen_fn,
+                output_signature=(
+                    tf.TensorSpec(
+                        shape=(),
+                        dtype=tf.string)
+            ))\
+            .shuffle(
+                seed=0,
+                buffer_size=1024,
+                reshuffle_each_iteration=False)\
+            .map(
+                map_func=load_image_fn,
+                num_parallel_calls=tf.data.AUTOTUNE) \
             .unbatch() \
             .shuffle(
                 buffer_size=(no_crops_per_image *
                              batch_size *
                              len(dataset_training)),
-                reshuffle_each_iteration=True) \
+                reshuffle_each_iteration=False) \
             .batch(
                 batch_size=batch_size,
                 deterministic=False,
