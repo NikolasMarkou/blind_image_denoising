@@ -495,10 +495,6 @@ def dataset_builder(
     if len(dataset_training) == 0:
         raise ValueError("don't know how to handle zero datasets")
 
-    def gen_fn():
-        for x in merge_iterators(*dataset_training):
-            yield x
-
     if color_mode == "rgb":
         num_channels = 3
     elif color_mode == "rgba":
@@ -511,8 +507,12 @@ def dataset_builder(
             f"Received: color_mode={color_mode}"
         )
 
+    def gen_fn():
+        for x in merge_iterators(*dataset_training):
+            yield x
+
     def load_image_fn(x):
-        return load_image_crop(
+        x = load_image_crop(
             path=x,
             image_size=None,
             num_channels=num_channels,
@@ -521,6 +521,8 @@ def dataset_builder(
             x_range=None,
             y_range=None,
             no_crops_per_image=no_crops_per_image)
+        x = tf.cast(x, dtype=tf.uint8)
+        return x
 
     result[DATASET_TRAINING_FN_STR] = \
         tf.data.Dataset\
