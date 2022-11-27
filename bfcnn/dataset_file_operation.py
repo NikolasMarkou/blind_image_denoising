@@ -16,12 +16,39 @@ ALLOWLIST_FORMATS = (".bmp", ".gif", ".jpeg", ".jpg", ".png")
 
 def image_filenames_dataset_from_directory_gen(
         directory,
-        follow_links=False):
-    for x in index_directory_gen(
-            directory=directory,
-            formats=ALLOWLIST_FORMATS,
-            follow_links=follow_links):
-        yield x
+        shuffle=True,
+        seed=None,
+        follow_links=False,
+        **kwargs):
+    """Generates a `tf.data.Dataset` from image filenames in a directory."""
+
+    if kwargs:
+        raise TypeError(f"Unknown keywords argument(s): {tuple(kwargs.keys())}")
+
+    if seed is None:
+        seed = np.random.randint(1e6)
+
+    def gen_fn():
+        for x in index_directory_gen(
+                directory=directory,
+                formats=ALLOWLIST_FORMATS,
+                follow_links=follow_links):
+            yield x
+
+    dataset = \
+        tf.data.Dataset.from_generator(
+            generator=gen_fn,
+            output_signature=(
+                tf.TensorSpec(shape=(), dtype=tf.string)
+            ))
+
+    if shuffle:
+        dataset = dataset.shuffle(
+            seed=seed,
+            buffer_size=1024,
+            reshuffle_each_iteration=True)
+
+    return dataset
 
 # ---------------------------------------------------------------------
 
