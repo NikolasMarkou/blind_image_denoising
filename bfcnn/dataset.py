@@ -533,7 +533,7 @@ def dataset_builder(
             )) \
             .prefetch(24)\
             .map(
-                map_func=load_image_fn,
+                map_func=tf.function(load_image_fn),
                 num_parallel_calls=12) \
             .unbatch() \
             .shuffle(
