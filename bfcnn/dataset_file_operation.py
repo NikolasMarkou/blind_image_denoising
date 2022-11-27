@@ -263,8 +263,9 @@ def random_crops(
          input_batch[3]]
     """
     shape = tf.shape(input_batch)
+    batch_size = shape[0]
     # computer the total number of crops
-    total_crops = no_crops_per_image * shape[0]
+    total_crops = no_crops_per_image * batch_size
 
     # fill y_range, x_range based on crop size and input batch size
     if y_range is None:
