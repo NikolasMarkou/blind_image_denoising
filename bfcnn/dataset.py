@@ -473,9 +473,7 @@ def dataset_builder(
     if directory:
         dataset_training = [
             image_filenames_dataset_from_directory_gen(
-                seed=0,
                 directory=d,
-                shuffle=True,
                 follow_links=True)
             for d in directory
         ]
@@ -545,7 +543,7 @@ def dataset_builder(
             .batch(
                 batch_size=batch_size,
                 deterministic=False,
-                num_parallel_calls=tf.data.AUTOTUNE) \
+                num_parallel_calls=2) \
             .prefetch(1)
 
     return result
