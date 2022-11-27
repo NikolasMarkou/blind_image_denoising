@@ -12,13 +12,7 @@
     "final_activation": "tanh",
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
-    "kernel_regularizer": {
-        "type": "erf",
-        "config": {
-            "l2_coefficient": 0.0,
-            "l1_coefficient": 0.025
-        }
-    }
+    "kernel_regularizer": "l1"
   },
    "train": {
     "epochs": 20,
