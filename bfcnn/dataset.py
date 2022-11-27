@@ -533,7 +533,6 @@ def dataset_builder(
                         shape=(),
                         dtype=tf.string)
             )) \
-            .cache(filename="image_filenames")\
             .map(
                 map_func=tf.function(load_image_fn),
                 num_parallel_calls=12) \
