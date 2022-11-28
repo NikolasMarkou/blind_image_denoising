@@ -120,7 +120,7 @@ import bfcnn
 def test_dataset_builder_build(config):
     dataset_results = bfcnn.dataset.dataset_builder(config=config)
     assert bfcnn.dataset.DATASET_TRAINING_FN_STR in dataset_results
-    assert bfcnn.dataset.AUGMENTATION_FN_STR in dataset_results
+    assert bfcnn.dataset.NOISE_AUGMENTATION_FN_STR in dataset_results
 
     for input_batch in dataset_results[bfcnn.dataset.DATASET_TRAINING_FN_STR]:
         assert input_batch.shape[0] <= config["batch_size"]

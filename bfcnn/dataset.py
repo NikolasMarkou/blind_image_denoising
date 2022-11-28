@@ -10,96 +10,16 @@ from typing import Dict, Callable, Iterator, Tuple
 from .custom_logger import logger
 from .utilities import merge_iterators
 from .dataset_file_operation import \
-    image_dataset_from_directory_gen, \
     image_filenames_dataset_from_directory_gen, \
     load_image_crop
 
 # ---------------------------------------------------------------------
 
-AUGMENTATION_FN_STR = "augmentation"
 DATASET_TESTING_FN_STR = "dataset_testing"
 DATASET_TRAINING_FN_STR = "dataset_training"
 DATASET_VALIDATION_FN_STR = "dataset_validation"
+NOISE_AUGMENTATION_FN_STR = "noise_augmentation"
 GEOMETRIC_AUGMENTATION_FN_STR = "geometric_augmentation"
-
-
-def random_crops(
-        input_batch: tf.Tensor,
-        no_crops_per_image: int = 16,
-        crop_size: Tuple[int, int] = (64, 64),
-        x_range: Tuple[float, float] = None,
-        y_range: Tuple[float, float] = None,
-        extrapolation_value: float = 0.0,
-        interpolation_method: str = "bilinear") -> tf.Tensor:
-    """
-    random crop from each image in the batch
-
-    :param input_batch: 4D tensor
-    :param no_crops_per_image: number of crops per image in batch
-    :param crop_size: final crop size output
-    :param x_range: manually set x_range
-    :param y_range: manually set y_range
-    :param extrapolation_value: value set to beyond the image crop
-    :param interpolation_method: interpolation method
-    :return: tensor with shape
-        [input_batch[0] * no_crops_per_image,
-         crop_size[0],
-         crop_size[1],
-         input_batch[3]]
-    """
-    shape = tf.shape(input_batch)
-    batch_size = shape[0]
-    # computer the total number of crops
-    total_crops = no_crops_per_image * batch_size
-
-    # fill y_range, x_range based on crop size and input batch size
-    if y_range is None:
-        y_range = (float(crop_size[0] / shape[1]),
-                   float(crop_size[0] / shape[1] + 0.01))
-
-    if x_range is None:
-        x_range = (float(crop_size[1] / shape[2]),
-                   float(crop_size[1] / shape[2] + 0.01))
-
-    #
-    y1 = tf.random.uniform(
-        shape=(total_crops, 1), minval=0.0, maxval=1.0 - y_range[0])
-    y2 = y1 + \
-         tf.random.uniform(
-             shape=(total_crops, 1), minval=y_range[0], maxval=y_range[1])
-    #
-    x1 = tf.random.uniform(
-        shape=(total_crops, 1), minval=0.0, maxval=1.0 - x_range[0])
-    x2 = x1 + \
-         tf.random.uniform(
-             shape=(total_crops, 1), minval=x_range[0], maxval=x_range[1])
-    # limit the crops to the end of image
-    y1 = tf.maximum(y1, 0.0)
-    y2 = tf.minimum(y2, 1.0)
-    x1 = tf.maximum(x1, 0.0)
-    x2 = tf.minimum(x2, 1.0)
-    # concat the dimensions to create [total_crops, 4] boxes
-    boxes = tf.concat([y1, x1, y2, x2], axis=1)
-
-    # --- randomly choose the image to crop inside the batch
-    box_indices = \
-        tf.random.uniform(
-            shape=(total_crops,),
-            minval=0,
-            maxval=batch_size,
-            dtype=tf.int32)
-
-    result = \
-        tf.image.crop_and_resize(
-            input_batch,
-            boxes,
-            box_indices,
-            crop_size,
-            method=interpolation_method,
-            extrapolation_value=extrapolation_value)
-
-    return result
-
 
 # ---------------------------------------------------------------------
 
@@ -198,10 +118,6 @@ def dataset_builder(
     tf.random.set_seed(0)
 
     @tf.function
-    def cast_to_float32(input_batch: tf.Tensor) -> tf.Tensor:
-        return tf.cast(input_batch, tf.float32)
-
-    @tf.function
     def random_choice(
             x: tf.Tensor,
             size=tf.constant(1, dtype=tf.int64),
@@ -217,36 +133,10 @@ def dataset_builder(
     @tf.function(
         input_signature=[
             tf.TensorSpec(shape=[None,
-                                 None,
-                                 None,
-                                 channels],
-                          dtype=tf.float32)],
-        reduce_retracing=False,
-        jit_compile=False)
-    def crop_fn(
-            input_batch: tf.Tensor) -> tf.Tensor:
-        """
-        crop patches from input
-        """
-        input_batch = \
-            tf.cond(
-                pred=random_crop,
-                true_fn=lambda:
-                random_crops(
-                    input_batch=input_batch,
-                    crop_size=(input_shape[0], input_shape[1]),
-                    no_crops_per_image=no_crops_per_image),
-                false_fn=lambda: input_batch)
-        return tf.cast(input_batch, dtype=tf.uint8)
-
-    @tf.function(
-        input_signature=[
-            tf.TensorSpec(shape=[None,
                                  input_shape[0],
                                  input_shape[1],
                                  channels],
                           dtype=tf.uint8)],
-        reduce_retracing=False,
         jit_compile=False)
     def geometric_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
@@ -295,7 +185,7 @@ def dataset_builder(
 
         return input_batch
 
-    # --- define augmentation function
+    # --- define noise augmentation function
     @tf.function(
         input_signature=[
             tf.TensorSpec(shape=[None,
@@ -303,7 +193,6 @@ def dataset_builder(
                                  input_shape[1],
                                  channels],
                           dtype=tf.float32)],
-        reduce_retracing=False,
         jit_compile=False)
     def noise_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
@@ -487,9 +376,9 @@ def dataset_builder(
     result[GEOMETRIC_AUGMENTATION_FN_STR] = geometric_augmentations_fn
 
     if mix_noise_types:
-        result[AUGMENTATION_FN_STR] = noise_augmentations_mix_fn
+        result[NOISE_AUGMENTATION_FN_STR] = noise_augmentations_mix_fn
     else:
-        result[AUGMENTATION_FN_STR] = noise_augmentations_fn
+        result[NOISE_AUGMENTATION_FN_STR] = noise_augmentations_fn
 
     # dataset produces the dataset with basic geometric distortions
     if len(dataset_training) == 0:
@@ -521,7 +410,6 @@ def dataset_builder(
             x_range=None,
             y_range=None,
             no_crops_per_image=no_crops_per_image)
-        x = tf.cast(x, dtype=tf.uint8)
         return x
 
     result[DATASET_TRAINING_FN_STR] = \
@@ -534,7 +422,7 @@ def dataset_builder(
                         dtype=tf.string)
             )) \
             .map(
-                map_func=tf.function(load_image_fn),
+                map_func=load_image_fn,
                 num_parallel_calls=12) \
             .unbatch() \
             .shuffle(

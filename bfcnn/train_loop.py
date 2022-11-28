@@ -19,7 +19,7 @@ from .model_denoiser import model_builder as model_denoise_builder
 from .utilities import load_config, load_image, probabilistic_drop_off, clip_tensor
 from .dataset import \
     dataset_builder, \
-    AUGMENTATION_FN_STR, \
+    NOISE_AUGMENTATION_FN_STR, \
     DATASET_TRAINING_FN_STR, \
     GEOMETRIC_AUGMENTATION_FN_STR
 
@@ -66,7 +66,7 @@ def train_loop(
     # --- build dataset
     dataset_res = dataset_builder(config["dataset"])
     dataset_training = dataset_res[DATASET_TRAINING_FN_STR]
-    noise_augmentation_fn = dataset_res[AUGMENTATION_FN_STR]
+    noise_augmentation_fn = dataset_res[NOISE_AUGMENTATION_FN_STR]
     geometric_augmentation_fn = dataset_res[GEOMETRIC_AUGMENTATION_FN_STR]
 
     # --- build loss function

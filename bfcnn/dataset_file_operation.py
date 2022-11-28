@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import tensorflow as tf
-from typing import Tuple
+from typing import Tuple, Union, Any
 
 # ---------------------------------------------------------------------
 
@@ -9,7 +9,8 @@ from .utilities import logger
 
 # ---------------------------------------------------------------------
 
-ALLOWLIST_FORMATS = (".bmp", ".gif", ".jpeg", ".jpg", ".png")
+SUPPORTED_IMAGE_LIST_FORMATS = (".bmp", ".gif", ".jpeg", ".jpg", ".png")
+
 
 # ---------------------------------------------------------------------
 
@@ -18,116 +19,19 @@ def image_filenames_dataset_from_directory_gen(
         directory,
         shuffle=True,
         seed=None,
-        follow_links=False,
-        **kwargs):
-    """Generates a `tf.data.Dataset` from image filenames in a directory."""
-
-    if kwargs:
-        raise TypeError(f"Unknown keywords argument(s): {tuple(kwargs.keys())}")
-
-    if seed is None:
-        seed = np.random.randint(1e6)
-
-    def gen_fn():
-        for x in index_directory_gen(
-                directory=directory,
-                formats=ALLOWLIST_FORMATS,
-                follow_links=follow_links):
-            yield x
-
-    dataset = \
-        tf.data.Dataset.from_generator(
-            generator=gen_fn,
-            output_signature=(
-                tf.TensorSpec(shape=(), dtype=tf.string)
-            ))
-
-    if shuffle:
-        dataset = dataset.shuffle(
-            seed=seed,
-            buffer_size=1024,
-            reshuffle_each_iteration=True)
-
-    return dataset
-
-# ---------------------------------------------------------------------
-
-
-def image_dataset_from_directory_gen(
-        directory,
-        color_mode="rgb",
-        image_size=(256, 256),
-        shuffle=True,
-        seed=None,
-        interpolation=tf.image.ResizeMethod.BILINEAR,
-        follow_links=False,
-        no_crops_per_image: int = 1,
-        crop_size: Tuple[int, int] = (64, 64),
-        **kwargs):
-    """Generates a `tf.data.Dataset` from image files in a directory.
-
-    Animated gifs are truncated to the first frame.
-    Args:
-      directory: Directory where the data is located.
-      color_mode: One of "grayscale", "rgb", "rgba". Default: "rgb".
-          Whether the images will be converted to
-          have 1, 3, or 4 channels.
-      batch_size: Size of the batches of data. Default: 32.
-        If `None`, the data will not be batched
-        (the dataset will yield individual samples).
-      image_size: Size to resize images to after they are read from disk,
-          specified as `(height, width)`. Defaults to `(256, 256)`.
-          Since the pipeline processes batches of images that must all have
-          the same size, this must be provided.
-      shuffle: Whether to shuffle the data. Default: True.
-          If set to False, sorts the data in alphanumeric order.
-      seed: Optional random seed for shuffling and transformations.
-      interpolation: String, the interpolation method used when resizing images.
-        Defaults to `bilinear`. Supports `bilinear`, `nearest`, `bicubic`,
-        `area`, `lanczos3`, `lanczos5`, `gaussian`, `mitchellcubic`.
-      follow_links: Whether to visit subdirectories pointed to by symlinks.
-          Defaults to False.
-      **kwargs: Legacy keyword arguments.
-    Returns:
-      A `tf.data.Dataset` object.
-        - `(batch_size, image_size[0], image_size[1], num_channels)`,
-    Rules regarding number of channels in the yielded images:
-      - if `color_mode` is `grayscale`,
-        there's 1 channel in the image tensors.
-      - if `color_mode` is `rgb`,
-        there are 3 channels in the image tensors.
-      - if `color_mode` is `rgba`,
-        there are 4 channels in the image tensors.
+        follow_links=False):
     """
-    if kwargs:
-        raise TypeError(f"Unknown keywords argument(s): {tuple(kwargs.keys())}")
-
-    if color_mode == "rgb":
-        num_channels = 3
-    elif color_mode == "rgba":
-        num_channels = 4
-    elif color_mode == "grayscale":
-        num_channels = 1
-    else:
-        raise ValueError(
-            '`color_mode` must be one of {"rgb", "rgba", "grayscale"}. '
-            f"Received: color_mode={color_mode}"
-        )
-
+    Generates a `tf.data.Dataset` from image filenames in a directory.
+    """
     if seed is None:
         seed = np.random.randint(1e6)
 
     def gen_fn():
         for x in index_directory_gen(
                 directory=directory,
-                formats=ALLOWLIST_FORMATS,
+                formats=SUPPORTED_IMAGE_LIST_FORMATS,
                 follow_links=follow_links):
             yield x
-
-    def load_image_fn(x):
-        return load_image_crop(
-            x, image_size, num_channels, interpolation,
-            crop_size=crop_size, no_crops_per_image=no_crops_per_image)
 
     dataset = \
         tf.data.Dataset.from_generator(
@@ -142,15 +46,7 @@ def image_dataset_from_directory_gen(
             buffer_size=1024,
             reshuffle_each_iteration=True)
 
-    dataset = \
-        dataset\
-            .map(
-                map_func=load_image_fn,
-                num_parallel_calls=tf.data.AUTOTUNE) \
-            .prefetch(tf.data.AUTOTUNE)
-
     return dataset
-
 
 # ---------------------------------------------------------------------
 
@@ -222,19 +118,47 @@ def iter_valid_files(directory, follow_links, formats):
 
 
 def load_image_crop(
-        path,
-        image_size,
-        num_channels,
-        interpolation,
+        path: Any,
+        image_size: Tuple[int, int] = None,
+        num_channels: int = 3,
+        interpolation: tf.image.ResizeMethod = tf.image.ResizeMethod.BILINEAR,
         no_crops_per_image: int = 1,
         crop_size: Tuple[int, int] = (64, 64),
         x_range: Tuple[float, float] = None,
-        y_range: Tuple[float, float] = None):
+        y_range: Tuple[float, float] = None) -> tf.Tensor:
     """
-    Load an image from a path
-    and resize it
-    and crop it
+    Load an image from a path, resize it, crop it
     """
+    # --- load image
+    img = \
+        load_image(
+            path=path,
+            image_size=image_size,
+            num_channels=num_channels,
+            interpolation=interpolation)
+
+    # --- expand dims and crop
+    img = tf.expand_dims(img, axis=0)
+
+    img = \
+        random_crops(
+            input_batch=img,
+            crop_size=crop_size,
+            x_range=x_range,
+            y_range=y_range,
+            no_crops_per_image=no_crops_per_image)
+
+    return img
+
+
+# ---------------------------------------------------------------------
+
+
+def load_image(
+        path: Any,
+        image_size: Tuple[int, int] = None,
+        num_channels: int = 3,
+        interpolation: tf.image.ResizeMethod = tf.image.ResizeMethod.BILINEAR) -> tf.Tensor:
     img = tf.io.read_file(path)
     img = tf.image.decode_image(img,
                                 channels=num_channels,
@@ -249,17 +173,6 @@ def load_image_crop(
             antialias=False
         )
 
-    img = tf.cast(img, dtype=tf.uint8)
-    img = tf.expand_dims(img, axis=0)
-
-    if no_crops_per_image > 0:
-        img =  \
-            random_crops(
-                input_batch=img,
-                crop_size=crop_size,
-                x_range=x_range,
-                y_range=y_range,
-                no_crops_per_image=no_crops_per_image)
     return img
 
 # ---------------------------------------------------------------------
@@ -290,7 +203,9 @@ def random_crops(
          input_batch[3]]
     """
     shape = tf.shape(input_batch)
+    original_dtype = input_batch.dtype
     batch_size = shape[0]
+
     # computer the total number of crops
     total_crops = no_crops_per_image * batch_size
 
@@ -339,6 +254,9 @@ def random_crops(
             crop_size=crop_size,
             method=interpolation_method,
             extrapolation_value=extrapolation_value)
+
+    # --- cast to original img dtype (no surprises principle)
+    result = tf.cast(result, dtype=original_dtype)
 
     return result
 
