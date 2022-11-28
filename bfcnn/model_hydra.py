@@ -595,8 +595,8 @@ def model_inpaint_builder(
             multiplier_scaling=False)
 
     x = \
-        tf.keras.layers.Multiply()([x, mask_input_layer]) + \
-        tf.keras.layers.Multiply()([original_input_layer, 1.0 - mask_input_layer])
+        tf.keras.layers.Multiply()([x, 1.0 - mask_input_layer]) + \
+        tf.keras.layers.Multiply()([original_input_layer, mask_input_layer])
 
     x_result = \
         tf.keras.layers.Layer(
