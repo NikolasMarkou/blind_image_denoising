@@ -47,7 +47,7 @@ def gar_loss(
 
 def delta(
         x: tf.Tensor,
-        mask: tf.Tensor = None,
+        mask: tf.Tensor = tf.constant(1.0, tf.float32),
         kernel_size: int = 3,
         alpha: float = 1.0,
         beta: float = 1.0,
@@ -421,7 +421,6 @@ def loss_function_builder(
                     mae_prediction_loss += \
                         mae(original=input_batch_multiscale[i],
                             prediction=prediction_batch_multiscale[i],
-                            mask=None,
                             hinge=hinge,
                             cutoff=cutoff,
                             count_non_zero_mean=count_non_zero_mean)
@@ -432,14 +431,12 @@ def loss_function_builder(
                     mae_weighted_delta(
                         original=input_batch,
                         prediction=predicted_batch,
-                        mask=None,
                         hinge=hinge,
                         cutoff=cutoff)
             else:
                 mae_prediction_loss += \
                     mae(original=input_batch,
                         prediction=predicted_batch,
-                        mask=None,
                         hinge=hinge,
                         cutoff=cutoff,
                         count_non_zero_mean=count_non_zero_mean)

@@ -339,7 +339,7 @@ def train_loop(
                     superres_loss_map = \
                         superres_loss_fn(
                             input_batch=input_batch,
-                            predicted_batch=superres_output,)
+                            predicted_batch=superres_output)
                     model_loss_map = \
                         model_loss_fn(model=hydra)
 
