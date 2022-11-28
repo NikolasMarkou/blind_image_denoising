@@ -9,7 +9,7 @@ from collections import namedtuple
 from .constants import *
 from .custom_logger import logger
 from .utilities import \
-    clip_tensor, \
+    clip_normalized_tensor, \
     conv2d_wrapper, \
     input_shape_fixer, \
     build_normalize_model, \
@@ -298,10 +298,10 @@ def model_builder(
                         conv_params=residual_conv_params,
                         channelwise_scaling=True,
                         multiplier_scaling=False)
-                previous_level = clip_tensor(previous_level)
+                previous_level = clip_normalized_tensor(previous_level)
                 previous_level = \
                     tf.keras.layers.Add()([previous_level, x_level])
-                current_level_input = clip_tensor(previous_level)
+                current_level_input = clip_normalized_tensor(previous_level)
                 current_level_output = backbone_models[i](current_level_input)
             previous_level = current_level_output
             x_levels[i] = current_level_output
@@ -320,7 +320,7 @@ def model_builder(
     # --- clip levels
     if clip_values:
         for i, x_level in enumerate(x_levels):
-            x_levels[i] = clip_tensor(x_level)
+            x_levels[i] = clip_normalized_tensor(x_level)
 
     # --- merge levels together
     if use_pyramid:

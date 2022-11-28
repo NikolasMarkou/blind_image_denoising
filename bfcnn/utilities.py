@@ -23,7 +23,7 @@ from .custom_layers import \
 
 
 @tf.function
-def clip_tensor(
+def clip_normalized_tensor(
         input_tensor: tf.Tensor) -> tf.Tensor:
     """
     clip an input to [-0.5, +0.5]
@@ -36,6 +36,22 @@ def clip_tensor(
             input_tensor,
             clip_value_min=-0.5,
             clip_value_max=+0.5)
+
+
+@tf.function
+def clip_unnormalized_tensor(
+        input_tensor: tf.Tensor) -> tf.Tensor:
+    """
+    clip an input to [0.0, 255.0]
+
+    :param input_tensor:
+    :return:
+    """
+    return \
+        tf.clip_by_value(
+            input_tensor,
+            clip_value_min=0.0,
+            clip_value_max=255.0)
 
 # ---------------------------------------------------------------------
 
@@ -613,7 +629,7 @@ def layer_denormalize(args):
     Convert input [-0.5, +0.5] to [v0, v1] range
     """
     y, v_min, v_max = args
-    y_clip = clip_tensor(y)
+    y_clip = clip_normalized_tensor(y)
     return (y_clip + 0.5) * (v_max - v_min) + v_min
 
 

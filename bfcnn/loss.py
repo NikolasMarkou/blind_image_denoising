@@ -13,6 +13,11 @@ from .custom_logger import logger
 from .delta import delta_xy_magnitude
 from .pyramid import build_pyramid_model
 
+MODEL_LOSS_FN_STR = "model"
+INPAINT_LOSS_FN_STR = "inpaint"
+DENOISER_LOSS_FN_STR = "denoiser"
+SUPERRES_LOSS_FN_STR = "superres"
+
 # ---------------------------------------------------------------------
 
 
@@ -384,29 +389,22 @@ def loss_function_builder(
             config=laplacian_config)
     pyramid_levels = laplacian_config["levels"]
 
-    def loss_function(
+    def model_loss(model):
+        regularization_loss = \
+            tf.add_n(model.losses)
+        return {
+            REGULARIZATION_LOSS_STR: regularization_loss,
+            TOTAL_LOSS_STR: regularization_loss * regularization_multiplier
+        }
+
+    # ---
+    def denoiser_loss(
             input_batch: tf.Tensor,
-            prediction_batch: tf.Tensor,
-            noisy_batch: tf.Tensor,
-            model_losses: tf.Tensor,
-            feature_map_batch: tf.Tensor = None,
-            mask_batch: tf.Tensor = tf.constant(1.0, dtype=tf.float32)) -> Dict[str, tf.Tensor]:
-        """
-        The loss function of the depth prediction model
-
-        :param input_batch: ground truth
-        :param prediction_batch: prediction
-        :param noisy_batch: noisy batch
-        :param model_losses: weight/regularization losses
-        :param feature_map_batch: features batch
-        :param mask_batch: mask to focus on
-
-        :return: dictionary of losses
-        """
+            predicted_batch: tf.Tensor):
         # --- actual mean absolute error (no hinge or cutoff)
         mae_actual = \
             mae(original=input_batch,
-                prediction=prediction_batch,
+                prediction=predicted_batch,
                 hinge=0.0,
                 cutoff=255.0)
 
@@ -418,12 +416,12 @@ def loss_function_builder(
                 input_batch_multiscale = \
                     pyramid_model(input_batch, training=False)
                 prediction_batch_multiscale = \
-                    pyramid_model(prediction_batch, training=False)
+                    pyramid_model(predicted_batch, training=False)
                 for i in range(pyramid_levels):
                     mae_prediction_loss += \
                         mae(original=input_batch_multiscale[i],
                             prediction=prediction_batch_multiscale[i],
-                            mask=mask_batch,
+                            mask=None,
                             hinge=hinge,
                             cutoff=cutoff,
                             count_non_zero_mean=count_non_zero_mean)
@@ -433,15 +431,15 @@ def loss_function_builder(
                 mae_prediction_loss += \
                     mae_weighted_delta(
                         original=input_batch,
-                        prediction=prediction_batch,
-                        mask=mask_batch,
+                        prediction=predicted_batch,
+                        mask=None,
                         hinge=hinge,
                         cutoff=cutoff)
             else:
                 mae_prediction_loss += \
                     mae(original=input_batch,
-                        prediction=prediction_batch,
-                        mask=mask_batch,
+                        prediction=predicted_batch,
+                        mask=None,
                         hinge=hinge,
                         cutoff=cutoff,
                         count_non_zero_mean=count_non_zero_mean)
@@ -452,46 +450,28 @@ def loss_function_builder(
         if use_mse:
             mse_prediction_loss += \
                 rmse(original=input_batch,
-                     prediction=prediction_batch,
+                     prediction=predicted_batch,
                      hinge=hinge,
                      cutoff=(cutoff * cutoff))
 
-        # --- regularization on features map
-        feature_map_regularization_loss =\
-            tf.constant(0.0, dtype=tf.float32)
-        if use_features:
-            feature_map_regularization_loss = soft_orthogonal(feature_map_batch)
-
-        # ---
-        nae_noise = nae(input_batch, noisy_batch)
-        nae_prediction = nae(input_batch, prediction_batch)
-        nae_improvement = \
-            (nae_noise + DEFAULT_EPSILON) / (nae_prediction + DEFAULT_EPSILON)
-
-        # --- regularization error
-        regularization_loss = tf.add_n(model_losses)
-
         # --- snr
         peak_signal_to_noise_ratio = \
-            psnr(input_batch, prediction_batch)
-
-        # --- add up loss
-        mean_total_loss = \
-            mae_prediction_loss * mae_multiplier + \
-            mse_prediction_loss * mse_multiplier + \
-            regularization_loss * regularization_multiplier + \
-            feature_map_regularization_loss * features_multiplier
+            psnr(input_batch, predicted_batch)
 
         return {
-            NAE_NOISE_STR: nae_noise,
+            TOTAL_LOSS_STR:
+                mae_prediction_loss * mae_multiplier +
+                mse_prediction_loss * mse_multiplier,
             MAE_LOSS_STR: mae_actual,
-            PSNR_STR: peak_signal_to_noise_ratio,
-            NAE_PREDICTION_STR: nae_prediction,
-            MEAN_TOTAL_LOSS_STR: mean_total_loss,
-            NAE_IMPROVEMENT_STR: nae_improvement,
-            REGULARIZATION_LOSS_STR: regularization_loss
+            PSNR_STR: peak_signal_to_noise_ratio
         }
 
-    return loss_function
+    # ----
+    return {
+        MODEL_LOSS_FN_STR: model_loss,
+        DENOISER_LOSS_FN_STR: denoiser_loss,
+        INPAINT_LOSS_FN_STR: denoiser_loss,
+        SUPERRES_LOSS_FN_STR: denoiser_loss
+    }
 
 # ---------------------------------------------------------------------

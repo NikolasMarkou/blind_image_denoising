@@ -1,32 +1,18 @@
-{
+config = {
   "model_denoise": {
-    "filters": 32,
-    "no_layers": 6,
-    "kernel_size": 7,
-    "block_kernels": [3, 3],
-    "block_filters": [32, 32],
-    "value_range": [0, 255],
-    "type": "resnet",
-    "batchnorm": true,
-    "activation": "relu",
-    "add_initial_bn": true,
-    "add_final_bn": true,
-    "final_activation": "tanh",
-    "input_shape": ["?", "?", 3],
-    "kernel_initializer": "glorot_normal",
-    "kernel_regularizer": "l1"
+
   },
-   "train": {
+  "train": {
     "epochs": 20,
     "total_steps": -1,
-    "use_test_images": true,
+    "use_test_images": True,
     "checkpoints_to_keep": 3,
     "checkpoint_every": 10000,
     "visualization_number": 4,
     "visualization_every": 1000,
     "same_sample_iterations": 1,
     "random_batch_iterations": 5,
-    "random_batch_size": [128, 128, 3],
+    "random_batch_size": [256, 256, 3],
     "random_batch_min_difference": 0.1,
     "optimizer": {
       "gradient_clipping_by_norm": 1.0,
@@ -44,27 +30,24 @@
     "hinge": 0.5,
     "cutoff": 255.0,
     "mae_multiplier": 1.0,
-    "regularization": 0.01,
-    "use_multiscale": false,
-    "count_non_zero_mean": false
+    "regularization": 0.01
   },
   "dataset": {
     "batch_size": 16,
-    "mix_noise_types": false,
     "value_range": [0, 255],
-    "scale_range": [0.9, 1.0],
-    "clip_value": true,
-    "random_blur": true,
+    "scale_range": [0.5, 1.0],
+    "clip_value": True,
+    "random_blur": True,
     "subsample_size": -1,
-    "round_values": true,
-    "random_invert": false,
+    "round_values": True,
+    "random_invert": False,
     "random_rotate": 0.314,
-    "random_up_down": true,
+    "random_up_down": True,
     "color_mode": "rgb",
-    "random_left_right": true,
-    "input_shape": [128, 128, 3],
+    "random_left_right": True,
+    "input_shape": [256, 256, 3],
     "multiplicative_noise": [0.05, 0.1, 0.2],
-    "additional_noise": [1, 5, 10, 20, 40],
+    "additional_noise": [1, 5, 10, 20],
     "inputs": [
       {
         "dataset_shape": [256, 768],

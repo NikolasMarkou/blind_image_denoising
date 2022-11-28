@@ -19,6 +19,8 @@ DATASET_TESTING_FN_STR = "dataset_testing"
 DATASET_TRAINING_FN_STR = "dataset_training"
 DATASET_VALIDATION_FN_STR = "dataset_validation"
 NOISE_AUGMENTATION_FN_STR = "noise_augmentation"
+INPAINT_AUGMENTATION_FN_STR = "inpaint_augmentation"
+SUPERRES_AUGMENTATION_FN_STR = "superres_augmentation"
 GEOMETRIC_AUGMENTATION_FN_STR = "geometric_augmentation"
 
 # ---------------------------------------------------------------------
@@ -184,6 +186,40 @@ def dataset_builder(
                 false_fn=lambda: input_batch)
 
         return input_batch
+
+    # --- define inpainting augmentation function
+    def inpaint_augmentation_fn(
+            input_batch: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+        input_shape_inference = tf.shape(input_batch)
+
+        # channel dependent noise
+        mask_batch = tf.repeat(
+            tf.random.uniform(
+                minval=0.0,
+                maxval=1.0,
+                shape=(input_shape_inference[0],
+                       input_shape_inference[1],
+                       input_shape_inference[2],
+                       1)),
+            axis=3,
+            repeats=[input_shape_inference[3]])
+        mask_batch = \
+            tf.cast(
+                tf.greater(mask_batch, tf.constant(0.5)),
+                tf.float32)
+
+        masked_batch = \
+            tf.multiply(input_batch, mask_batch)
+
+        return masked_batch, mask_batch
+
+    # --- define superres augmentation function
+    def superres_augmentation_fn(
+            input_batch: tf.Tensor) -> tf.Tensor:
+        downsampled_batch = \
+            tf.keras.layers.AveragePooling2D(
+                pool_size=(3, 3), strides=(2, 2), padding="valid")(input_batch)
+        return downsampled_batch
 
     # --- define noise augmentation function
     @tf.function(
@@ -373,6 +409,8 @@ def dataset_builder(
 
     # --- create the dataset
     result = dict()
+    result[INPAINT_AUGMENTATION_FN_STR] = inpaint_augmentation_fn
+    result[SUPERRES_AUGMENTATION_FN_STR] = superres_augmentation_fn
     result[GEOMETRIC_AUGMENTATION_FN_STR] = geometric_augmentations_fn
 
     if mix_noise_types:

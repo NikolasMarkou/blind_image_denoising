@@ -40,7 +40,7 @@ def visualize(
         global_step,
         input_batch,
         noisy_batch,
-        prediction_batch,
+        denoiser_batch,
         random_batch=None,
         test_input_batch=None,
         test_output_batch=None,
@@ -65,11 +65,11 @@ def visualize(
             max_outputs=visualization_number)
 
     # --- prediction
-    if prediction_batch is not None:
+    if denoiser_batch is not None:
         tf.summary.image(
-            name="prediction",
+            name="denoiser/prediction",
             step=global_step,
-            data=prediction_batch / 255,
+            data=denoiser_batch / 255,
             max_outputs=visualization_number)
 
     # --- random
