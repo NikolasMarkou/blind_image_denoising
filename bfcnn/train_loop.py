@@ -309,7 +309,6 @@ def train_loop(
                 noisy_batch = noise_augmentation_fn(input_batch)
                 masked_batch, mask_batch = inpaint_augmentation_fn(input_batch)
                 downsampled_batch = superres_augmentation_fn(input_batch)
-                inverted_mask_batch = tf.constant(1.0, dtype=tf.float32) - mask_batch
                 
                 # Open a GradientTape to record the operations run
                 # during the forward pass,
@@ -337,8 +336,7 @@ def train_loop(
                     inpaint_loss_map = \
                         inpaint_loss_fn(
                             input_batch=input_batch,
-                            predicted_batch=inpaint_output,
-                            mask=inverted_mask_batch)
+                            predicted_batch=inpaint_output)
                     superres_loss_map = \
                         superres_loss_fn(
                             input_batch=input_batch,
