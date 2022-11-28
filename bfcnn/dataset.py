@@ -271,24 +271,24 @@ def dataset_builder(
                 tf.cond(
                     pred=random_uniform_option_1,
                     true_fn=lambda:
-                    # channel independent noise
-                    tf.random.truncated_normal(
-                        mean=0,
-                        stddev=additive_noise_std,
-                        shape=input_shape_inference),
-                    false_fn=lambda:
-                    # channel dependent noise
-                    tf.repeat(
+                        # channel independent noise
                         tf.random.truncated_normal(
-                            mean=0,
+                            mean=0.0,
+                            dtype=tf.float32,
+                            stddev=additive_noise_std,
+                            shape=input_shape_inference),
+                    false_fn=lambda:
+                        # channel dependent noise
+                        tf.random.truncated_normal(
+                            mean=0.0,
+                            dtype=tf.float32,
                             stddev=additive_noise_std,
                             shape=(input_shape_inference[0],
                                    input_shape[0],
                                    input_shape[1],
-                                   1)),
-                        axis=3,
-                        repeats=[input_shape_inference[3]]))
-            noisy_batch = tf.math.add(noisy_batch, additive_noise_batch)
+                                   1))
+                )
+            noisy_batch = tf.add(noisy_batch, additive_noise_batch)
             # blur to embed noise
             noisy_batch = \
                 tf.cond(
@@ -300,7 +300,8 @@ def dataset_builder(
                         image=noisy_batch,
                         sigma=1,
                         filter_shape=(3, 3)),
-                    false_fn=lambda: noisy_batch)
+                    false_fn=lambda: noisy_batch
+                )
 
         # --- multiplicative noise
         if use_multiplicative_noise:
@@ -308,23 +309,22 @@ def dataset_builder(
                 tf.cond(
                     pred=random_uniform_option_1,
                     true_fn=lambda:
-                    tf.random.truncated_normal(
-                        mean=1,
-                        stddev=multiplicative_noise_std,
-                        shape=input_shape_inference),
-                    false_fn=lambda:
-                    tf.repeat(
                         tf.random.truncated_normal(
-                            mean=1,
+                            mean=1.0,
+                            stddev=multiplicative_noise_std,
+                            shape=input_shape_inference,
+                            dtype=tf.float32),
+                    false_fn=lambda:
+                        tf.random.truncated_normal(
+                            mean=1.0,
                             stddev=multiplicative_noise_std,
                             shape=(input_shape_inference[0],
                                    input_shape_inference[1],
                                    input_shape_inference[2],
-                                   1)),
-                        axis=3,
-                        repeats=[input_shape_inference[3]])
+                                   1),
+                            dtype=tf.float32)
                 )
-            noisy_batch = tf.math.multiply(noisy_batch, multiplicative_noise_batch)
+            noisy_batch = tf.multiply(noisy_batch, multiplicative_noise_batch)
             # blur to embed noise
             noisy_batch = \
                 tf.cond(
@@ -332,11 +332,12 @@ def dataset_builder(
                         random_blur,
                         random_uniform_option_2),
                     true_fn=lambda:
-                    tfa.image.gaussian_filter2d(
-                        image=noisy_batch,
-                        sigma=1,
-                        filter_shape=(3, 3)),
-                    false_fn=lambda: noisy_batch)
+                        tfa.image.gaussian_filter2d(
+                            image=noisy_batch,
+                            sigma=1,
+                            filter_shape=(3, 3)),
+                    false_fn=lambda: noisy_batch
+                )
 
         # -- subsample noise
         if use_subsample_noise:
