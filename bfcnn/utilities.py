@@ -22,7 +22,6 @@ from .custom_layers import \
 # ---------------------------------------------------------------------
 
 
-@tf.function
 def clip_normalized_tensor(
         input_tensor: tf.Tensor) -> tf.Tensor:
     """
@@ -37,8 +36,9 @@ def clip_normalized_tensor(
             clip_value_min=-0.5,
             clip_value_max=+0.5)
 
+# ---------------------------------------------------------------------
 
-@tf.function
+
 def clip_unnormalized_tensor(
         input_tensor: tf.Tensor) -> tf.Tensor:
     """
@@ -67,7 +67,8 @@ def load_image(
     :param path:
     :param color_mode: grayscale or rgb
     :param target_size: size or None
-    :param normalize: if true normalize to (-1,+1)
+    :param normalize: if true normalize to (-0.5,+0.5)
+
     :return: loaded normalized image
     """
     x = \
@@ -79,7 +80,7 @@ def load_image(
     x = tf.keras.preprocessing.image.img_to_array(img=x)
     x = tf.expand_dims(x, axis=0)
     if normalize:
-        x = layer_normalize((x, 0.0, 255.0))
+        x = layer_normalize(x, 0.0, 255.0)
     return x
 
 # ---------------------------------------------------------------------
@@ -624,26 +625,30 @@ def min_max_mean_sigma_block(
 # ---------------------------------------------------------------------
 
 
-def layer_denormalize(args):
+def layer_denormalize(
+        input_layer: tf.Tensor,
+        v_min: float,
+        v_max: float) -> tf.Tensor:
     """
     Convert input [-0.5, +0.5] to [v0, v1] range
     """
-    y, v_min, v_max = args
-    y_clip = clip_normalized_tensor(y)
+    y_clip = clip_normalized_tensor(input_layer)
     return (y_clip + 0.5) * (v_max - v_min) + v_min
 
 
 # ---------------------------------------------------------------------
 
 
-def layer_normalize(args):
+def layer_normalize(
+        input_layer: tf.Tensor,
+        v_min: float,
+        v_max: float) -> tf.Tensor:
     """
     Convert input from [v0, v1] to [-0.5, +0.5] range
     """
-    y, v_min, v_max = args
     y_clip = \
         tf.clip_by_value(
-            t=y,
+            t=input_layer,
             clip_value_min=v_min,
             clip_value_max=v_max)
     return (y_clip - v_min) / (v_max - v_min) - 0.5
@@ -664,6 +669,7 @@ def build_normalize_model(
     :param min_value: Minimum value
     :param max_value: Maximum value
     :param name: name of the model
+
     :return: normalization model
     """
     model_input = tf.keras.Input(shape=input_dims)
@@ -671,11 +677,10 @@ def build_normalize_model(
     # --- normalize input
     # from [min_value, max_value] to [-0.5, +0.5]
     model_output = \
-        tf.keras.layers.Lambda(
-            function=layer_normalize,
-            trainable=False)([model_input,
-                              float(min_value),
-                              float(max_value)])
+        layer_normalize(
+            input_layer=model_input,
+            v_min=float(min_value),
+            v_max=float(max_value))
 
     # --- wrap model
     return tf.keras.Model(
@@ -700,18 +705,18 @@ def build_denormalize_model(
     :param min_value: Minimum value
     :param max_value: Maximum value
     :param name: name of the model
+
     :return: denormalization model
     """
     model_input = tf.keras.Input(shape=input_dims)
 
-    # --- normalize input
+    # --- denormalize input
     # from [-0.5, +0.5] to [v0, v1] range
     model_output = \
-        tf.keras.layers.Lambda(
-            function=layer_denormalize,
-            trainable=False)([model_input,
-                              float(min_value),
-                              float(max_value)])
+        layer_denormalize(
+            input_layer=model_input,
+            v_min=float(min_value),
+            v_max=float(max_value))
 
     # --- wrap model
     return \
