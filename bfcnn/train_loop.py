@@ -309,7 +309,7 @@ def train_loop(
                 noisy_batch = noise_augmentation_fn(input_batch)
                 masked_batch, mask_batch = inpaint_augmentation_fn(input_batch)
                 downsampled_batch = superres_augmentation_fn(input_batch)
-                
+
                 # Open a GradientTape to record the operations run
                 # during the forward pass,
                 # which enables auto-differentiation.

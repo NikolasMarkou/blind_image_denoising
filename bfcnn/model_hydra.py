@@ -72,6 +72,13 @@ def model_builder(
     inpaint_output = model_denormalizer(inpaint_output, training=False)
     superres_output = model_denormalizer(superres_output, training=False)
 
+    # wrap layers to set names
+    backbone_output = tf.keras.layers.Layer(name="backbone")(backbone_output)
+    denoiser_output = tf.keras.layers.Layer(name="denoiser")(denoiser_output)
+    inpaint_output = tf.keras.layers.Layer(name="inpaint")(inpaint_output)
+    superres_output = tf.keras.layers.Layer(name="superres")(superres_output)
+
+    # create model
     model_hydra = \
         keras.Model(
             inputs=[input_layer, mask_layer],
