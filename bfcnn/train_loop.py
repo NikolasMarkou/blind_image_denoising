@@ -386,7 +386,7 @@ def train_loop(
                         noisy_batch=noisy_batch,
                         denoiser_batch=denoiser_output,
                         visualization_number=visualization_number)
-                    
+
                     # add weight visualization
                     tf.summary.histogram(
                         data=get_conv2d_weights(model=hydra),

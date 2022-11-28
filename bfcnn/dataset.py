@@ -218,7 +218,7 @@ def dataset_builder(
             input_batch: tf.Tensor) -> tf.Tensor:
         downsampled_batch = \
             tf.keras.layers.AveragePooling2D(
-                pool_size=(3, 3), strides=(2, 2), padding="valid")(input_batch)
+                pool_size=(3, 3), strides=(2, 2), padding="same")(input_batch)
         return downsampled_batch
 
     # --- define noise augmentation function
