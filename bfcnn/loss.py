@@ -179,7 +179,7 @@ def mae_diff(
     """
     axis = [1, 2, 3]
     d = \
-        tf.math.multiply(
+        tf.multiply(
             tf.keras.activations.relu(
                 x=tf.abs(error),
                 threshold=hinge,
@@ -400,7 +400,8 @@ def loss_function_builder(
     # ---
     def denoiser_loss(
             input_batch: tf.Tensor,
-            predicted_batch: tf.Tensor):
+            predicted_batch: tf.Tensor,
+            mask: tf.Tensor = tf.constant(1.0, tf.float32),):
         # --- actual mean absolute error (no hinge or cutoff)
         mae_actual = \
             mae(original=input_batch,
@@ -423,6 +424,7 @@ def loss_function_builder(
                             prediction=prediction_batch_multiscale[i],
                             hinge=hinge,
                             cutoff=cutoff,
+                            mask=mask,
                             count_non_zero_mean=count_non_zero_mean)
                 mae_prediction_loss = \
                     mae_prediction_loss / float(pyramid_levels)
@@ -431,12 +433,14 @@ def loss_function_builder(
                     mae_weighted_delta(
                         original=input_batch,
                         prediction=predicted_batch,
+                        mask=mask,
                         hinge=hinge,
                         cutoff=cutoff)
             else:
                 mae_prediction_loss += \
                     mae(original=input_batch,
                         prediction=predicted_batch,
+                        mask=mask,
                         hinge=hinge,
                         cutoff=cutoff,
                         count_non_zero_mean=count_non_zero_mean)

@@ -335,7 +335,8 @@ def train_loop(
                     inpaint_loss_map = \
                         inpaint_loss_fn(
                             input_batch=input_batch,
-                            predicted_batch=inpaint_output)
+                            predicted_batch=inpaint_output,
+                            mask=1.0 - mask_batch)
                     superres_loss_map = \
                         superres_loss_fn(
                             input_batch=input_batch,
