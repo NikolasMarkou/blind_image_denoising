@@ -309,7 +309,8 @@ def train_loop(
                 noisy_batch = noise_augmentation_fn(input_batch)
                 masked_batch, mask_batch = inpaint_augmentation_fn(input_batch)
                 downsampled_batch = superres_augmentation_fn(input_batch)
-
+                inverted_mask_batch = tf.constant(1.0, dtype=tf.float32) - mask_batch
+                
                 # Open a GradientTape to record the operations run
                 # during the forward pass,
                 # which enables auto-differentiation.
@@ -327,6 +328,7 @@ def train_loop(
                     _, _, _, superres_output = \
                         hydra([downsampled_batch, tf.zeros_like(downsampled_batch)], training=True)
 
+
                     # compute the loss value for this mini-batch
                     denoiser_loss_map = \
                         denoiser_loss_fn(
@@ -336,7 +338,7 @@ def train_loop(
                         inpaint_loss_fn(
                             input_batch=input_batch,
                             predicted_batch=inpaint_output,
-                            mask=1.0 - mask_batch)
+                            mask=inverted_mask_batch)
                     superres_loss_map = \
                         superres_loss_fn(
                             input_batch=input_batch,
