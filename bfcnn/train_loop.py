@@ -376,7 +376,7 @@ def train_loop(
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
-                    test_backbone_output, test_denoiser_output, _, test_superres_output = \
+                    _, test_denoiser_output, _, test_superres_output = \
                         hydra([test_images, tf.zeros_like(test_images)], training=False)
                     visualize(
                         global_step=global_step,
@@ -385,6 +385,8 @@ def train_loop(
                         inpaint_batch=inpaint_output,
                         denoiser_batch=denoiser_output,
                         superres_batch=superres_output,
+                        test_denoiser_batch=test_denoiser_output,
+                        test_superres_batch=test_superres_output,
                         visualization_number=visualization_number)
 
                     # add weight visualization
