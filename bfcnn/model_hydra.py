@@ -746,7 +746,7 @@ def model_superres_builder(
 # ---------------------------------------------------------------------
 
 
-class DenoisingInferenceModule(tf.Module):
+class DenoiserModule(tf.Module):
     """denoising inference module."""
 
     def __init__(
@@ -824,7 +824,7 @@ class DenoisingInferenceModule(tf.Module):
                                      None,
                                      None,
                                      self._training_channels],
-                              dtype=tf.uint8)])
+                              dtype=tf.uint8)])(input_tensor)
 
 # ---------------------------------------------------------------------
 
@@ -834,7 +834,7 @@ def module_builder_denoise(
         model_denoise: keras.Model = None,
         model_normalize: keras.Model = None,
         model_denormalize: keras.Model = None,
-        cast_to_uint8: bool = True) -> DenoisingInferenceModule:
+        cast_to_uint8: bool = True) -> DenoiserModule:
     """
     builds a module for denoising.
 
@@ -857,7 +857,7 @@ def module_builder_denoise(
         model_backbone.input_shape[-1]
 
     return \
-        DenoisingInferenceModule(
+        DenoiserModule(
             model_backbone=model_backbone,
             model_denoise=model_denoise,
             model_normalize=model_normalize,

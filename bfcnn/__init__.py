@@ -15,7 +15,9 @@ from typing import Union
 
 from .train_loop import train_loop
 from .export_model import export_model
-from .model_hydra import model_builder
+from .model_hydra import \
+    model_builder, \
+    module_builder_denoise
 from .utilities import \
     logger, load_config, load_image
 from .pyramid import \
@@ -115,6 +117,7 @@ __all__ = [
     optimizer_builder,
     pretrained_models,
     build_pyramid_model,
+    module_builder_denoise,
     build_inverse_pyramid_model
 ]
 

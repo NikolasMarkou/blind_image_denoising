@@ -35,7 +35,7 @@ def test_model_builder(config):
     assert isinstance(models.denormalizer, keras.Model)
 
     # testing denoiser
-    no_channels = models.backbone.input_shape[3]
+    no_channels = models.backbone.input_shape[-1]
     for i in [32, 64, 128, 256]:
         x = tf.random.uniform(
             shape=[1, i, i, no_channels],
@@ -53,27 +53,26 @@ def test_model_builder(config):
         assert y[2].shape == x.shape
 
     # export
-    # TODO
-    module = \
-        bfcnn.model_denoiser(
+    denoiser_module = \
+        bfcnn.module_builder_denoise(
+            model_backbone=models.backbone,
             model_denoise=models.denoiser,
             model_normalize=models.normalizer,
             model_denormalize=models.denormalizer)
 
-    assert isinstance(module, tf.Module)
-    #
-    # # testing denoiser module
-    # no_channels = models.denoiser.input_shape[3]
-    # for i in [32, 64, 128, 256]:
-    #     x = tf.random.uniform(
-    #         shape=[1, i, i, no_channels],
-    #         minval=0,
-    #         maxval=255,
-    #         dtype=tf.int32)
-    #     x = tf.cast(
-    #         x, dtype=tf.uint8)
-    #     y = models.denoiser(x)
-    #
-    #     assert y.shape == x.shape
+    assert isinstance(denoiser_module, tf.Module)
+
+    # testing denoiser module
+    no_channels = models.backbone.input_shape[-1]
+    for i in [32, 64, 128, 256]:
+        x = tf.random.uniform(
+            shape=[1, i, i, no_channels],
+            minval=0,
+            maxval=255,
+            dtype=tf.int32)
+        x = tf.cast(x, dtype=tf.uint8)
+        y = denoiser_module(x)
+
+        assert y.shape == x.shape
 
 # ---------------------------------------------------------------------
