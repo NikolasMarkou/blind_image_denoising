@@ -194,19 +194,15 @@ def dataset_builder(
 
         # channel dependent noise
         mask_batch = \
-            tf.repeat(
-                input=tf.random.uniform(
-                        seed=0,
-                        minval=0.0,
-                        maxval=1.0,
-                        dtype=tf.float16,
-                        shape=(input_shape_inference[0],
-                               input_shape_inference[1],
-                               input_shape_inference[2],
-                               1)),
-                axis=3,
-                repeats=input_shape_inference[3]
-            )
+            tf.random.uniform(
+                seed=0,
+                minval=0.0,
+                maxval=1.0,
+                dtype=tf.float16,
+                shape=(input_shape_inference[0],
+                       input_shape_inference[1],
+                       input_shape_inference[2],
+                       1))
 
         mask_batch = \
             tf.cast(

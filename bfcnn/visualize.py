@@ -43,9 +43,8 @@ def visualize(
         denoiser_batch,
         superres_batch,
         inpaint_batch,
-        random_batch=None,
-        test_input_batch=None,
-        test_output_batch=None,
+        test_denoise_batch=None,
+        test_superres_batch=None,
         visualization_number: int = 3):
     """
     Prepare images and add them to tensorboard
@@ -90,26 +89,20 @@ def visualize(
             data=inpaint_batch / 255,
             max_outputs=visualization_number)
 
-    # --- random
-    if random_batch is not None:
+    # --- test denoiser
+    if test_denoise_batch is not None:
         tf.summary.image(
-            name="random",
+            name="test/denoiser",
             step=global_step,
-            data=random_batch / 255,
+            data=test_denoise_batch / 255,
             max_outputs=visualization_number)
 
-    # --- test
-    if test_input_batch is not None:
+    # --- test superres
+    if test_superres_batch is not None:
         tf.summary.image(
-            name="test_input",
+            name="test/superres",
             step=global_step,
-            data=test_input_batch / 255,
-            max_outputs=visualization_number)
-    if test_output_batch is not None:
-        tf.summary.image(
-            name="test_output",
-            step=global_step,
-            data=test_output_batch / 255,
+            data=test_superres_batch / 255,
             max_outputs=visualization_number)
 
 # ---------------------------------------------------------------------

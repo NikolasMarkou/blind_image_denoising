@@ -335,8 +335,7 @@ def train_loop(
                     inpaint_loss_map = \
                         inpaint_loss_fn(
                             input_batch=input_batch,
-                            predicted_batch=inpaint_output,
-                            mask=tf.ones_like(mask_batch) - mask_batch)
+                            predicted_batch=inpaint_output)
                     superres_loss_map = \
                         superres_loss_fn(
                             input_batch=input_batch,
@@ -377,12 +376,8 @@ def train_loop(
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
-                    test_backbone_output, test_denoiser_output, test_inpaint_output, test_superres_output = \
-                        hydra([noisy_batch, tf.zeros_like(noisy_batch)], training=True)
-                    # test_input_batch = None
-                    # test_output_batch = None
-                    # if use_test_images:
-                    #     test_input_batch, test_output_batch = denoise_test_batch()
+                    test_backbone_output, test_denoiser_output, _, test_superres_output = \
+                        hydra([test_images, tf.zeros_like(test_images)], training=False)
                     visualize(
                         global_step=global_step,
                         input_batch=input_batch,
