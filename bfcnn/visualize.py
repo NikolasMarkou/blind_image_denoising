@@ -41,6 +41,8 @@ def visualize(
         input_batch,
         noisy_batch,
         denoiser_batch,
+        superres_batch,
+        inpaint_batch,
         random_batch=None,
         test_input_batch=None,
         test_output_batch=None,
@@ -64,12 +66,28 @@ def visualize(
             data=noisy_batch / 255,
             max_outputs=visualization_number)
 
-    # --- prediction
+    # --- output denoiser
     if denoiser_batch is not None:
         tf.summary.image(
-            name="denoiser/prediction",
+            name="output/denoiser",
             step=global_step,
             data=denoiser_batch / 255,
+            max_outputs=visualization_number)
+
+    # --- output superres
+    if superres_batch is not None:
+        tf.summary.image(
+            name="output/superres",
+            step=global_step,
+            data=superres_batch / 255,
+            max_outputs=visualization_number)
+
+    # --- output inpaint
+    if inpaint_batch is not None:
+        tf.summary.image(
+            name="output/inpaint",
+            step=global_step,
+            data=inpaint_batch / 255,
             max_outputs=visualization_number)
 
     # --- random

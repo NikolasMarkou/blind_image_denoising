@@ -384,7 +384,9 @@ def train_loop(
                         global_step=global_step,
                         input_batch=input_batch,
                         noisy_batch=noisy_batch,
+                        inpaint_batch=inpaint_output,
                         denoiser_batch=denoiser_output,
+                        superres_batch=superres_output,
                         visualization_number=visualization_number)
 
                     # add weight visualization
