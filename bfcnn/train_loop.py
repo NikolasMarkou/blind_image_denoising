@@ -327,7 +327,6 @@ def train_loop(
                     _, _, _, superres_output = \
                         hydra([downsampled_batch, tf.zeros_like(downsampled_batch)], training=True)
 
-
                     # compute the loss value for this mini-batch
                     denoiser_loss_map = \
                         denoiser_loss_fn(
@@ -336,7 +335,8 @@ def train_loop(
                     inpaint_loss_map = \
                         inpaint_loss_fn(
                             input_batch=input_batch,
-                            predicted_batch=inpaint_output)
+                            predicted_batch=inpaint_output,
+                            mask=tf.ones_like(mask_batch) - mask_batch)
                     superres_loss_map = \
                         superres_loss_fn(
                             input_batch=input_batch,
