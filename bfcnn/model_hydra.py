@@ -1,3 +1,5 @@
+import abc
+import keras
 import tensorflow as tf
 from typing import Dict, Tuple
 from collections import namedtuple
@@ -740,5 +742,127 @@ def model_superres_builder(
             name=f"superres_head")
 
     return model_head
+
+# ---------------------------------------------------------------------
+
+
+class DenoisingInferenceModule(tf.Module):
+    """denoising inference module."""
+
+    def __init__(
+            self,
+            model_backbone: keras.Model,
+            model_denoise: keras.Model,
+            model_normalize: keras.Model,
+            model_denormalize: keras.Model,
+            training_channels: int = 1,
+            cast_to_uint8: bool = True):
+        """
+        Initializes a module for denoising.
+
+        :param model_backbone: backbone model to use for inference
+        :param model_denoise: denoising model to use for inference.
+        :param model_normalize: model that normalizes the input
+        :param model_denormalize: model that denormalizes the output
+        :param training_channels: how many color channels were used in training
+        :param cast_to_uint8: cast output to uint8
+
+        """
+        # --- argument checking
+        if model_backbone is None:
+            raise ValueError("model_denoise should not be None")
+        if model_denoise is None:
+            raise ValueError("model_denoise should not be None")
+        if model_normalize is None:
+            raise ValueError("model_normalize should not be None")
+        if model_denormalize is None:
+            raise ValueError("model_denormalize should not be None")
+        if training_channels <= 0:
+            raise ValueError("training channels should be > 0")
+
+        # --- setup instance variables
+        self._cast_to_uint8 = cast_to_uint8
+        self._model_backbone = model_backbone
+        self._model_denoise = model_denoise
+        self._model_normalize = model_normalize
+        self._model_denormalize = model_denormalize
+        self._training_channels = training_channels
+
+    def _run_inference_on_images(self, image):
+        """
+        Cast image to float and run inference.
+
+        :param image: uint8 Tensor of shape
+        :return: denoised image: uint8 Tensor of shape if the input
+        """
+        x = tf.cast(image, dtype=tf.float32)
+
+        # --- normalize
+        x = self._model_normalize(x)
+
+        # --- run backbone
+        x = self._model_backbone(x)
+
+        # --- run denoise model
+        x = self._model_denoise(x)
+
+        # --- denormalize
+        x = self._model_denormalize(x)
+
+        # --- cast to uint8
+        if self._cast_to_uint8:
+            x = tf.round(x)
+            x = tf.cast(x, dtype=tf.uint8)
+
+        return x
+
+    def __call__(self, input_tensor):
+        return tf.function(
+            func=self._run_inference_on_images,
+            input_signature=[
+                tf.TensorSpec(shape=[None,
+                                     None,
+                                     None,
+                                     self._training_channels],
+                              dtype=tf.uint8)])
+
+# ---------------------------------------------------------------------
+
+
+def module_builder_denoise(
+        model_backbone: keras.Model = None,
+        model_denoise: keras.Model = None,
+        model_normalize: keras.Model = None,
+        model_denormalize: keras.Model = None,
+        cast_to_uint8: bool = True) -> DenoisingInferenceModule:
+    """
+    builds a module for denoising.
+
+    :param model_backbone: backbone model
+    :param model_denoise: denoising model to use for inference.
+    :param model_normalize: model that normalizes the input
+    :param model_denormalize: model that denormalizes the output
+    :param cast_to_uint8: cast output to uint8
+
+    :return: denoiser module
+    """
+    logger.info(
+        f"building denoising module with "
+        f"cast_to_uint8:{cast_to_uint8}")
+
+    # --- argument checking
+    # TODO
+
+    training_channels = \
+        model_backbone.input_shape[-1]
+
+    return \
+        DenoisingInferenceModule(
+            model_backbone=model_backbone,
+            model_denoise=model_denoise,
+            model_normalize=model_normalize,
+            model_denormalize=model_denormalize,
+            cast_to_uint8=cast_to_uint8,
+            training_channels=training_channels)
 
 # ---------------------------------------------------------------------

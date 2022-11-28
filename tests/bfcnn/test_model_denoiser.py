@@ -19,48 +19,61 @@ import bfcnn
     "config", bfcnn.CONFIGS)
 def test_model_builder(config):
     config = config[1]
-    models = bfcnn.model_builder(config=config["model_denoise"])
+    models = bfcnn.model_builder(config=config["model"])
 
-    # denoise
+    # hydra
+    assert isinstance(models.hydra, keras.Model)
+    # backbone
+    assert isinstance(models.backbone, keras.Model)
+    # denoiser
     assert isinstance(models.denoiser, keras.Model)
+    # inpaint
+    assert isinstance(models.inpaint, keras.Model)
     # normalize
     assert isinstance(models.normalizer, keras.Model)
     # denormalize
     assert isinstance(models.denormalizer, keras.Model)
 
     # testing denoiser
-    no_channels = models.denoiser.input_shape[3]
+    no_channels = models.backbone.input_shape[3]
     for i in [32, 64, 128, 256]:
         x = tf.random.uniform(
             shape=[1, i, i, no_channels],
             minval=-0.5,
             maxval=+0.5,
             dtype=tf.float32)
-        y = models.denoiser(x)
+        m = tf.zeros_like(x)
+        # backbone_output,
+        # denoiser_output,
+        # inpaint_output,
+        # superres_output
+        y = models.hydra([x, m])
 
-        assert y.shape == x.shape
+        assert y[1].shape == x.shape
+        assert y[2].shape == x.shape
 
     # export
+    # TODO
     module = \
-        bfcnn.model_denoiser.module_builder(
+        bfcnn.model_denoiser(
             model_denoise=models.denoiser,
             model_normalize=models.normalizer,
             model_denormalize=models.denormalizer)
 
     assert isinstance(module, tf.Module)
-
-    # testing denoiser module
-    no_channels = models.denoiser.input_shape[3]
-    for i in [32, 64, 128, 256]:
-        x = tf.random.uniform(
-            shape=[1, i, i, no_channels],
-            minval=0,
-            maxval=255,
-            dtype=tf.int32)
-        x = tf.cast(
-            x, dtype=tf.uint8)
-        y = models.denoiser(x)
-
-        assert y.shape == x.shape
+    #
+    # # testing denoiser module
+    # no_channels = models.denoiser.input_shape[3]
+    # for i in [32, 64, 128, 256]:
+    #     x = tf.random.uniform(
+    #         shape=[1, i, i, no_channels],
+    #         minval=0,
+    #         maxval=255,
+    #         dtype=tf.int32)
+    #     x = tf.cast(
+    #         x, dtype=tf.uint8)
+    #     y = models.denoiser(x)
+    #
+    #     assert y.shape == x.shape
 
 # ---------------------------------------------------------------------

@@ -372,11 +372,13 @@ def train_loop(
                 tf.summary.scalar(name="loss/superres_mae", data=superres_loss_map[MAE_LOSS_STR], step=global_step)
                 tf.summary.scalar(name="loss/superres_total", data=superres_loss_map[TOTAL_LOSS_STR], step=global_step)
 
-                tf.summary.scalar(name="loss/regularization", data=model_loss_map[TOTAL_LOSS_STR], step=global_step)
+                tf.summary.scalar(name="loss/regularization", data=model_loss_map[REGULARIZATION_LOSS_STR], step=global_step)
                 tf.summary.scalar(name="loss/total", data=total_loss, step=global_step)
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
+                    test_backbone_output, test_denoiser_output, test_inpaint_output, test_superres_output = \
+                        hydra([noisy_batch, tf.zeros_like(noisy_batch)], training=True)
                     # test_input_batch = None
                     # test_output_batch = None
                     # if use_test_images:

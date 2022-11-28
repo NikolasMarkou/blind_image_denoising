@@ -11,8 +11,7 @@ from enum import Enum
 # local imports
 # ---------------------------------------------------------------------
 
-from .export_model_denoiser import export_model as export_model_denoise
-from .export_model_decomposition import export_model as export_model_decomposition
+from .export_model import export_model as export_model_denoise
 
 # ---------------------------------------------------------------------
 
@@ -55,13 +54,6 @@ def main(args):
 
     if args.model_type == ModelType.DENOISE:
         export_model_denoise(
-            pipeline_config=args.pipeline_config,
-            checkpoint_directory=args.checkpoint_directory,
-            output_directory=args.output_directory,
-            to_tflite=args.to_tflite,
-            test_model=args.test_model)
-    elif args.model_type == ModelType.DECOMPOSITION:
-        export_model_decomposition(
             pipeline_config=args.pipeline_config,
             checkpoint_directory=args.checkpoint_directory,
             output_directory=args.output_directory,

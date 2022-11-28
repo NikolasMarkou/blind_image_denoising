@@ -1,4 +1,6 @@
-r"""build a bfcnn model"""
+r"""
+build an all net bfcnn model
+"""
 
 import os
 import sys
@@ -11,7 +13,7 @@ import argparse
 from .constants import *
 from .custom_logger import logger
 from .utilities import load_config
-from .model_denoiser import model_builder as model_denoise_builder
+from .model_hydra import model_builder
 
 # ---------------------------------------------------------------------
 
@@ -24,15 +26,14 @@ def main(args):
 
     # --- build model and then save it
     config = load_config(args.pipeline_config)
-    models = \
-        model_denoise_builder(config=config[MODEL_DENOISE_STR])
+    models = model_builder(config=config[MODEL_STR])
 
     # --- summary of model
-    models.denoiser.summary(print_fn=logger.info)
+    models.hydra.summary(print_fn=logger.info)
 
     # --- save model so we can visualize it easier
-    logger.info(f"saving denoiser model in [{args.output_file}]")
-    models.denoiser.save(
+    logger.info(f"saving hydra model in [{args.output_file}]")
+    models.hydra.save(
         filepath=args.output_file,
         include_optimizer=False)
 

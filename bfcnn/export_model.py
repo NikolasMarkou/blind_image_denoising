@@ -11,7 +11,7 @@ from typing import List, Union, Tuple, Dict
 from .constants import *
 from .custom_logger import logger
 from .utilities import load_config
-from .model_denoiser import model_builder, module_builder
+from .model_hydra import model_builder, module_builder_denoise
 
 # ---------------------------------------------------------------------
 
@@ -59,10 +59,9 @@ def export_model(
     # --- load and export denoising model
     logger.info("building denoising model")
     pipeline_config = load_config(pipeline_config)
-    models = \
-        model_builder(
-            pipeline_config[MODEL_DENOISE_STR])
+    models = model_builder(pipeline_config[MODEL_STR])
     # get each model
+    backbone = models.backbone
     denoiser = models.denoiser
     normalizer = models.normalizer
     denormalizer = models.denormalizer
@@ -94,6 +93,7 @@ def export_model(
         tf.train.Checkpoint(
             step=global_step,
             epoch=global_epoch,
+            model_backbone=backbone,
             model_denoise=denoiser,
             model_normalize=normalizer,
             model_denormalize=denormalizer)
@@ -110,13 +110,14 @@ def export_model(
                 f"and step [{int(global_step)}]")
 
     # --- combine denoise, normalize and denormalize
-    logger.info("combining denoise, normalize and denormalize model")
+    logger.info("combining backbone, denoise, normalize and denormalize model")
     dataset_config = pipeline_config["dataset"]
     input_shape = dataset_config["input_shape"]
     no_channels = input_shape[2]
     denoising_module = \
-        module_builder(
+        module_builder_denoise(
             cast_to_uint8=True,
+            model_backbone=backbone,
             model_denoise=denoiser,
             model_normalize=normalizer,
             model_denormalize=denormalizer)

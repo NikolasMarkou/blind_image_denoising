@@ -371,10 +371,6 @@ def loss_function_builder(
     # --- regularization
     regularization_multiplier = config.get("regularization", 1.0)
 
-    # --- features
-    features_multiplier = config.get("features_multiplier", 0.0)
-    use_features = features_multiplier > 0.0
-
     # --- multiscale mae
     use_multiscale = config.get("use_multiscale", False)
     laplacian_config = {

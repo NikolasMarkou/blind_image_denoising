@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--output-file",
-        default="model_denoise.h5",
+        default="model.h5",
         dest="output_file",
         help="output file")
 
