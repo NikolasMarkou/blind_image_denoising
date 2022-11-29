@@ -556,10 +556,6 @@ def model_inpaint_builder(
     x = model_input_layer
 
     x = \
-        tf.keras.layers.Concatenate()(
-            [x, mask_input_layer])
-
-    x = \
         conv2d_wrapper(
             input_layer=x,
             bn_params=None,
