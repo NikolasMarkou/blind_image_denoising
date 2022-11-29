@@ -222,7 +222,7 @@ def dataset_builder(
             tf.keras.layers.AveragePooling2D(
                 pool_size=(3, 3), strides=(2, 2), padding="same")(input_batch)
         downsampled_mask_batch = \
-            tf.zeros(shape=tf.shape(downsampled_batch)[0:-1] + (1,))
+            tf.zeros(shape=downsampled_batch.shape[0:-1] + (1,))
         return downsampled_batch, downsampled_mask_batch
 
     # --- define noise augmentation function
