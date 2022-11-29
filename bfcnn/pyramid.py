@@ -55,7 +55,7 @@ def gaussian_filter_layer(
     # initialise to set kernel to required value
     def kernel_init(shape, dtype):
         logger.info(f"building gaussian kernel with size: {shape}")
-        kernel = np.zeros(shape, dtype=dtype)
+        kernel = np.zeros(shape, dtype=np.float)
         kernel_channel = \
             gaussian_kernel(
                 size=(shape[0], shape[1]),
