@@ -518,7 +518,7 @@ def model_inpaint_builder(
     )
 
     middle_conv_params = dict(
-        kernel_size=kernel_size,
+        kernel_size=1,
         strides=(1, 1),
         padding="same",
         filters=filters,
