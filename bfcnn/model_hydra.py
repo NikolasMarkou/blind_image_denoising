@@ -42,17 +42,19 @@ BuilderResults = namedtuple(
 
 def model_builder(
         config: Dict) -> BuilderResults:
+    # --- argument checking
+    # TODO
+    use_denoiser_cross_model = \
+        config["general"].get("use_denoiser_cross_model", False)
+
     # --- build backbone
     model_backbone, model_normalizer, model_denormalizer = \
         model_backbone_builder(config=config["backbone"])
 
     # --- build denoiser, inpaint, superres
-    model_denoiser = \
-        model_denoiser_builder(config=config["denoiser"])
-    model_inpaint = \
-        model_inpaint_builder(config=config["inpaint"])
-    model_superres = \
-        model_superres_builder(config=config["superres"])
+    model_denoiser = model_denoiser_builder(config=config["denoiser"])
+    model_inpaint = model_inpaint_builder(config=config["inpaint"])
+    model_superres = model_superres_builder(config=config["superres"])
 
     mask_input_shape = (None, None, 1)
     input_shape = tf.keras.backend.int_shape(model_backbone.inputs[0])[1:]
@@ -63,6 +65,7 @@ def model_builder(
     input_normalized_layer = model_normalizer(input_layer, training=False)
     mask_layer = tf.keras.Input(shape=mask_input_shape, name="mask_input_tensor")
 
+    # fix input and mask
     mean_normalized_layer = \
         tf.multiply(
             tf.ones_like(
@@ -77,15 +80,24 @@ def model_builder(
         tf.multiply(mean_normalized_layer, 1.0 - mask_layer)
 
     #
-    backbone_output = model_backbone(input_normalized_layer)
-    denoiser_output = model_denoiser(backbone_output)
-    inpaint_output = model_inpaint([backbone_output, input_normalized_layer, mask_layer])
-    superres_output = model_superres(backbone_output)
-    #
-    backbone_output = model_denormalizer(backbone_output, training=False)
-    denoiser_output = model_denormalizer(denoiser_output, training=False)
-    inpaint_output = model_denormalizer(inpaint_output, training=False)
-    superres_output = model_denormalizer(superres_output, training=False)
+    backbone_mid = model_backbone(input_normalized_layer)
+    denoiser_mid = model_denoiser(backbone_mid)
+
+    if use_denoiser_cross_model:
+        # denoised used as a base for the rest
+        backbone_denoised = model_backbone(denoiser_mid)
+        superres_mid = model_superres(backbone_denoised)
+        inpaint_mid = model_inpaint([backbone_denoised, input_normalized_layer, mask_layer])
+    else:
+        # normal operation
+        superres_mid = model_superres(backbone_mid)
+        inpaint_mid = model_inpaint([backbone_mid, input_normalized_layer, mask_layer])
+
+    # denormalize
+    backbone_output = model_denormalizer(backbone_mid, training=False)
+    denoiser_output = model_denormalizer(denoiser_mid, training=False)
+    inpaint_output = model_denormalizer(inpaint_mid, training=False)
+    superres_output = model_denormalizer(superres_mid, training=False)
 
     # wrap layers to set names
     backbone_output = tf.keras.layers.Layer(name="backbone")(backbone_output)
