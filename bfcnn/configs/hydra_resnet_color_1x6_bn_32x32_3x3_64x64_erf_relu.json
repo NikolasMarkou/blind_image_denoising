@@ -24,7 +24,7 @@
       "filters": 32,
       "use_bias": false,
       "batchnorm": false,
-      "kernel_size": 5,
+      "kernel_size": 1,
       "activation": "relu",
       "output_channels": 3,
       "input_shape": ["?", "?", 32],

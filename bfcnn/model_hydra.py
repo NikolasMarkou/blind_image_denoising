@@ -408,17 +408,6 @@ def model_denoiser_builder(
         epsilon=DEFAULT_BN_EPSILON)
 
     start_conv_params = dict(
-        kernel_size=1,
-        strides=(1, 1),
-        padding="same",
-        filters=filters,
-        use_bias=use_bias,
-        activation=activation,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
-    middle_conv_params = dict(
         kernel_size=kernel_size,
         strides=(1, 1),
         padding="same",
@@ -460,14 +449,6 @@ def model_denoiser_builder(
         x = \
             tf.keras.layers.BatchNormalization(
                 **bn_params)(x)
-
-    x = \
-        conv2d_wrapper(
-            input_layer=x,
-            bn_params=None,
-            conv_params=middle_conv_params,
-            channelwise_scaling=False,
-            multiplier_scaling=False)
 
     x = \
         conv2d_wrapper(
@@ -759,18 +740,18 @@ class DenoiserModule(tf.Module):
     def __init__(
             self,
             model_backbone: keras.Model,
-            model_denoise: keras.Model,
-            model_normalize: keras.Model,
-            model_denormalize: keras.Model,
+            model_denoiser: keras.Model,
+            model_normalizer: keras.Model,
+            model_denormalizer: keras.Model,
             training_channels: int = 1,
             cast_to_uint8: bool = True):
         """
         Initializes a module for denoising.
 
         :param model_backbone: backbone model to use for inference
-        :param model_denoise: denoising model to use for inference.
-        :param model_normalize: model that normalizes the input
-        :param model_denormalize: model that denormalizes the output
+        :param model_denoiser: denoising model to use for inference.
+        :param model_normalizer: model that normalizes the input
+        :param model_denormalizer: model that denormalizes the output
         :param training_channels: how many color channels were used in training
         :param cast_to_uint8: cast output to uint8
 
@@ -778,11 +759,11 @@ class DenoiserModule(tf.Module):
         # --- argument checking
         if model_backbone is None:
             raise ValueError("model_denoise should not be None")
-        if model_denoise is None:
+        if model_denoiser is None:
             raise ValueError("model_denoise should not be None")
-        if model_normalize is None:
+        if model_normalizer is None:
             raise ValueError("model_normalize should not be None")
-        if model_denormalize is None:
+        if model_denormalizer is None:
             raise ValueError("model_denormalize should not be None")
         if training_channels <= 0:
             raise ValueError("training channels should be > 0")
@@ -790,9 +771,9 @@ class DenoiserModule(tf.Module):
         # --- setup instance variables
         self._cast_to_uint8 = cast_to_uint8
         self._model_backbone = model_backbone
-        self._model_denoise = model_denoise
-        self._model_normalize = model_normalize
-        self._model_denormalize = model_denormalize
+        self._model_denoiser = model_denoiser
+        self._model_normalizer = model_normalizer
+        self._model_denormalizer = model_denormalizer
         self._training_channels = training_channels
 
     def _run_inference_on_images(self, image):
@@ -805,16 +786,16 @@ class DenoiserModule(tf.Module):
         x = tf.cast(image, dtype=tf.float32)
 
         # --- normalize
-        x = self._model_normalize(x)
+        x = self._model_normalizer(x)
 
         # --- run backbone
         x = self._model_backbone(x)
 
         # --- run denoise model
-        x = self._model_denoise(x)
+        x = self._model_denoiser(x)
 
         # --- denormalize
-        x = self._model_denormalize(x)
+        x = self._model_denormalizer(x)
 
         # --- cast to uint8
         if self._cast_to_uint8:
@@ -838,17 +819,17 @@ class DenoiserModule(tf.Module):
 
 def module_builder_denoise(
         model_backbone: keras.Model = None,
-        model_denoise: keras.Model = None,
-        model_normalize: keras.Model = None,
-        model_denormalize: keras.Model = None,
+        model_denoiser: keras.Model = None,
+        model_normalizer: keras.Model = None,
+        model_denormalizer: keras.Model = None,
         cast_to_uint8: bool = True) -> DenoiserModule:
     """
     builds a module for denoising.
 
     :param model_backbone: backbone model
-    :param model_denoise: denoising model to use for inference.
-    :param model_normalize: model that normalizes the input
-    :param model_denormalize: model that denormalizes the output
+    :param model_denoiser: denoising model to use for inference.
+    :param model_normalizer: model that normalizes the input
+    :param model_denormalizer: model that denormalizes the output
     :param cast_to_uint8: cast output to uint8
 
     :return: denoiser module
@@ -866,9 +847,9 @@ def module_builder_denoise(
     return \
         DenoiserModule(
             model_backbone=model_backbone,
-            model_denoise=model_denoise,
-            model_normalize=model_normalize,
-            model_denormalize=model_denormalize,
+            model_denoiser=model_denoiser,
+            model_normalizer=model_normalizer,
+            model_denormalizer=model_denormalizer,
             cast_to_uint8=cast_to_uint8,
             training_channels=training_channels)
 

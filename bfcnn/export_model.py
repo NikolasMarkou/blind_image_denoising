@@ -61,6 +61,9 @@ def export_model(
     pipeline_config = load_config(pipeline_config)
     models = model_builder(pipeline_config[MODEL_STR])
     # get each model
+    hydra = models.hydra
+    inpaint = models.hydra
+    superres = models.superres
     backbone = models.backbone
     denoiser = models.denoiser
     normalizer = models.normalizer
@@ -93,10 +96,11 @@ def export_model(
         tf.train.Checkpoint(
             step=global_step,
             epoch=global_epoch,
+            model_hydra=hydra,
             model_backbone=backbone,
-            model_denoise=denoiser,
-            model_normalize=normalizer,
-            model_denormalize=denormalizer)
+            model_denoiser=denoiser,
+            model_inpaint=inpaint,
+            model_superres=superres)
     manager = \
         tf.train.CheckpointManager(
             checkpoint=checkpoint,
@@ -118,9 +122,9 @@ def export_model(
         module_builder_denoise(
             cast_to_uint8=True,
             model_backbone=backbone,
-            model_denoise=denoiser,
-            model_normalize=normalizer,
-            model_denormalize=denormalizer)
+            model_denoiser=denoiser,
+            model_normalizer=normalizer,
+            model_denormalizer=denormalizer)
 
     # getting the concrete function traces the graph
     # and forces variables to

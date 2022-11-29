@@ -216,6 +216,10 @@ def train_loop(
 
     # get each model
     hydra = models.hydra
+    backbone = models.backbone
+    denoiser = models.denoiser
+    inpaint = models.inpaint
+    superres = models.superres
 
     # summary of model
     hydra.summary(print_fn=logger.info)
@@ -224,36 +228,6 @@ def train_loop(
         filepath=os.path.join(model_dir, MODEL_HYDRA_DEFAULT_NAME_STR),
         include_optimizer=False)
 
-    # --- test image inference
-    @tf.function
-    def test_batch():
-        x_noisy = \
-            tf.random.truncated_normal(
-                seed=0,
-                mean=0.0,
-                stddev=50.0,
-                shape=test_images.shape) + \
-            test_images
-        x_noisy = clip_unnormalized_tensor(x_noisy)
-        return hydra(x_noisy, training=False)
-
-    # --- random image inference
-    @tf.function
-    def random_batch():
-        x_random = \
-            tf.random.truncated_normal(
-                seed=0,
-                mean=128.0,
-                stddev=50.0,
-                shape=random_batch_size)
-        x_mask = \
-            tf.random.uniform(
-                minval=0.0,
-                maxval=1.0,
-                shape=random_batch_size)
-        x_random = clip_unnormalized_tensor(x_random)
-        return hydra(x_random, x_mask, training=False)
-
     # --- train the model
     with summary_writer.as_default():
         checkpoint = \
@@ -261,7 +235,11 @@ def train_loop(
                 step=global_step,
                 epoch=global_epoch,
                 optimizer=optimizer,
-                model_hydra=hydra)
+                model_hydra=hydra,
+                model_backbone=backbone,
+                model_denoiser=denoiser,
+                model_inpaint=inpaint,
+                model_superres=superres)
         manager = \
             tf.train.CheckpointManager(
                 checkpoint=checkpoint,
@@ -270,21 +248,33 @@ def train_loop(
         status = \
             checkpoint.restore(manager.latest_checkpoint).expect_partial()
 
-        noise_augmentation_fn = \
-            tf.function(
-                func=noise_augmentation_fn,
-                input_signature=[
-                    tf.TensorSpec(shape=[None, None, None, None],
-                                  dtype=tf.float32)],
-                jit_compile=False)
-
         geometric_augmentation_fn = \
             tf.function(
                 func=geometric_augmentation_fn,
                 input_signature=[
                     tf.TensorSpec(shape=[None, None, None, None],
-                                  dtype=tf.uint8)],
-                jit_compile=False)
+                                  dtype=tf.uint8)])
+
+        noise_augmentation_fn = \
+            tf.function(
+                func=noise_augmentation_fn,
+                input_signature=[
+                    tf.TensorSpec(shape=[None, None, None, None],
+                                  dtype=tf.float32)])
+
+        inpaint_augmentation_fn = \
+            tf.function(
+                func=inpaint_augmentation_fn,
+                input_signature=[
+                    tf.TensorSpec(shape=[None, None, None, None],
+                                  dtype=tf.float32)])
+
+        superres_augmentation_fn = \
+            tf.function(
+                func=superres_augmentation_fn,
+                input_signature=[
+                    tf.TensorSpec(shape=[None, None, None, None],
+                                  dtype=tf.float32)])
 
         # ---
         while global_epoch < global_total_epochs:
@@ -302,10 +292,10 @@ def train_loop(
             # --- iterate over the batches of the dataset
             for input_batch in dataset_training:
                 start_time_forward_backward = time.time()
-
+                # geometric augmentation and casting to float
                 input_batch = geometric_augmentation_fn(input_batch)
                 input_batch = tf.cast(input_batch, dtype=tf.float32)
-
+                # create batches for all subnetworks
                 noisy_batch = noise_augmentation_fn(input_batch)
                 masked_batch, mask_batch = inpaint_augmentation_fn(input_batch)
                 downsampled_batch = superres_augmentation_fn(input_batch)

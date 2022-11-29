@@ -56,9 +56,9 @@ def test_model_builder(config):
     denoiser_module = \
         bfcnn.module_builder_denoise(
             model_backbone=models.backbone,
-            model_denoise=models.denoiser,
-            model_normalize=models.normalizer,
-            model_denormalize=models.denormalizer)
+            model_denoiser=models.denoiser,
+            model_normalizer=models.normalizer,
+            model_denormalizer=models.denormalizer)
 
     assert isinstance(denoiser_module, tf.Module)
 

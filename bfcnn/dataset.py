@@ -410,7 +410,7 @@ def dataset_builder(
     else:
         raise ValueError("don't know how to handle non directory datasets")
 
-    # --- create the dataset
+    # --- save the augmentation functions
     result = dict()
     result[INPAINT_AUGMENTATION_FN_STR] = inpaint_augmentation_fn
     result[SUPERRES_AUGMENTATION_FN_STR] = superres_augmentation_fn
@@ -421,6 +421,7 @@ def dataset_builder(
     else:
         result[NOISE_AUGMENTATION_FN_STR] = noise_augmentations_fn
 
+    # --- create the dataset
     # dataset produces the dataset with basic geometric distortions
     if len(dataset_training) == 0:
         raise ValueError("don't know how to handle zero datasets")
