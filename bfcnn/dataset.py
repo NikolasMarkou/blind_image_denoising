@@ -226,10 +226,11 @@ def dataset_builder(
     def superres_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         d = \
-            gaussian_filter_layer(
-                kernel_size=(3, 3),
-                strides=(2, 2),
-                xy_max=(1.0, 1.0))
+            tf.function(
+                func=gaussian_filter_layer(
+                        kernel_size=(3, 3),
+                        strides=(2, 2),
+                        xy_max=(1.0, 1.0)))
         return d(input_batch)
 
     # --- define noise augmentation function
