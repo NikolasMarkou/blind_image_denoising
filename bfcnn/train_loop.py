@@ -206,7 +206,7 @@ def train_loop(
                 seed=0,
                 minval=0.0,
                 maxval=1.0,
-                shape=random_batch_size)
+                shape=random_batch_size[0:-1] + (1,))
         _ = optimized_model(x, m)
         tf.summary.trace_export(
             step=0,
