@@ -1,7 +1,7 @@
 {
   "model":{
     "general": {
-      "use_denoiser_cross_model": true
+      "use_denoiser_cross_model": false
     },
     "backbone": {
       "input_shape": ["?", "?", 3],
