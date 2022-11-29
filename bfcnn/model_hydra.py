@@ -82,16 +82,16 @@ def model_builder(
     #
     backbone_mid = model_backbone(input_normalized_layer)
     denoiser_mid = model_denoiser(backbone_mid)
+    inpaint_mid = model_inpaint([backbone_mid, input_normalized_layer, mask_layer])
 
     if use_denoiser_cross_model:
         # denoised used as a base for the rest
-        backbone_denoised = model_backbone(denoiser_mid)
+        backbone_denoised = model_backbone(clip_normalized_tensor(denoiser_mid))
         superres_mid = model_superres(backbone_denoised)
-        inpaint_mid = model_inpaint([backbone_denoised, input_normalized_layer, mask_layer])
+        inpaint_mid = model_denoiser(model_backbone(clip_normalized_tensor(inpaint_mid)))
     else:
         # normal operation
         superres_mid = model_superres(backbone_mid)
-        inpaint_mid = model_inpaint([backbone_mid, input_normalized_layer, mask_layer])
 
     # denormalize
     backbone_output = model_denormalizer(backbone_mid, training=False)
