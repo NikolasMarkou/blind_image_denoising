@@ -9,6 +9,7 @@ from typing import Dict, Callable, Iterator, Tuple
 
 from .custom_logger import logger
 from .utilities import merge_iterators
+from .pyramid import downsample_2x2_block
 from .dataset_file_operation import \
     image_filenames_dataset_from_directory_gen, \
     load_image_crop
@@ -217,8 +218,10 @@ def dataset_builder(
     def superres_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         downsampled_batch = \
-            tf.keras.layers.AveragePooling2D(
-                pool_size=(3, 3), strides=(2, 2), padding="same")(input_batch)
+            downsample_2x2_block(
+                input_layer=input_batch,
+                kernel_size=(3, 3),
+                xy_max=(1.0, 1.0))
         return downsampled_batch
 
     # --- define noise augmentation function
