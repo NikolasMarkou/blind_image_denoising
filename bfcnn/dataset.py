@@ -217,11 +217,13 @@ def dataset_builder(
 
     # --- define superres augmentation function
     def superres_augmentation_fn(
-            input_batch: tf.Tensor) -> tf.Tensor:
+            input_batch: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
         downsampled_batch = \
             tf.keras.layers.AveragePooling2D(
                 pool_size=(3, 3), strides=(2, 2), padding="same")(input_batch)
-        return downsampled_batch
+        downsampled_mask_batch = \
+            tf.zeros(shape=tf.shape(downsampled_batch)[0:-1] + (1,))
+        return downsampled_batch, downsampled_mask_batch
 
     # --- define noise augmentation function
     @tf.function(
