@@ -507,7 +507,7 @@ def model_inpaint_builder(
         epsilon=DEFAULT_BN_EPSILON)
 
     start_conv_params = dict(
-        kernel_size=1,
+        kernel_size=kernel_size,
         strides=(1, 1),
         padding="same",
         filters=filters,
@@ -556,12 +556,20 @@ def model_inpaint_builder(
     x = model_input_layer
 
     x = \
+        tf.keras.layers.Concatenate()(
+            [x, mask_input_layer])
+
+    x = \
         conv2d_wrapper(
             input_layer=x,
             bn_params=None,
             conv_params=start_conv_params,
             channelwise_scaling=False,
             multiplier_scaling=False)
+
+    x = \
+        tf.keras.layers.Concatenate()(
+            [x, mask_input_layer])
 
     if batchnorm:
         x = \
@@ -575,6 +583,10 @@ def model_inpaint_builder(
             conv_params=middle_conv_params,
             channelwise_scaling=False,
             multiplier_scaling=False)
+
+    x = \
+        tf.keras.layers.Concatenate()(
+            [x, mask_input_layer])
 
     x = \
         conv2d_wrapper(
