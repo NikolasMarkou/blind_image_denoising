@@ -86,9 +86,9 @@ def model_builder(
 
     if use_denoiser_cross_model:
         # denoised used as a base for the rest
-        backbone_denoised = model_backbone(denoiser_mid)
+        backbone_denoised = model_backbone(denoiser_mid, training=False)
         superres_mid = model_superres(backbone_denoised)
-        inpaint_mid = model_denoiser(model_backbone(inpaint_mid))
+        inpaint_mid = model_denoiser(model_backbone(inpaint_mid, training=False))
     else:
         # normal operation
         superres_mid = model_superres(backbone_mid)
