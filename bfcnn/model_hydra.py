@@ -66,7 +66,7 @@ def model_builder(
     mean_normalized_layer = \
         tf.multiply(
             tf.ones_like(
-                input_batch=input_normalized_layer),
+                input=input_normalized_layer),
             tf.reduce_mean(
                 input_tensor=input_layer,
                 axis=[1, 2]))
