@@ -550,10 +550,14 @@ def model_inpaint_builder(
             name="original_input_tensor")
     mask_input_layer = \
         tf.keras.Input(
-            shape=(None, None, output_channels),
+            shape=(None, None, 1),
             name="mask_input_tensor")
 
     x = model_input_layer
+
+    x = \
+        tf.keras.layers.Concatenate()(
+            [x, mask_input_layer])
 
     x = \
         conv2d_wrapper(
