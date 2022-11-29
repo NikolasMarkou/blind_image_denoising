@@ -4,6 +4,7 @@ blocks and builders for pyramid handling
 
 import numpy as np
 from enum import Enum
+import tensorflow as tf
 from tensorflow import keras
 from typing import Dict, Tuple, Union, List
 
@@ -59,7 +60,8 @@ def gaussian_filter_layer(
         kernel_channel = \
             gaussian_kernel(
                 size=(shape[0], shape[1]),
-                nsig=xy_max)
+                nsig=xy_max,
+                dtype=np.float)
         for i in range(shape[2]):
             kernel[:, :, i, 0] = kernel_channel
         return kernel
@@ -130,7 +132,7 @@ def gaussian_filter_block(
 
 
 def downsample_2x2_block(
-        input_layer,
+        input_layer: tf.Tensor,
         kernel_size: Tuple[int, int] = DEFAULT_KERNEL_SIZE,
         xy_max: Tuple[float, float] = DEFAULT_XY_MAX,
         trainable: bool = False):
