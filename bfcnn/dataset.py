@@ -215,14 +215,6 @@ def dataset_builder(
         return input_batch, mask_batch
 
     # --- define superres augmentation function
-    @tf.function(
-        input_signature=[
-            tf.TensorSpec(shape=[None,
-                                 None,
-                                 None,
-                                 channels],
-                          dtype=tf.float32)],
-        jit_compile=False)
     def superres_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         downsampled_batch = \
