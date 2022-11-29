@@ -248,34 +248,6 @@ def train_loop(
         status = \
             checkpoint.restore(manager.latest_checkpoint).expect_partial()
 
-        geometric_augmentation_fn = \
-            tf.function(
-                func=geometric_augmentation_fn,
-                input_signature=[
-                    tf.TensorSpec(shape=[None, None, None, None],
-                                  dtype=tf.uint8)])
-
-        noise_augmentation_fn = \
-            tf.function(
-                func=noise_augmentation_fn,
-                input_signature=[
-                    tf.TensorSpec(shape=[None, None, None, None],
-                                  dtype=tf.float32)])
-
-        inpaint_augmentation_fn = \
-            tf.function(
-                func=inpaint_augmentation_fn,
-                input_signature=[
-                    tf.TensorSpec(shape=[None, None, None, None],
-                                  dtype=tf.float32)])
-
-        superres_augmentation_fn = \
-            tf.function(
-                func=superres_augmentation_fn,
-                input_signature=[
-                    tf.TensorSpec(shape=[None, None, None, None],
-                                  dtype=tf.float32)])
-
         # ---
         while global_epoch < global_total_epochs:
             logger.info("epoch: {0}, step: {1}".format(
