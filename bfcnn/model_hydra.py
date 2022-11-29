@@ -54,13 +54,14 @@ def model_builder(
     model_superres = \
         model_superres_builder(config=config["superres"])
 
+    mask_input_shape = (None, None, 1)
     input_shape = tf.keras.backend.int_shape(model_backbone.inputs[0])[1:]
     logger.info("input_shape: [{0}]".format(input_shape))
 
     # --- build hydra combined model
     input_layer = tf.keras.Input(shape=input_shape, name="input_tensor")
     input_normalized_layer = model_normalizer(input_layer, training=False)
-    mask_layer = tf.keras.Input(shape=input_shape, name="mask_input_tensor")
+    mask_layer = tf.keras.Input(shape=mask_input_shape, name="mask_input_tensor")
     #
     backbone_output = model_backbone(input_normalized_layer)
     denoiser_output = model_denoiser(backbone_output)
