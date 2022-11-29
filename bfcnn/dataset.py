@@ -225,10 +225,13 @@ def dataset_builder(
         jit_compile=False)
     def superres_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
-        downsampled_batch = \
-            tf.keras.layers.AveragePooling2D(
-                pool_size=(3, 3), strides=(2, 2), padding="same")(input_batch)
-        return downsampled_batch
+        d = \
+            tf.function(
+                func=gaussian_filter_layer(
+                        kernel_size=(3, 3),
+                        strides=(2, 2),
+                        xy_max=(1.0, 1.0)))
+        return d(input_batch)
 
     # --- define noise augmentation function
     @tf.function(
