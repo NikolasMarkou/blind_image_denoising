@@ -308,15 +308,15 @@ def train_loop(
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
-                    _, denoiser_output, _, _ = \
+                    denoiser_output, _, _ = \
                         hydra([noisy_batch,
                                tf.ones_like(noisy_batch)[:,:,:,0]], training=True)
 
-                    _, _, inpaint_output, _ = \
+                    _, inpaint_output, _ = \
                         hydra([masked_batch,
                                mask_batch], training=True)
 
-                    _, _, _, superres_output = \
+                    _, _, superres_output = \
                         hydra([downsampled_batch,
                                tf.ones_like(downsampled_batch)[:,:,:,0]], training=True)
 
@@ -369,7 +369,7 @@ def train_loop(
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
-                    _, test_denoiser_output, _, test_superres_output = \
+                    test_denoiser_output, _, test_superres_output = \
                         hydra([test_images, tf.ones_like(test_images)[:,:,:,0]],
                               training=False)
                     visualize(

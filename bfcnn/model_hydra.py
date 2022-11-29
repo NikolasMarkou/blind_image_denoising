@@ -94,13 +94,11 @@ def model_builder(
         superres_mid = model_superres(backbone_mid)
 
     # denormalize
-    backbone_output = model_denormalizer(backbone_mid, training=False)
     denoiser_output = model_denormalizer(denoiser_mid, training=False)
     inpaint_output = model_denormalizer(inpaint_mid, training=False)
     superres_output = model_denormalizer(superres_mid, training=False)
 
     # wrap layers to set names
-    backbone_output = tf.keras.layers.Layer(name="backbone")(backbone_output)
     denoiser_output = tf.keras.layers.Layer(name="denoiser")(denoiser_output)
     inpaint_output = tf.keras.layers.Layer(name="inpaint")(inpaint_output)
     superres_output = tf.keras.layers.Layer(name="superres")(superres_output)
@@ -110,7 +108,6 @@ def model_builder(
         keras.Model(
             inputs=[input_layer, mask_layer],
             outputs=[
-                backbone_output,
                 denoiser_output,
                 inpaint_output,
                 superres_output
