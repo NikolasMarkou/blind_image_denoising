@@ -23,6 +23,7 @@ INPAINT_AUGMENTATION_FN_STR = "inpaint_augmentation"
 SUPERRES_AUGMENTATION_FN_STR = "superres_augmentation"
 GEOMETRIC_AUGMENTATION_FN_STR = "geometric_augmentation"
 
+
 # ---------------------------------------------------------------------
 
 
@@ -221,8 +222,8 @@ def dataset_builder(
         downsampled_batch = \
             tf.keras.layers.AveragePooling2D(
                 pool_size=(3, 3), strides=(2, 2), padding="same")(input_batch)
-        downsampled_mask_batch = \
-            tf.zeros(shape=downsampled_batch.shape[0:-1] + (1,))
+        downsampled_mask_batch = tf.zeros_like(downsampled_batch, dtype=tf.float32)
+        downsampled_mask_batch = downsampled_mask_batch[:, :, :, 0]
         return downsampled_batch, downsampled_mask_batch
 
     # --- define noise augmentation function
@@ -261,22 +262,22 @@ def dataset_builder(
                 tf.cond(
                     pred=random_uniform_option_1,
                     true_fn=lambda:
-                        # channel independent noise
-                        tf.random.truncated_normal(
-                            mean=0.0,
-                            dtype=tf.float32,
-                            stddev=additive_noise_std,
-                            shape=input_shape_inference),
+                    # channel independent noise
+                    tf.random.truncated_normal(
+                        mean=0.0,
+                        dtype=tf.float32,
+                        stddev=additive_noise_std,
+                        shape=input_shape_inference),
                     false_fn=lambda:
-                        # channel dependent noise
-                        tf.random.truncated_normal(
-                            mean=0.0,
-                            dtype=tf.float32,
-                            stddev=additive_noise_std,
-                            shape=(input_shape_inference[0],
-                                   input_shape[0],
-                                   input_shape[1],
-                                   1))
+                    # channel dependent noise
+                    tf.random.truncated_normal(
+                        mean=0.0,
+                        dtype=tf.float32,
+                        stddev=additive_noise_std,
+                        shape=(input_shape_inference[0],
+                               input_shape[0],
+                               input_shape[1],
+                               1))
                 )
             noisy_batch = tf.add(noisy_batch, additive_noise_batch)
             # blur to embed noise
@@ -299,20 +300,20 @@ def dataset_builder(
                 tf.cond(
                     pred=random_uniform_option_1,
                     true_fn=lambda:
-                        tf.random.truncated_normal(
-                            mean=1.0,
-                            stddev=multiplicative_noise_std,
-                            shape=input_shape_inference,
-                            dtype=tf.float32),
+                    tf.random.truncated_normal(
+                        mean=1.0,
+                        stddev=multiplicative_noise_std,
+                        shape=input_shape_inference,
+                        dtype=tf.float32),
                     false_fn=lambda:
-                        tf.random.truncated_normal(
-                            mean=1.0,
-                            stddev=multiplicative_noise_std,
-                            shape=(input_shape_inference[0],
-                                   input_shape_inference[1],
-                                   input_shape_inference[2],
-                                   1),
-                            dtype=tf.float32)
+                    tf.random.truncated_normal(
+                        mean=1.0,
+                        stddev=multiplicative_noise_std,
+                        shape=(input_shape_inference[0],
+                               input_shape_inference[1],
+                               input_shape_inference[2],
+                               1),
+                        dtype=tf.float32)
                 )
             noisy_batch = tf.multiply(noisy_batch, multiplicative_noise_batch)
             # blur to embed noise
@@ -322,10 +323,10 @@ def dataset_builder(
                         random_blur,
                         random_uniform_option_2),
                     true_fn=lambda:
-                        tfa.image.gaussian_filter2d(
-                            image=noisy_batch,
-                            sigma=1,
-                            filter_shape=(3, 3)),
+                    tfa.image.gaussian_filter2d(
+                        image=noisy_batch,
+                        sigma=1,
+                        filter_shape=(3, 3)),
                     false_fn=lambda: noisy_batch
                 )
 
@@ -457,26 +458,26 @@ def dataset_builder(
         return x
 
     result[DATASET_TRAINING_FN_STR] = \
-        tf.data.Dataset\
+        tf.data.Dataset \
             .from_generator(
-                generator=gen_fn,
-                output_signature=(
-                    tf.TensorSpec(
-                        shape=(),
-                        dtype=tf.string)
+            generator=gen_fn,
+            output_signature=(
+                tf.TensorSpec(
+                    shape=(),
+                    dtype=tf.string)
             )) \
             .map(
-                map_func=load_image_fn,
-                num_parallel_calls=12) \
+            map_func=load_image_fn,
+            num_parallel_calls=12) \
             .unbatch() \
             .shuffle(
-                seed=0,
-                buffer_size=batch_size * len(directory) * no_crops_per_image,
-                reshuffle_each_iteration=False)\
+            seed=0,
+            buffer_size=batch_size * len(directory) * no_crops_per_image,
+            reshuffle_each_iteration=False) \
             .batch(
-                batch_size=batch_size,
-                deterministic=False,
-                num_parallel_calls=tf.data.AUTOTUNE) \
+            batch_size=batch_size,
+            deterministic=False,
+            num_parallel_calls=tf.data.AUTOTUNE) \
             .prefetch(1)
 
     return result
