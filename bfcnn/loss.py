@@ -418,7 +418,7 @@ def loss_function_builder(
                     mae_prediction_loss += \
                         mae(original=input_batch_multiscale[i],
                             prediction=prediction_batch_multiscale[i],
-                            hinge=hinge,
+                            hinge=float(hinge * (float(i+1) / float(pyramid_levels))),
                             cutoff=cutoff,
                             mask=mask,
                             count_non_zero_mean=count_non_zero_mean)
