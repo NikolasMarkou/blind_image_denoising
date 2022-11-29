@@ -197,8 +197,8 @@ def dataset_builder(
         mask_batch = \
             tf.random.uniform(
                 seed=0,
-                minval=0.0,
-                maxval=1.0,
+                minval=-0.5,
+                maxval=0.5,
                 dtype=tf.float16,
                 shape=(input_shape_inference[0],
                        input_shape_inference[1],
@@ -208,7 +208,7 @@ def dataset_builder(
         mask_batch = \
             tf.cast(
                 x=tf.greater(mask_batch,
-                             tf.constant(0.5, dtype=tf.float16)),
+                             tf.constant(0.0, dtype=tf.float16)),
                 dtype=tf.float32)
 
         return input_batch, mask_batch
