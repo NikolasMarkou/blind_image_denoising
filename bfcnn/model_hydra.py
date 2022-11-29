@@ -62,6 +62,19 @@ def model_builder(
     input_layer = tf.keras.Input(shape=input_shape, name="input_tensor")
     input_normalized_layer = model_normalizer(input_layer, training=False)
     mask_layer = tf.keras.Input(shape=mask_input_shape, name="mask_input_tensor")
+
+    mean_normalized_layer = \
+        tf.multiply(
+            tf.ones_like(
+                input_batch=input_normalized_layer),
+            tf.reduce_mean(
+                input_tensor=input_layer,
+                axis=[1, 2]))
+
+    input_normalized_layer = \
+        tf.multiply(input_normalized_layer, mask_layer) + \
+        tf.multiply(mean_normalized_layer, 1.0 - mask_layer)
+
     #
     backbone_output = model_backbone(input_normalized_layer)
     denoiser_output = model_denoiser(backbone_output)

@@ -211,10 +211,7 @@ def dataset_builder(
                              tf.constant(0.5, dtype=tf.float16)),
                 dtype=tf.float32)
 
-        masked_batch = \
-            tf.multiply(input_batch, mask_batch)
-
-        return masked_batch, mask_batch
+        return input_batch, mask_batch
 
     # --- define superres augmentation function
     def superres_augmentation_fn(

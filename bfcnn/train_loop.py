@@ -367,7 +367,7 @@ def train_loop(
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
                     _, test_denoiser_output, _, test_superres_output = \
-                        hydra([test_images, tf.zeros_like(test_images)[:,:,:,0]],
+                        hydra([test_images, tf.ones_like(test_images)[:,:,:,0]],
                               training=False)
                     visualize(
                         global_step=global_step,
