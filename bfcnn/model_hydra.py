@@ -69,6 +69,7 @@ def model_builder(
                 input=input_normalized_layer),
             tf.reduce_mean(
                 input_tensor=input_layer,
+                keepdims=True,
                 axis=[1, 2]))
 
     input_normalized_layer = \
