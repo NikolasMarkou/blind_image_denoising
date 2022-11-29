@@ -298,7 +298,7 @@ def train_loop(
                 # create batches for all subnetworks
                 noisy_batch = noise_augmentation_fn(input_batch)
                 masked_batch, mask_batch = inpaint_augmentation_fn(input_batch)
-                downsampled_batch, downsampled_mask_batch = superres_augmentation_fn(input_batch)
+                downsampled_batch = superres_augmentation_fn(input_batch)
 
                 # Open a GradientTape to record the operations run
                 # during the forward pass,
@@ -309,13 +309,16 @@ def train_loop(
                     # to its inputs are going to be recorded
                     # on the GradientTape.
                     _, denoiser_output, _, _ = \
-                        hydra([noisy_batch, mask_batch], training=True)
+                        hydra([noisy_batch,
+                               tf.ones_like(noisy_batch)[:,:,:,0]], training=True)
 
                     _, _, inpaint_output, _ = \
-                        hydra([masked_batch, mask_batch], training=True)
+                        hydra([masked_batch,
+                               mask_batch], training=True)
 
                     _, _, _, superres_output = \
-                        hydra([downsampled_batch, downsampled_mask_batch], training=True)
+                        hydra([downsampled_batch,
+                               tf.ones_like(downsampled_batch)[:,:,:,0]], training=True)
 
                     # compute the loss value for this mini-batch
                     denoiser_loss_map = \
