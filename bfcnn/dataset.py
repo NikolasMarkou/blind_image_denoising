@@ -142,7 +142,7 @@ def dataset_builder(
                                  channels],
                           dtype=tf.uint8)],
         jit_compile=False)
-    def geometric_augmentation_fn(
+    def geometric_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
         perform all the geometric augmentations
@@ -423,7 +423,7 @@ def dataset_builder(
     result = dict()
     result[INPAINT_AUGMENTATION_FN_STR] = inpaint_augmentation_fn
     result[SUPERRES_AUGMENTATION_FN_STR] = superres_augmentation_fn
-    result[GEOMETRIC_AUGMENTATION_FN_STR] = geometric_augmentation_fn
+    result[GEOMETRIC_AUGMENTATION_FN_STR] = geometric_augmentations_fn
 
     if mix_noise_types:
         result[NOISE_AUGMENTATION_FN_STR] = noise_augmentations_mix_fn
