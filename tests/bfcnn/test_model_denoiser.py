@@ -42,18 +42,15 @@ def test_model_builder(config):
             minval=-0.5,
             maxval=+0.5,
             dtype=tf.float32)
-        m = tf.zeros_like(x)[:,:,:,0]
+        m = tf.zeros_like(x)
+        # backbone_output,
         # denoiser_output,
         # inpaint_output,
         # superres_output
         y = models.hydra([x, m])
 
-        assert y[0].shape == x.shape
         assert y[1].shape == x.shape
-        assert y[2].shape[0] == x.shape[0]
-        assert y[2].shape[1] == x.shape[1] * 2
-        assert y[2].shape[2] == x.shape[2] * 2
-        assert y[2].shape[3] == x.shape[3]
+        assert y[2].shape == x.shape
 
     # export
     denoiser_module = \

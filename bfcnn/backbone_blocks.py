@@ -75,6 +75,7 @@ def resnet_blocks_full(
         expand_type: ExpandType = ExpandType.SAME,
         stop_gradient: bool = False,
         bn_first_conv_params: bool = False,
+
         **kwargs):
     """
     Create a series of residual network blocks
@@ -87,7 +88,6 @@ def resnet_blocks_full(
     :param bn_params: batch normalization parameters
     :param sparse_params: sparse parameters
     :param gate_params: gate optional parameters
-    :param gelu_params: gelu optional parameters
     :param dropout_params: dropout optional parameters
     :param selector_params: selector mixer optional parameters
     :param multiplier_params: learnable multiplier optional parameters
