@@ -45,6 +45,7 @@ def builder(
         add_channelwise_scaling: bool = False,
         add_learnable_multiplier: bool = False,
         add_mean_sigma_normalization: bool = False,
+        output_layer_name: str = "intermediate_output",
         name="resnet",
         **kwargs) -> keras.Model:
     """
@@ -292,7 +293,7 @@ def builder(
 
     # --- output layer branches here,
     output_layer = \
-        tf.keras.layers.Layer(name="intermediate_output")(x)
+        tf.keras.layers.Layer(name=output_layer_name)(x)
 
     return \
         tf.keras.Model(
