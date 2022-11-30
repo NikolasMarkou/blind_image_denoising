@@ -8,4 +8,5 @@ setuptools>=54.0.0
 scikit-learn>=1.0.0
 tensorboard
 tensorflow-addons
+tensorflow-graphics
 tensorflow-gpu==2.11.0

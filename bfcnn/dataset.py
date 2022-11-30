@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow_addons as tfa
+import tensorflow_graphics as tfg
 from typing import Dict, Callable, Iterator, Tuple
 
 # ---------------------------------------------------------------------
@@ -216,10 +217,10 @@ def dataset_builder(
     # --- define superres augmentation function
     def superres_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
-        downsampled_batch = \
-            tf.keras.layers.AveragePooling2D(
-                pool_size=(3, 3), strides=(2, 2), padding="same")(input_batch)
-        return downsampled_batch
+        return \
+            tfg.image.pyramid.downsample(
+                image=input_batch,
+                num_levels=1)[0]
 
     # --- define noise augmentation function
     @tf.function(
