@@ -1,4 +1,6 @@
 import abc
+import copy
+
 import keras
 import tensorflow as tf
 from typing import Dict, Tuple
@@ -16,6 +18,7 @@ from .utilities import \
     input_shape_fixer, \
     build_normalize_model, \
     build_denormalize_model
+from .backbone_blocks import resnet_blocks_full
 from .backbone_unet import builder as builder_unet
 from .backbone_lunet import builder as builder_lunet
 from .backbone_resnet import builder as builder_resnet
@@ -94,7 +97,9 @@ def model_builder(
             model_superres(backbone_denoised)
         inpaint_mid = \
             model_denoiser(
-                model_backbone(clip_normalized_tensor(inpaint_mid), training=False))
+                model_backbone(
+                    clip_normalized_tensor(inpaint_mid),
+                    training=False))
     else:
         # normal operation
         superres_mid = model_superres(backbone_mid)
@@ -420,34 +425,14 @@ def model_denoiser_builder(
     logger.info(f"unused parameters [{kwargs}]")
 
     # --- set configuration
-    filters = config.get("filters", 32)
     use_bias = config.get("use_bias", False)
-    batchnorm = config.get("batchnorm", True)
-    kernel_size = config.get("kernel_size", 5)
-    activation = config.get("activation", "relu")
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
     final_activation = config.get("final_activation", "tanh")
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
 
-    bn_params = dict(
-        scale=True,
-        center=use_bias,
-        momentum=DEFAULT_BN_MOMENTUM,
-        epsilon=DEFAULT_BN_EPSILON)
-
-    start_conv_params = dict(
-        kernel_size=kernel_size,
-        strides=(1, 1),
-        padding="same",
-        filters=filters,
-        use_bias=use_bias,
-        activation=activation,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
+    # --- set network parameters
     final_conv_params = dict(
         kernel_size=1,
         strides=(1, 1),
@@ -459,7 +444,7 @@ def model_denoiser_builder(
         kernel_initializer=kernel_initializer
     )
 
-    # --- define superres head here
+    # --- define superres network here
     model_input_layer = \
         tf.keras.Input(
             shape=input_shape,
@@ -467,18 +452,8 @@ def model_denoiser_builder(
 
     x = model_input_layer
 
-    x = \
-        conv2d_wrapper(
-            input_layer=x,
-            bn_params=None,
-            conv_params=start_conv_params,
-            channelwise_scaling=False,
-            multiplier_scaling=False)
-
-    if batchnorm:
-        x = \
-            tf.keras.layers.BatchNormalization(
-                **bn_params)(x)
+    backbone, _, _ = model_backbone_builder(config)
+    x = backbone(x)
 
     x = \
         conv2d_wrapper(
@@ -496,7 +471,7 @@ def model_denoiser_builder(
         tf.keras.Model(
             inputs=model_input_layer,
             outputs=x_result,
-            name=f"denoiser_head")
+            name=f"denoise_head")
 
     return model_head
 
@@ -519,45 +494,17 @@ def model_inpaint_builder(
     logger.info(f"unused parameters [{kwargs}]")
 
     # --- set configuration
-    filters = config.get("filters", 32)
     use_bias = config.get("use_bias", False)
-    batchnorm = config.get("batchnorm", True)
-    kernel_size = config.get("kernel_size", 5)
-    activation = config.get("activation", "relu")
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
     final_activation = config.get("final_activation", "tanh")
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
+    # add one to accommodate the mask
+    backbone_config = copy.deepcopy(config)
+    backbone_config["input_shape"][2] += 1
 
-    bn_params = dict(
-        scale=True,
-        center=use_bias,
-        momentum=DEFAULT_BN_MOMENTUM,
-        epsilon=DEFAULT_BN_EPSILON)
-
-    start_conv_params = dict(
-        kernel_size=kernel_size,
-        strides=(1, 1),
-        padding="same",
-        filters=filters,
-        use_bias=use_bias,
-        activation=activation,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
-    middle_conv_params = dict(
-        kernel_size=1,
-        strides=(1, 1),
-        padding="same",
-        filters=filters,
-        use_bias=use_bias,
-        activation=activation,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
+    # --- set network parameters
     final_conv_params = dict(
         kernel_size=1,
         strides=(1, 1),
@@ -569,7 +516,7 @@ def model_inpaint_builder(
         kernel_initializer=kernel_initializer
     )
 
-    # --- define superres head here
+    # --- define inpaint head here
     model_input_layer = \
         tf.keras.Input(
             shape=input_shape,
@@ -589,30 +536,8 @@ def model_inpaint_builder(
         tf.keras.layers.Concatenate()(
             [x, mask_input_layer])
 
-    x = \
-        conv2d_wrapper(
-            input_layer=x,
-            bn_params=None,
-            conv_params=start_conv_params,
-            channelwise_scaling=False,
-            multiplier_scaling=False)
-
-    x = \
-        tf.keras.layers.Concatenate()(
-            [x, mask_input_layer])
-
-    if batchnorm:
-        x = \
-            tf.keras.layers.BatchNormalization(
-                **bn_params)(x)
-
-    x = \
-        conv2d_wrapper(
-            input_layer=x,
-            bn_params=None,
-            conv_params=middle_conv_params,
-            channelwise_scaling=False,
-            multiplier_scaling=False)
+    backbone, _, _ = model_backbone_builder(backbone_config)
+    x = backbone(x)
 
     x = \
         tf.keras.layers.Concatenate()(
@@ -665,11 +590,7 @@ def model_superres_builder(
     logger.info(f"unused parameters [{kwargs}]")
 
     # --- set configuration
-    filters = config.get("filters", 32)
     use_bias = config.get("use_bias", False)
-    batchnorm = config.get("batchnorm", True)
-    kernel_size = config.get("kernel_size", 5)
-    activation = config.get("activation", "relu")
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
     final_activation = config.get("final_activation", "tanh")
@@ -677,37 +598,9 @@ def model_superres_builder(
     kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
 
     # --- set network parameters
-    bn_params = dict(
-        scale=True,
-        center=use_bias,
-        momentum=DEFAULT_BN_MOMENTUM,
-        epsilon=DEFAULT_BN_EPSILON)
-
     upsampling_params = dict(
         size=(2, 2),
         interpolation="nearest")
-
-    start_conv_params = dict(
-        kernel_size=1,
-        strides=(1, 1),
-        padding="same",
-        filters=filters,
-        use_bias=use_bias,
-        activation=activation,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
-    middle_conv_params = dict(
-        kernel_size=kernel_size,
-        strides=(1, 1),
-        padding="same",
-        filters=filters,
-        use_bias=use_bias,
-        activation=activation,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
 
     final_conv_params = dict(
         kernel_size=1,
@@ -720,7 +613,7 @@ def model_superres_builder(
         kernel_initializer=kernel_initializer
     )
 
-    # --- define superres head here
+    # --- define superres network here
     model_input_layer = \
         tf.keras.Input(
             shape=input_shape,
@@ -729,29 +622,11 @@ def model_superres_builder(
     x = model_input_layer
 
     x = \
-        conv2d_wrapper(
-            input_layer=x,
-            bn_params=None,
-            conv_params=start_conv_params,
-            channelwise_scaling=False,
-            multiplier_scaling=False)
-
-    if batchnorm:
-        x = \
-            tf.keras.layers.BatchNormalization(
-                **bn_params)(x)
-
-    x = \
         tf.keras.layers.UpSampling2D(
             **upsampling_params)(x)
 
-    x = \
-        conv2d_wrapper(
-            input_layer=x,
-            bn_params=None,
-            conv_params=middle_conv_params,
-            channelwise_scaling=False,
-            multiplier_scaling=False)
+    backbone, _, _ = model_backbone_builder(config)
+    x = backbone(x)
 
     x = \
         conv2d_wrapper(
