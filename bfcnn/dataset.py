@@ -216,11 +216,17 @@ def dataset_builder(
     # --- define superres augmentation function
     def superres_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
-        return \
-            tf.image.resize(
-                images=input_batch,
-                size=(input_shape[1], input_shape[2]),
-                method=tf.image.ResizeMethod.GAUSSIAN)
+        downsampled_batch = \
+            tfa.image.gaussian_filter2d(
+                image=input_batch,
+                sigma=1,
+                filter_shape=(5, 5))
+        downsampled_batch = \
+            tf.keras.layers.AveragePooling2D(
+                pool_size=(1, 1),
+                strides=(2, 2),
+                padding="same")(downsampled_batch)
+        return downsampled_batch
 
     # --- define noise augmentation function
     @tf.function(
