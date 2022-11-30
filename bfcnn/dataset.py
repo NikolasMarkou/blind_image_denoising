@@ -1,7 +1,6 @@
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow_addons as tfa
-import tensorflow_graphics as tfg
 from typing import Dict, Callable, Iterator, Tuple
 
 # ---------------------------------------------------------------------
@@ -218,9 +217,10 @@ def dataset_builder(
     def superres_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         return \
-            tfg.image.pyramid.downsample(
-                image=input_batch,
-                num_levels=1)[0]
+            tf.image.resize(
+                images=input_batch,
+                size=(input_shape[1], input_shape[2]),
+                method=tf.image.ResizeMethod.GAUSSIAN)
 
     # --- define noise augmentation function
     @tf.function(

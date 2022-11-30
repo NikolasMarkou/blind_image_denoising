@@ -233,7 +233,9 @@ Custom regularization that gives incentive to convolutional kernels to have high
 
 ## Installation notes
 
-* `tensorflow_graphics` requires that you install `libopenexr-dev` package in your linux machine
+>`tensorflow_graphics` requires that you install the following packages:
+>>`libopenexr-dev`
+>>`python3-dev`
 
 ## Special Thanks
 I would like to thank [Pantelis Georgiades](https://www.linkedin.com/in/pantelisgeor/) and Alexandros Georgiou from the [Cyprus Institute ](https://www.cyi.ac.cy/) for doing precious hyperparameter search for me on their super computer. Their help accelerated my project enormously.
