@@ -214,17 +214,11 @@ def resnet_blocks_full(
             y = tf.expand_dims(y, axis=2)
             x = tf.keras.layers.Multiply()([x, y])
 
-            if third_conv_params is not None:
-                x = conv2d_wrapper(input_layer=x,
-                                   conv_params=copy.deepcopy(third_conv_params),
-                                   bn_params=None,
-                                   channelwise_scaling=False)
-        else:
-            if third_conv_params is not None:
-                x = conv2d_wrapper(input_layer=x,
-                                   conv_params=copy.deepcopy(third_conv_params),
-                                   bn_params=bn_params,
-                                   channelwise_scaling=False)
+        if third_conv_params is not None:
+            x = conv2d_wrapper(input_layer=x,
+                               conv_params=copy.deepcopy(third_conv_params),
+                               bn_params=bn_params,
+                               channelwise_scaling=False)
 
         # fix x dimensions and previous layers
         if expand_type == ExpandType.COMPRESS:
@@ -284,12 +278,26 @@ def resnet_blocks_full(
 
         # skip connector or selector mixer
         if use_selector:
+            x_selector = None
+            if (x_1st_conv is not None) and \
+                    (x_2nd_conv is not None) and \
+                    (x_3rd_conv is None):
+                x_selector = x_1st_conv
+            elif (x_1st_conv is not None) and \
+                    (x_2nd_conv is not None) and \
+                    (x_3rd_conv is not None):
+                x_selector = x_2nd_conv
+            else:
+                raise ValueError("don't what selector layer to use")
+
+            filters_compress = max(2, int(round(selector_no_filters / 4)))
+
             x = \
                 selector_block(
                     input_1_layer=previous_layer,
                     input_2_layer=x,
-                    selector_layer=x_2nd_conv,
-                    filters_compress=max(int(selector_no_filters / 4), 2),
+                    selector_layer=x_selector,
+                    filters_compress=filters_compress,
                     filters_target=selector_no_filters,
                     kernel_regularizer="l1",
                     kernel_initializer="glorot_normal",

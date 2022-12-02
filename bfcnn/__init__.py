@@ -14,12 +14,9 @@ from typing import Union
 # ---------------------------------------------------------------------
 
 from .train_loop import train_loop
-from .export_model import export_model
-from .model_hydra import \
-    model_builder, \
-    module_builder_denoise
-from .utilities import \
-    logger, load_config, load_image
+from .model_hydra import model_builder
+from .utilities import logger, load_config, load_image
+from .export_model import export_model, module_builder_denoise
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
