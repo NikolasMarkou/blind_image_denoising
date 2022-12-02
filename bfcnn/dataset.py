@@ -462,11 +462,11 @@ def dataset_builder(
     result[DATASET_TRAINING_FN_STR] = \
         tf.data.Dataset \
             .from_generator(
-            generator=gen_fn,
-            output_signature=(
-                tf.TensorSpec(
-                    shape=(),
-                    dtype=tf.string)
+                generator=gen_fn,
+                output_signature=(
+                    tf.TensorSpec(
+                        shape=(),
+                        dtype=tf.string)
             )) \
             .map(
                 map_func=load_image_fn,

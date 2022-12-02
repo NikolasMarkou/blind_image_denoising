@@ -19,8 +19,8 @@
 			"kernel_regularizer": {
 				"type": "erf",
 				"config": {
-					"l2_coefficient": 0.025,
-					"l1_coefficient": 0.0
+					"l2_coefficient": 0.0,
+					"l1_coefficient": 0.025
 				}
 			}
 		},
@@ -41,8 +41,8 @@
 			"kernel_regularizer": {
 				"type": "erf",
 				"config": {
-					"l2_coefficient": 0.025,
-					"l1_coefficient": 0.0
+					"l2_coefficient": 0.0,
+					"l1_coefficient": 0.025
 				}
 			}
 		},
@@ -63,8 +63,8 @@
 			"kernel_regularizer": {
 				"type": "erf",
 				"config": {
-					"l2_coefficient": 0.025,
-					"l1_coefficient": 0.0
+					"l2_coefficient": 0.0,
+					"l1_coefficient": 0.025
 				}
 			}
 		},
@@ -85,8 +85,8 @@
 			"kernel_regularizer": {
 				"type": "erf",
 				"config": {
-					"l2_coefficient": 0.025,
-					"l1_coefficient": 0.0
+					"l2_coefficient": 0.0,
+					"l1_coefficient": 0.025
 				}
 			}
 		}
@@ -119,7 +119,7 @@
 		"hinge": 0.5,
 		"cutoff": 255.0,
 		"mae_multiplier": 1.0,
-		"regularization": 0.03,
+		"regularization": 0.01,
 		"use_multiscale": true,
 		"count_non_zero_mean": false
 	},

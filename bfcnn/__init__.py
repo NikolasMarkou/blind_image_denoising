@@ -7,7 +7,6 @@ __license__ = "MIT"
 import os
 import pathlib
 import tensorflow as tf
-from typing import Union
 
 # ---------------------------------------------------------------------
 # local imports
