@@ -469,17 +469,17 @@ def dataset_builder(
                     dtype=tf.string)
             )) \
             .map(
-            map_func=load_image_fn,
-            num_parallel_calls=12) \
+                map_func=load_image_fn,
+                num_parallel_calls=12) \
             .unbatch() \
             .shuffle(
-            seed=0,
-            buffer_size=batch_size * len(directory) * no_crops_per_image,
-            reshuffle_each_iteration=False) \
+                seed=0,
+                buffer_size=batch_size * len(directory) * no_crops_per_image,
+                reshuffle_each_iteration=False) \
             .batch(
-            batch_size=batch_size,
-            deterministic=False,
-            num_parallel_calls=tf.data.AUTOTUNE) \
+                batch_size=batch_size,
+                deterministic=False,
+                num_parallel_calls=tf.data.AUTOTUNE) \
             .prefetch(1)
 
     return result
