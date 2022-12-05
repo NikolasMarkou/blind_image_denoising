@@ -251,6 +251,8 @@ def train_loop(
                 directory=model_dir,
                 max_to_keep=checkpoints_to_keep)
         manager.restore_or_initialize()
+        manager.save()
+
         # check here
         # status = \
         #     checkpoint.restore(manager.latest_checkpoint).expect_partial()
