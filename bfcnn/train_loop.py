@@ -250,14 +250,19 @@ def train_loop(
                 checkpoint=checkpoint,
                 directory=model_dir,
                 max_to_keep=checkpoints_to_keep)
-        manager.restore_or_initialize()
-        manager.save()
+        checkpoint = manager.restore_or_initialize()
 
-        # check here
-        checkpoint\
-            .restore(manager.latest_checkpoint)\
-            .expect_partial()\
-            .assert_existing_objects_matched()
+        if checkpoint:
+            logger.info("!!! Found checkpoint to restore !!!")
+            checkpoint\
+                .restore(manager.latest_checkpoint)\
+                .expect_partial()\
+                .assert_existing_objects_matched()
+            logger.info(f"restored checkpoint "
+                        f"at epoch [{int(global_epoch)}] "
+                        f"and step [{int(global_step)}]")
+        else:
+            logger.info("!!! Did NOT find checkpoint to restore !!!")
 
         # augmentation function
         geometric_augmentation_fn = \
