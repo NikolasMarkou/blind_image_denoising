@@ -93,6 +93,8 @@ def export_model(
     with open(pipeline_config_path, "w") as f:
         f.write(json.dumps(pipeline_config, indent=4))
     logger.info(f"restoring checkpoint weights from [{checkpoint_directory}]")
+
+    # checkpoint managing
     checkpoint = \
         tf.train.Checkpoint(
             step=global_step,
@@ -110,16 +112,18 @@ def export_model(
             directory=checkpoint_directory,
             max_to_keep=1)
     manager.restore_or_initialize()
-    status = \
-        checkpoint.restore(manager.latest_checkpoint).expect_partial()
-    status.assert_existing_objects_matched()
+
+    # check here
+    checkpoint \
+        .restore(manager.latest_checkpoint) \
+        .expect_partial() \
+        .assert_existing_objects_matched()
     logger.info(f"restored checkpoint "
                 f"at epoch [{int(global_epoch)}] "
                 f"and step [{int(global_step)}]")
 
     # --- combine denoise, normalize and denormalize
     logger.info("combining backbone, denoise, normalize and denormalize model")
-    # TODO fix this get input from model directly
     input_shape = tf.keras.backend.int_shape(backbone.inputs[0])
     no_channels = input_shape[-1]
     denoising_module = \
