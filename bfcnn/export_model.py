@@ -208,7 +208,7 @@ def export_model(
 # ---------------------------------------------------------------------
 
 
-class DenoiserModule(tf.Module, ABC):
+class DenoiserModule(tf.Module):
     """denoising inference module."""
 
     def __init__(
