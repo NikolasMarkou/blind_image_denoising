@@ -292,7 +292,8 @@ def model_backbone_builder(
     else:
         x_levels = [x]
 
-    logger.info("pyramid produces [{0}] scales".format(len(x_levels)))
+    if len(x_levels) > 1:
+        logger.info("pyramid produces [{0}] scales".format(len(x_levels)))
 
     # --- shared or separate models
     if shared_model:
@@ -303,7 +304,8 @@ def model_backbone_builder(
                 **model_params)
         backbone_models = [backbone_model] * len(x_levels)
     else:
-        logger.info("building per scale model")
+        if len(x_levels) > 1:
+            logger.info("building per scale model")
         backbone_models = [
             backbone_builder(
                 name=f"level_{i}",
