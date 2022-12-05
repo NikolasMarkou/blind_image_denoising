@@ -216,10 +216,12 @@ def train_loop(
 
     # get each model
     hydra = models.hydra
+    inpaint = models.hydra
+    superres = models.superres
     backbone = models.backbone
     denoiser = models.denoiser
-    inpaint = models.inpaint
-    superres = models.superres
+    normalizer = models.normalizer
+    denormalizer = models.denormalizer
 
     # summary of model
     hydra.summary(print_fn=logger.info)
@@ -239,7 +241,9 @@ def train_loop(
                 model_backbone=backbone,
                 model_denoiser=denoiser,
                 model_inpaint=inpaint,
-                model_superres=superres)
+                model_superres=superres,
+                model_normalizer=normalizer,
+                model_denormalizer=denormalizer)
         manager = \
             tf.train.CheckpointManager(
                 checkpoint=checkpoint,
@@ -247,7 +251,8 @@ def train_loop(
                 max_to_keep=checkpoints_to_keep)
         status = \
             checkpoint.restore(manager.latest_checkpoint).expect_partial()
-
+        status.assert_existing_objects_matched()
+        
         geometric_augmentation_fn = \
             tf.function(
                 func=geometric_augmentation_fn,

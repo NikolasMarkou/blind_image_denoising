@@ -101,7 +101,9 @@ def export_model(
             model_backbone=backbone,
             model_denoiser=denoiser,
             model_inpaint=inpaint,
-            model_superres=superres)
+            model_superres=superres,
+            model_normalizer=normalizer,
+            model_denormalizer=denormalizer)
     manager = \
         tf.train.CheckpointManager(
             checkpoint=checkpoint,
@@ -116,9 +118,10 @@ def export_model(
 
     # --- combine denoise, normalize and denormalize
     logger.info("combining backbone, denoise, normalize and denormalize model")
+    # TODO fix this get input from model directly
     dataset_config = pipeline_config["dataset"]
     input_shape = dataset_config["input_shape"]
-    no_channels = input_shape[2]
+    no_channels = input_shape[-1]
     denoising_module = \
         module_builder_denoise(
             cast_to_uint8=True,
