@@ -421,7 +421,8 @@ def model_denoiser_builder(
     """
     # --- argument checking
     logger.info(f"building denoiser model with [{config}]")
-    logger.info(f"unused parameters [{kwargs}]")
+    if kwargs:
+        logger.info(f"unused parameters [{kwargs}]")
 
     # --- set configuration
     use_bias = config.get("use_bias", False)
@@ -490,7 +491,8 @@ def model_inpaint_builder(
     """
     # --- argument checking
     logger.info(f"building inpaint model with [{config}]")
-    logger.info(f"unused parameters [{kwargs}]")
+    if kwargs:
+        logger.info(f"unused parameters [{kwargs}]")
 
     # --- set configuration
     use_bias = config.get("use_bias", False)
@@ -586,7 +588,8 @@ def model_superres_builder(
     """
     # --- argument checking
     logger.info(f"building superres model with [{config}]")
-    logger.info(f"unused parameters [{kwargs}]")
+    if kwargs:
+        logger.info(f"unused parameters [{kwargs}]")
 
     # --- set configuration
     use_bias = config.get("use_bias", False)
