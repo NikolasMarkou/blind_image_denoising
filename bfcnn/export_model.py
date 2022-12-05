@@ -134,8 +134,9 @@ def export_model(
     # and forces variables to
     # be constructed, only after this can we save the
     # checkpoint and saved model.
+
     concrete_function = \
-        denoising_module.__call__.get_concrete_function(
+        tf.function(func=denoising_module.__call__).get_concrete_function(
             tf.TensorSpec(
                 shape=[None, None, None] + [no_channels],
                 dtype=tf.uint8,
