@@ -174,7 +174,7 @@ def export_model(
 
     # --- run graph with random input
     if test_model:
-        concrete_input_shape = input_shape
+        concrete_input_shape = [1, 256, 768, no_channels]
         logger.info("testing modes with shape [{0}]".format(concrete_input_shape))
         output_log = \
             os.path.join(output_directory, "trace_log")
