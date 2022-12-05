@@ -120,8 +120,7 @@ def export_model(
     # --- combine denoise, normalize and denormalize
     logger.info("combining backbone, denoise, normalize and denormalize model")
     # TODO fix this get input from model directly
-    dataset_config = pipeline_config["dataset"]
-    input_shape = dataset_config["input_shape"]
+    input_shape = tf.keras.backend.int_shape(backbone.inputs[0])
     no_channels = input_shape[-1]
     denoising_module = \
         module_builder_denoise(
@@ -174,7 +173,7 @@ def export_model(
 
     # --- run graph with random input
     if test_model:
-        concrete_input_shape = [1] + input_shape
+        concrete_input_shape = input_shape
         logger.info("testing modes with shape [{0}]".format(concrete_input_shape))
         output_log = \
             os.path.join(output_directory, "trace_log")
@@ -280,14 +279,7 @@ class DenoiserModule(tf.Module, ABC):
         return x
 
     def __call__(self, input_tensor):
-        return tf.function(
-            func=self._run_inference_on_images,
-            input_signature=[
-                tf.TensorSpec(shape=[None,
-                                     None,
-                                     None,
-                                     self._training_channels],
-                              dtype=tf.uint8)])(input_tensor)
+        return self._run_inference_on_images(input_tensor)
 
 # ---------------------------------------------------------------------
 
