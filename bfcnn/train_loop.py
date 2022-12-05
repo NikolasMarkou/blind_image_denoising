@@ -232,6 +232,7 @@ def train_loop(
 
     # --- train the model
     with summary_writer.as_default():
+        # checkpoint managing
         checkpoint = \
             tf.train.Checkpoint(
                 step=global_step,
@@ -249,10 +250,13 @@ def train_loop(
                 checkpoint=checkpoint,
                 directory=model_dir,
                 max_to_keep=checkpoints_to_keep)
-        status = \
-            checkpoint.restore(manager.latest_checkpoint).expect_partial()
-        status.assert_existing_objects_matched()
-        
+        manager.restore_or_initialize()
+        # check here
+        # status = \
+        #     checkpoint.restore(manager.latest_checkpoint).expect_partial()
+        # status.assert_existing_objects_matched()
+
+        # augmentation function
         geometric_augmentation_fn = \
             tf.function(
                 func=geometric_augmentation_fn,
@@ -315,15 +319,17 @@ def train_loop(
                     # on the GradientTape.
                     denoiser_output, _, _ = \
                         hydra([noisy_batch,
-                               tf.ones_like(noisy_batch)[:,:,:,0]], training=True)
+                               tf.ones_like(noisy_batch)[:, :, :, 0]],
+                              training=True)
 
                     _, inpaint_output, _ = \
-                        hydra([masked_batch,
-                               mask_batch], training=True)
+                        hydra([masked_batch, mask_batch],
+                              training=True)
 
                     _, _, superres_output = \
                         hydra([downsampled_batch,
-                               tf.ones_like(downsampled_batch)[:,:,:,0]], training=True)
+                               tf.ones_like(downsampled_batch)[:, :, :, 0]],
+                              training=True)
 
                     # compute the loss value for this mini-batch
                     denoiser_loss_map = \

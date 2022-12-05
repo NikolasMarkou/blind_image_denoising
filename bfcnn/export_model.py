@@ -109,6 +109,7 @@ def export_model(
             checkpoint=checkpoint,
             directory=checkpoint_directory,
             max_to_keep=1)
+    manager.restore_or_initialize()
     status = \
         checkpoint.restore(manager.latest_checkpoint).expect_partial()
     status.assert_existing_objects_matched()
