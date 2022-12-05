@@ -127,11 +127,6 @@ def export_model(
     else:
         raise ValueError("!!! Did NOT find checkpoint to restore !!!")
 
-
-    logger.info(f"restored checkpoint "
-                f"at epoch [{int(global_epoch)}] "
-                f"and step [{int(global_step)}]")
-
     # --- combine denoise, normalize and denormalize
     logger.info("combining backbone, denoise, normalize and denormalize model")
     input_shape = tf.keras.backend.int_shape(backbone.inputs[0])
