@@ -250,12 +250,13 @@ def train_loop(
                 checkpoint=checkpoint,
                 directory=model_dir,
                 max_to_keep=checkpoints_to_keep)
-        checkpoint = manager.restore_or_initialize()
+        latest_checkpoint_path = manager.restore_or_initialize()
 
-        if checkpoint:
+        if latest_checkpoint_path:
             logger.info("!!! Found checkpoint to restore !!!")
+            logger.info(f"Checkpoints at [{0}]".format(latest_checkpoint_path))
             checkpoint\
-                .restore(manager.latest_checkpoint)\
+                .restore(latest_checkpoint_path)\
                 .expect_partial()\
                 .assert_existing_objects_matched()
             logger.info(f"restored checkpoint "

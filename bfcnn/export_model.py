@@ -111,14 +111,21 @@ def export_model(
             checkpoint=checkpoint,
             directory=checkpoint_directory,
             max_to_keep=1)
-    if checkpoint:
+    latest_checkpoint_path = manager.restore_or_initialize()
+
+    if latest_checkpoint_path:
         logger.info("!!! Found checkpoint to restore !!!")
+        logger.info(f"Checkpoints at [{0}]".format(latest_checkpoint_path))
         checkpoint \
-            .restore(manager.latest_checkpoint) \
+            .restore(latest_checkpoint_path) \
             .expect_partial() \
             .assert_existing_objects_matched()
+        logger.info(f"restored checkpoint "
+                    f"at epoch [{int(global_epoch)}] "
+                    f"and step [{int(global_step)}]")
     else:
-        logger.info("!!! Did NOT find checkpoint to restore !!!")
+        raise ValueError("!!! Did NOT find checkpoint to restore !!!")
+
 
     logger.info(f"restored checkpoint "
                 f"at epoch [{int(global_epoch)}] "
