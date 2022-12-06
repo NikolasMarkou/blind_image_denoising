@@ -130,7 +130,7 @@ def dataset_builder(
         """
         dim_x = tf.cast(tf.shape(x)[axis], tf.int64)
         indices = tf.range(0, dim_x, dtype=tf.int64)
-        sample_index = tf.random.shuffle(indices)[:size]
+        sample_index = tf.random.shuffle(indices, seed=0)[:size]
         return tf.gather(x, sample_index, axis=axis)
 
     @tf.function(
@@ -149,9 +149,9 @@ def dataset_builder(
 
         # --- get shape and options
         input_shape_inference = tf.shape(input_batch)
-        random_uniform_option_1 = tf.greater(tf.random.uniform(()), tf.constant(0.5))
-        random_uniform_option_2 = tf.greater(tf.random.uniform(()), tf.constant(0.5))
-        random_uniform_option_3 = tf.greater(tf.random.uniform(()), tf.constant(0.5))
+        random_uniform_option_1 = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
+        random_uniform_option_2 = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
+        random_uniform_option_3 = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
 
         # --- flip left right
         input_batch = \
@@ -178,6 +178,7 @@ def dataset_builder(
                 tfa.image.rotate(
                     angles=tf.random.uniform(
                         dtype=tf.float32,
+                        seed=0,
                         minval=-random_rotate,
                         maxval=random_rotate,
                         shape=(input_shape_inference[0],)),
@@ -250,8 +251,8 @@ def dataset_builder(
         noise_type = random_choice(noise_choices, size=1)[0]
         additive_noise_std = random_choice(additional_noise, size=1)[0]
         multiplicative_noise_std = random_choice(multiplicative_noise, size=1)[0]
-        random_uniform_option_1 = tf.greater(tf.random.uniform(()), tf.constant(0.5))
-        random_uniform_option_2 = tf.greater(tf.random.uniform(()), tf.constant(0.5))
+        random_uniform_option_1 = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
+        random_uniform_option_2 = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
 
         use_additive_noise = tf.equal(noise_type, tf.constant(0, dtype=tf.int64))
         use_multiplicative_noise = tf.equal(noise_type, tf.constant(1, dtype=tf.int64))
@@ -267,6 +268,7 @@ def dataset_builder(
                     # channel independent noise
                     tf.random.truncated_normal(
                         mean=0.0,
+                        seed=0,
                         dtype=tf.float32,
                         stddev=additive_noise_std,
                         shape=input_shape_inference),
@@ -274,6 +276,7 @@ def dataset_builder(
                     # channel dependent noise
                     tf.random.truncated_normal(
                         mean=0.0,
+                        seed=0,
                         dtype=tf.float32,
                         stddev=additive_noise_std,
                         shape=(input_shape_inference[0],
@@ -304,12 +307,14 @@ def dataset_builder(
                     true_fn=lambda:
                     tf.random.truncated_normal(
                         mean=1.0,
+                        seed=0,
                         stddev=multiplicative_noise_std,
                         shape=input_shape_inference,
                         dtype=tf.float32),
                     false_fn=lambda:
                     tf.random.truncated_normal(
                         mean=1.0,
+                        seed=0,
                         stddev=multiplicative_noise_std,
                         shape=(input_shape_inference[0],
                                input_shape_inference[1],
@@ -478,7 +483,6 @@ def dataset_builder(
                 reshuffle_each_iteration=False) \
             .batch(
                 batch_size=batch_size,
-                deterministic=False,
                 num_parallel_calls=tf.data.AUTOTUNE) \
             .prefetch(1)
 

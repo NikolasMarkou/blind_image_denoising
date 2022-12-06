@@ -329,7 +329,8 @@ def train_loop(
                     # on the GradientTape.
                     denoiser_output, _, _ = \
                         hydra([noisy_batch,
-                               tf.ones_like(noisy_batch)[:, :, :, 0]],
+                               tf.ones_like(noisy_batch,
+                                            dtype=tf.float32)[:, :, :, 0]],
                               training=True)
 
                     _, inpaint_output, _ = \
@@ -338,7 +339,8 @@ def train_loop(
 
                     _, _, superres_output = \
                         hydra([downsampled_batch,
-                               tf.ones_like(downsampled_batch)[:, :, :, 0]],
+                               tf.ones_like(downsampled_batch,
+                                            dtype=tf.float32)[:, :, :, 0]],
                               training=True)
 
                     # compute the loss value for this mini-batch
