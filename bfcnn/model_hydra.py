@@ -44,17 +44,15 @@ def model_builder(
         config: Dict) -> BuilderResults:
     # --- argument checking
     # TODO
-    use_denoiser_cross_model = \
-        config["general"].get("use_denoiser_cross_model", False)
 
     # --- build backbone
     model_backbone, model_normalizer, model_denormalizer = \
-        model_backbone_builder(config=config["backbone"])
+        model_backbone_builder(config=config[BACKBONE_STR])
 
     # --- build denoiser, inpaint, superres
-    model_denoiser = model_denoiser_builder(config=config["denoiser"])
-    model_inpaint = model_inpaint_builder(config=config["inpaint"])
-    model_superres = model_superres_builder(config=config["superres"])
+    model_denoiser = model_denoiser_builder(config=config[DENOISER_STR])
+    model_inpaint = model_inpaint_builder(config=config[INPAINT_STR])
+    model_superres = model_superres_builder(config=config[SUPERRES_STR])
 
     mask_input_shape = (None, None, 1)
     input_shape = tf.keras.backend.int_shape(model_backbone.inputs[0])[1:]
@@ -79,27 +77,13 @@ def model_builder(
         tf.multiply(input_normalized_layer, mask_layer) + \
         tf.multiply(mean_normalized_layer, 1.0 - mask_layer)
 
-    #
+    # common backbone
     backbone_mid = model_backbone(input_normalized_layer)
+
+    # heads
     denoiser_mid = model_denoiser(backbone_mid)
     inpaint_mid = model_inpaint([backbone_mid, input_normalized_layer, mask_layer])
-
-    if use_denoiser_cross_model:
-        # denoised used as a base for the rest
-        backbone_denoised = \
-            model_backbone(
-                clip_normalized_tensor(denoiser_mid),
-                training=False)
-        superres_mid = \
-            model_superres(backbone_denoised)
-        inpaint_mid = \
-            model_denoiser(
-                model_backbone(
-                    clip_normalized_tensor(inpaint_mid),
-                    training=False))
-    else:
-        # normal operation
-        superres_mid = model_superres(backbone_mid)
+    superres_mid = model_superres(backbone_mid)
 
     # denormalize
     denoiser_output = model_denormalizer(denoiser_mid, training=False)
@@ -107,9 +91,9 @@ def model_builder(
     superres_output = model_denormalizer(superres_mid, training=False)
 
     # wrap layers to set names
-    denoiser_output = tf.keras.layers.Layer(name="denoiser")(denoiser_output)
-    inpaint_output = tf.keras.layers.Layer(name="inpaint")(inpaint_output)
-    superres_output = tf.keras.layers.Layer(name="superres")(superres_output)
+    denoiser_output = tf.keras.layers.Layer(name=DENOISER_STR)(denoiser_output)
+    inpaint_output = tf.keras.layers.Layer(name=INPAINT_STR)(inpaint_output)
+    superres_output = tf.keras.layers.Layer(name=SUPERRES_STR)(superres_output)
 
     # create model
     model_hydra = \
@@ -326,7 +310,7 @@ def model_backbone_builder(
                 momentum=DEFAULT_BN_MOMENTUM,
                 epsilon=DEFAULT_BN_EPSILON)
         residual_conv_params = dict(
-            kernel_size=3,
+            kernel_size=5,
             padding="same",
             strides=(1, 1),
             use_bias=use_bias,
@@ -344,7 +328,8 @@ def model_backbone_builder(
                 # it is better to upsample with nearest neighbor and then conv2d
                 if batchnorm:
                     previous_level = \
-                        tf.keras.layers.BatchNormalization(**bn_params)(previous_level)
+                        tf.keras.layers.BatchNormalization(
+                            **bn_params)(previous_level)
                 previous_level = \
                     tf.keras.layers.UpSampling2D(
                         **upsampling_params)(previous_level)

@@ -1,6 +1,5 @@
 import copy
 from enum import Enum
-
 import tensorflow as tf
 from tensorflow import keras
 from typing import List, Tuple, Union, Dict, Iterable
@@ -12,17 +11,11 @@ from typing import List, Tuple, Union, Dict, Iterable
 from .custom_logger import logger
 from .constants import *
 from .custom_layers import \
-    Multiplier, \
-    RandomOnOff, \
-    ChannelwiseMultiplier, \
     DifferentiableGateLayer
 from .utilities import \
-    ConvType, \
-    sparse_block, \
     dense_wrapper, \
     conv2d_wrapper, \
-    mean_sigma_local, \
-    mean_sigma_global
+    min_max_mean_sigma_block
 
 
 # ---------------------------------------------------------------------
@@ -104,6 +97,9 @@ def selector_block(
     # --- argument checking
     # TODO
 
+    # --- setup variables
+    use_stats = kwargs.get("use_stats", False)
+
     # --- setup network
     x = selector_layer
 
@@ -155,7 +151,10 @@ def selector_block(
             kernel_initializer=kernel_initializer)
 
         # transformation
-        x = tf.reduce_mean(x, axis=[1, 2], keepdims=False)
+        if use_stats:
+            x = min_max_mean_sigma_block(x, axis=[1, 2])
+        else:
+            x = tf.reduce_mean(x, axis=[1, 2], keepdims=False)
 
         if filters_compress is not None:
             x = dense_wrapper(

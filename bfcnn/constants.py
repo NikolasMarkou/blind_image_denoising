@@ -1,5 +1,5 @@
-from typing import Union, Dict
 from tensorflow import keras
+from typing import Union, Dict
 
 # ---------------------------------------------------------------------
 
@@ -40,5 +40,12 @@ L2_COEFFICIENT_STR = "l2_coefficient"
 DIAG_COEFFICIENT_STR = "diag_coefficient"
 LAMBDA_COEFFICIENT_STR = "lambda_coefficient"
 REGULARIZER_ALLOWED_TYPES = Union[str, Dict, keras.regularizers.Regularizer]
+
+# ---------------------------------------------------------------------
+
+BACKBONE_STR = "backbone"
+DENOISER_STR = "denoiser"
+INPAINT_STR = "inpaint"
+SUPERRES_STR = "superres"
 
 # ---------------------------------------------------------------------
