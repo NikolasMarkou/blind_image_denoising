@@ -448,3 +448,29 @@ class DifferentiableGateLayer(tf.keras.layers.Layer):
         return input_shape
 
 # ---------------------------------------------------------------------
+
+
+class Patches(tf.keras.layers.Layer):
+    def __init__(self, patch_size):
+        super(Patches, self).__init__()
+        self._patch_size = patch_size
+
+    def call(self, images):
+        batch_size = tf.shape(images)[0]
+        patches = \
+            tf.image.extract_patches(
+                images=images,
+                sizes=[1, self._patch_size, self._patch_size, 1],
+                strides=[1, self._patch_size, self._patch_size, 1],
+                rates=[1, 1, 1, 1],
+                padding="valid")
+        patch_dims = patches.shape[-1]
+        patches = tf.reshape(patches, [batch_size, -1, patch_dims])
+        return patches
+
+    def get_config(self):
+        return {
+            "patch_size": self._patch_size
+        }
+
+# ---------------------------------------------------------------------

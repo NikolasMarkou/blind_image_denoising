@@ -21,7 +21,8 @@ from .loss import \
 from .optimizer import optimizer_builder
 from .pruning import prune_function_builder, get_conv2d_weights
 from .model_hydra import model_builder as model_hydra_builder
-from .utilities import load_config, load_image, clip_normalized_tensor, clip_unnormalized_tensor
+from .utilities import load_config
+from .file_operations import load_image
 from .dataset import \
     dataset_builder, \
     DATASET_TRAINING_FN_STR, \
@@ -151,8 +152,9 @@ def train_loop(
                 image = \
                     load_image(
                         path=image_path,
-                        color_mode="rgb",
-                        target_size=(512, 512),
+                        num_channels=3,
+                        image_size=(512, 512),
+                        expand_dims=True,
                         normalize=False)
                 test_images.append(image)
         test_images = \

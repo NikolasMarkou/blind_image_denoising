@@ -14,7 +14,8 @@ import tensorflow as tf
 
 from .train_loop import train_loop
 from .model_hydra import model_builder
-from .utilities import logger, load_config, load_image
+from .file_operations import load_image
+from .utilities import logger, load_config
 from .export_model import export_model, module_builder_denoise
 from .pyramid import \
     build_pyramid_model, \

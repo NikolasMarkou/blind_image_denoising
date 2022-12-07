@@ -9,7 +9,7 @@ from typing import Dict, Callable, Iterator, Tuple
 
 from .custom_logger import logger
 from .utilities import merge_iterators
-from .dataset_file_operation import \
+from .file_operations import \
     image_filenames_dataset_from_directory_gen, \
     load_image_crop
 
