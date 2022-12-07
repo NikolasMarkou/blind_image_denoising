@@ -301,7 +301,7 @@ def model_backbone_builder(
     if add_residual_between_models:
         upsampling_params = \
             dict(size=(2, 2),
-                 interpolation="bilinear")
+                 interpolation="nearest")
         residual_conv_params = dict(
             kernel_size=1,
             padding="same",
