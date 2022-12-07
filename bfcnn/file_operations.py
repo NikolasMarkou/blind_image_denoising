@@ -69,7 +69,7 @@ def index_directory_gen(
         follow_links: Whether to visits subdirectories pointed to by symlinks.
     """
     # in the no-label case, index from the parent directory down.
-    sub_dirs = ['']
+    sub_dirs = [""]
 
     # Build an index of the files
     # in the different class sub-folders.
@@ -130,7 +130,18 @@ def load_image_crop(
         x_range: Tuple[float, float] = None,
         y_range: Tuple[float, float] = None) -> tf.Tensor:
     """
-    Load an image from a path, resize it, crop it
+    load an image from a path, resize it, crop it
+
+    :param path: string
+    :param image_size: resize dimensions
+    :param num_channels: number of channels
+    :param interpolation: interpolation type
+    :param no_crops_per_image:
+    :param crop_size:
+    :param x_range:
+    :param y_range:
+
+    :return: tensor
     """
     # --- load image
     img = \

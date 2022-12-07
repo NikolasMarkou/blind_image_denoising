@@ -301,16 +301,9 @@ def model_backbone_builder(
     if add_residual_between_models:
         upsampling_params = \
             dict(size=(2, 2),
-                 interpolation="nearest")
-        bn_params = None
-        if batchnorm:
-            bn_params = dict(
-                scale=True,
-                center=False,
-                momentum=DEFAULT_BN_MOMENTUM,
-                epsilon=DEFAULT_BN_EPSILON)
+                 interpolation="bilinear")
         residual_conv_params = dict(
-            kernel_size=5,
+            kernel_size=1,
             padding="same",
             strides=(1, 1),
             use_bias=use_bias,
@@ -323,25 +316,15 @@ def model_backbone_builder(
             if previous_level is None:
                 current_level_output = backbone_models[i](x_level)
             else:
-                # NOTE
-                # based on https://distill.pub/2016/deconv-checkerboard/
-                # it is better to upsample with nearest neighbor and then conv2d
-                if batchnorm:
-                    previous_level = \
-                        tf.keras.layers.BatchNormalization(
-                            **bn_params)(previous_level)
-                previous_level = \
-                    tf.keras.layers.UpSampling2D(
-                        **upsampling_params)(previous_level)
-                previous_level = \
-                    tf.keras.layers.Concatenate()([previous_level, x_level])
                 previous_level = \
                     conv2d_wrapper(
                         input_layer=previous_level,
                         conv_params=residual_conv_params,
-                        channelwise_scaling=True,
+                        channelwise_scaling=False,
                         multiplier_scaling=False)
-                previous_level = clip_normalized_tensor(previous_level)
+                previous_level = \
+                    tf.keras.layers.UpSampling2D(
+                        **upsampling_params)(previous_level)
                 previous_level = \
                     tf.keras.layers.Add()([previous_level, x_level])
                 current_level_input = clip_normalized_tensor(previous_level)
