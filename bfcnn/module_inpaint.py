@@ -108,11 +108,11 @@ class InpaintModule(tf.Module, ModuleInterface):
     def concrete_tensor_spec(self):
         return [
             tf.TensorSpec(
-                shape=[None, None, None] + [self._training_channels],
+                shape=[None, None, None, self._training_channels],
                 dtype=tf.uint8,
                 name="input"),
             tf.TensorSpec(
-                shape=[None, None, None] + [self._training_channels],
+                shape=[None, None, None, self._training_channels],
                 dtype=tf.uint8,
                 name="mask")
         ]

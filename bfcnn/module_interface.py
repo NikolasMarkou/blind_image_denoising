@@ -27,7 +27,7 @@ class ModuleInterface(ABC):
         pass
 
     @abc.abstractmethod
-    def concrete_tensor_spec(self):
+    def concrete_tensor_spec(self) -> Union[tf.TensorSpec, List[tf.TensorSpec], Tuple[tf.TensorSpec]]:
         pass
 
     @abc.abstractmethod
@@ -39,9 +39,15 @@ class ModuleInterface(ABC):
         pass
 
     def concrete_function(self):
-        concrete_function = \
-            tf.function(func=self.__call__).get_concrete_function(
-                self.concrete_tensor_spec())
+        spec = self.concrete_tensor_spec()
+        if isinstance(spec, tf.TensorSpec):
+            concrete_function = \
+                tf.function(func=self.__call__).get_concrete_function(
+                    spec)
+        else:
+            concrete_function = \
+                tf.function(func=self.__call__).get_concrete_function(
+                    *spec)
         return concrete_function
 
 # ---------------------------------------------------------------------
