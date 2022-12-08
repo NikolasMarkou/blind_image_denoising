@@ -296,7 +296,7 @@ def train_loop(
                 input_signature=[
                     tf.TensorSpec(shape=[None, None, None, None],
                                   dtype=tf.float32)])
-        
+
         # downsample test image because it produces OOM
         test_images = superres_augmentation_fn(test_images)
 

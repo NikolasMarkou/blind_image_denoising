@@ -57,7 +57,7 @@ def test_model_builder(config):
 
     # export
     denoiser_module = \
-        bfcnn.module_builder_denoise(
+        bfcnn.module_builder_denoiser(
             model_backbone=models.backbone,
             model_denoiser=models.denoiser,
             model_normalizer=models.normalizer,
