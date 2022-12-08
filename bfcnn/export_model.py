@@ -57,8 +57,6 @@ def export_model(
 
     # --- setup variables
     output_directory = str(output_directory)
-    output_saved_model_denoiser = os.path.join(output_directory, "denoiser")
-    output_saved_model_superres = os.path.join(output_directory, "superres")
 
     # --- load and export denoiser model
     logger.info("building model")
@@ -130,7 +128,10 @@ def export_model(
     else:
         raise ValueError("!!! Did NOT find checkpoint to restore !!!")
 
+    ##################################################################################
     # --- combine denoiser, normalize and denormalize
+    ##################################################################################
+    output_saved_model_denoiser = os.path.join(output_directory, "denoiser")
     logger.info("building denoiser module")
     logger.info("combining backbone, denoise, normalize and denormalize model")
     denoiser_module = \
@@ -181,8 +182,10 @@ def export_model(
         denoiser_module.test(output_directory=output_directory)
 
     ##################################################################################
-
     # --- combine superres, normalize and denormalize
+    ##################################################################################
+
+    output_saved_model_superres = os.path.join(output_directory, "superres")
     logger.info("building superres module")
     logger.info("combining backbone, superres, normalize and denormalize model")
     superres_module = \
@@ -200,7 +203,7 @@ def export_model(
     superres_concrete_function = superres_module.concrete_function()
 
     # export the model as save_model format (default)
-    logger.info(f"saving module: [{output_saved_model_denoiser}]")
+    logger.info(f"saving module: [{output_saved_model_superres}]")
     tf.saved_model.save(
         obj=superres_module,
         signatures=superres_concrete_function,
