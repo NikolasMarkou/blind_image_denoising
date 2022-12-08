@@ -22,18 +22,18 @@
 			"pyramid": {
 			  "levels": 2,
 			  "type": "laplacian",
-			  "kernel_size": [3, 3]
+			  "kernel_size": [5, 5]
 			}
 		},
 		"denoiser": {
-			"input_shape": ["?", "?", 32],
+			"input_shape": ["?", "?", 16],
 			"output_channels": 3,
 			"final_activation": "tanh",
-			"filters": 32,
+			"filters": 16,
 			"no_layers": 3,
 			"kernel_size": 1,
-			"block_kernels": [3, 3],
-			"block_filters": [32, 32],
+			"block_kernels": [1, 3, 1],
+			"block_filters": [16, 32, 16],
 			"type": "resnet",
 			"batchnorm": true,
 			"activation": "relu",
@@ -47,14 +47,14 @@
 			}
 		},
 		"inpaint": {
-			"input_shape": ["?", "?", 32],
+			"input_shape": ["?", "?", 16],
 			"output_channels": 3,
 			"final_activation": "tanh",
-			"filters": 32,
+			"filters": 16,
 			"no_layers": 3,
 			"kernel_size": 1,
-			"block_kernels": [3, 3],
-			"block_filters": [32, 32],
+			"block_kernels": [1, 3, 1],
+			"block_filters": [16, 32, 16],
 			"type": "resnet",
 			"batchnorm": true,
 			"activation": "relu",
@@ -68,14 +68,14 @@
 			}
 		},
 		"superres": {
-			"input_shape": ["?", "?", 32],
+			"input_shape": ["?", "?", 16],
 			"output_channels": 3,
 			"final_activation": "tanh",
-			"filters": 32,
+			"filters": 16,
 			"no_layers": 3,
 			"kernel_size": 5,
-			"block_kernels": [3, 3],
-			"block_filters": [32, 32],
+			"block_kernels": [1, 3, 1],
+			"block_filters": [16, 32, 16],
 			"type": "resnet",
 			"batchnorm": true,
 			"activation": "relu",
