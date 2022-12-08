@@ -58,7 +58,8 @@ def builder(
     :param block_kernels: kernel size of per res-block convolutional layer
     :param block_filters: filters per res-block convolutional layer
     :param block_groups: groups to use pe res-block
-    :param block_depthwise: depthwise multipliers per block, leave empty or full of -1 to disable
+    :param block_depthwise:
+        depthwise multipliers per block, leave empty or full of -1 to disable
     :param activation: activation of the convolutional layers
     :param base_activation: activation of the base layer,
         residual blocks outputs must conform to this
@@ -134,6 +135,7 @@ def builder(
     no_blocks = len(block_kernels)
     for i in range(no_blocks):
         if block_depthwise[i] == -1:
+            # normal Conv2d configuration
             convs_params[i] = dict(
                 kernel_size=block_kernels[i],
                 filters=block_filters[i],
@@ -146,6 +148,7 @@ def builder(
                 kernel_initializer=kernel_initializer,
             )
         else:
+            # DepthwiseConv2D configuration
             convs_params[i] = dict(
                 kernel_size=block_kernels[i],
                 depth_multiplier=block_depthwise[i],
@@ -153,7 +156,6 @@ def builder(
                 padding="same",
                 use_bias=use_bias,
                 activation=activation,
-                groups=block_groups[i],
                 depthwise_regularizer=kernel_regularizer,
                 depthwise_initializer=kernel_initializer,
             )

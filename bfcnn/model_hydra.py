@@ -15,7 +15,6 @@ from .utilities import \
     input_shape_fixer, \
     build_normalize_model, \
     build_denormalize_model
-from .backbone_blocks import resnet_blocks_full
 from .backbone_unet import builder as builder_unet
 from .backbone_lunet import builder as builder_lunet
 from .backbone_resnet import builder as builder_resnet
