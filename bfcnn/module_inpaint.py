@@ -131,6 +131,7 @@ class InpaintModule(tf.Module, ModuleInterface):
 
         # ---
         concrete_input_shape = [1, 128, 128, self._training_channels]
+        concrete_mask_shape = [1, 128, 128, 1]
         logger.info("testing modes with shape [{0}]".format(concrete_input_shape))
         output_log = \
             os.path.join(output_directory, "trace_log")
@@ -151,7 +152,7 @@ class InpaintModule(tf.Module, ModuleInterface):
                 dtype=tf.uint8)
         mask_tensor = \
             tf.random.uniform(
-                shape=concrete_input_shape,
+                shape=concrete_mask_shape,
                 minval=0,
                 maxval=1,
                 dtype=tf.int32)
