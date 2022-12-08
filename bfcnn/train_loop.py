@@ -296,6 +296,9 @@ def train_loop(
                 input_signature=[
                     tf.TensorSpec(shape=[None, None, None, None],
                                   dtype=tf.float32)])
+        
+        # downsample test image because it produces OOM
+        test_images = superres_augmentation_fn(test_images)
 
         # ---
         while global_epoch < global_total_epochs:
@@ -394,6 +397,9 @@ def train_loop(
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
+                    test_denoiser_output, _, test_superres_output = \
+                        hydra([test_images, tf.ones_like(test_images)[:,:,:,0]],
+                              training=False)
                     test_denoiser_output, _, test_superres_output = \
                         hydra([test_images, tf.ones_like(test_images)[:,:,:,0]],
                               training=False)
