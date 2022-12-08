@@ -4,7 +4,7 @@
 			"input_shape": ["?", "?", 3],
 			"filters": 32,
 			"no_layers": 6,
-			"kernel_size": 7,
+			"kernel_size": 5,
 			"block_kernels": [3, 3],
 			"block_filters": [32, 32],
 			"value_range": [0, 255],
@@ -19,6 +19,11 @@
 					"l2_coefficient": 0.0,
 					"l1_coefficient": 0.025
 				}
+			},
+			"pyramid": {
+			  "levels": 2,
+			  "type": "laplacian",
+			  "kernel_size": [3, 3]
 			}
 		},
 		"denoiser": {
@@ -121,7 +126,7 @@
 		"count_non_zero_mean": false
 	},
 	"dataset": {
-		"batch_size": 64,
+		"batch_size": 32,
 		"no_crops_per_image": 4,
 		"no_iterations_per_batch": 1,
 		"mix_noise_types": false,

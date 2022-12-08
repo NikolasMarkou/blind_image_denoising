@@ -1,8 +1,5 @@
 {
 	"model": {
-		"general": {
-			"use_denoiser_cross_model": false
-		},
 		"backbone": {
 			"input_shape": ["?", "?", 3],
 			"filters": 32,
