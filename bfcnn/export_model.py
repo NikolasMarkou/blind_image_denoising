@@ -65,7 +65,7 @@ def export_model(
     models = model_builder(pipeline_config[MODEL_STR])
     # get each model
     hydra = models.hydra
-    inpaint = models.hydra
+    inpaint = models.inpaint
     superres = models.superres
     backbone = models.backbone
     denoiser = models.denoiser
