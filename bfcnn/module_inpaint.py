@@ -112,7 +112,7 @@ class InpaintModule(tf.Module, ModuleInterface):
                 dtype=tf.uint8,
                 name="input"),
             tf.TensorSpec(
-                shape=[None, None, None, self._training_channels],
+                shape=[None, None, None, 1],
                 dtype=tf.uint8,
                 name="mask")
         ]
