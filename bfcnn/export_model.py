@@ -291,7 +291,7 @@ def export_model(
             f.write(tflite_model)
 
     return \
-        denoiser_concrete_function, \
+        denoiser_module, \
         superres_module, \
         inpaint_module
 
