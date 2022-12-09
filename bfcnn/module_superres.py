@@ -8,7 +8,6 @@ from tensorflow import keras
 
 from .constants import *
 from .custom_logger import logger
-from .module_interface import ModuleInterface
 
 # ---------------------------------------------------------------------
 
@@ -17,7 +16,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 # ---------------------------------------------------------------------
 
 
-class SuperresModule(tf.Module, ModuleInterface):
+class SuperresModule(tf.Module):
     """superres inference module."""
 
     def __init__(
@@ -26,7 +25,6 @@ class SuperresModule(tf.Module, ModuleInterface):
             model_superres: keras.Model,
             model_normalizer: keras.Model,
             model_denormalizer: keras.Model,
-            training_channels: int = 1,
             cast_to_uint8: bool = True):
         """
         Initializes a module for super resolution.
@@ -35,10 +33,11 @@ class SuperresModule(tf.Module, ModuleInterface):
         :param model_superres: super resolution model to use for inference.
         :param model_normalizer: model that normalizes the input
         :param model_denormalizer: model that denormalizes the output
-        :param training_channels: how many color channels were used in training
         :param cast_to_uint8: cast output to uint8
 
         """
+        super().__init__(name=SUPERRES_STR)
+
         # --- argument checking
         if model_backbone is None:
             raise ValueError("model_backbone should not be None")
@@ -48,8 +47,9 @@ class SuperresModule(tf.Module, ModuleInterface):
             raise ValueError("model_normalizer should not be None")
         if model_denormalizer is None:
             raise ValueError("model_denormalizer should not be None")
-        if training_channels <= 0:
-            raise ValueError("training channels should be > 0")
+
+        training_channels = \
+            model_backbone.input_shape[-1]
 
         # --- setup instance variables
         self._cast_to_uint8 = cast_to_uint8
@@ -59,7 +59,8 @@ class SuperresModule(tf.Module, ModuleInterface):
         self._model_denormalizer = model_denormalizer
         self._training_channels = training_channels
 
-    def _run_inference_on_images(self, image):
+    @tf.function
+    def __call__(self, image):
         """
         Cast image to float and run inference.
 
@@ -86,12 +87,6 @@ class SuperresModule(tf.Module, ModuleInterface):
             x = tf.cast(x, dtype=tf.uint8)
 
         return x
-
-    @tf.function(
-        input_signature=[
-            tf.TensorSpec(shape=[None, None, None, 3], dtype=tf.uint8)])
-    def __call__(self, input_tensor):
-        return self._run_inference_on_images(input_tensor)
 
     def description(self) -> str:
         return \
@@ -134,44 +129,5 @@ class SuperresModule(tf.Module, ModuleInterface):
                 step=0,
                 name="superres_module",
                 profiler_outdir=output_log)
-
-# ---------------------------------------------------------------------
-
-
-def module_builder_superres(
-        model_backbone: keras.Model = None,
-        model_superres: keras.Model = None,
-        model_normalizer: keras.Model = None,
-        model_denormalizer: keras.Model = None,
-        cast_to_uint8: bool = True) -> SuperresModule:
-    """
-    builds a module for denoising.
-
-    :param model_backbone: backbone model
-    :param model_superres: superres model to use for inference.
-    :param model_normalizer: model that normalizes the input
-    :param model_denormalizer: model that denormalizes the output
-    :param cast_to_uint8: cast output to uint8
-
-    :return: superres module
-    """
-    logger.info(
-        f"building superres module with "
-        f"cast_to_uint8:{cast_to_uint8}")
-
-    # --- argument checking
-    # TODO
-
-    training_channels = \
-        model_backbone.input_shape[-1]
-
-    return \
-        SuperresModule(
-            model_backbone=model_backbone,
-            model_superres=model_superres,
-            model_normalizer=model_normalizer,
-            model_denormalizer=model_denormalizer,
-            cast_to_uint8=cast_to_uint8,
-            training_channels=training_channels)
 
 # ---------------------------------------------------------------------

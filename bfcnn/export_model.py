@@ -13,9 +13,9 @@ from .constants import *
 from .custom_logger import logger
 from .utilities import load_config
 from .model_hydra import model_builder
-from .module_denoiser import module_builder_denoiser
-from .module_superres import module_builder_superres
-from .module_inpaint import module_builder_inpaint
+from .module_inpaint import InpaintModule
+from .module_denoiser import DenoiserModule
+from .module_superres import SuperresModule
 
 # ---------------------------------------------------------------------
 
@@ -136,7 +136,7 @@ def export_model(
     logger.info("building denoiser module")
     logger.info("combining backbone, denoise, normalize and denormalize model")
     denoiser_module = \
-        module_builder_denoiser(
+        DenoiserModule(
             cast_to_uint8=True,
             model_backbone=backbone,
             model_denoiser=denoiser,
@@ -178,10 +178,6 @@ def export_model(
         with open(output_tflite_model, "wb") as f:
             f.write(tflite_model)
 
-    # --- run graph with random input
-    if test_model:
-        denoiser_module.test(output_directory=output_directory)
-
     ##################################################################################
     # combine superres, normalize and denormalize
     ##################################################################################
@@ -190,7 +186,7 @@ def export_model(
     logger.info("building superres module")
     logger.info("combining backbone, superres, normalize and denormalize model")
     superres_module = \
-        module_builder_superres(
+        SuperresModule(
             cast_to_uint8=True,
             model_backbone=backbone,
             model_superres=superres,
@@ -232,10 +228,6 @@ def export_model(
         with open(output_tflite_model, "wb") as f:
             f.write(tflite_model)
 
-    # --- run graph with random input
-    if test_model:
-        superres_module.test(output_directory=output_directory)
-
     ##################################################################################
     # combine inpaint, normalize and denormalize
     ##################################################################################
@@ -244,7 +236,7 @@ def export_model(
     logger.info("building inpaint module")
     logger.info("combining backbone, inpaint, normalize and denormalize model")
     inpaint_module = \
-        module_builder_inpaint(
+        InpaintModule(
             cast_to_uint8=True,
             model_backbone=backbone,
             model_inpaint=inpaint,
@@ -285,10 +277,6 @@ def export_model(
         # save the model.
         with open(output_tflite_model, "wb") as f:
             f.write(tflite_model)
-
-    # --- run graph with random input
-    if test_model:
-        inpaint_module.test(output_directory=output_directory)
 
     return \
         denoiser_concrete_function, \
