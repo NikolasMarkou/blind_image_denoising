@@ -44,16 +44,12 @@ class DenoiserModule(tf.Module):
         if model_denormalizer is None:
             raise ValueError("model_denormalize should not be None")
 
-        training_channels = \
-            model_backbone.input_shape[-1]
-
         # --- setup instance variables
         self._cast_to_uint8 = cast_to_uint8
         self._model_backbone = model_backbone
         self._model_denoiser = model_denoiser
         self._model_normalizer = model_normalizer
         self._model_denormalizer = model_denormalizer
-        self._training_channels = training_channels
 
     @tf.function
     def __call__(self, image):

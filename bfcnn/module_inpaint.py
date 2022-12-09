@@ -11,10 +11,6 @@ from .custom_logger import logger
 
 # ---------------------------------------------------------------------
 
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-
-# ---------------------------------------------------------------------
-
 
 class InpaintModule(tf.Module):
     """inpaint inference module."""
@@ -48,16 +44,12 @@ class InpaintModule(tf.Module):
         if model_denormalizer is None:
             raise ValueError("model_denormalizer should not be None")
 
-        training_channels = \
-            model_backbone.input_shape[-1]
-
         # --- setup instance variables
         self._cast_to_uint8 = cast_to_uint8
         self._model_backbone = model_backbone
         self._model_inpaint = model_inpaint
         self._model_normalizer = model_normalizer
         self._model_denormalizer = model_denormalizer
-        self._training_channels = training_channels
 
     @tf.function
     def __call__(self, image, mask):

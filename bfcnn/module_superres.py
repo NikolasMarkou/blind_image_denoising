@@ -11,10 +11,6 @@ from .custom_logger import logger
 
 # ---------------------------------------------------------------------
 
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-
-# ---------------------------------------------------------------------
-
 
 class SuperresModule(tf.Module):
     """superres inference module."""
@@ -48,16 +44,12 @@ class SuperresModule(tf.Module):
         if model_denormalizer is None:
             raise ValueError("model_denormalizer should not be None")
 
-        training_channels = \
-            model_backbone.input_shape[-1]
-
         # --- setup instance variables
         self._cast_to_uint8 = cast_to_uint8
         self._model_backbone = model_backbone
         self._model_superres = model_superres
         self._model_normalizer = model_normalizer
         self._model_denormalizer = model_denormalizer
-        self._training_channels = training_channels
 
     @tf.function
     def __call__(self, image):
@@ -87,47 +79,5 @@ class SuperresModule(tf.Module):
             x = tf.cast(x, dtype=tf.uint8)
 
         return x
-
-    def description(self) -> str:
-        return \
-            "BiasFree CNN, Super Resolution module,\n" \
-            "takes in an image and doubles its resolution.\n" \
-            f"This module was trained for [{self._training_channels}] channels,\n" \
-            f"This module expects tf.uint8 input and products tf.uint8 output by default."
-
-    def test(self, output_directory: str):
-        # --- argument checking
-        if not output_directory or len(output_directory) <= 0:
-            raise ValueError("output_directory must not be empty")
-
-        # ---
-        concrete_input_shape = [1, 128, 128, self._training_channels]
-        logger.info("testing modes with shape [{0}]".format(concrete_input_shape))
-        output_log = \
-            os.path.join(output_directory, "trace_log")
-        writer = \
-            tf.summary.create_file_writer(
-                output_log)
-
-        # sample data for your function.
-        input_tensor = \
-            tf.random.uniform(
-                shape=concrete_input_shape,
-                minval=0,
-                maxval=255,
-                dtype=tf.int32)
-        input_tensor = \
-            tf.cast(
-                input_tensor,
-                dtype=tf.uint8)
-        # Bracket the function call with
-        tf.summary.trace_on(graph=True, profiler=False)
-        # Call only one tf.function when tracing.
-        _ = self.concrete_function()(input_tensor)
-        with writer.as_default():
-            tf.summary.trace_export(
-                step=0,
-                name="superres_module",
-                profiler_outdir=output_log)
 
 # ---------------------------------------------------------------------

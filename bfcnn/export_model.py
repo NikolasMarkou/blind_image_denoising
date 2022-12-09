@@ -129,6 +129,8 @@ def export_model(
     else:
         raise ValueError("!!! Did NOT find checkpoint to restore !!!")
 
+    training_channels = backbone.input_shape[-1]
+
     ##################################################################################
     # combine denoiser, normalize and denormalize
     ##################################################################################
@@ -147,7 +149,10 @@ def export_model(
     # and forces variables to
     # be constructed, only after this can we save the
     # checkpoint and saved model.
-    denoiser_concrete_function = denoiser_module.concrete_function()
+    denoiser_concrete_function = \
+        denoiser_module.__call__.get_concrete_function(
+            tf.TensorSpec(shape=[1, None, None, training_channels], dtype=tf.uint8)
+        )
 
     # export the model as save_model format (default)
     logger.info(f"saving module: [{output_saved_model_denoiser}]")
@@ -197,7 +202,10 @@ def export_model(
     # and forces variables to
     # be constructed, only after this can we save the
     # checkpoint and saved model.
-    superres_concrete_function = superres_module.concrete_function()
+    superres_concrete_function = \
+        superres_module.__call__.get_concrete_function(
+            tf.TensorSpec(shape=[1, None, None, training_channels], dtype=tf.uint8)
+        )
 
     # export the model as save_model format (default)
     logger.info(f"saving module: [{output_saved_model_superres}]")
@@ -247,7 +255,11 @@ def export_model(
     # and forces variables to
     # be constructed, only after this can we save the
     # checkpoint and saved model.
-    inpaint_concrete_function = inpaint_module.concrete_function()
+    inpaint_concrete_function = \
+        inpaint_module.__call__.get_concrete_function(
+            tf.TensorSpec(shape=[1, None, None, training_channels], dtype=tf.uint8),
+            tf.TensorSpec(shape=[1, None, None, 1], dtype=tf.uint8)
+        )
 
     # export the model as save_model format (default)
     logger.info(f"saving module: [{output_saved_model_inpaint}]")
