@@ -12,11 +12,13 @@ import tensorflow as tf
 # local imports
 # ---------------------------------------------------------------------
 
+from .constants import \
+    DENOISER_STR, SUPERRES_STR, INPAINT_STR
 from .train_loop import train_loop
+from .export_model import export_model
 from .model_hydra import model_builder
 from .file_operations import load_image
 from .utilities import logger, load_config
-from .export_model import export_model, module_builder_denoiser
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
@@ -52,32 +54,40 @@ CONFIGS_DICT = {
 
 pretrained_dir = current_dir / "pretrained"
 
-pretrained_models = {}
+PRETRAINED_MODELS = {}
 
 # --- populate pretrained_models
 if pretrained_dir.is_dir():
-    for directory in \
-            [d for d in pretrained_dir.iterdir() if d.is_dir()]:
+    for directory in [d for d in pretrained_dir.iterdir() if d.is_dir()]:
         # ---
         model_name = str(directory.name)
 
         # --- define model loader function
-        def load_tf():
-            saved_model_path = str(directory / "saved_model")
-            return tf.saved_model.load(saved_model_path)
+        def load_denoiser_module():
+            return tf.saved_model.load(str(directory / DENOISER_STR))
+
+
+        def load_inpaint_module():
+            return tf.saved_model.load(str(directory / INPAINT_STR))
+
+
+        def load_superres_module():
+            return tf.saved_model.load(str(directory / SUPERRES_STR))
+
 
         # --- define structure for each model
-        pretrained_models[model_name] = {
-            "load_tf": load_tf,
+        PRETRAINED_MODELS[model_name] = {
             "directory": directory,
-            "tflite": str(directory / "model.tflite"),
+            INPAINT_STR: load_inpaint_module,
+            SUPERRES_STR: load_superres_module,
+            DENOISER_STR: load_denoiser_module,
             "configuration": str(directory / "pipeline.json"),
             "saved_model_path": str(directory / "saved_model"),
-            "tf": str(directory / "saved_model" / "saved_model.pb")
         }
 else:
     logger.info(
         "pretrained directory [{0}] not found".format(pretrained_dir))
+
 
 # ---------------------------------------------------------------------
 
@@ -88,10 +98,10 @@ def load_model(model_path: str):
         raise ValueError("model_path cannot be empty")
 
     # --- load from pretrained
-    if model_path in pretrained_models:
+    if model_path in PRETRAINED_MODELS:
         return \
             tf.saved_model.load(
-                pretrained_models[model_path]["saved_model_path"])
+                PRETRAINED_MODELS[model_path]["saved_model_path"])
 
     # --- load from any directory
     if not os.path.exists(model_path):
@@ -100,11 +110,23 @@ def load_model(model_path: str):
 
     return tf.saved_model.load(str(model_path))
 
+
+# ---------------------------------------------------------------------
+
+# offer a descent pretrained model fore each
+load_default_inpaint = list(PRETRAINED_MODELS.values())[0][INPAINT_STR]
+load_default_denoiser = list(PRETRAINED_MODELS.values())[0][DENOISER_STR]
+load_default_superres = list(PRETRAINED_MODELS.values())[0][SUPERRES_STR]
+
 # ---------------------------------------------------------------------
 
 
 __all__ = [
     CONFIGS,
+    load_default_inpaint,
+    load_default_denoiser,
+    load_default_superres,
+    PRETRAINED_MODELS,
     train_loop,
     load_model,
     load_image,
@@ -112,11 +134,8 @@ __all__ = [
     model_builder,
     schedule_builder,
     optimizer_builder,
-    pretrained_models,
     build_pyramid_model,
-    module_builder_denoiser,
     build_inverse_pyramid_model
 ]
-
 
 # ---------------------------------------------------------------------

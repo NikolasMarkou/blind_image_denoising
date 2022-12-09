@@ -87,15 +87,11 @@ class SuperresModule(tf.Module, ModuleInterface):
 
         return x
 
+    @tf.function(
+        input_signature=[
+            tf.TensorSpec(shape=[None, None, None, 3], dtype=tf.uint8)])
     def __call__(self, input_tensor):
         return self._run_inference_on_images(input_tensor)
-
-    def concrete_tensor_spec(self):
-        return \
-            tf.TensorSpec(
-                shape=[None, None, None] + [self._training_channels],
-                dtype=tf.uint8,
-                name="input")
 
     def description(self) -> str:
         return \

@@ -26,7 +26,7 @@ class InpaintModule(tf.Module, ModuleInterface):
             model_inpaint: keras.Model,
             model_normalizer: keras.Model,
             model_denormalizer: keras.Model,
-            training_channels: int = 1,
+            training_channels: int = 3,
             cast_to_uint8: bool = True):
         """
         Initializes a module for super resolution.
@@ -39,6 +39,7 @@ class InpaintModule(tf.Module, ModuleInterface):
         :param cast_to_uint8: cast output to uint8
 
         """
+
         # --- argument checking
         if model_backbone is None:
             raise ValueError("model_backbone should not be None")
@@ -102,11 +103,15 @@ class InpaintModule(tf.Module, ModuleInterface):
 
         return x
 
+    @tf.function(
+        input_signature=[
+            tf.TensorSpec(shape=[None, None, None, None], dtype=tf.uint8),
+            tf.TensorSpec(shape=[None, None, None, 1], dtype=tf.uint8)])
     def __call__(self, input_tensor, mask_tensor):
         return self._run_inference_on_images(input_tensor, mask_tensor)
 
-    def concrete_tensor_spec(self):
-        return [
+    def get_concrete_function(self):
+        return self.__call__.get_concrete_function(
             tf.TensorSpec(
                 shape=[None, None, None, self._training_channels],
                 dtype=tf.uint8,
@@ -114,8 +119,8 @@ class InpaintModule(tf.Module, ModuleInterface):
             tf.TensorSpec(
                 shape=[None, None, None, 1],
                 dtype=tf.uint8,
-                name="mask")
-        ]
+                name="mask"),
+        )
 
     def description(self) -> str:
         return \
@@ -130,7 +135,7 @@ class InpaintModule(tf.Module, ModuleInterface):
             raise ValueError("output_directory must not be empty")
 
         # ---
-        concrete_input_shape = [1, 128, 128, self._training_channels]
+        concrete_input_shape = [1, 128, 128, 3]
         concrete_mask_shape = [1, 128, 128, 1]
         logger.info("testing modes with shape [{0}]".format(concrete_input_shape))
         output_log = \
