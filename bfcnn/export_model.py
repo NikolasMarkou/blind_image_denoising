@@ -132,8 +132,19 @@ def export_model(
     training_channels = backbone.input_shape[-1]
 
     ##################################################################################
+    # save keras model
+    ##################################################################################
+    
+    output_keras_model = \
+        os.path.join(
+            output_directory,
+            "model.h5")
+    hydra.save(output_keras_model)
+
+    ##################################################################################
     # combine denoiser, normalize and denormalize
     ##################################################################################
+
     output_saved_model_denoiser = os.path.join(output_directory, "denoiser")
     logger.info("building denoiser module")
     logger.info("combining backbone, denoise, normalize and denormalize model")
