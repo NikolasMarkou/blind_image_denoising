@@ -1,5 +1,5 @@
 __author__ = "Nikolas Markou"
-__version__ = "2.0.1"
+__version__ = "3.2.0"
 __license__ = "MIT"
 
 # ---------------------------------------------------------------------
@@ -40,7 +40,7 @@ current_dir = pathlib.Path(__file__).parent.resolve()
 
 configs_dir = current_dir / "configs"
 
-CONFIGS = [
+configs = [
     (os.path.basename(str(c)), load_config(str(c)))
     for c in configs_dir.glob("*.json")
 ]
@@ -54,13 +54,14 @@ CONFIGS_DICT = {
 
 pretrained_dir = current_dir / "pretrained"
 
-PRETRAINED_MODELS = {}
+models = {}
 
 # --- populate pretrained_models
 if pretrained_dir.is_dir():
     for directory in [d for d in pretrained_dir.iterdir() if d.is_dir()]:
         # ---
         model_name = str(directory.name)
+
 
         # --- define model loader function
         def load_denoiser_module():
@@ -76,7 +77,7 @@ if pretrained_dir.is_dir():
 
 
         # --- define structure for each model
-        PRETRAINED_MODELS[model_name] = {
+        models[model_name] = {
             "directory": directory,
             INPAINT_STR: load_inpaint_module,
             SUPERRES_STR: load_superres_module,
@@ -98,10 +99,10 @@ def load_model(model_path: str):
         raise ValueError("model_path cannot be empty")
 
     # --- load from pretrained
-    if model_path in PRETRAINED_MODELS:
+    if model_path in models:
         return \
             tf.saved_model.load(
-                PRETRAINED_MODELS[model_path]["saved_model_path"])
+                models[model_path]["saved_model_path"])
 
     # --- load from any directory
     if not os.path.exists(model_path):
@@ -113,20 +114,62 @@ def load_model(model_path: str):
 
 # ---------------------------------------------------------------------
 
+
+def load_denoiser_model(model_path: str):
+    # --- argument checking
+    if model_path is None or len(model_path) <= 0:
+        raise ValueError("model_path cannot be empty")
+
+    # --- load from pretrained
+    if model_path in models:
+        return models[model_path][DENOISER_STR]()
+
+    raise ValueError("model_path [{0}] does not exist".format(model_path))
+
+
+# ---------------------------------------------------------------------
+
+
+def load_superres_model(model_path: str):
+    # --- argument checking
+    if model_path is None or len(model_path) <= 0:
+        raise ValueError("model_path cannot be empty")
+
+    # --- load from pretrained
+    if model_path in models:
+        return models[model_path][SUPERRES_STR]()
+
+    raise ValueError("model_path [{0}] does not exist".format(model_path))
+
+
+# ---------------------------------------------------------------------
+
+
+def load_inpaint_model(model_path: str):
+    # --- argument checking
+    if model_path is None or len(model_path) <= 0:
+        raise ValueError("model_path cannot be empty")
+
+    # --- load from pretrained
+    if model_path in models:
+        return models[model_path][INPAINT_STR]()
+
+    raise ValueError("model_path [{0}] does not exist".format(model_path))
+
+
+# ---------------------------------------------------------------------
+
 # offer a descent pretrained model fore each
-load_default_inpaint = list(PRETRAINED_MODELS.values())[0][INPAINT_STR]
-load_default_denoiser = list(PRETRAINED_MODELS.values())[0][DENOISER_STR]
-load_default_superres = list(PRETRAINED_MODELS.values())[0][SUPERRES_STR]
+load_default_inpaint = list(models.values())[0][INPAINT_STR]
+load_default_denoiser = list(models.values())[0][DENOISER_STR]
+load_default_superres = list(models.values())[0][SUPERRES_STR]
 
 # ---------------------------------------------------------------------
 
 
 __all__ = [
-    CONFIGS,
-    load_default_inpaint,
-    load_default_denoiser,
-    load_default_superres,
-    PRETRAINED_MODELS,
+    models,
+    configs,
     train_loop,
     load_model,
     load_image,
@@ -134,7 +177,13 @@ __all__ = [
     model_builder,
     schedule_builder,
     optimizer_builder,
+    load_inpaint_model,
+    load_denoiser_model,
+    load_superres_model,
     build_pyramid_model,
+    load_default_inpaint,
+    load_default_denoiser,
+    load_default_superres,
     build_inverse_pyramid_model
 ]
 
