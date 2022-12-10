@@ -300,8 +300,7 @@ def train_loop(
         # downsample test image because it produces OOM
         test_images = superres_augmentation_fn(test_images)
         mask_test_images = tf.ones_like(test_images)[:, :, :, 0]
-        #mask_denoiser_batch = None
-        #mask_
+
         # ---
         while global_epoch < global_total_epochs:
             logger.info("epoch: {0}, step: {1}".format(
