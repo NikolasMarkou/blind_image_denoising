@@ -107,6 +107,8 @@ def builder(
         raise ValueError("len(block_filters) must be >= 0 ")
     if len(block_kernels) != len(block_filters):
         raise ValueError("len(block_filters) must == len(block_kernels)")
+    if len(block_kernels) != len(block_groups):
+        raise ValueError("len(block_filters) must == len(block_groups)")
     if block_depthwise is not None and \
             (len(block_depthwise) != len(block_kernels)):
         raise ValueError("len(block_depthwise) must == len(block_kernels)")

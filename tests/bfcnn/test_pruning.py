@@ -25,7 +25,7 @@ from bfcnn.pruning import \
 
 
 @pytest.mark.parametrize(
-    "config", bfcnn.CONFIGS)
+    "config", bfcnn.configs)
 def test_get_conv2d_weights(config):
     config = config[1]
     models = bfcnn.model_builder(config=config["model"])
@@ -36,7 +36,7 @@ def test_get_conv2d_weights(config):
 # ---------------------------------------------------------------------
 
 @pytest.mark.parametrize(
-    "config", bfcnn.CONFIGS)
+    "config", bfcnn.configs)
 def test_prune_function_builder(config):
     config = config[1]
     train_config = config["train"]
@@ -55,7 +55,7 @@ def test_prune_function_builder(config):
 
 
 @pytest.mark.parametrize(
-    "config", bfcnn.CONFIGS)
+    "config", bfcnn.configs)
 def test_build_model_and_prune_configs(config):
     config = config[1]
     models = bfcnn.model_builder(config=config["model"])
