@@ -345,7 +345,7 @@ def train_loop(
 
                     _, _, superres_output = \
                         hydra([downsampled_batch,
-                               (noisy_batch * 0 + 1.0)[:, :, :, 0]],
+                               (downsampled_batch * 0 + 1.0)[:, :, :, 0]],
                               training=True)
 
                     # compute the loss value for this mini-batch
