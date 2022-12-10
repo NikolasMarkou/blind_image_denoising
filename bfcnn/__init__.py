@@ -62,19 +62,15 @@ if pretrained_dir.is_dir():
         # ---
         model_name = str(directory.name)
 
-
         # --- define model loader function
         def load_denoiser_module():
             return tf.saved_model.load(str(directory / DENOISER_STR))
 
-
         def load_inpaint_module():
             return tf.saved_model.load(str(directory / INPAINT_STR))
 
-
         def load_superres_module():
             return tf.saved_model.load(str(directory / SUPERRES_STR))
-
 
         # --- define structure for each model
         models[model_name] = {

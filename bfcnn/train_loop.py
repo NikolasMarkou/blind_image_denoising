@@ -299,7 +299,9 @@ def train_loop(
 
         # downsample test image because it produces OOM
         test_images = superres_augmentation_fn(test_images)
-
+        mask_test_images = tf.ones_like(test_images)[:, :, :, 0]
+        #mask_denoiser_batch = None
+        #mask_
         # ---
         while global_epoch < global_total_epochs:
             logger.info("epoch: {0}, step: {1}".format(
@@ -334,8 +336,7 @@ def train_loop(
                     # on the GradientTape.
                     denoiser_output, _, _ = \
                         hydra([noisy_batch,
-                               tf.ones_like(noisy_batch,
-                                            dtype=tf.float32)[:, :, :, 0]],
+                               (noisy_batch * 0 + 1.0)[:, :, :, 0]],
                               training=True)
 
                     _, inpaint_output, _ = \
@@ -344,8 +345,7 @@ def train_loop(
 
                     _, _, superres_output = \
                         hydra([downsampled_batch,
-                               tf.ones_like(downsampled_batch,
-                                            dtype=tf.float32)[:, :, :, 0]],
+                               (noisy_batch * 0 + 1.0)[:, :, :, 0]],
                               training=True)
 
                     # compute the loss value for this mini-batch
@@ -398,11 +398,9 @@ def train_loop(
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
                     test_denoiser_output, _, test_superres_output = \
-                        hydra([test_images, tf.ones_like(test_images)[:,:,:,0]],
-                              training=False)
+                        hydra([test_images, mask_test_images], training=False)
                     test_denoiser_output, _, test_superres_output = \
-                        hydra([test_images, tf.ones_like(test_images)[:,:,:,0]],
-                              training=False)
+                        hydra([test_images, mask_test_images], training=False)
                     visualize(
                         global_step=global_step,
                         input_batch=input_batch,
