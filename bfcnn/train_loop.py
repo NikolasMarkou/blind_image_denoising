@@ -336,7 +336,7 @@ def train_loop(
                     # on the GradientTape.
                     denoiser_output, _, _ = \
                         hydra([noisy_batch,
-                               (noisy_batch * 0 + 1.0)[:, :, :, 0]],
+                               (noisy_batch[:, :, :, 0] * 0.0 + 1.0)],
                               training=True)
 
                     _, inpaint_output, _ = \
@@ -345,7 +345,7 @@ def train_loop(
 
                     _, _, superres_output = \
                         hydra([downsampled_batch,
-                               (downsampled_batch * 0 + 1.0)[:, :, :, 0]],
+                               (downsampled_batch[:, :, :, 0] * 0.0 + 1.0)],
                               training=True)
 
                     # compute the loss value for this mini-batch
