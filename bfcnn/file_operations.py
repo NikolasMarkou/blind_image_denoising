@@ -18,14 +18,10 @@ SUPPORTED_IMAGE_LIST_FORMATS = (".bmp", ".gif", ".jpeg", ".jpg", ".png")
 
 def image_filenames_dataset_from_directory_gen(
         directory,
-        shuffle=True,
-        seed=None,
         follow_links=False):
     """
     Generates a `tf.data.Dataset` from image filenames in a directory.
     """
-    if seed is None:
-        seed = np.random.randint(1e6)
 
     def gen_fn():
         for x in index_directory_gen(
@@ -40,12 +36,6 @@ def image_filenames_dataset_from_directory_gen(
             output_signature=(
                 tf.TensorSpec(shape=(), dtype=tf.string)
             ))
-
-    if shuffle:
-        dataset = dataset.shuffle(
-            seed=seed,
-            buffer_size=1024,
-            reshuffle_each_iteration=True)
 
     return dataset
 

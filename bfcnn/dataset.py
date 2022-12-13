@@ -411,9 +411,7 @@ def dataset_builder(
     if directory:
         dataset_training = [
             image_filenames_dataset_from_directory_gen(
-                seed=0,
                 directory=d,
-                shuffle=True,
                 follow_links=True)
             for d in directory
         ]
@@ -473,14 +471,14 @@ def dataset_builder(
                         shape=(),
                         dtype=tf.string)
             )) \
+            .shuffle(
+                seed=0,
+                buffer_size=1024,
+                reshuffle_each_iteration=True) \
             .map(
                 map_func=load_image_fn,
                 num_parallel_calls=12) \
             .unbatch() \
-            .shuffle(
-                seed=0,
-                buffer_size=batch_size * len(directory) * no_crops_per_image,
-                reshuffle_each_iteration=False) \
             .batch(
                 batch_size=batch_size,
                 num_parallel_calls=tf.data.AUTOTUNE) \
