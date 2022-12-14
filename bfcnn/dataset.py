@@ -227,7 +227,7 @@ def dataset_builder(
                 downsampled_batch,
                 ksize=(1, 1),
                 strides=(2, 2),
-                padding="same")
+                padding="SAME")
         return downsampled_batch
 
     # --- define noise augmentation function
