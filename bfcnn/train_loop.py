@@ -360,7 +360,7 @@ def train_loop(
                             predicted_batch=denoiser_output)
                     denoiser_uq_loss_map = \
                         denoiser_loss_fn(
-                            input_batch=input_batch - denoiser_output,
+                            input_batch=(input_batch - tf.stop_gradient(denoiser_output)) / 255,
                             predicted_batch=denoiser_uq_output)
                     inpaint_loss_map = \
                         inpaint_loss_fn(
