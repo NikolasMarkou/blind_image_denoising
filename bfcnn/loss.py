@@ -374,7 +374,7 @@ def loss_function_builder(
     regularization_multiplier = config.get("regularization", 1.0)
 
     # --- uncertainty quantification multiplier
-    uq_multiplier = config.get("uq_multiplier", 1.0)
+    uq_multiplier = config.get("uq_multiplier", 100.0)
 
     # --- multiscale mae
     use_multiscale = config.get("use_multiscale", False)
@@ -402,28 +402,26 @@ def loss_function_builder(
     # ---
     def denoiser_uq_loss(
             input_batch: tf.Tensor,
-            denoiser_batch: tf.Tensor,
-            denoiser_uq_batch: tf.Tensor,
+            predicted_batch: tf.Tensor,
             max_diff_value: tf.Tensor = tf.constant(255.0, dtype=tf.float32)) -> tf.Tensor:
-        diff = tf.abs(input_batch - denoiser_batch) / max_diff_value
-        diff_mean = tf.reduce_mean(diff, axis=[3], keepdims=True)
-
-        x_expected, x_variance = tf.unstack(denoiser_uq_batch, axis=3)
+        input_batch_mean = tf.reduce_mean(input_batch, axis=[3], keepdims=True)
+        x_expected, x_variance = tf.unstack(predicted_batch, axis=3)
         x_expected = tf.expand_dims(x_expected, axis=3)
 
         mae_prediction_loss = \
-            mae(original=diff_mean,
-                prediction=x_expected,
+            mae(original=input_batch_mean,
+                prediction=x_expected * max_diff_value,
                 hinge=0.0,
-                cutoff=1.0)
+                cutoff=max_diff_value)
 
-        uq_loss = tf.reduce_mean(input_tensor=x_variance, axis=[1, 2], keepdims=False)
-        uq_loss = tf.reduce_mean(input_tensor=uq_loss, axis=[0], keepdims=False)
+        uq_loss = \
+            tf.reduce_mean(
+                input_tensor=x_variance, axis=[0, 1, 2], keepdims=False)
 
         return {
             TOTAL_LOSS_STR:
                 (mae_prediction_loss * mae_multiplier +
-                 uq_loss * uq_multiplier) * max_diff_value,
+                 uq_loss * uq_multiplier),
             MAE_LOSS_STR: mae_prediction_loss,
             UNCERTAINTY_QUANTIZATION_LOSS_STR: uq_loss
         }
