@@ -1,5 +1,5 @@
 r"""Constructs the loss function of the blind image denoising"""
-
+import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
 from typing import List, Dict, Callable
@@ -17,6 +17,7 @@ MODEL_LOSS_FN_STR = "model"
 INPAINT_LOSS_FN_STR = "inpaint"
 DENOISER_LOSS_FN_STR = "denoiser"
 SUPERRES_LOSS_FN_STR = "superres"
+UNCERTAINTY_QUANTIZATION_LOSS_FN_STR = "uncertainty_quantization"
 
 # ---------------------------------------------------------------------
 
@@ -40,7 +41,8 @@ def gar_loss(
     a_2 = tf.abs(alpha - 2.0)
     return \
         (a_2 / alpha) * \
-        (tf.pow((tf.square(x/c) / a_2) + 1.0, alpha / 2.0) - 1.0)
+        (tf.pow((tf.square(x / c) / a_2) + 1.0, alpha / 2.0) - 1.0)
+
 
 # ---------------------------------------------------------------------
 
@@ -371,6 +373,9 @@ def loss_function_builder(
     # --- regularization
     regularization_multiplier = config.get("regularization", 1.0)
 
+    # --- uncertainty quantification multiplier
+    uq_multiplier = config.get("uq_multiplier", 1.0)
+
     # --- multiscale mae
     use_multiscale = config.get("use_multiscale", False)
     laplacian_config = {
@@ -385,6 +390,7 @@ def loss_function_builder(
             config=laplacian_config)
     pyramid_levels = laplacian_config["levels"]
 
+    # ---
     def model_loss(model):
         regularization_loss = \
             tf.add_n(model.losses)
@@ -394,10 +400,39 @@ def loss_function_builder(
         }
 
     # ---
+    def denoiser_uq_loss(
+            input_batch: tf.Tensor,
+            denoiser_batch: tf.Tensor,
+            denoiser_uq_batch: tf.Tensor,
+            max_diff_value: tf.constant(255.0, dtype=tf.float32)) -> tf.Tensor:
+        diff = tf.abs(input_batch - denoiser_batch) / max_diff_value
+        diff_mean = tf.reduce_mean(diff, axis=[3], keepdims=True)
+
+        x_expected, x_variance = tf.unstack(denoiser_uq_batch, axis=3)
+        x_expected = tf.expand_dims(x_expected, axis=3)
+
+        mae_prediction_loss = \
+            mae(original=diff_mean,
+                prediction=x_expected,
+                hinge=0.0,
+                cutoff=1.0)
+
+        uq_loss = tf.reduce_mean(input_tensor=x_variance, axis=[1, 2], keepdims=False)
+        uq_loss = tf.reduce_mean(input_tensor=uq_loss, axis=[0], keepdims=False)
+
+        return {
+            TOTAL_LOSS_STR:
+                mae_prediction_loss * mae_multiplier +
+                uq_loss * uq_multiplier,
+            MAE_LOSS_STR: mae_prediction_loss,
+            UNCERTAINTY_QUANTIZATION_LOSS_STR: uq_loss
+        }
+
+    # ---
     def denoiser_loss(
             input_batch: tf.Tensor,
             predicted_batch: tf.Tensor,
-            mask: tf.Tensor = tf.constant(1.0, tf.float32)) -> Dict[str, tf.Tensor]:
+            mask: tf.Tensor = tf.constant(1.0, dtype=tf.float32)) -> Dict[str, tf.Tensor]:
         # --- actual mean absolute error (no hinge or cutoff)
         mae_actual = \
             mae(original=input_batch,
@@ -418,7 +453,7 @@ def loss_function_builder(
                     mae_prediction_loss += \
                         mae(original=input_batch_multiscale[i],
                             prediction=prediction_batch_multiscale[i],
-                            hinge=float(hinge * (float(i+1) / float(pyramid_levels))),
+                            hinge=float(hinge * (float(i + 1) / float(pyramid_levels))),
                             cutoff=cutoff,
                             mask=mask,
                             count_non_zero_mean=count_non_zero_mean)
@@ -468,7 +503,8 @@ def loss_function_builder(
         MODEL_LOSS_FN_STR: model_loss,
         DENOISER_LOSS_FN_STR: denoiser_loss,
         INPAINT_LOSS_FN_STR: denoiser_loss,
-        SUPERRES_LOSS_FN_STR: denoiser_loss
+        SUPERRES_LOSS_FN_STR: denoiser_loss,
+        UNCERTAINTY_QUANTIZATION_LOSS_FN_STR: denoiser_uq_loss
     }
 
 # ---------------------------------------------------------------------

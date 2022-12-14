@@ -17,7 +17,8 @@ from .loss import \
     MODEL_LOSS_FN_STR, \
     INPAINT_LOSS_FN_STR, \
     DENOISER_LOSS_FN_STR, \
-    SUPERRES_LOSS_FN_STR
+    SUPERRES_LOSS_FN_STR, \
+    UNCERTAINTY_QUANTIZATION_LOSS_FN_STR
 from .optimizer import optimizer_builder
 from .pruning import prune_function_builder, get_conv2d_weights
 from .model_hydra import model_builder as model_hydra_builder
@@ -83,6 +84,7 @@ def train_loop(
     loss_fn_map = loss_function_builder(config=config["loss"])
     inpaint_loss_fn = tf.function(func=loss_fn_map[INPAINT_LOSS_FN_STR], reduce_retracing=True)
     denoiser_loss_fn = tf.function(func=loss_fn_map[DENOISER_LOSS_FN_STR], reduce_retracing=True)
+    denoiser_uq_loss_fn = tf.function(func=loss_fn_map[UNCERTAINTY_QUANTIZATION_LOSS_FN_STR], reduce_retracing=True)
     superres_loss_fn = tf.function(func=loss_fn_map[SUPERRES_LOSS_FN_STR], reduce_retracing=True)
     model_loss_fn = loss_fn_map[MODEL_LOSS_FN_STR]
 
@@ -359,9 +361,10 @@ def train_loop(
                             input_batch=input_batch,
                             predicted_batch=denoiser_output)
                     denoiser_uq_loss_map = \
-                        denoiser_loss_fn(
-                            input_batch=(input_batch - tf.stop_gradient(denoiser_output)) / 255,
-                            predicted_batch=denoiser_uq_output)
+                        denoiser_uq_loss_fn(
+                            input_batch=input_batch,
+                            denoiser_batch=denoiser_output,
+                            denoiser_uq_batch=denoiser_uq_output)
                     inpaint_loss_map = \
                         inpaint_loss_fn(
                             input_batch=input_batch,
