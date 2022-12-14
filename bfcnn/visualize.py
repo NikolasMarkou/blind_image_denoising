@@ -81,12 +81,12 @@ def visualize(
         tf.summary.image(
             name="uncertainty/expected",
             step=global_step,
-            data=denoiser_uq_expected,
+            data=tf.expand_dims(denoiser_uq_expected, axis=3),
             max_outputs=visualization_number)
         tf.summary.image(
             name="uncertainty/variance",
             step=global_step,
-            data=denoiser_uq_variance,
+            data=tf.expand_dims(denoiser_uq_variance, axis=3),
             max_outputs=visualization_number)
 
     # --- output superres
