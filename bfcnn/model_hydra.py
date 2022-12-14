@@ -709,7 +709,7 @@ def model_denoiser_uq_builder(
             keepdims=True)
 
     x_result = \
-        tf.concat([x_expected, x_variance])
+        tf.concat([x_expected, x_variance], axis=3)
 
     x_result = \
         tf.keras.layers.Layer(
