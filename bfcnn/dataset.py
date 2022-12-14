@@ -230,13 +230,6 @@ def dataset_builder(
         return downsampled_batch
 
     # --- define noise augmentation function
-    @tf.function(
-        input_signature=[
-            tf.TensorSpec(shape=[None,
-                                 input_shape[0],
-                                 input_shape[1],
-                                 channels],
-                          dtype=tf.float32)])
     def noise_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -379,13 +372,6 @@ def dataset_builder(
     # this will be use to augment data by mapping,
     # so each image in the tensor
     # is treated independently and gets a different noise type
-    @tf.function(
-        input_signature=[
-            tf.TensorSpec(shape=[None,
-                                 input_shape[0],
-                                 input_shape[1],
-                                 channels],
-                          dtype=tf.float32)])
     def noise_augmentations_mix_fn(
             x_input: tf.Tensor) -> tf.Tensor:
 
