@@ -68,8 +68,7 @@ class InpaintModule(tf.Module):
 
         x_m = \
             tf.multiply(
-                tf.ones_like(
-                    input=x),
+                (x * 0.0 + 1.0),
                 tf.reduce_mean(
                     input_tensor=x,
                     keepdims=True,

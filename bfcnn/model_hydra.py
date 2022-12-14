@@ -96,7 +96,10 @@ def model_builder(
     # create model
     model_hydra = \
         tf.keras.Model(
-            inputs=[input_layer, mask_layer],
+            inputs=[
+                input_layer,
+                mask_layer
+            ],
             outputs=[
                 denoiser_output,
                 inpaint_output,

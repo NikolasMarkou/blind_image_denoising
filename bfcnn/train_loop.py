@@ -303,7 +303,7 @@ def train_loop(
 
         # downsample test image because it produces OOM
         test_images = superres_augmentation_fn(test_images)
-        mask_test_images = tf.ones_like(test_images)[:, :, :, 0]
+        mask_test_images = test_images[:, :, :, 0] * 0.0 + 1.0
 
         # ---
         while global_epoch < global_total_epochs:
