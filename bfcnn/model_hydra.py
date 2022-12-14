@@ -73,10 +73,7 @@ def model_builder(
 
     # heads
     denoiser_mid = model_denoiser(backbone_mid)
-    denoiser_uq_mid = \
-        model_denoiser_uq([
-            tf.stop_gradient(backbone_mid),
-            tf.stop_gradient(denoiser_mid)])
+    denoiser_uq_mid = model_denoiser_uq(backbone_mid)
     inpaint_mid = model_inpaint([backbone_mid, input_normalized_layer, mask_layer])
     superres_mid = model_superres(backbone_mid)
 
@@ -84,7 +81,7 @@ def model_builder(
     denoiser_output = model_denormalizer(denoiser_mid, training=False)
     inpaint_output = model_denormalizer(inpaint_mid, training=False)
     superres_output = model_denormalizer(superres_mid, training=False)
-    denoiser_uq_output = denoiser_uq_mid
+    denoiser_uq_output = model_denormalizer(denoiser_uq_mid, training=False)
 
     # wrap layers to set names
     denoiser_output = tf.keras.layers.Layer(name=DENOISER_STR)(denoiser_output)
@@ -689,18 +686,13 @@ def model_denoiser_uq_builder(
             channelwise_scaling=False,
             multiplier_scaling=False)
 
-    x = x - model_input_prediction_layer
-
     x_result = \
         tf.keras.layers.Layer(
             name="output_tensor")(x)
 
     model_head = \
         tf.keras.Model(
-            inputs=[
-                model_input_layer,            # backbone input
-                model_input_prediction_layer  # prediction input
-            ],
+            inputs=model_input_layer,
             outputs=x_result,
             name=f"uncertainty_quantification_head")
 

@@ -81,7 +81,7 @@ def visualize(
             step=global_step,
             data=tf.reduce_mean(
                 tf.abs(denoiser_uq_batch),
-                axis=[3], keepdims=True),
+                axis=[3], keepdims=True) / 255,
             max_outputs=visualization_number)
 
     # --- output superres
