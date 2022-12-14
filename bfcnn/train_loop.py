@@ -364,7 +364,8 @@ def train_loop(
                         denoiser_uq_loss_fn(
                             input_batch=input_batch,
                             denoiser_batch=denoiser_output,
-                            denoiser_uq_batch=denoiser_uq_output)
+                            denoiser_uq_batch=denoiser_uq_output,
+                            max_diff_value=tf.constant(255.0, dtype=tf.float32))
                     inpaint_loss_map = \
                         inpaint_loss_fn(
                             input_batch=input_batch,
