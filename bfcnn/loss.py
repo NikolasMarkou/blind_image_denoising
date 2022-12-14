@@ -422,8 +422,8 @@ def loss_function_builder(
 
         return {
             TOTAL_LOSS_STR:
-                mae_prediction_loss * mae_multiplier +
-                uq_loss * uq_multiplier,
+                (mae_prediction_loss * mae_multiplier +
+                 uq_loss * uq_multiplier) * max_diff_value,
             MAE_LOSS_STR: mae_prediction_loss,
             UNCERTAINTY_QUANTIZATION_LOSS_STR: uq_loss
         }
