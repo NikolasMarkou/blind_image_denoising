@@ -397,7 +397,7 @@ def loss_function_builder(
     def denoiser_loss(
             input_batch: tf.Tensor,
             predicted_batch: tf.Tensor,
-            mask: tf.Tensor = tf.constant(1.0, tf.float32)):
+            mask: tf.Tensor = tf.constant(1.0, tf.float32)) -> Dict[str, tf.Tensor]:
         # --- actual mean absolute error (no hinge or cutoff)
         mae_actual = \
             mae(original=input_batch,
