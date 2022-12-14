@@ -236,8 +236,7 @@ def dataset_builder(
                                  input_shape[0],
                                  input_shape[1],
                                  channels],
-                          dtype=tf.float32)],
-        jit_compile=False)
+                          dtype=tf.float32)])
     def noise_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -446,10 +445,9 @@ def dataset_builder(
             f"Received: color_mode={color_mode}"
         )
 
-    def gen_fn():
-        for x in merge_iterators(*dataset_training):
-            yield x
-
+    @tf.function(
+        input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)],
+        reduce_retracing=True)
     def load_image_fn(x):
         x = load_image_crop(
             path=x,
@@ -464,24 +462,19 @@ def dataset_builder(
 
     result[DATASET_TRAINING_FN_STR] = \
         tf.data.Dataset \
-            .from_generator(
-                generator=gen_fn,
-                output_signature=(
-                    tf.TensorSpec(
-                        shape=(),
-                        dtype=tf.string)
-            )) \
+            .sample_from_datasets(
+                seed=0,
+                datasets=dataset_training,
+                stop_on_empty_dataset=False
+            ) \
             .shuffle(
                 seed=0,
                 buffer_size=1024,
                 reshuffle_each_iteration=True) \
             .map(
                 map_func=load_image_fn,
-                num_parallel_calls=12) \
-            .unbatch() \
-            .batch(
-                batch_size=batch_size,
                 num_parallel_calls=tf.data.AUTOTUNE) \
+            .rebatch(batch_size=batch_size) \
             .prefetch(1)
 
     return result
