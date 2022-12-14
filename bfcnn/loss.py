@@ -404,15 +404,15 @@ def loss_function_builder(
             input_batch: tf.Tensor,
             predicted_batch: tf.Tensor,
             max_diff_value: tf.Tensor = tf.constant(255.0, dtype=tf.float32)) -> tf.Tensor:
-        input_batch_mean = tf.reduce_mean(input_batch, axis=[3], keepdims=True)
+        input_batch_mean = tf.reduce_mean(input_batch / max_diff_value, axis=[3], keepdims=True)
         x_expected, x_variance = tf.unstack(predicted_batch, axis=3)
         x_expected = tf.expand_dims(x_expected, axis=3)
 
         mae_prediction_loss = \
             mae(original=input_batch_mean,
-                prediction=x_expected * max_diff_value,
+                prediction=x_expected,
                 hinge=0.0,
-                cutoff=max_diff_value)
+                cutoff=1.0)
 
         uq_loss = \
             tf.reduce_mean(
@@ -421,7 +421,7 @@ def loss_function_builder(
         return {
             TOTAL_LOSS_STR:
                 (mae_prediction_loss * mae_multiplier +
-                 uq_loss * uq_multiplier),
+                 uq_loss * uq_multiplier) * max_diff_value,
             MAE_LOSS_STR: mae_prediction_loss,
             UNCERTAINTY_QUANTIZATION_LOSS_STR: uq_loss
         }
