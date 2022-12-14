@@ -43,8 +43,8 @@
 		},
 		"denoiser_uq": {
 			"input_shape": ["?", "?", 16],
-			"output_channels": 3,
-			"final_activation": "sigmoid",
+			"output_channels": 16,
+			"final_activation": "linear",
 			"filters": 16,
 			"no_layers": 3,
 			"kernel_size": 1,

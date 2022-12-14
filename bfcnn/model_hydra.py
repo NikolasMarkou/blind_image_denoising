@@ -655,7 +655,7 @@ def model_denoiser_uq_builder(
     use_bias = config.get("use_bias", False)
     output_channels = config.get("output_channels", 16)
     input_shape = input_shape_fixer(config.get("input_shape"))
-    final_activation = config.get("final_activation", "sigmoid")
+    final_activation = config.get("final_activation", "linear")
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
 
