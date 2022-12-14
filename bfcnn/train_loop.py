@@ -272,6 +272,7 @@ def train_loop(
         geometric_augmentation_fn = \
             tf.function(
                 func=geometric_augmentation_fn,
+                reduce_retracing=True,
                 input_signature=[
                     tf.TensorSpec(shape=[None, None, None, None],
                                   dtype=tf.uint8)])
@@ -279,6 +280,7 @@ def train_loop(
         noise_augmentation_fn = \
             tf.function(
                 func=noise_augmentation_fn,
+                reduce_retracing=True,
                 input_signature=[
                     tf.TensorSpec(shape=[None, None, None, None],
                                   dtype=tf.float32)])
@@ -286,6 +288,7 @@ def train_loop(
         inpaint_augmentation_fn = \
             tf.function(
                 func=inpaint_augmentation_fn,
+                reduce_retracing=True,
                 input_signature=[
                     tf.TensorSpec(shape=[None, None, None, None],
                                   dtype=tf.float32)])
@@ -293,6 +296,7 @@ def train_loop(
         superres_augmentation_fn = \
             tf.function(
                 func=superres_augmentation_fn,
+                reduce_retracing=True,
                 input_signature=[
                     tf.TensorSpec(shape=[None, None, None, None],
                                   dtype=tf.float32)])
@@ -322,8 +326,8 @@ def train_loop(
                 input_batch = tf.cast(input_batch, dtype=tf.float32)
                 # create batches for all subnetworks
                 noisy_batch = noise_augmentation_fn(input_batch)
-                masked_batch, mask_batch = inpaint_augmentation_fn(input_batch)
                 downsampled_batch = superres_augmentation_fn(input_batch)
+                masked_batch, mask_batch = inpaint_augmentation_fn(input_batch)
 
                 # Open a GradientTape to record the operations run
                 # during the forward pass,
@@ -335,7 +339,7 @@ def train_loop(
                     # on the GradientTape.
                     denoiser_output, _, _ = \
                         hydra([noisy_batch,
-                               (noisy_batch[:, :, :, 0] * 0.0 + 1.0)],
+                               (noisy_batch[0, :, :, 0] * 0.0 + 1.0)],
                               training=True)
 
                     _, inpaint_output, _ = \
@@ -344,7 +348,7 @@ def train_loop(
 
                     _, _, superres_output = \
                         hydra([downsampled_batch,
-                               (downsampled_batch[:, :, :, 0] * 0.0 + 1.0)],
+                               (downsampled_batch[0, :, :, 0] * 0.0 + 1.0)],
                               training=True)
 
                     # compute the loss value for this mini-batch
@@ -437,7 +441,9 @@ def train_loop(
 
                 # --- keep time of steps per second
                 stop_time_forward_backward = time.time()
-                step_time_forward_backward = stop_time_forward_backward - start_time_forward_backward
+                step_time_forward_backward = \
+                    stop_time_forward_backward - \
+                    start_time_forward_backward
 
                 tf.summary.scalar(
                     "training/steps_per_second",
