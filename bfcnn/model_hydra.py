@@ -33,6 +33,7 @@ BuilderResults = namedtuple(
         "normalizer",
         "denormalizer",
         "denoiser",
+        "denoiser_uq",
         "inpaint",
         "superres",
         "hydra"
@@ -50,6 +51,7 @@ def model_builder(
 
     # --- build denoiser, inpaint, superres
     model_denoiser = model_denoiser_builder(config=config[DENOISER_STR])
+    model_denoiser_uq = model_uq_builder(config=config[DENOISER_STR])
     model_inpaint = model_inpaint_builder(config=config[INPAINT_STR])
     model_superres = model_superres_builder(config=config[SUPERRES_STR])
 
@@ -62,24 +64,19 @@ def model_builder(
     input_normalized_layer = model_normalizer(input_layer, training=False)
     mask_layer = tf.keras.Input(shape=mask_input_shape, name="mask_input_tensor")
 
-    # fix input and mask
-    mean_normalized_layer = \
-        tf.multiply(
-            (input_normalized_layer * 0.0 + 1.0),
-            tf.reduce_mean(
-                input_tensor=input_normalized_layer,
-                keepdims=True,
-                axis=[1, 2]))
-
     input_normalized_layer = \
         tf.multiply(input_normalized_layer, mask_layer) + \
-        tf.multiply(mean_normalized_layer, 1.0 - mask_layer)
+        tf.multiply(127, 1.0 - mask_layer)
 
     # common backbone
     backbone_mid = model_backbone(input_normalized_layer)
 
     # heads
     denoiser_mid = model_denoiser(backbone_mid)
+    denoiser_uq_mid = \
+        model_denoiser_uq([
+            tf.stop_gradient(backbone_mid),
+            tf.stop_gradient(denoiser_mid)])
     inpaint_mid = model_inpaint([backbone_mid, input_normalized_layer, mask_layer])
     superres_mid = model_superres(backbone_mid)
 
@@ -87,11 +84,13 @@ def model_builder(
     denoiser_output = model_denormalizer(denoiser_mid, training=False)
     inpaint_output = model_denormalizer(inpaint_mid, training=False)
     superres_output = model_denormalizer(superres_mid, training=False)
+    denoiser_uq_output = model_denormalizer(denoiser_uq_mid, training=False)
 
     # wrap layers to set names
     denoiser_output = tf.keras.layers.Layer(name=DENOISER_STR)(denoiser_output)
     inpaint_output = tf.keras.layers.Layer(name=INPAINT_STR)(inpaint_output)
     superres_output = tf.keras.layers.Layer(name=SUPERRES_STR)(superres_output)
+    denoiser_uq_output = tf.keras.layers.Layer(name=DENOISER_UQ_STR)(denoiser_uq_output)
 
     # create model
     model_hydra = \
@@ -103,7 +102,8 @@ def model_builder(
             outputs=[
                 denoiser_output,
                 inpaint_output,
-                superres_output
+                superres_output,
+                denoiser_uq_output
             ],
             name=f"hydra")
 
@@ -114,6 +114,7 @@ def model_builder(
             normalizer=model_normalizer,
             denormalizer=model_denormalizer,
             denoiser=model_denoiser,
+            denoiser_uq=model_denoiser_uq,
             inpaint=model_inpaint,
             superres=model_superres,
             hydra=model_hydra
@@ -620,6 +621,88 @@ def model_superres_builder(
             inputs=model_input_layer,
             outputs=x_result,
             name=f"superres_head")
+
+    return model_head
+
+# ---------------------------------------------------------------------
+
+
+def model_uq_builder(
+        config: Dict,
+        **kwargs) -> tf.keras.Model:
+    """
+    builds the uncertainty quantification model
+    on top of the backbone layer
+
+    :param config:
+        dictionary with
+        the uncertainty quantification configuration
+
+    :return: denoiser uncertainty quantification head model
+    """
+    # --- argument checking
+    logger.info(f"building uncertainty quantification model with [{config}]")
+    if kwargs:
+        logger.info(f"unused parameters [{kwargs}]")
+
+    # --- set configuration
+    use_bias = config.get("use_bias", False)
+    output_channels = config.get("output_channels", 3)
+    input_shape = input_shape_fixer(config.get("input_shape"))
+    final_activation = config.get("final_activation", "tanh")
+    kernel_initializer = config.get("kernel_initializer", "glorot_normal")
+    kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
+
+    # --- set network parameters
+    final_conv_params = dict(
+        kernel_size=1,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        filters=output_channels,
+        activation=final_activation,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
+    # --- define superres network here
+    model_input_layer = \
+        tf.keras.Input(
+            shape=input_shape,
+            name="input_tensor")
+
+    model_input_prediction_layer = \
+        tf.keras.Input(
+            shape=input_shape,
+            name="input_prediction_tensor")
+
+    x = model_input_layer
+
+    backbone, _, _ = model_backbone_builder(config)
+    x = backbone(x)
+
+    x = \
+        conv2d_wrapper(
+            input_layer=x,
+            bn_params=None,
+            conv_params=final_conv_params,
+            channelwise_scaling=False,
+            multiplier_scaling=False)
+
+    x = x - model_input_prediction_layer
+
+    x_result = \
+        tf.keras.layers.Layer(
+            name="output_tensor")(x)
+
+    model_head = \
+        tf.keras.Model(
+            inputs=[
+                model_input_layer,            # backbone input
+                model_input_prediction_layer  # prediction input
+            ],
+            outputs=x_result,
+            name=f"uncertainty_quantification_head")
 
     return model_head
 
