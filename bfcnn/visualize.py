@@ -79,7 +79,7 @@ def visualize(
         tf.summary.image(
             name="output/denoiser_uq",
             step=global_step,
-            data=tf.reduce_sum(
+            data=tf.reduce_mean(
                 tf.abs(denoiser_uq_batch),
                 axis=[3], keepdims=True),
             max_outputs=visualization_number)
