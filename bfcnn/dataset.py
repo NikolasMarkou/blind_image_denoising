@@ -1,5 +1,4 @@
 import tensorflow as tf
-from tensorflow import keras
 import tensorflow_addons as tfa
 from typing import Dict, Callable, Iterator, Tuple
 
@@ -120,27 +119,6 @@ def dataset_builder(
     # --- set random seed to get the same result
     tf.random.set_seed(0)
 
-    @tf.function
-    def random_choice(
-            x: tf.Tensor,
-            size=tf.constant(1, dtype=tf.int64),
-            axis=tf.constant(0, dtype=tf.int64)) -> tf.Tensor:
-        """
-        Randomly select size options from x
-        """
-        dim_x = tf.cast(tf.shape(x)[axis], tf.int64)
-        indices = tf.range(0, dim_x, dtype=tf.int64)
-        sample_index = tf.random.shuffle(indices, seed=0)[:size]
-        return tf.gather(x, sample_index, axis=axis)
-
-    @tf.function(
-        input_signature=[
-            tf.TensorSpec(shape=[None,
-                                 input_shape[0],
-                                 input_shape[1],
-                                 channels],
-                          dtype=tf.uint8)],
-        jit_compile=False)
     def geometric_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -239,6 +217,18 @@ def dataset_builder(
         # --- copy input batch
         noisy_batch = input_batch
         input_shape_inference = tf.shape(noisy_batch)
+
+        def random_choice(
+                x: tf.Tensor,
+                size=tf.constant(1, dtype=tf.int64),
+                axis=tf.constant(0, dtype=tf.int64)) -> tf.Tensor:
+            """
+            Randomly select size options from x
+            """
+            dim_x = tf.cast(tf.shape(x)[axis], tf.int64)
+            indices = tf.range(0, dim_x, dtype=tf.int64)
+            sample_index = tf.random.shuffle(indices, seed=0)[:size]
+            return tf.gather(x, sample_index, axis=axis)
 
         # --- random select noise type and options
         noise_type = random_choice(noise_choices, size=1)[0]
