@@ -82,7 +82,7 @@ def model_builder(
 
     # heads
     denoiser_mid = model_denoiser(backbone_mid)
-    denoiser_uq_mid = model_denoiser_uq(backbone_mid)
+    denoiser_uq_mid = model_denoiser_uq(tf.stop_gradient(backbone_mid))
     inpaint_mid = model_inpaint([backbone_mid, input_normalized_layer, mask_layer])
     superres_mid = model_superres(backbone_mid)
 

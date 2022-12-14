@@ -374,7 +374,7 @@ def loss_function_builder(
     regularization_multiplier = config.get("regularization", 1.0)
 
     # --- uncertainty quantification multiplier
-    uq_multiplier = config.get("uq_multiplier", 100.0)
+    uq_multiplier = config.get("uq_multiplier", 1.0)
 
     # --- multiscale mae
     use_multiscale = config.get("use_multiscale", False)
