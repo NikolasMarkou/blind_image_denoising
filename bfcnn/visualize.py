@@ -79,7 +79,9 @@ def visualize(
         tf.summary.image(
             name="output/denoiser_uq",
             step=global_step,
-            data=denoiser_uq_batch / 255,
+            data=tf.reduce_sum(
+                tf.abs(denoiser_uq_batch),
+                axis=[3], keepdims=True),
             max_outputs=visualization_number)
 
     # --- output superres
