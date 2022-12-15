@@ -463,7 +463,7 @@ def model_denoiser_builder(
                             x_split_i_prob),
                 axis=[3],
                 keepdims=True)
-        x_split_i_variance = tf.sqrt(tf.math.maximum(0.1, x_split_i_variance))
+        x_split_i_variance = x_split_i_variance
         x_expected.append(x_split_i_expected)
         x_variance.append(x_split_i_variance)
 
