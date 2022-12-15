@@ -449,6 +449,11 @@ def model_denoiser_builder(
                 conv_params=final_conv_params,
                 channelwise_scaling=False,
                 multiplier_scaling=False)
+        x_split_i = \
+            tf.clip_by_value(
+                x_split_i,
+                clip_value_min=0.001,
+                clip_value_max=0.999)
         x_split_i_prob = \
             x_split_i / tf.reduce_sum(x_split_i, axis=3, keepdims=True)
         x_split_i_expected = \
