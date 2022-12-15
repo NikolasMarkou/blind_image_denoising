@@ -451,25 +451,25 @@ def model_denoiser_builder(
 
     kernel = tf.linspace(start=-0.5, stop=0.5, num=uncertainty_channels)
     filters = tf.reshape(kernel, shape=(1, 1, -1, 1))
+    kernel_column = tf.reshape(kernel, shape=(1, 1, 1, -1))
 
     x_expected = []
     x_variance = []
     for i in range(output_channels):
         x_split_i = x_splits[i]
-        x_split_i = tf.keras.layers.Softmax(axis=3)(x_split_i)
-
+        x_split_i_prob = \
+            tf.nn.softmax(logits=x_split_i, axis=3)
         x_split_i_expected = \
             tf.nn.conv2d(
-                input=x_split_i,
+                input=x_split_i_prob,
                 filters=filters,
                 strides=(1, 1),
                 padding="SAME")
         x_split_i_diff_square = \
-            tf.square(
-                tf.reshape(kernel, shape=(1, 1, 1, -1)) - x_split_i_expected)
+            tf.square(kernel_column - x_split_i_expected)
         x_split_i_variance = \
             tf.reduce_sum(
-                tf.multiply(x_split_i_diff_square, x_split_i),
+                tf.multiply(x_split_i_diff_square, x_split_i_prob),
                 axis=[3],
                 keepdims=True)
         x_expected.append(x_split_i_expected)
@@ -668,9 +668,5 @@ def model_superres_builder(
             name=f"superres_head")
 
     return model_head
-
-# ---------------------------------------------------------------------
-
-
 
 # ---------------------------------------------------------------------

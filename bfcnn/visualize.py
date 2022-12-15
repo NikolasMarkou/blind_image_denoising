@@ -76,7 +76,6 @@ def visualize(
 
     # --- output denoiser
     if denoiser_uq_batch is not None:
-        denoiser_uq_batch = tf.reduce_mean(denoiser_uq_batch, axis=[3], keepdims=True)
         tf.summary.image(
             name="uncertainty/variance",
             step=global_step,
