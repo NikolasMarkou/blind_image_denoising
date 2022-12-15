@@ -112,7 +112,7 @@
 	"loss": {
 		"hinge": 0.5,
 		"cutoff": 255.0,
-		"uq_multiplier": 0.01,
+		"uq_multiplier": 0.1,
 		"mae_multiplier": 1.0,
 		"regularization": 0.01,
 		"use_multiscale": true,
