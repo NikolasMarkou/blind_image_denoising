@@ -76,17 +76,11 @@ def visualize(
 
     # --- output denoiser
     if denoiser_uq_batch is not None:
-        denoiser_uq_expected, denoiser_uq_variance = \
-            tf.unstack(denoiser_uq_batch, axis=3)
-        tf.summary.image(
-            name="uncertainty/expected",
-            step=global_step,
-            data=tf.expand_dims(denoiser_uq_expected, axis=3),
-            max_outputs=visualization_number)
+        denoiser_uq_batch = tf.reduce_mean(denoiser_uq_batch, axis=[3], keepdims=True)
         tf.summary.image(
             name="uncertainty/variance",
             step=global_step,
-            data=tf.expand_dims(denoiser_uq_variance, axis=3),
+            data=denoiser_uq_batch,
             max_outputs=visualization_number)
 
     # --- output superres

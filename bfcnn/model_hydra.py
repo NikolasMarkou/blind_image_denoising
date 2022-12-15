@@ -33,7 +33,6 @@ BuilderResults = namedtuple(
         "normalizer",
         "denormalizer",
         "denoiser",
-        "denoiser_uq",
         "inpaint",
         "superres",
         "hydra"
@@ -51,7 +50,6 @@ def model_builder(
 
     # --- build denoiser, inpaint, superres
     model_denoiser = model_denoiser_builder(config=config[DENOISER_STR])
-    model_denoiser_uq = model_denoiser_uq_builder(config=config[DENOISER_UQ_STR])
     model_inpaint = model_inpaint_builder(config=config[INPAINT_STR])
     model_superres = model_superres_builder(config=config[SUPERRES_STR])
 
@@ -81,8 +79,7 @@ def model_builder(
     backbone_mid = model_backbone(input_normalized_layer)
 
     # heads
-    denoiser_mid = model_denoiser(backbone_mid)
-    denoiser_uq_mid = model_denoiser_uq(tf.stop_gradient(backbone_mid))
+    denoiser_mid, denoise_uncertainty_mid = model_denoiser(backbone_mid)
     inpaint_mid = model_inpaint([backbone_mid, input_normalized_layer, mask_layer])
     superres_mid = model_superres(backbone_mid)
 
@@ -90,7 +87,7 @@ def model_builder(
     denoiser_output = model_denormalizer(denoiser_mid, training=False)
     inpaint_output = model_denormalizer(inpaint_mid, training=False)
     superres_output = model_denormalizer(superres_mid, training=False)
-    denoiser_uq_output = denoiser_uq_mid
+    denoiser_uq_output = denoise_uncertainty_mid
 
     # wrap layers to set names
     denoiser_output = tf.keras.layers.Layer(name=DENOISER_STR)(denoiser_output)
@@ -120,7 +117,6 @@ def model_builder(
             normalizer=model_normalizer,
             denormalizer=model_denormalizer,
             denoiser=model_denoiser,
-            denoiser_uq=model_denoiser_uq,
             inpaint=model_inpaint,
             superres=model_superres,
             hydra=model_hydra
@@ -393,14 +389,17 @@ def model_denoiser_builder(
         config: Dict,
         **kwargs):
     """
-    builds the denoiser model on top of the backbone layer
+    builds the uncertainty quantification model
+    on top of the backbone layer
 
-    :param config: dictionary with the denoiser configuration
+    :param config:
+        dictionary with
+        the uncertainty quantification configuration
 
-    :return: denoiser head model
+    :return: denoiser uncertainty quantification head model
     """
     # --- argument checking
-    logger.info(f"building denoiser model with [{config}]")
+    logger.info(f"building uncertainty quantification model with [{config}]")
     if kwargs:
         logger.info(f"unused parameters [{kwargs}]")
 
@@ -408,7 +407,8 @@ def model_denoiser_builder(
     use_bias = config.get("use_bias", False)
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
-    final_activation = config.get("final_activation", "tanh")
+    final_activation = config.get("final_activation", "linear")
+    uncertainty_channels = config.get("uncertainty_channels", 16)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
 
@@ -418,7 +418,7 @@ def model_denoiser_builder(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        filters=output_channels,
+        filters=output_channels * uncertainty_channels,
         activation=final_activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
@@ -443,15 +443,54 @@ def model_denoiser_builder(
             channelwise_scaling=False,
             multiplier_scaling=False)
 
-    x_result = \
+    x_splits = \
+        tf.split(
+            value=x,
+            num_or_size_splits=output_channels,
+            axis=3)
+
+    kernel = tf.linspace(start=-0.5, stop=0.5, num=uncertainty_channels)
+    filters = tf.reshape(kernel, shape=(1, 1, -1, 1))
+
+    x_expected = []
+    x_variance = []
+    for i in range(output_channels):
+        x_split_i = x_splits[i]
+        x_split_i = tf.keras.layers.Softmax(axis=3)(x_split_i)
+
+        x_split_i_expected = \
+            tf.nn.conv2d(
+                input=x_split_i,
+                filters=filters,
+                strides=(1, 1),
+                padding="SAME")
+        x_split_i_diff_square = \
+            tf.square(
+                tf.reshape(kernel, shape=(1, 1, 1, -1)) - x_split_i_expected)
+        x_split_i_variance = \
+            tf.reduce_sum(
+                tf.multiply(x_split_i_diff_square, x_split_i),
+                axis=[3],
+                keepdims=True)
+        x_expected.append(x_split_i_expected)
+        x_variance.append(x_split_i_variance)
+
+    x_expected = tf.concat(x_expected, axis=3)
+    x_variance = tf.concat(x_variance, axis=3)
+
+    x_expected = \
         tf.keras.layers.Layer(
-            name="output_tensor")(x)
+            name="output_tensor_expected")(x_expected)
+
+    x_variance = \
+        tf.keras.layers.Layer(
+            name="output_tensor_uncertainty")(x_variance)
 
     model_head = \
         tf.keras.Model(
             inputs=model_input_layer,
-            outputs=x_result,
-            name=f"denoise_head")
+            outputs=[x_expected, x_variance],
+            name=f"denoiser_uncertainty_head")
 
     return model_head
 
@@ -633,94 +672,5 @@ def model_superres_builder(
 # ---------------------------------------------------------------------
 
 
-def model_denoiser_uq_builder(
-        config: Dict,
-        **kwargs) -> tf.keras.Model:
-    """
-    builds the uncertainty quantification model
-    on top of the backbone layer
-
-    :param config:
-        dictionary with
-        the uncertainty quantification configuration
-
-    :return: denoiser uncertainty quantification head model
-    """
-    # --- argument checking
-    logger.info(f"building uncertainty quantification model with [{config}]")
-    if kwargs:
-        logger.info(f"unused parameters [{kwargs}]")
-
-    # --- set configuration
-    use_bias = config.get("use_bias", False)
-    output_channels = config.get("output_channels", 16)
-    input_shape = input_shape_fixer(config.get("input_shape"))
-    final_activation = config.get("final_activation", "linear")
-    kernel_initializer = config.get("kernel_initializer", "glorot_normal")
-    kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
-
-    # --- set network parameters
-    final_conv_params = dict(
-        kernel_size=1,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        filters=output_channels,
-        activation=final_activation,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
-    # --- define superres network here
-    model_input_layer = \
-        tf.keras.Input(
-            shape=input_shape,
-            name="input_tensor")
-
-    x = model_input_layer
-
-    backbone, _, _ = model_backbone_builder(config)
-    x = backbone(x)
-
-    x = \
-        conv2d_wrapper(
-            input_layer=x,
-            bn_params=None,
-            conv_params=final_conv_params,
-            channelwise_scaling=False,
-            multiplier_scaling=False)
-
-    x = tf.keras.layers.Softmax(axis=3)(x)
-
-    kernel = tf.linspace(start=0.0, stop=1.0, num=output_channels)
-    filters = tf.reshape(kernel, shape=(1, 1, -1, 1))
-
-    x_expected = \
-        tf.nn.conv2d(
-            input=x,
-            filters=filters,
-            strides=(1, 1),
-            padding="SAME")
-    x_i = tf.square(tf.reshape(kernel, shape=(1, 1, 1, -1)) - x_expected)
-    x_variance = \
-        tf.reduce_sum(
-            tf.multiply(x_i, x),
-            axis=[3],
-            keepdims=True)
-
-    x_result = \
-        tf.concat([x_expected, x_variance], axis=3)
-
-    x_result = \
-        tf.keras.layers.Layer(
-            name="output_tensor")(x_result)
-
-    model_head = \
-        tf.keras.Model(
-            inputs=model_input_layer,
-            outputs=x_result,
-            name=f"uncertainty_quantification_head")
-
-    return model_head
 
 # ---------------------------------------------------------------------
