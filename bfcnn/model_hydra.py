@@ -448,9 +448,9 @@ def model_denoiser_builder(
                 bn_params=None,
                 conv_params=final_conv_params,
                 channelwise_scaling=False,
-                multiplier_scaling=False) + DEFAULT_EPSILON
+                multiplier_scaling=False)
         x_split_i_prob = \
-            tf.nn.softmax(logits=x_split_i, axis=3)
+            tf.abs(x_split_i) / (tf.reduce_sum(tf.abs(x_split_i), axis=3, keepdims=True) + + DEFAULT_EPSILON)
         x_split_i_expected = \
             tf.nn.conv2d(
                 input=x_split_i_prob,
