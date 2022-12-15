@@ -80,7 +80,7 @@ def visualize(
         denoiser_uq_batch = \
             denoiser_uq_batch / (tf.reduce_max(denoiser_uq_batch, axis=[1, 2], keepdims=True) + 0.01)
         tf.summary.image(
-            name="uncertainty/std",
+            name="uncertainty/variance",
             step=global_step,
             data=denoiser_uq_batch,
             max_outputs=visualization_number)

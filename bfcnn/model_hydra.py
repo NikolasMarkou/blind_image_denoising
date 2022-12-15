@@ -454,7 +454,7 @@ def model_denoiser_builder(
     kernel_column = tf.reshape(kernel, shape=(1, 1, 1, -1))
 
     x_expected = []
-    x_std = []
+    x_variance = []
     for i in range(output_channels):
         x_split_i = x_splits[i]
         x_split_i_prob = \
@@ -472,26 +472,24 @@ def model_denoiser_builder(
                 tf.multiply(x_split_i_diff_square, x_split_i_prob),
                 axis=[3],
                 keepdims=True)
-        x_split_i_std = \
-            tf.sqrt(x_split_i_variance)
         x_expected.append(x_split_i_expected)
-        x_std.append(x_split_i_std)
+        x_variance.append(x_split_i_variance)
 
     x_expected = tf.concat(x_expected, axis=3)
-    x_std = tf.concat(x_std, axis=3)
+    x_variance = tf.concat(x_variance, axis=3)
 
     x_expected = \
         tf.keras.layers.Layer(
             name="output_tensor_expected")(x_expected)
 
-    x_std = \
+    x_variance = \
         tf.keras.layers.Layer(
-            name="output_tensor_uncertainty")(x_std)
+            name="output_tensor_uncertainty")(x_variance)
 
     model_head = \
         tf.keras.Model(
             inputs=model_input_layer,
-            outputs=[x_expected, x_std],
+            outputs=[x_expected, x_variance],
             name=f"denoiser_uncertainty_head")
 
     return model_head
