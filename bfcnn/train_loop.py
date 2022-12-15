@@ -224,7 +224,6 @@ def train_loop(
     superres = models.superres
     backbone = models.backbone
     denoiser = models.denoiser
-    denoiser_uq = models.denoiser_uq
     normalizer = models.normalizer
     denormalizer = models.denormalizer
 
@@ -246,7 +245,6 @@ def train_loop(
                 model_hydra=hydra,
                 model_backbone=backbone,
                 model_denoiser=denoiser,
-                model_denoiser_uq=denoiser_uq,
                 model_inpaint=inpaint,
                 model_superres=superres,
                 model_normalizer=normalizer,
@@ -362,8 +360,7 @@ def train_loop(
                             predicted_batch=denoiser_output)
                     denoiser_uq_loss_map = \
                         denoiser_uq_loss_fn(
-                            input_batch=input_batch,
-                            predicted_batch=denoiser_uq_output)
+                            uncertainty_quantization_batch=denoiser_uq_output)
                     inpaint_loss_map = \
                         inpaint_loss_fn(
                             input_batch=input_batch,
