@@ -410,7 +410,7 @@ def model_denoiser_builder(
     final_activation = config.get("final_activation", "linear")
     uncertainty_channels = config.get("uncertainty_channels", 16)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
-    kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
+    kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l1"))
 
     # --- set network parameters
     final_conv_params = dict(
@@ -457,7 +457,8 @@ def model_denoiser_builder(
     x_variance = []
     for i in range(output_channels):
         x_split_i = x_splits[i] + DEFAULT_EPSILON
-        x_split_i_prob, _ = tf.linalg.normalize(tensor=x_split_i, ord=1, axis=3)
+        x_split_i_prob = \
+            tf.nn.softmax(logits=x_split_i, axis=3)
         x_split_i_expected = \
             tf.nn.conv2d(
                 input=x_split_i_prob,
