@@ -450,7 +450,7 @@ def model_denoiser_builder(
                 channelwise_scaling=False,
                 multiplier_scaling=False)
         x_split_i_prob = \
-            tf.abs(x_split_i) / (tf.reduce_sum(tf.abs(x_split_i), axis=3, keepdims=True) + + DEFAULT_EPSILON)
+            x_split_i / tf.reduce_sum(x_split_i, axis=3, keepdims=True)
         x_split_i_expected = \
             tf.nn.conv2d(
                 input=x_split_i_prob,
