@@ -441,6 +441,7 @@ def model_denoiser_builder(
 
     backbone, _, _ = model_backbone_builder(config)
     x = backbone(x)
+    x = tf.keras.layers.GaussianNoise(stddev=DEFAULT_EPSILON)(x)
 
     kernel = \
         tf.linspace(
@@ -466,10 +467,11 @@ def model_denoiser_builder(
                 conv_params=final_conv_params,
                 channelwise_scaling=False,
                 multiplier_scaling=False)
+        x_i = tf.keras.layers.GaussianNoise(stddev=DEFAULT_EPSILON)(x_i)
         x_i = tf.nn.relu(x_i) + DEFAULT_EPSILON
         x_i_prob = tf.nn.softmax(logits=x_i, axis=3)
         # clip small probabilities
-        x_i_prob = tf.nn.relu(x_i_prob - (1.0 / (float(uncertainty_channels) * 2)))
+        x_i_prob = tf.nn.relu(x_i_prob - (1.0 / (float(uncertainty_channels) * 10)))
         # re-adjust probabilities
         x_i_prob = x_i_prob / tf.reduce_sum(input_tensor=x_i_prob, axis=[3], keepdims=True)
         x_i_expected = \
