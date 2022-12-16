@@ -466,24 +466,18 @@ def model_denoiser_builder(
                 conv_params=final_conv_params,
                 channelwise_scaling=False,
                 multiplier_scaling=False)
+        x_i = tf.nn.relu(x_i) + DEFAULT_EPSILON
         # convert to probabilities
-        x_i_prob = tf.nn.relu(x_i) + DEFAULT_EPSILON
-        # adjust probabilities
         x_i_prob = \
-            x_i_prob / \
-            (tf.nn.relu(
-                tf.reduce_sum(
-                    input_tensor=x_i_prob,
-                    axis=[3],
-                    keepdims=True)) + DEFAULT_EPSILON)
-        # compute expected
+            x_i / \
+            (tf.nn.relu(tf.reduce_sum(input_tensor=x_i, axis=[3], keepdims=True)) + DEFAULT_EPSILON)
+        # compute expected x_i
         x_i_expected = \
             tf.nn.conv2d(
                 input=x_i_prob,
                 filters=conv_kernel,
                 strides=(1, 1),
                 padding="SAME")
-        # compute std
         x_i_diff_square = \
             tf.nn.relu(tf.square(column_kernel - x_i_expected)) + DEFAULT_EPSILON
         x_i_std = \
