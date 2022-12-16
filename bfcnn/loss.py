@@ -404,7 +404,7 @@ def loss_function_builder(
             input_batch: tf.Tensor,
             denoiser_batch: tf.Tensor,
             denoiser_uq_batch: tf.Tensor,
-            max_diff_value: tf.Tensor = tf.constant(255.0, dtype=tf.float32)) -> tf.Tensor:
+            max_diff_value: tf.constant(255.0, dtype=tf.float32)) -> tf.Tensor:
         diff = tf.abs(input_batch - denoiser_batch) / max_diff_value
         diff_mean = tf.reduce_mean(diff, axis=[3], keepdims=True)
 
