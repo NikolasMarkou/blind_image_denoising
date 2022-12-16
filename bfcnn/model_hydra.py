@@ -407,10 +407,10 @@ def model_denoiser_builder(
     use_bias = config.get("use_bias", False)
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
-    final_activation = config.get("final_activation", "sigmoid")
+    final_activation = config.get("final_activation", "linear")
     uncertainty_channels = config.get("uncertainty_channels", 16)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
-    kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l1"))
+    kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
 
     # --- set network parameters
     final_conv_params = dict(
@@ -418,13 +418,13 @@ def model_denoiser_builder(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        filters=uncertainty_channels,
+        filters=uncertainty_channels * output_channels,
         activation=final_activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
 
-    # --- define superres network here
+    # --- define denoiser network here
     model_input_layer = \
         tf.keras.Input(
             shape=input_shape,
@@ -435,38 +435,54 @@ def model_denoiser_builder(
     backbone, _, _ = model_backbone_builder(config)
     x = backbone(x)
 
+    x = \
+        conv2d_wrapper(
+            input_layer=x,
+            bn_params=None,
+            conv_params=final_conv_params,
+            channelwise_scaling=False,
+            multiplier_scaling=False)
+
+    x_splits = \
+        tf.split(
+            value=x,
+            num_or_size_splits=output_channels,
+            axis=3)
+
     kernel = tf.linspace(start=-0.5, stop=0.5, num=uncertainty_channels)
     filters = tf.reshape(kernel, shape=(1, 1, -1, 1))
     kernel_column = tf.reshape(kernel, shape=(1, 1, 1, -1))
 
     x_expected = []
     x_variance = []
-
-    x = tf.math.maximum(DEFAULT_EPSILON, x)
-
     for i in range(output_channels):
-        x_split_i = \
-            conv2d_wrapper(
-                input_layer=x,
-                bn_params=None,
-                conv_params=final_conv_params,
-                channelwise_scaling=False,
-                multiplier_scaling=False)
+        x_split_i = x_splits[i]
+        x_split_i = tf.maximum(DEFAULT_EPSILON, x_split_i)
+        x_split_i_prob = tf.nn.softmax(x_split_i, axis=3)
         x_split_i_prob = \
-            x_split_i / tf.reduce_sum(x_split_i, axis=3, keepdims=True)
+            tf.clip_by_value(
+                x_split_i_prob,
+                clip_value_min=0.001,
+                clip_value_max=0.999)
         x_split_i_expected = \
             tf.nn.conv2d(
                 input=x_split_i_prob,
                 filters=filters,
                 strides=(1, 1),
                 padding="SAME")
-        x_split_i_diff_square = \
-            tf.square(kernel_column - x_split_i_expected)
+        x_split_i_expected = \
+            tf.clip_by_value(
+                x_split_i_expected,
+                clip_value_min=-0.5,
+                clip_value_max=0.5)
         x_split_i_variance = \
             tf.reduce_sum(
-                tf.multiply(x_split_i_diff_square, x_split_i_prob),
+                tf.multiply(tf.square(kernel_column - x_split_i_expected),
+                            x_split_i_prob),
                 axis=[3],
                 keepdims=True)
+        x_split_i_variance = tf.math.maximum(DEFAULT_EPSILON, x_split_i_variance)
+        x_split_i_variance = tf.sqrt(x_split_i_variance)
         x_expected.append(x_split_i_expected)
         x_variance.append(x_split_i_variance)
 
