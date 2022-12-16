@@ -78,9 +78,10 @@ def visualize(
     # --- output denoiser
     if denoiser_uq_batch is not None:
         denoiser_uq_batch = tf.reduce_mean(denoiser_uq_batch, axis=[3], keepdims=True)
-        denoiser_uq_batch = denoiser_uq_batch / (tf.reduce_max(denoiser_uq_batch) + 0.01)
+        denoiser_uq_batch = denoiser_uq_batch / 255.0
+        denoiser_uq_batch = tf.clip_by_value(denoiser_uq_batch, clip_value_min=0.0, clip_value_max=1.0)
         tf.summary.image(
-            name="uncertainty/variance",
+            name="uncertainty/std",
             step=global_step,
             data=denoiser_uq_batch,
             max_outputs=visualization_number)

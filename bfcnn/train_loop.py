@@ -358,11 +358,9 @@ def train_loop(
                         denoiser_loss_fn(
                             input_batch=input_batch,
                             predicted_batch=denoiser_output)
-                    # denoiser_uq_loss_map = \
-                    #     denoiser_uq_loss_fn(
-                    #         input_batch=input_batch,
-                    #         predicted_batch=denoiser_output,
-                    #         uncertainty_quantization_batch=denoiser_uq_output)
+                    denoiser_uq_loss_map = \
+                        denoiser_uq_loss_fn(
+                            uncertainty_quantization_batch=denoiser_uq_output)
                     inpaint_loss_map = \
                         inpaint_loss_fn(
                             input_batch=input_batch,
@@ -378,7 +376,8 @@ def train_loop(
                         denoiser_loss_map[TOTAL_LOSS_STR] + \
                         inpaint_loss_map[TOTAL_LOSS_STR] + \
                         superres_loss_map[TOTAL_LOSS_STR] + \
-                        model_loss_map[TOTAL_LOSS_STR]
+                        model_loss_map[TOTAL_LOSS_STR] + \
+                        denoiser_uq_loss_map[TOTAL_LOSS_STR]
 
                     grads = \
                         tape.gradient(
