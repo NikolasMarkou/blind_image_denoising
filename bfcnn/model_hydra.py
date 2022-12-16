@@ -488,10 +488,10 @@ def model_denoiser_builder(
             tf.square(column_kernel - x_i_expected)
         x_i_std = \
             tf.sqrt(
-                tf.reduce_sum(
+                tf.abs(tf.reduce_sum(
                     tf.multiply(x_i_diff_square, x_i_prob),
                     axis=[3],
-                    keepdims=True)
+                    keepdims=True)) + DEFAULT_EPSILON
             )
         x_expected.append(x_i_expected)
         x_uncertainty.append(x_i_std)
