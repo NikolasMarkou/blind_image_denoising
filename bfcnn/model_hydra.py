@@ -467,11 +467,11 @@ def model_denoiser_builder(
                 conv_params=final_conv_params,
                 channelwise_scaling=False,
                 multiplier_scaling=False)
-        x_i_prob = tf.nn.sigmoid(x_i)
+        x_i_prob = tf.nn.sigmoid(x_i + DEFAULT_EPSILON)
         # # clip small probabilities
         # x_i_prob = tf.nn.relu(x_i_prob - (1.0 / (float(uncertainty_channels) * 10)))
         # # re-adjust probabilities
-        # x_i_prob = x_i_prob / tf.reduce_sum(input_tensor=x_i_prob, axis=[3], keepdims=True)
+        x_i_prob = x_i_prob / tf.reduce_sum(input_tensor=x_i_prob, axis=[3], keepdims=True)
         x_i_expected = \
             tf.nn.conv2d(
                 input=x_i_prob,
