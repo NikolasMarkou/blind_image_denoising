@@ -457,7 +457,6 @@ def model_denoiser_builder(
     x_variance = []
     for i in range(output_channels):
         x_split_i = x_splits[i]
-        x_split_i = tf.maximum(DEFAULT_EPSILON, x_split_i)
         x_split_i_prob = tf.nn.softmax(x_split_i, axis=3)
         x_split_i_prob = \
             tf.clip_by_value(
