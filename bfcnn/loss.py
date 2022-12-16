@@ -417,7 +417,7 @@ def loss_function_builder(
         uq_loss = \
             tf.reduce_mean(
                 input_tensor=tf.abs(diff_var - mean_uq_var),
-                axis=[1, 2, 3], keepdims=False)
+                axis=[1, 2], keepdims=False)
         uq_loss = \
             tf.reduce_mean(
                 input_tensor=uq_loss, axis=[0], keepdims=False)
