@@ -42,6 +42,7 @@ def visualize(
         input_batch,
         noisy_batch,
         denoiser_batch,
+        denoiser_uq_batch,
         superres_batch,
         inpaint_batch,
         test_denoiser_batch=None,
@@ -72,6 +73,16 @@ def visualize(
             name="output/denoiser",
             step=global_step,
             data=denoiser_batch / 255,
+            max_outputs=visualization_number)
+
+    # --- output denoiser
+    if denoiser_uq_batch is not None:
+        denoiser_uq_batch = tf.reduce_mean(denoiser_uq_batch, axis=[3], keepdims=True)
+        denoiser_uq_batch = denoiser_uq_batch / (tf.reduce_max(denoiser_uq_batch) + 0.01)
+        tf.summary.image(
+            name="uncertainty/variance",
+            step=global_step,
+            data=denoiser_uq_batch,
             max_outputs=visualization_number)
 
     # --- output superres
