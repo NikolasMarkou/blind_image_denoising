@@ -51,7 +51,7 @@ def model_builder(
 
     # --- build denoiser, inpaint, superres
     model_denoiser = model_denoiser_builder(config=config[DENOISER_STR])
-    model_denoiser_uq = model_denoiser_uq_builder(config=config[DENOISER_STR])
+    model_denoiser_uq = model_uq_builder(config=config[DENOISER_STR])
     model_inpaint = model_inpaint_builder(config=config[INPAINT_STR])
     model_superres = model_superres_builder(config=config[SUPERRES_STR])
 
@@ -627,7 +627,7 @@ def model_superres_builder(
 # ---------------------------------------------------------------------
 
 
-def model_denoiser_uq_builder(
+def model_uq_builder(
         config: Dict,
         **kwargs) -> tf.keras.Model:
     """
@@ -673,7 +673,7 @@ def model_denoiser_uq_builder(
 
     model_input_prediction_layer = \
         tf.keras.Input(
-            shape=(None, None, output_channels),
+            shape=input_shape,
             name="input_prediction_tensor")
 
     x = model_input_layer
