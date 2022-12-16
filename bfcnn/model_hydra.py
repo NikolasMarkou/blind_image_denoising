@@ -467,9 +467,7 @@ def model_denoiser_builder(
                 conv_params=final_conv_params,
                 channelwise_scaling=False,
                 multiplier_scaling=False)
-        x_i = tf.keras.layers.GaussianNoise(stddev=DEFAULT_EPSILON)(x_i)
-        x_i = tf.nn.relu(x_i) + DEFAULT_EPSILON
-        x_i_prob = tf.nn.softmax(logits=x_i, axis=3)
+        x_i_prob = tf.nn.sigmoid(x_i)
         # # clip small probabilities
         # x_i_prob = tf.nn.relu(x_i_prob - (1.0 / (float(uncertainty_channels) * 10)))
         # # re-adjust probabilities
