@@ -418,7 +418,7 @@ def model_denoiser_builder(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        filters=uncertainty_channels,
+        filters=output_channels * uncertainty_channels,
         activation=final_activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
@@ -435,6 +435,20 @@ def model_denoiser_builder(
     backbone, _, _ = model_backbone_builder(config)
     x = backbone(x)
 
+    x = \
+        conv2d_wrapper(
+            input_layer=x,
+            bn_params=None,
+            conv_params=final_conv_params,
+            channelwise_scaling=False,
+            multiplier_scaling=False)
+
+    x_splits = \
+        tf.split(
+            value=x,
+            num_or_size_splits=output_channels,
+            axis=3)
+
     kernel = tf.linspace(start=-0.5, stop=0.5, num=uncertainty_channels)
     filters = tf.reshape(kernel, shape=(1, 1, -1, 1))
     kernel_column = tf.reshape(kernel, shape=(1, 1, 1, -1))
@@ -442,13 +456,7 @@ def model_denoiser_builder(
     x_expected = []
     x_variance = []
     for i in range(output_channels):
-        x_split_i = \
-            conv2d_wrapper(
-                input_layer=x,
-                bn_params=None,
-                conv_params=final_conv_params,
-                channelwise_scaling=False,
-                multiplier_scaling=False)
+        x_split_i = x_splits[i]
         x_split_i_prob = \
             tf.nn.softmax(logits=x_split_i, axis=3)
         x_split_i_expected = \
