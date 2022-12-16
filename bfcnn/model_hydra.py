@@ -410,7 +410,7 @@ def model_denoiser_builder(
     final_activation = config.get("final_activation", "linear")
     uncertainty_channels = config.get("uncertainty_channels", 16)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
-    kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
+    kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l1"))
 
     # --- set network parameters
     final_conv_params = dict(
@@ -424,7 +424,7 @@ def model_denoiser_builder(
         kernel_initializer=kernel_initializer
     )
 
-    # --- define denoiser network here
+    # --- define superres network here
     model_input_layer = \
         tf.keras.Input(
             shape=input_shape,
