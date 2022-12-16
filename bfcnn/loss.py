@@ -374,7 +374,7 @@ def loss_function_builder(
     regularization_multiplier = config.get("regularization", 1.0)
 
     # --- uncertainty quantification multiplier
-    uq_multiplier = config.get("uq_multiplier", 10.0)
+    uq_multiplier = config.get("uq_multiplier", 1.0)
 
     # --- multiscale mae
     use_multiscale = config.get("use_multiscale", False)
@@ -401,14 +401,28 @@ def loss_function_builder(
 
     # ---
     def denoiser_uq_loss(
-            uncertainty_quantization_batch: tf.Tensor) -> tf.Tensor:
+            input_batch: tf.Tensor,
+            predicted_batch: tf.Tensor,
+            max_diff_value: tf.Tensor = tf.constant(255.0, dtype=tf.float32)) -> tf.Tensor:
+        input_batch_mean = tf.reduce_mean(input_batch / max_diff_value, axis=[3], keepdims=True)
+        x_expected, x_variance = tf.unstack(predicted_batch, axis=3)
+        x_expected = tf.expand_dims(x_expected, axis=3)
+
+        mae_prediction_loss = \
+            mae(original=input_batch_mean,
+                prediction=x_expected,
+                hinge=0.0,
+                cutoff=1.0)
 
         uq_loss = \
             tf.reduce_mean(
-                input_tensor=uncertainty_quantization_batch, axis=[0, 1, 2], keepdims=False)
+                input_tensor=x_variance, axis=[0, 1, 2], keepdims=False)
 
         return {
-            TOTAL_LOSS_STR: uncertainty_quantization_batch * uq_multiplier,
+            TOTAL_LOSS_STR:
+                (mae_prediction_loss * mae_multiplier +
+                 uq_loss * uq_multiplier) * max_diff_value,
+            MAE_LOSS_STR: mae_prediction_loss,
             UNCERTAINTY_QUANTIZATION_LOSS_STR: uq_loss
         }
 
