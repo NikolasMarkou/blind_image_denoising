@@ -64,18 +64,9 @@ def model_builder(
     input_normalized_layer = model_normalizer(input_layer, training=False)
     mask_layer = tf.keras.Input(shape=mask_input_shape, name="mask_input_tensor")
 
-    # fix input and mask
-    mean_normalized_layer = \
-        tf.multiply(
-            (input_normalized_layer * 0.0 + 1.0),
-            tf.reduce_mean(
-                input_tensor=input_normalized_layer,
-                keepdims=True,
-                axis=[1, 2]))
-
     input_normalized_layer = \
         tf.multiply(input_normalized_layer, mask_layer) + \
-        tf.multiply(mean_normalized_layer, 1.0 - mask_layer)
+        tf.multiply(127.0, 1.0 - mask_layer)
 
     # common backbone
     backbone_mid = model_backbone(input_normalized_layer)
