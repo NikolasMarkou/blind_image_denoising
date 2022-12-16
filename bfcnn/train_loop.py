@@ -378,7 +378,7 @@ def train_loop(
                         superres_loss_map[TOTAL_LOSS_STR] + \
                         model_loss_map[TOTAL_LOSS_STR]
                     # denoiser_uq_loss_map[TOTAL_LOSS_STR] + \
-
+                    
                     grads = \
                         tape.gradient(
                             target=total_loss,
