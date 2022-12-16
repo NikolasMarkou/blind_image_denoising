@@ -69,7 +69,6 @@ def export_model(
     superres = models.superres
     backbone = models.backbone
     denoiser = models.denoiser
-    denoiser_uq = models.denoiser_uq
     normalizer = models.normalizer
     denormalizer = models.denormalizer
 
@@ -105,7 +104,6 @@ def export_model(
             model_hydra=hydra,
             model_backbone=backbone,
             model_denoiser=denoiser,
-            model_denoiser_uq=denoiser_uq,
             model_inpaint=inpaint,
             model_superres=superres,
             model_normalizer=normalizer,
