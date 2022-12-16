@@ -426,7 +426,7 @@ def model_denoiser_builder(
         padding="same",
         use_bias=use_bias,
         filters=output_channels,
-        activation="sigmoid",
+        activation="linear",
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -462,6 +462,8 @@ def model_denoiser_builder(
             conv_params=final_uq_conv_params,
             channelwise_scaling=False,
             multiplier_scaling=False)
+
+    x_uq = tf.exp(x_uq)
 
     x_uq = \
         tf.keras.layers.Layer(
