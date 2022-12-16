@@ -404,14 +404,11 @@ def loss_function_builder(
             uncertainty_quantization_batch: tf.Tensor) -> tf.Tensor:
 
         uq_loss = \
-            tf.reduce_sum(
-                input_tensor=uncertainty_quantization_batch, axis=[3], keepdims=False)
-        uq_loss = \
             tf.reduce_mean(
-                input_tensor=uq_loss, axis=[0, 1, 2], keepdims=False)
+                input_tensor=uncertainty_quantization_batch, axis=[0, 1, 2], keepdims=False)
 
         return {
-            TOTAL_LOSS_STR: uq_loss * uq_multiplier,
+            TOTAL_LOSS_STR: uncertainty_quantization_batch * uq_multiplier,
             UNCERTAINTY_QUANTIZATION_LOSS_STR: uq_loss
         }
 
