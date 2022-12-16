@@ -337,16 +337,16 @@ def train_loop(
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
-                    denoiser_output, _, _ = \
+                    denoiser_output, denoiser_uq_output, _, _ = \
                         hydra([noisy_batch,
                                (noisy_batch[:, :, :, 0] * 0.0 + 1.0)],
                               training=True)
 
-                    _, inpaint_output, _ = \
+                    _, _, inpaint_output, _ = \
                         hydra([masked_batch, mask_batch],
                               training=True)
 
-                    _, _, superres_output = \
+                    _, _, _, superres_output = \
                         hydra([downsampled_batch,
                                (downsampled_batch[:, :, :, 0] * 0.0 + 1.0)],
                               training=True)
@@ -400,9 +400,9 @@ def train_loop(
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
-                    test_denoiser_output, _, test_superres_output = \
+                    test_denoiser_output, _, _, test_superres_output = \
                         hydra([test_images, mask_test_images], training=False)
-                    test_denoiser_output, _, test_superres_output = \
+                    test_denoiser_output, _, _, test_superres_output = \
                         hydra([test_images, mask_test_images], training=False)
                     visualize(
                         global_step=global_step,
@@ -411,6 +411,7 @@ def train_loop(
                         inpaint_batch=inpaint_output,
                         denoiser_batch=denoiser_output,
                         superres_batch=superres_output,
+                        denoiser_uq_batch=denoiser_uq_output,
                         test_denoiser_batch=test_denoiser_output,
                         test_superres_batch=test_superres_output,
                         visualization_number=visualization_number)

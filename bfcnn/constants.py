@@ -43,9 +43,10 @@ REGULARIZER_ALLOWED_TYPES = Union[str, Dict, keras.regularizers.Regularizer]
 
 # ---------------------------------------------------------------------
 
+INPAINT_STR = "inpaint"
 BACKBONE_STR = "backbone"
 DENOISER_STR = "denoiser"
-INPAINT_STR = "inpaint"
 SUPERRES_STR = "superres"
+DENOISER_UQ_STR = "denoiser_uq"
 
 # ---------------------------------------------------------------------
