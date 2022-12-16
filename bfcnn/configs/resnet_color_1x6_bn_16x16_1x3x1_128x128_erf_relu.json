@@ -23,7 +23,7 @@
 		"denoiser": {
 			"input_shape": ["?", "?", 16],
 			"output_channels": 3,
-			"final_activation": "linear",
+			"final_activation": "sigmoid",
 			"uncertainty_channels": 32,
 			"filters": 16,
 			"no_layers": 3,

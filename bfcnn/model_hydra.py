@@ -449,21 +449,23 @@ def model_denoiser_builder(
                 conv_params=final_conv_params,
                 channelwise_scaling=False,
                 multiplier_scaling=False)
-        x_split_i_prob = tf.nn.softmax(x_split_i, axis=3)
-        x_split_i_prob = tf.math.maximum(DEFAULT_EPSILON, x_split_i_prob)
+        x_split_i = tf.math.maximum(0.0, x_split_i)
+        x_split_i_prob = \
+            x_split_i / tf.math.maximum(DEFAULT_EPSILON, tf.reduce_sum(x_split_i, axis=3, keepdims=True))
         x_split_i_expected = \
             tf.nn.conv2d(
                 input=x_split_i_prob,
                 filters=filters,
                 strides=(1, 1),
                 padding="SAME")
+        x_split_i_diff_square = \
+            tf.square(kernel_column - x_split_i_expected)
         x_split_i_variance = \
             tf.reduce_sum(
-                tf.multiply(tf.abs(tf.square(kernel_column - x_split_i_expected)),
-                            x_split_i_prob),
+                tf.multiply(x_split_i_diff_square, x_split_i_prob),
                 axis=[3],
                 keepdims=True)
-        x_split_i_variance = tf.sqrt(tf.math.maximum(0.1, x_split_i_variance))
+        x_split_i_variance = tf.sqrt(tf.math.maximum(DEFAULT_EPSILON, x_split_i_variance))
         x_expected.append(x_split_i_expected)
         x_variance.append(x_split_i_variance)
 
