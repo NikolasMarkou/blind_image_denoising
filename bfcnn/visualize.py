@@ -79,7 +79,7 @@ def visualize(
         tf.summary.image(
             name="uncertainty/denoiser",
             step=global_step,
-            data=tf.reduce_sum(denoiser_uq_batch, axis=[3], keepdims=True),
+            data=denoiser_uq_batch,
             max_outputs=visualization_number)
 
     # --- output superres
