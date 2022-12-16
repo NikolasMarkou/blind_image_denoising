@@ -47,6 +47,5 @@ BACKBONE_STR = "backbone"
 DENOISER_STR = "denoiser"
 INPAINT_STR = "inpaint"
 SUPERRES_STR = "superres"
-DENOISER_UQ_STR = "denoiser_uncertainty"
 
 # ---------------------------------------------------------------------
