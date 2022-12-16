@@ -404,12 +404,12 @@ def loss_function_builder(
             uncertainty_batch: tf.Tensor) -> tf.Tensor:
         diff_variance = \
             tf.math.reduce_std(
-                input_tensor=(input_batch - predicted_batch)/255.0,
+                input_tensor=(input_batch - predicted_batch)/255.0 + DEFAULT_EPSILON,
                 axis=[1, 2],
                 keepdims=False)
         mean_uq = \
             tf.math.reduce_mean(
-                input_tensor=uncertainty_batch,
+                input_tensor=uncertainty_batch + DEFAULT_EPSILON,
                 axis=[1, 2],
                 keepdims=False
             )
