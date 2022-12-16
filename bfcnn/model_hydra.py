@@ -466,14 +466,18 @@ def model_denoiser_builder(
                 conv_params=final_conv_params,
                 channelwise_scaling=False,
                 multiplier_scaling=False)
+        # add a very small noise for stability during training
         x_i = tf.keras.layers.GaussianNoise(stddev=DEFAULT_EPSILON)(x_i)
-        x_i_prob = \
-            tf.nn.softmax(logits=x_i, axis=3)
-        # clip small probabilities
+        x_i_prob = tf.nn.softmax(logits=x_i, axis=3)
+        # clip small probabilities because softmax cannot give zero prob
+        # and re-adjust them so they sum up 1
         x_i_prob = tf.nn.relu(x_i_prob - 1.0 / (float(uncertainty_channels) * 2))
-        # re-adjust probabilities
         x_i_prob = \
-            x_i_prob / tf.reduce_sum(input_tensor=x_i_prob, axis=[3], keepdims=True)
+            x_i_prob / \
+            tf.reduce_sum(
+                input_tensor=x_i_prob,
+                axis=[3],
+                keepdims=True)
         x_i_expected = \
             tf.nn.conv2d(
                 input=x_i_prob,
