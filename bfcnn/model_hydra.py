@@ -51,7 +51,7 @@ def model_builder(
 
     # --- build denoiser, inpaint, superres
     model_denoiser = model_denoiser_builder(config=config[DENOISER_STR])
-    model_denoiser_uq = model_denoiser_uq_builder(config=config[DENOISER_UQ_STR])
+    model_denoiser_uq = model_denoiser_uq_builder(config=config[DENOISER_STR])
     model_inpaint = model_inpaint_builder(config=config[INPAINT_STR])
     model_superres = model_superres_builder(config=config[SUPERRES_STR])
 
@@ -653,9 +653,9 @@ def model_denoiser_uq_builder(
 
     # --- set configuration
     use_bias = config.get("use_bias", False)
-    output_channels = config.get("output_channels", 16)
+    output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
-    final_activation = config.get("final_activation", "sigmoid")
+    final_activation = config.get("final_activation", "tanh")
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
 
@@ -677,6 +677,11 @@ def model_denoiser_uq_builder(
             shape=input_shape,
             name="input_tensor")
 
+    model_input_prediction_layer = \
+        tf.keras.Input(
+            shape=(None, None, output_channels),
+            name="input_prediction_tensor")
+
     x = model_input_layer
 
     backbone, _, _ = model_backbone_builder(config)
@@ -690,30 +695,9 @@ def model_denoiser_uq_builder(
             channelwise_scaling=False,
             multiplier_scaling=False)
 
-    x = tf.keras.layers.Softmax(axis=3)(x)
-
-    kernel = tf.linspace(start=0.0, stop=1.0, num=output_channels)
-    filters = tf.reshape(kernel, shape=(1, 1, -1, 1))
-
-    x_expected = \
-        tf.nn.conv2d(
-            input=x,
-            filters=filters,
-            strides=(1, 1),
-            padding="SAME")
-    x_i = tf.square(tf.reshape(kernel, shape=(1, 1, 1, -1)) - x_expected)
-    x_variance = \
-        tf.reduce_sum(
-            tf.multiply(x_i, x),
-            axis=[3],
-            keepdims=True)
-
-    x_result = \
-        tf.concat([x_expected, x_variance])
-
     x_result = \
         tf.keras.layers.Layer(
-            name="output_tensor")(x_result)
+            name="output_tensor")(x)
 
     model_head = \
         tf.keras.Model(

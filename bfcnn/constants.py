@@ -31,7 +31,6 @@ MAE_VARIANCE_LOSS_STR = "mae_variance_loss"
 REGULARIZATION_LOSS_STR = "regularization_loss"
 NAE_IMPROVEMENT_QUALITY_STR = "nae_improvement"
 MAE_DECOMPOSITION_LOSS_STR = "mae_decomposition_loss"
-UNCERTAINTY_QUANTIZATION_LOSS_STR = "uncertainty_quantization_loss"
 
 # define file constants
 NSIG_COEFFICIENT_STR = "nsig"
@@ -48,6 +47,6 @@ BACKBONE_STR = "backbone"
 DENOISER_STR = "denoiser"
 INPAINT_STR = "inpaint"
 SUPERRES_STR = "superres"
-DENOISER_UQ_STR = "denoiser_uq"
+DENOISER_UQ_STR = "denoiser_uncertainty"
 
 # ---------------------------------------------------------------------
