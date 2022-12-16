@@ -87,7 +87,7 @@ def model_builder(
     denoiser_output = model_denormalizer(denoiser_mid, training=False)
     inpaint_output = model_denormalizer(inpaint_mid, training=False)
     superres_output = model_denormalizer(superres_mid, training=False)
-    denoiser_uq_output = denoise_uncertainty_mid
+    denoiser_uq_output = denoise_uncertainty_mid * 255.0
 
     # wrap layers to set names
     denoiser_output = tf.keras.layers.Layer(name=DENOISER_STR)(denoiser_output)
@@ -426,7 +426,7 @@ def model_denoiser_builder(
         padding="same",
         use_bias=use_bias,
         filters=output_channels,
-        activation="tanh",
+        activation="sigmoid",
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -450,18 +450,18 @@ def model_denoiser_builder(
             channelwise_scaling=False,
             multiplier_scaling=False)
 
+    x_result = \
+        tf.keras.layers.Layer(
+            name="output_tensor")(x_result)
+
     # ---
     x_uq = \
         conv2d_wrapper(
-            input_layer=tf.stop_gradient(x_backbone),
+            input_layer=x_backbone,
             bn_params=None,
             conv_params=final_uq_conv_params,
             channelwise_scaling=False,
             multiplier_scaling=False)
-
-    x_result = \
-        tf.keras.layers.Layer(
-            name="output_tensor")(x_result)
 
     x_uq = \
         tf.keras.layers.Layer(
