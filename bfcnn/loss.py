@@ -404,8 +404,7 @@ def loss_function_builder(
             input_batch: tf.Tensor,
             predicted_batch: tf.Tensor,
             uncertainty_quantization_batch: tf.Tensor) -> tf.Tensor:
-        diff = tf.abs(input_batch - predicted_batch)
-        diff = tf.stop_gradient(diff)
+        diff = tf.abs(input_batch - tf.stop_gradient(predicted_batch))
         uq_loss = \
             tf.reduce_mean(
                 input_tensor=tf.abs(diff - uncertainty_quantization_batch),
