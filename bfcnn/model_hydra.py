@@ -457,7 +457,8 @@ def model_denoiser_builder(
     x_variance = []
     for i in range(output_channels):
         x_split_i = x_splits[i] + DEFAULT_EPSILON
-        x_split_i_prob = tf.linalg.normalize(tensor=x_split_i, ord=1, axis=3)
+        x_split_i_prob = \
+            tf.nn.softmax(logits=x_split_i, axis=3)
         x_split_i_expected = \
             tf.nn.conv2d(
                 input=x_split_i_prob,
