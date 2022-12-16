@@ -87,7 +87,7 @@ def model_builder(
     denoiser_output = model_denormalizer(denoiser_mid, training=False)
     inpaint_output = model_denormalizer(inpaint_mid, training=False)
     superres_output = model_denormalizer(superres_mid, training=False)
-    denoiser_uq_output = denoise_uncertainty_mid * 255.0
+    denoiser_uq_output = denoise_uncertainty_mid
 
     # wrap layers to set names
     denoiser_output = tf.keras.layers.Layer(name=DENOISER_STR)(denoiser_output)
@@ -464,7 +464,6 @@ def model_denoiser_builder(
                 tf.multiply(x_split_i_diff_square, x_split_i_prob),
                 axis=[3],
                 keepdims=True)
-        x_split_i_variance = tf.sqrt(x_split_i_variance)
         x_expected.append(x_split_i_expected)
         x_variance.append(x_split_i_variance)
 
