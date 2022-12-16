@@ -66,7 +66,7 @@ def model_builder(
 
     input_normalized_layer = \
         tf.multiply(input_normalized_layer, mask_layer) + \
-        tf.multiply(127.0, 1.0 - mask_layer)
+        tf.multiply(127, 1.0 - mask_layer)
 
     # common backbone
     backbone_mid = model_backbone(input_normalized_layer)
