@@ -441,6 +441,8 @@ def model_denoiser_builder(
 
     backbone, _, _ = model_backbone_builder(config)
     x = backbone(x)
+    # add a very small noise for stability during training
+    x = tf.keras.layers.GaussianNoise(stddev=DEFAULT_EPSILON)(x)
 
     kernel = \
         tf.linspace(
@@ -466,8 +468,7 @@ def model_denoiser_builder(
                 conv_params=final_conv_params,
                 channelwise_scaling=False,
                 multiplier_scaling=False)
-        # add a very small noise for stability during training
-        x_i = tf.keras.layers.GaussianNoise(stddev=DEFAULT_EPSILON)(x_i)
+        # convert to prob along the channel axis
         x_i_prob = tf.nn.softmax(logits=x_i, axis=3)
         # clip small probabilities because softmax cannot give zero prob
         # and re-adjust them so they sum up 1
