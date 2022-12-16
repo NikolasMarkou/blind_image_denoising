@@ -84,7 +84,7 @@ def model_builder(
     denoiser_output = model_denormalizer(denoiser_mid, training=False)
     inpaint_output = model_denormalizer(inpaint_mid, training=False)
     superres_output = model_denormalizer(superres_mid, training=False)
-    denoiser_uq_output = denoiser_uq_mid
+    denoiser_uq_output = model_denormalizer(denoiser_uq_mid, training=False)
 
     # wrap layers to set names
     denoiser_output = tf.keras.layers.Layer(name=DENOISER_STR)(denoiser_output)
