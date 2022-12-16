@@ -84,7 +84,6 @@ def train_loop(
     loss_fn_map = loss_function_builder(config=config["loss"])
     inpaint_loss_fn = tf.function(func=loss_fn_map[INPAINT_LOSS_FN_STR], reduce_retracing=True)
     denoiser_loss_fn = tf.function(func=loss_fn_map[DENOISER_LOSS_FN_STR], reduce_retracing=True)
-    denoiser_uq_loss_fn = tf.function(func=loss_fn_map[UNCERTAINTY_QUANTIZATION_LOSS_FN_STR], reduce_retracing=True)
     superres_loss_fn = tf.function(func=loss_fn_map[SUPERRES_LOSS_FN_STR], reduce_retracing=True)
     model_loss_fn = loss_fn_map[MODEL_LOSS_FN_STR]
 
