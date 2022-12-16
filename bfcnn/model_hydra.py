@@ -389,14 +389,17 @@ def model_denoiser_builder(
         config: Dict,
         **kwargs):
     """
-    builds the denoiser model on top of the backbone layer
+    builds the uncertainty quantification model
+    on top of the backbone layer
 
-    :param config: dictionary with the denoiser configuration
+    :param config:
+        dictionary with
+        the uncertainty quantification configuration
 
-    :return: denoiser head model
+    :return: denoiser uncertainty quantification head model
     """
     # --- argument checking
-    logger.info(f"building denoiser model with [{config}]")
+    logger.info(f"building uncertainty quantification model with [{config}]")
     if kwargs:
         logger.info(f"unused parameters [{kwargs}]")
 
@@ -404,9 +407,10 @@ def model_denoiser_builder(
     use_bias = config.get("use_bias", False)
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
-    final_activation = config.get("final_activation", "tanh")
+    final_activation = config.get("final_activation", "sigmoid")
+    uncertainty_channels = config.get("uncertainty_channels", 16)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
-    kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
+    kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l1"))
 
     # --- set network parameters
     final_conv_params = dict(
@@ -414,19 +418,8 @@ def model_denoiser_builder(
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        filters=output_channels,
+        filters=uncertainty_channels,
         activation=final_activation,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
-    final_uq_conv_params = dict(
-        kernel_size=1,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        filters=output_channels,
-        activation="linear",
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -440,43 +433,59 @@ def model_denoiser_builder(
     x = model_input_layer
 
     backbone, _, _ = model_backbone_builder(config)
-    x_result = backbone(x)
+    x = backbone(x)
 
-    x_result = \
-        conv2d_wrapper(
-            input_layer=x_result,
-            bn_params=None,
-            conv_params=final_conv_params,
-            channelwise_scaling=False,
-            multiplier_scaling=False)
+    kernel = tf.linspace(start=-0.5, stop=0.5, num=uncertainty_channels)
+    filters = tf.reshape(kernel, shape=(1, 1, -1, 1))
+    kernel_column = tf.reshape(kernel, shape=(1, 1, 1, -1))
 
-    x_result = \
+    x_expected = []
+    x_variance = []
+
+    x = tf.keras.layers.GaussianNoise(stddev=DEFAULT_EPSILON)(x)
+
+    for i in range(output_channels):
+        x_i = \
+            conv2d_wrapper(
+                input_layer=x,
+                bn_params=None,
+                conv_params=final_conv_params,
+                channelwise_scaling=False,
+                multiplier_scaling=False)
+        x_i_prob = \
+            x_i / tf.reduce_sum(x_i, axis=3, keepdims=True)
+        x_i_expected = \
+            tf.nn.conv2d(
+                input=x_i_prob,
+                filters=filters,
+                strides=(1, 1),
+                padding="SAME")
+        x_i_diff_square = \
+            tf.square(kernel_column - x_i_expected)
+        x_i_variance = \
+            tf.reduce_sum(
+                tf.multiply(x_i_diff_square, x_i_prob),
+                axis=[3],
+                keepdims=True)
+        x_expected.append(x_i_expected)
+        x_variance.append(x_i_variance)
+
+    x_expected = tf.concat(x_expected, axis=3)
+    x_variance = tf.concat(x_variance, axis=3)
+
+    x_expected = \
         tf.keras.layers.Layer(
-            name="output_tensor")(x_result)
+            name="output_tensor_expected")(x_expected)
 
-    # ---
-    backbone, _, _ = model_backbone_builder(config)
-    x_uq = backbone(x)
-
-    x_uq = \
-        conv2d_wrapper(
-            input_layer=x_uq,
-            bn_params=None,
-            conv_params=final_uq_conv_params,
-            channelwise_scaling=False,
-            multiplier_scaling=False)
-
-    x_uq = tf.exp(x_uq)
-
-    x_uq = \
+    x_variance = \
         tf.keras.layers.Layer(
-            name="uq_tensor")(x_uq)
+            name="output_tensor_uncertainty")(x_variance)
 
     model_head = \
         tf.keras.Model(
             inputs=model_input_layer,
-            outputs=[x_result, x_uq],
-            name=f"denoise_head")
+            outputs=[x_expected, x_variance],
+            name=f"denoiser_uncertainty_head")
 
     return model_head
 

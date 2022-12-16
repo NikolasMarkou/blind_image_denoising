@@ -23,7 +23,7 @@
 		"denoiser": {
 			"input_shape": ["?", "?", 16],
 			"output_channels": 3,
-			"final_activation": "tanh",
+			"final_activation": "relu",
 			"uncertainty_channels": 32,
 			"filters": 16,
 			"no_layers": 3,
