@@ -486,13 +486,15 @@ def model_denoiser_builder(
                 padding="SAME")
         x_i_diff_square = \
             tf.square(column_kernel - x_i_expected)
-        x_i_variance = \
-            tf.reduce_sum(
-                tf.multiply(x_i_diff_square, x_i_prob),
-                axis=[3],
-                keepdims=True)
+        x_i_std = \
+            tf.sqrt(
+                tf.reduce_sum(
+                    tf.multiply(x_i_diff_square, x_i_prob),
+                    axis=[3],
+                    keepdims=True)
+            )
         x_expected.append(x_i_expected)
-        x_uncertainty.append(x_i_variance)
+        x_uncertainty.append(x_i_std)
 
     x_expected = tf.concat(x_expected, axis=3)
     x_uncertainty = tf.concat(x_uncertainty, axis=3)
