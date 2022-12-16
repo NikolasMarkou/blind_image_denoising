@@ -442,33 +442,33 @@ def model_denoiser_builder(
     x_expected = []
     x_variance = []
 
-    x = tf.math.maximum(DEFAULT_EPSILON, x)
+    x = tf.keras.layers.GaussianNoise(stddev=DEFAULT_EPSILON)(x)
 
     for i in range(output_channels):
-        x_split_i = \
+        x_i = \
             conv2d_wrapper(
                 input_layer=x,
                 bn_params=None,
                 conv_params=final_conv_params,
                 channelwise_scaling=False,
                 multiplier_scaling=False)
-        x_split_i_prob = \
-            x_split_i / tf.reduce_sum(x_split_i, axis=3, keepdims=True)
-        x_split_i_expected = \
+        x_i_prob = \
+            x_i / tf.reduce_sum(x_i, axis=3, keepdims=True)
+        x_i_expected = \
             tf.nn.conv2d(
-                input=x_split_i_prob,
+                input=x_i_prob,
                 filters=filters,
                 strides=(1, 1),
                 padding="SAME")
-        x_split_i_diff_square = \
-            tf.square(kernel_column - x_split_i_expected)
-        x_split_i_variance = \
+        x_i_diff_square = \
+            tf.square(kernel_column - x_i_expected)
+        x_i_variance = \
             tf.reduce_sum(
-                tf.multiply(x_split_i_diff_square, x_split_i_prob),
+                tf.multiply(x_i_diff_square, x_i_prob),
                 axis=[3],
                 keepdims=True)
-        x_expected.append(x_split_i_expected)
-        x_variance.append(x_split_i_variance)
+        x_expected.append(x_i_expected)
+        x_variance.append(x_i_variance)
 
     x_expected = tf.concat(x_expected, axis=3)
     x_variance = tf.concat(x_variance, axis=3)
