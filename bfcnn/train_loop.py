@@ -17,7 +17,8 @@ from .loss import \
     MODEL_LOSS_FN_STR, \
     INPAINT_LOSS_FN_STR, \
     DENOISER_LOSS_FN_STR, \
-    SUPERRES_LOSS_FN_STR
+    SUPERRES_LOSS_FN_STR, \
+    DENOISER_UQ_LOSS_FN_STR
 from .optimizer import optimizer_builder
 from .pruning import prune_function_builder, get_conv2d_weights
 from .model_hydra import model_builder as model_hydra_builder
@@ -84,6 +85,7 @@ def train_loop(
     inpaint_loss_fn = tf.function(func=loss_fn_map[INPAINT_LOSS_FN_STR], reduce_retracing=True)
     denoiser_loss_fn = tf.function(func=loss_fn_map[DENOISER_LOSS_FN_STR], reduce_retracing=True)
     superres_loss_fn = tf.function(func=loss_fn_map[SUPERRES_LOSS_FN_STR], reduce_retracing=True)
+    denoiser_uq_loss_fn = tf.function(func=loss_fn_map[DENOISER_UQ_LOSS_FN_STR], reduce_retracing=True)
     model_loss_fn = loss_fn_map[MODEL_LOSS_FN_STR]
 
     # --- build optimizer
@@ -356,6 +358,11 @@ def train_loop(
                         denoiser_loss_fn(
                             input_batch=input_batch,
                             predicted_batch=denoiser_output)
+                    denoiser_uq_loss_map = \
+                        denoiser_uq_loss_fn(
+                            input_batch=input_batch,
+                            predicted_batch=denoiser_output,
+                            uncertainty_batch=denoiser_uq_output)
                     inpaint_loss_map = \
                         inpaint_loss_fn(
                             input_batch=input_batch,
@@ -371,7 +378,8 @@ def train_loop(
                         denoiser_loss_map[TOTAL_LOSS_STR] + \
                         inpaint_loss_map[TOTAL_LOSS_STR] + \
                         superres_loss_map[TOTAL_LOSS_STR] + \
-                        model_loss_map[TOTAL_LOSS_STR]
+                        model_loss_map[TOTAL_LOSS_STR] + \
+                        denoiser_uq_loss_map[TOTAL_LOSS_STR]
 
                     grads = \
                         tape.gradient(
@@ -386,6 +394,9 @@ def train_loop(
                 tf.summary.scalar(name="quality/denoiser_psnr", data=denoiser_loss_map[PSNR_STR], step=global_step)
                 tf.summary.scalar(name="loss/denoiser_mae", data=denoiser_loss_map[MAE_LOSS_STR], step=global_step)
                 tf.summary.scalar(name="loss/denoiser_total", data=denoiser_loss_map[TOTAL_LOSS_STR], step=global_step)
+                tf.summary.scalar(name="loss/denoiser_uncertainty",
+                                  data=denoiser_uq_loss_map[TOTAL_LOSS_STR],
+                                  step=global_step)
                 tf.summary.scalar(name="quality/denoiser_uncertainty",
                                   data=tf.reduce_mean(denoiser_uq_output),
                                   step=global_step)

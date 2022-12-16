@@ -17,6 +17,7 @@ MODEL_LOSS_FN_STR = "model"
 INPAINT_LOSS_FN_STR = "inpaint"
 DENOISER_LOSS_FN_STR = "denoiser"
 SUPERRES_LOSS_FN_STR = "superres"
+DENOISER_UQ_LOSS_FN_STR = "denoiser_uq"
 
 # ---------------------------------------------------------------------
 
@@ -362,6 +363,9 @@ def loss_function_builder(
     mse_multiplier = config.get("mse_multiplier", 0.0)
     use_mse = mse_multiplier > 0.0
 
+    # --- uq
+    uq_multiplier = config.get("uq_multiplier", 1.0)
+
     # --- count non zero
     count_non_zero_mean = config.get("count_non_zero_mean", False)
 
@@ -391,6 +395,30 @@ def loss_function_builder(
         return {
             REGULARIZATION_LOSS_STR: regularization_loss,
             TOTAL_LOSS_STR: regularization_loss * regularization_multiplier
+        }
+
+    # ---
+    def denoiser_uq_loss(
+            input_batch: tf.Tensor,
+            predicted_batch: tf.Tensor,
+            uncertainty_batch: tf.Tensor) -> tf.Tensor:
+        diff_variance = \
+            tf.math.reduce_std(
+                input_tensor=(input_batch - predicted_batch),
+                axis=[1, 2],
+                keepdims=False)
+        mean_uq = \
+            tf.math.reduce_mean(
+                input_tensor=uncertainty_batch,
+                axis=[1, 2],
+                keepdims=False
+            )
+
+        uq_loss = tf.reduce_mean(tf.abs(diff_variance - mean_uq))
+
+        return {
+            TOTAL_LOSS_STR: uq_loss * uq_multiplier,
+            UNCERTAINTY_LOSS_STR: uq_loss
         }
 
     # ---
@@ -468,7 +496,8 @@ def loss_function_builder(
         MODEL_LOSS_FN_STR: model_loss,
         DENOISER_LOSS_FN_STR: denoiser_loss,
         INPAINT_LOSS_FN_STR: denoiser_loss,
-        SUPERRES_LOSS_FN_STR: denoiser_loss
+        SUPERRES_LOSS_FN_STR: denoiser_loss,
+        DENOISER_UQ_LOSS_FN_STR: denoiser_uq_loss
     }
 
 # ---------------------------------------------------------------------
