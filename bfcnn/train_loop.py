@@ -393,6 +393,8 @@ def train_loop(
                 tf.summary.scalar(name="loss/denoiser_mae", data=denoiser_loss_map[MAE_LOSS_STR], step=global_step)
                 tf.summary.scalar(name="loss/denoiser_total", data=denoiser_loss_map[TOTAL_LOSS_STR], step=global_step)
 
+                tf.summary.scalar(name="loss/denoiser_uq_expected",
+                                  data=denoiser_uq_loss_map[MAE_LOSS_STR], step=global_step)
                 tf.summary.scalar(name="loss/denoiser_uq_variance",
                                   data=denoiser_uq_loss_map[UNCERTAINTY_QUANTIZATION_LOSS_STR], step=global_step)
                 tf.summary.scalar(name="loss/denoiser_uq_total",
