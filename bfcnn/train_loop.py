@@ -339,16 +339,16 @@ def train_loop(
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
-                    denoiser_output, _, _, denoiser_uq_output = \
+                    denoiser_output, _, _ = \
                         hydra([noisy_batch,
                                (noisy_batch[:, :, :, 0] * 0.0 + 1.0)],
                               training=True)
 
-                    _, inpaint_output, _, _ = \
+                    _, inpaint_output, _ = \
                         hydra([masked_batch, mask_batch],
                               training=True)
 
-                    _, _, superres_output, _ = \
+                    _, _, superres_output = \
                         hydra([downsampled_batch,
                                (downsampled_batch[:, :, :, 0] * 0.0 + 1.0)],
                               training=True)
@@ -358,11 +358,6 @@ def train_loop(
                         denoiser_loss_fn(
                             input_batch=input_batch,
                             predicted_batch=denoiser_output)
-                    denoiser_uq_loss_map = \
-                        denoiser_uq_loss_fn(
-                            input_batch=input_batch,
-                            predicted_batch=denoiser_output,
-                            uncertainty_quantization_batch=denoiser_uq_output)
                     inpaint_loss_map = \
                         inpaint_loss_fn(
                             input_batch=input_batch,
@@ -378,8 +373,7 @@ def train_loop(
                         denoiser_loss_map[TOTAL_LOSS_STR] + \
                         inpaint_loss_map[TOTAL_LOSS_STR] + \
                         superres_loss_map[TOTAL_LOSS_STR] + \
-                        model_loss_map[TOTAL_LOSS_STR] + \
-                        denoiser_uq_loss_map[TOTAL_LOSS_STR]
+                        model_loss_map[TOTAL_LOSS_STR]
 
                     grads = \
                         tape.gradient(
@@ -395,11 +389,6 @@ def train_loop(
                 tf.summary.scalar(name="loss/denoiser_mae", data=denoiser_loss_map[MAE_LOSS_STR], step=global_step)
                 tf.summary.scalar(name="loss/denoiser_total", data=denoiser_loss_map[TOTAL_LOSS_STR], step=global_step)
 
-                tf.summary.scalar(name="loss/denoiser_uq_variance",
-                                  data=denoiser_uq_loss_map[UNCERTAINTY_QUANTIZATION_LOSS_STR], step=global_step)
-                tf.summary.scalar(name="loss/denoiser_uq_total",
-                                  data=denoiser_uq_loss_map[TOTAL_LOSS_STR], step=global_step)
-
                 tf.summary.scalar(name="quality/inpaint_psnr", data=inpaint_loss_map[PSNR_STR], step=global_step)
                 tf.summary.scalar(name="loss/inpaint_mae", data=inpaint_loss_map[MAE_LOSS_STR], step=global_step)
                 tf.summary.scalar(name="loss/inpaint_total", data=inpaint_loss_map[TOTAL_LOSS_STR], step=global_step)
@@ -413,9 +402,9 @@ def train_loop(
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
-                    test_denoiser_output, _, test_superres_output, _ = \
+                    test_denoiser_output, _, test_superres_output = \
                         hydra([test_images, mask_test_images], training=False)
-                    test_denoiser_output, _, test_superres_output, _ = \
+                    test_denoiser_output, _, test_superres_output = \
                         hydra([test_images, mask_test_images], training=False)
                     visualize(
                         global_step=global_step,
@@ -423,7 +412,6 @@ def train_loop(
                         noisy_batch=noisy_batch,
                         inpaint_batch=inpaint_output,
                         denoiser_batch=denoiser_output,
-                        denoiser_uq_batch=denoiser_uq_output,
                         superres_batch=superres_output,
                         test_denoiser_batch=test_denoiser_output,
                         test_superres_batch=test_superres_output,

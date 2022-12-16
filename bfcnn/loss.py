@@ -400,25 +400,6 @@ def loss_function_builder(
         }
 
     # ---
-    def denoiser_uq_loss(
-            input_batch: tf.Tensor,
-            predicted_batch: tf.Tensor,
-            uncertainty_quantization_batch: tf.Tensor) -> tf.Tensor:
-        diff = tf.abs(input_batch - tf.stop_gradient(predicted_batch))
-        uq_loss = \
-            tf.reduce_mean(
-                input_tensor=tf.abs(diff - uncertainty_quantization_batch),
-                axis=[1, 2, 3], keepdims=False)
-        uq_loss = \
-            tf.reduce_mean(
-                input_tensor=uq_loss, axis=[0], keepdims=False)
-
-        return {
-            TOTAL_LOSS_STR: uq_loss * uq_multiplier,
-            UNCERTAINTY_QUANTIZATION_LOSS_STR: uq_loss
-        }
-
-    # ---
     def denoiser_loss(
             input_batch: tf.Tensor,
             predicted_batch: tf.Tensor,
