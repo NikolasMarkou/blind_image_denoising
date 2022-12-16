@@ -431,19 +431,6 @@ def model_denoiser_builder(
         kernel_initializer=kernel_initializer
     )
 
-    # --- define superres network here
-    model_input_layer = \
-        tf.keras.Input(
-            shape=input_shape,
-            name="input_tensor")
-
-    x = model_input_layer
-
-    backbone, _, _ = model_backbone_builder(config)
-    x = backbone(x)
-    # add a very small noise for stability during training
-    x = tf.keras.layers.GaussianNoise(stddev=DEFAULT_EPSILON)(x)
-
     kernel = \
         tf.linspace(
             start=linspace_start,
@@ -457,6 +444,19 @@ def model_denoiser_builder(
         tf.reshape(
             tensor=kernel,
             shape=(1, 1, 1, -1))
+
+    # --- define superres network here
+    model_input_layer = \
+        tf.keras.Input(
+            shape=input_shape,
+            name="input_tensor")
+
+    x = model_input_layer
+
+    backbone, _, _ = model_backbone_builder(config)
+    x = backbone(x)
+    # add a very small noise for stability during training
+    x = tf.keras.layers.GaussianNoise(stddev=DEFAULT_EPSILON)(x)
 
     x_expected = []
     x_uncertainty = []
