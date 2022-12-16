@@ -440,11 +440,11 @@ def model_denoiser_builder(
     x = model_input_layer
 
     backbone, _, _ = model_backbone_builder(config)
-    x_result = backbone(x)
+    x_backbone = backbone(x)
 
     x_result = \
         conv2d_wrapper(
-            input_layer=x_result,
+            input_layer=x_backbone,
             bn_params=None,
             conv_params=final_conv_params,
             channelwise_scaling=False,
@@ -455,12 +455,9 @@ def model_denoiser_builder(
             name="output_tensor")(x_result)
 
     # ---
-    backbone, _, _ = model_backbone_builder(config)
-    x_uq = backbone(x)
-
     x_uq = \
         conv2d_wrapper(
-            input_layer=x_uq,
+            input_layer=x_backbone,
             bn_params=None,
             conv_params=final_uq_conv_params,
             channelwise_scaling=False,
