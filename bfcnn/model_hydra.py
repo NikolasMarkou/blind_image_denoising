@@ -79,7 +79,7 @@ def model_builder(
     backbone_mid = model_backbone(input_normalized_layer)
 
     # heads
-    denoiser_mid = model_denoiser(backbone_mid)
+    denoiser_mid, denoise_uncertainty_mid = model_denoiser(backbone_mid)
     inpaint_mid = model_inpaint([backbone_mid, input_normalized_layer, mask_layer])
     superres_mid = model_superres(backbone_mid)
 
@@ -87,11 +87,13 @@ def model_builder(
     denoiser_output = model_denormalizer(denoiser_mid, training=False)
     inpaint_output = model_denormalizer(inpaint_mid, training=False)
     superres_output = model_denormalizer(superres_mid, training=False)
+    denoiser_uq_output = model_denormalizer(denoise_uncertainty_mid, training=False)
 
     # wrap layers to set names
     denoiser_output = tf.keras.layers.Layer(name=DENOISER_STR)(denoiser_output)
     inpaint_output = tf.keras.layers.Layer(name=INPAINT_STR)(inpaint_output)
     superres_output = tf.keras.layers.Layer(name=SUPERRES_STR)(superres_output)
+    denoiser_uq_output = tf.keras.layers.Layer(name=DENOISER_UQ_STR)(denoiser_uq_output)
 
     # create model
     model_hydra = \
@@ -103,7 +105,8 @@ def model_builder(
             outputs=[
                 denoiser_output,
                 inpaint_output,
-                superres_output
+                superres_output,
+                denoiser_uq_output
             ],
             name=f"hydra")
 
@@ -450,11 +453,23 @@ def model_denoiser_builder(
     x_result = \
         tf.keras.layers.Layer(
             name="output_tensor")(x_result)
+    # ---
+    x_uq = \
+        conv2d_wrapper(
+            input_layer=tf.stop_gradient(x_backbone),
+            bn_params=None,
+            conv_params=final_uq_conv_params,
+            channelwise_scaling=False,
+            multiplier_scaling=False)
+
+    x_uq = \
+        tf.keras.layers.Layer(
+            name="uq_tensor")(x_uq)
 
     model_head = \
         tf.keras.Model(
             inputs=model_input_layer,
-            outputs=x_result,
+            outputs=[x_result, x_uq],
             name=f"denoise_head")
 
     return model_head
