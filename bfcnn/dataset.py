@@ -438,10 +438,11 @@ def dataset_builder(
 
     result[DATASET_TRAINING_FN_STR] = \
         dataset_training \
+            .prefetch(buffer_size=128) \
             .shuffle(
                 seed=0,
                 buffer_size=1024,
-                reshuffle_each_iteration=True) \
+                reshuffle_each_iteration=False) \
             .map(
                 map_func=load_image_fn,
                 num_parallel_calls=tf.data.AUTOTUNE) \
