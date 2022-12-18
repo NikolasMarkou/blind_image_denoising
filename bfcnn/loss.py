@@ -206,10 +206,16 @@ def mae_diff(
         d = \
             tf.reduce_mean(
                 input_tensor=d,
-                axis=axis)
+                axis=[1, 2],
+                keepdims=False)
+        d = \
+            tf.reduce_mean(
+                input_tensor=d,
+                axis=[0],
+                keepdims=False)
 
     # --- mean over batch
-    return tf.reduce_mean(d, axis=[0])
+    return tf.reduce_mean(d)
 
 
 # ---------------------------------------------------------------------
@@ -402,8 +408,9 @@ def loss_function_builder(
             input_batch: tf.Tensor,
             predicted_batch: tf.Tensor,
             uncertainty_batch: tf.Tensor) -> tf.Tensor:
-
-        uq_loss = tf.reduce_mean(uncertainty_batch)
+        uq_loss = tf.reduce_mean(uncertainty_batch, axis=[1, 2], keepdims=False)
+        uq_loss = tf.reduce_mean(uq_loss, axis=[0], keepdims=False)
+        uq_loss = tf.reduce_mean(uq_loss)
 
         return {
             TOTAL_LOSS_STR: uq_loss * uq_multiplier,

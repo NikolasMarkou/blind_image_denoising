@@ -466,11 +466,7 @@ def model_denoiser_builder(
                 conv_params=final_conv_params,
                 channelwise_scaling=False,
                 multiplier_scaling=False)
-        x_i = tf.nn.relu(x_i) + DEFAULT_EPSILON
-        # convert to probabilities
-        x_i_prob = \
-            x_i / \
-            (tf.nn.relu(tf.reduce_sum(input_tensor=x_i, axis=[3], keepdims=True)) + DEFAULT_EPSILON)
+        x_i = tf.nn.softmax(x_i, axis=3)
         # compute expected x_i
         x_i_expected = \
             tf.nn.conv2d(
@@ -482,10 +478,11 @@ def model_denoiser_builder(
             tf.nn.relu(tf.square(column_kernel - x_i_expected)) + DEFAULT_EPSILON
         x_i_std = \
             tf.sqrt(
-                tf.nn.relu(tf.reduce_sum(
-                    tf.multiply(x_i_diff_square, x_i_prob),
-                    axis=[3],
-                    keepdims=True)) + DEFAULT_EPSILON
+                tf.nn.relu(
+                    tf.reduce_sum(
+                        tf.multiply(x_i_diff_square, x_i_prob),
+                        axis=[3],
+                        keepdims=True)) + DEFAULT_EPSILON
             )
         x_expected.append(x_i_expected)
         x_uncertainty.append(x_i_std)
