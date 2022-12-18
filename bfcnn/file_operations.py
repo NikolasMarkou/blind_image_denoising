@@ -6,29 +6,62 @@ from typing import Tuple, Union, Any, Generator, List
 
 # ---------------------------------------------------------------------
 
-from .utilities import logger, random_crops, layer_normalize
+from .utilities import logger, random_crops, layer_normalize, merge_iterators
 
 # ---------------------------------------------------------------------
 
 SUPPORTED_IMAGE_LIST_FORMATS = (".bmp", ".gif", ".jpeg", ".jpg", ".png")
 
 
-# def image_filenames_dataset_from_directory_test(
-#         directory: Union[str, List[str]],
-#         follow_links=False) -> Generator[str, None, None]:
+def image_filenames_dataset_from_directory_gen(
+        directory: Union[str, List[str]],
+        follow_links=False) -> Generator[str, None, None]:
+    """
+    Generates a `tf.data.Dataset` from image filenames in a directory.
+    """
+
+    if isinstance(directory, str):
+        def gen_fn():
+            return index_directory_gen(
+                    directory=directory,
+                    formats=SUPPORTED_IMAGE_LIST_FORMATS,
+                    follow_links=follow_links)
+    elif isinstance(directory, List):
+        def gen_fn():
+            iterators = [
+                index_directory_gen(
+                    directory=d,
+                    formats=SUPPORTED_IMAGE_LIST_FORMATS,
+                    follow_links=follow_links)
+                for d in directory
+            ]
+
+            return merge_iterators(*iterators)
+    else:
+        raise ValueError(f"don't know what to do with [{directory}]")
+
+    return \
+        tf.data.Dataset.from_generator(
+            generator=gen_fn,
+            output_signature=(
+                tf.TensorSpec(shape=(), dtype=tf.string)
+            ))
+
+# ---------------------------------------------------------------------
+
+
+# def image_filenames_dataset_from_directory_gen(
+#         directory: str,
+#         follow_links=False):
 #     """
 #     Generates a `tf.data.Dataset` from image filenames in a directory.
 #     """
 #
-#     if isinstance(directory, str):
-#         for x in index_directory_gen(
+#     def gen_fn():
+#         return index_directory_gen(
 #                 directory=directory,
 #                 formats=SUPPORTED_IMAGE_LIST_FORMATS,
-#                 follow_links=follow_links):
-#             yield x
-#     elif isinstance(directory, List[str]):
-#         iters =
-#
+#                 follow_links=follow_links)
 #
 #     dataset = \
 #         tf.data.Dataset.from_generator(
@@ -38,31 +71,6 @@ SUPPORTED_IMAGE_LIST_FORMATS = (".bmp", ".gif", ".jpeg", ".jpg", ".png")
 #             ))
 #
 #     return dataset
-
-# ---------------------------------------------------------------------
-
-
-def image_filenames_dataset_from_directory_gen(
-        directory: str,
-        follow_links=False):
-    """
-    Generates a `tf.data.Dataset` from image filenames in a directory.
-    """
-
-    def gen_fn():
-        return index_directory_gen(
-                directory=directory,
-                formats=SUPPORTED_IMAGE_LIST_FORMATS,
-                follow_links=follow_links)
-
-    dataset = \
-        tf.data.Dataset.from_generator(
-            generator=gen_fn,
-            output_signature=(
-                tf.TensorSpec(shape=(), dtype=tf.string)
-            ))
-
-    return dataset
 
 
 # ---------------------------------------------------------------------

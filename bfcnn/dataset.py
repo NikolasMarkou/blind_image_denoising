@@ -385,20 +385,19 @@ def dataset_builder(
 
     # --- define generator function from directory
     if directory:
-        dataset_training = [
+        dataset_training = \
             image_filenames_dataset_from_directory_gen(
-                directory=d,
+                directory=directory,
                 follow_links=True)
-            for d in directory
-        ]
     else:
         raise ValueError("don't know how to handle non directory datasets")
 
     # --- save the augmentation functions
-    result = dict()
-    result[INPAINT_AUGMENTATION_FN_STR] = inpaint_augmentation_fn
-    result[SUPERRES_AUGMENTATION_FN_STR] = superres_augmentation_fn
-    result[GEOMETRIC_AUGMENTATION_FN_STR] = geometric_augmentations_fn
+    result = {
+        INPAINT_AUGMENTATION_FN_STR: inpaint_augmentation_fn,
+        SUPERRES_AUGMENTATION_FN_STR: superres_augmentation_fn,
+        GEOMETRIC_AUGMENTATION_FN_STR: geometric_augmentations_fn
+    }
 
     if mix_noise_types:
         result[NOISE_AUGMENTATION_FN_STR] = noise_augmentations_mix_fn
@@ -438,12 +437,7 @@ def dataset_builder(
         return x
 
     result[DATASET_TRAINING_FN_STR] = \
-        tf.data.Dataset \
-            .sample_from_datasets(
-                seed=0,
-                datasets=dataset_training,
-                stop_on_empty_dataset=False
-            ) \
+        dataset_training \
             .shuffle(
                 seed=0,
                 buffer_size=1024,
