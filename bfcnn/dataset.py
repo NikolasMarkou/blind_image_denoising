@@ -405,10 +405,6 @@ def dataset_builder(
         result[NOISE_AUGMENTATION_FN_STR] = noise_augmentations_fn
 
     # --- create the dataset
-    # dataset produces the dataset with basic geometric distortions
-    if len(dataset_training) == 0:
-        raise ValueError("don't know how to handle zero datasets")
-
     if color_mode == "rgb":
         num_channels = 3
     elif color_mode == "rgba":
