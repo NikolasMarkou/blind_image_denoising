@@ -2,7 +2,7 @@ import os
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
-from typing import Tuple, Union, Any
+from typing import Tuple, Union, Any, Generator, List
 
 # ---------------------------------------------------------------------
 
@@ -13,22 +13,47 @@ from .utilities import logger, random_crops, layer_normalize
 SUPPORTED_IMAGE_LIST_FORMATS = (".bmp", ".gif", ".jpeg", ".jpg", ".png")
 
 
+# def image_filenames_dataset_from_directory_test(
+#         directory: Union[str, List[str]],
+#         follow_links=False) -> Generator[str, None, None]:
+#     """
+#     Generates a `tf.data.Dataset` from image filenames in a directory.
+#     """
+#
+#     if isinstance(directory, str):
+#         for x in index_directory_gen(
+#                 directory=directory,
+#                 formats=SUPPORTED_IMAGE_LIST_FORMATS,
+#                 follow_links=follow_links):
+#             yield x
+#     elif isinstance(directory, List[str]):
+#         iters =
+#
+#
+#     dataset = \
+#         tf.data.Dataset.from_generator(
+#             generator=gen_fn,
+#             output_signature=(
+#                 tf.TensorSpec(shape=(), dtype=tf.string)
+#             ))
+#
+#     return dataset
+
 # ---------------------------------------------------------------------
 
 
 def image_filenames_dataset_from_directory_gen(
-        directory,
+        directory: str,
         follow_links=False):
     """
     Generates a `tf.data.Dataset` from image filenames in a directory.
     """
 
     def gen_fn():
-        for x in index_directory_gen(
+        return index_directory_gen(
                 directory=directory,
                 formats=SUPPORTED_IMAGE_LIST_FORMATS,
-                follow_links=follow_links):
-            yield x
+                follow_links=follow_links)
 
     dataset = \
         tf.data.Dataset.from_generator(
@@ -46,16 +71,13 @@ def image_filenames_dataset_from_directory_gen(
 def index_directory_gen(
         directory,
         formats,
-        follow_links=False):
+        follow_links=False) -> Generator[str, None, None]:
     """
     Make list of all files in the subdirs of `directory`, with their labels.
 
       Args:
         directory: The target directory (string).
         formats: Allowlist of file extensions to index (e.g. ".jpg", ".txt").
-        shuffle: Whether to shuffle the data. Default: True.
-            If set to False, sorts the data in alphanumeric order.
-        seed: Optional random seed for shuffling.
         follow_links: Whether to visits subdirectories pointed to by symlinks.
     """
     # in the no-label case, index from the parent directory down.
