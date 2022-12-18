@@ -328,111 +328,111 @@ def train_loop(
                     downsampled_batch = superres_augmentation_fn(input_batch)
                     masked_batch, mask_batch = inpaint_augmentation_fn(input_batch)
 
-                # # Open a GradientTape to record the operations run
-                # # during the forward pass,
-                # # which enables auto-differentiation.
-                # with tf.GradientTape() as tape:
-                #     # run the forward pass of the layer.
-                #     # The operations that the layer applies
-                #     # to its inputs are going to be recorded
-                #     # on the GradientTape.
-                #     denoiser_output, denoiser_uq_output, _, _ = \
-                #         hydra([noisy_batch,
-                #                (noisy_batch[:, :, :, 0] * 0.0 + 1.0)],
-                #               training=True)
-                #
-                #     _, _, inpaint_output, _ = \
-                #         hydra([masked_batch, mask_batch],
-                #               training=True)
-                #
-                #     _, _, _, superres_output = \
-                #         hydra([downsampled_batch,
-                #                (downsampled_batch[:, :, :, 0] * 0.0 + 1.0)],
-                #               training=True)
-                #
-                #     # compute the loss value for this mini-batch
-                #     denoiser_loss_map = \
-                #         denoiser_loss_fn(
-                #             input_batch=input_batch,
-                #             predicted_batch=denoiser_output)
-                #     denoiser_uq_loss_map = \
-                #         denoiser_uq_loss_fn(
-                #             input_batch=input_batch,
-                #             predicted_batch=denoiser_output,
-                #             uncertainty_batch=denoiser_uq_output)
-                #     inpaint_loss_map = \
-                #         inpaint_loss_fn(
-                #             input_batch=input_batch,
-                #             predicted_batch=inpaint_output)
-                #     superres_loss_map = \
-                #         superres_loss_fn(
-                #             input_batch=input_batch,
-                #             predicted_batch=superres_output)
-                #     model_loss_map = \
-                #         model_loss_fn(model=hydra)
-                #
-                #     total_loss = \
-                #         denoiser_loss_map[TOTAL_LOSS_STR] + \
-                #         inpaint_loss_map[TOTAL_LOSS_STR] + \
-                #         superres_loss_map[TOTAL_LOSS_STR] + \
-                #         model_loss_map[TOTAL_LOSS_STR] + \
-                #         denoiser_uq_loss_map[TOTAL_LOSS_STR]
-                #
-                #     grads = \
-                #         tape.gradient(
-                #             target=total_loss,
-                #             sources=model_hydra_weights)
-                #
-                # # --- apply weights
-                # optimizer.apply_gradients(
-                #     grads_and_vars=zip(grads, model_hydra_weights))
-                #
-                # # --- add loss summaries for tensorboard
-                # tf.summary.scalar(name="quality/denoiser_psnr", data=denoiser_loss_map[PSNR_STR], step=global_step)
-                # tf.summary.scalar(name="loss/denoiser_mae", data=denoiser_loss_map[MAE_LOSS_STR], step=global_step)
-                # tf.summary.scalar(name="loss/denoiser_total", data=denoiser_loss_map[TOTAL_LOSS_STR], step=global_step)
-                # tf.summary.scalar(name="loss/denoiser_uncertainty",
-                #                   data=denoiser_uq_loss_map[TOTAL_LOSS_STR],
-                #                   step=global_step)
-                # tf.summary.scalar(name="quality/denoiser_uncertainty",
-                #                   data=tf.reduce_mean(denoiser_uq_output),
-                #                   step=global_step)
-                #
-                # tf.summary.scalar(name="quality/inpaint_psnr", data=inpaint_loss_map[PSNR_STR], step=global_step)
-                # tf.summary.scalar(name="loss/inpaint_mae", data=inpaint_loss_map[MAE_LOSS_STR], step=global_step)
-                # tf.summary.scalar(name="loss/inpaint_total", data=inpaint_loss_map[TOTAL_LOSS_STR], step=global_step)
-                #
-                # tf.summary.scalar(name="quality/superres_psnr", data=superres_loss_map[PSNR_STR], step=global_step)
-                # tf.summary.scalar(name="loss/superres_mae", data=superres_loss_map[MAE_LOSS_STR], step=global_step)
-                # tf.summary.scalar(name="loss/superres_total", data=superres_loss_map[TOTAL_LOSS_STR], step=global_step)
-                #
-                # tf.summary.scalar(name="loss/regularization", data=model_loss_map[REGULARIZATION_LOSS_STR], step=global_step)
-                # tf.summary.scalar(name="loss/total", data=total_loss, step=global_step)
-                #
-                # # --- add image prediction for tensorboard
-                # if (global_step % visualization_every) == 0:
-                #     test_denoiser_output, _, _, test_superres_output = \
-                #         hydra([test_images, mask_test_images], training=False)
-                #     test_denoiser_output, _, _, test_superres_output = \
-                #         hydra([test_images, mask_test_images], training=False)
-                #     visualize(
-                #         global_step=global_step,
-                #         input_batch=input_batch,
-                #         noisy_batch=noisy_batch,
-                #         inpaint_batch=inpaint_output,
-                #         denoiser_batch=denoiser_output,
-                #         superres_batch=superres_output,
-                #         denoiser_uq_batch=denoiser_uq_output,
-                #         test_denoiser_batch=test_denoiser_output,
-                #         test_superres_batch=test_superres_output,
-                #         visualization_number=visualization_number)
-                #
-                #     # add weight visualization
-                #     tf.summary.histogram(
-                #         data=get_conv2d_weights(model=hydra),
-                #         step=global_step,
-                #         buckets=weight_buckets,
-                #         name="training/weights")
+                # Open a GradientTape to record the operations run
+                # during the forward pass,
+                # which enables auto-differentiation.
+                with tf.GradientTape() as tape:
+                    # run the forward pass of the layer.
+                    # The operations that the layer applies
+                    # to its inputs are going to be recorded
+                    # on the GradientTape.
+                    denoiser_output, denoiser_uq_output, _, _ = \
+                        hydra([noisy_batch,
+                               (noisy_batch[:, :, :, 0] * 0.0 + 1.0)],
+                              training=True)
+
+                    _, _, inpaint_output, _ = \
+                        hydra([masked_batch, mask_batch],
+                              training=True)
+
+                    _, _, _, superres_output = \
+                        hydra([downsampled_batch,
+                               (downsampled_batch[:, :, :, 0] * 0.0 + 1.0)],
+                              training=True)
+
+                    # compute the loss value for this mini-batch
+                    denoiser_loss_map = \
+                        denoiser_loss_fn(
+                            input_batch=input_batch,
+                            predicted_batch=denoiser_output)
+                    denoiser_uq_loss_map = \
+                        denoiser_uq_loss_fn(
+                            input_batch=input_batch,
+                            predicted_batch=denoiser_output,
+                            uncertainty_batch=denoiser_uq_output)
+                    inpaint_loss_map = \
+                        inpaint_loss_fn(
+                            input_batch=input_batch,
+                            predicted_batch=inpaint_output)
+                    superres_loss_map = \
+                        superres_loss_fn(
+                            input_batch=input_batch,
+                            predicted_batch=superres_output)
+                    model_loss_map = \
+                        model_loss_fn(model=hydra)
+
+                    total_loss = \
+                        denoiser_loss_map[TOTAL_LOSS_STR] + \
+                        inpaint_loss_map[TOTAL_LOSS_STR] + \
+                        superres_loss_map[TOTAL_LOSS_STR] + \
+                        model_loss_map[TOTAL_LOSS_STR] + \
+                        denoiser_uq_loss_map[TOTAL_LOSS_STR]
+
+                    grads = \
+                        tape.gradient(
+                            target=total_loss,
+                            sources=model_hydra_weights)
+
+                # --- apply weights
+                optimizer.apply_gradients(
+                    grads_and_vars=zip(grads, model_hydra_weights))
+
+                # --- add loss summaries for tensorboard
+                tf.summary.scalar(name="quality/denoiser_psnr", data=denoiser_loss_map[PSNR_STR], step=global_step)
+                tf.summary.scalar(name="loss/denoiser_mae", data=denoiser_loss_map[MAE_LOSS_STR], step=global_step)
+                tf.summary.scalar(name="loss/denoiser_total", data=denoiser_loss_map[TOTAL_LOSS_STR], step=global_step)
+                tf.summary.scalar(name="loss/denoiser_uncertainty",
+                                  data=denoiser_uq_loss_map[TOTAL_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="quality/denoiser_uncertainty",
+                                  data=tf.reduce_mean(denoiser_uq_output),
+                                  step=global_step)
+
+                tf.summary.scalar(name="quality/inpaint_psnr", data=inpaint_loss_map[PSNR_STR], step=global_step)
+                tf.summary.scalar(name="loss/inpaint_mae", data=inpaint_loss_map[MAE_LOSS_STR], step=global_step)
+                tf.summary.scalar(name="loss/inpaint_total", data=inpaint_loss_map[TOTAL_LOSS_STR], step=global_step)
+
+                tf.summary.scalar(name="quality/superres_psnr", data=superres_loss_map[PSNR_STR], step=global_step)
+                tf.summary.scalar(name="loss/superres_mae", data=superres_loss_map[MAE_LOSS_STR], step=global_step)
+                tf.summary.scalar(name="loss/superres_total", data=superres_loss_map[TOTAL_LOSS_STR], step=global_step)
+
+                tf.summary.scalar(name="loss/regularization", data=model_loss_map[REGULARIZATION_LOSS_STR], step=global_step)
+                tf.summary.scalar(name="loss/total", data=total_loss, step=global_step)
+
+                # --- add image prediction for tensorboard
+                if (global_step % visualization_every) == 0:
+                    test_denoiser_output, _, _, test_superres_output = \
+                        hydra([test_images, mask_test_images], training=False)
+                    test_denoiser_output, _, _, test_superres_output = \
+                        hydra([test_images, mask_test_images], training=False)
+                    visualize(
+                        global_step=global_step,
+                        input_batch=input_batch,
+                        noisy_batch=noisy_batch,
+                        inpaint_batch=inpaint_output,
+                        denoiser_batch=denoiser_output,
+                        superres_batch=superres_output,
+                        denoiser_uq_batch=denoiser_uq_output,
+                        test_denoiser_batch=test_denoiser_output,
+                        test_superres_batch=test_superres_output,
+                        visualization_number=visualization_number)
+
+                    # add weight visualization
+                    tf.summary.histogram(
+                        data=get_conv2d_weights(model=hydra),
+                        step=global_step,
+                        buckets=weight_buckets,
+                        name="training/weights")
 
                 # --- prune conv2d
                 if use_prune and (global_epoch >= prune_start_epoch) and \
