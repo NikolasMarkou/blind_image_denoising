@@ -466,7 +466,7 @@ def model_denoiser_builder(
                 conv_params=final_conv_params,
                 channelwise_scaling=False,
                 multiplier_scaling=False)
-        x_i = tf.nn.softmax(x_i, axis=3)
+        x_i_prob = tf.nn.softmax(x_i, axis=3)
         # compute expected x_i
         x_i_expected = \
             tf.nn.conv2d(
