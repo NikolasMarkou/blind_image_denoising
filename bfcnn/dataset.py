@@ -194,7 +194,10 @@ def dataset_builder(
 
     # --- define noise augmentation function
     @tf.function(input_signature=[
-                    tf.TensorSpec(shape=[None, None, None, num_channels],
+                    tf.TensorSpec(shape=[None,
+                                         int(input_shape[0]/2),
+                                         int(input_shape[1]/2),
+                                         num_channels],
                                   dtype=tf.float32)])
     def noise_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
