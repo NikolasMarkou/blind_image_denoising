@@ -173,34 +173,6 @@ def dataset_builder(
 
         return input_batch
 
-    # --- define inpainting augmentation function
-    @tf.function(input_signature=[
-                    tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], num_channels],
-                                  dtype=tf.float32)])
-    def inpaint_augmentation_fn(
-            input_batch: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
-        input_shape_inference = tf.shape(input_batch)
-
-        # channel dependent noise
-        mask_batch = \
-            tf.random.uniform(
-                seed=0,
-                minval=-0.5,
-                maxval=0.5,
-                dtype=tf.float16,
-                shape=(input_shape_inference[0],
-                       input_shape_inference[1],
-                       input_shape_inference[2],
-                       1))
-
-        mask_batch = \
-            tf.cast(
-                x=tf.greater(mask_batch,
-                             tf.constant(0.0, dtype=tf.float16)),
-                dtype=tf.float32)
-
-        return input_batch, mask_batch
-
     # --- define superres augmentation function
     @tf.function(input_signature=[
                     tf.TensorSpec(shape=[None, None, None, num_channels],
@@ -409,7 +381,9 @@ def dataset_builder(
 
     # --- save the augmentation functions
     result = {
-        SUPERRES_AUGMENTATION_FN_STR: superres_augmentation_fn,
+        SUPERRES_AUGMENTATION_FN_STR: superres_augmentation_fn.get_concrete_function(
+                    tf.TensorSpec(shape=[None, input_shape[0]/2, input_shape[1]/2, num_channels],
+                                  dtype=tf.float32)),
         GEOMETRIC_AUGMENTATION_FN_STR:
             geometric_augmentations_fn.get_concrete_function(
                     tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], num_channels],
@@ -419,7 +393,10 @@ def dataset_builder(
     if mix_noise_types:
         result[NOISE_AUGMENTATION_FN_STR] = noise_augmentations_mix_fn
     else:
-        result[NOISE_AUGMENTATION_FN_STR] = noise_augmentations_fn
+        result[NOISE_AUGMENTATION_FN_STR] = \
+            noise_augmentations_fn.get_concrete_function(
+                    tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], num_channels],
+                                  dtype=tf.float32))
 
     @tf.function(
         input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)],

@@ -282,8 +282,8 @@ def train_loop(
                 input_batch = tf.cast(input_batch, dtype=tf.float32)
 
                 # create batches for all subnetworks
-                noisy_batch = noise_augmentation_fn(input_batch)
-                downsampled_batch = superres_augmentation_fn(input_batch)
+                input_batch_downsampled = superres_augmentation_fn(input_batch)
+                noisy_batch = noise_augmentation_fn(input_batch_downsampled)
 
                 # Open a GradientTape to record the operations run
                 # during the forward pass,
@@ -293,18 +293,13 @@ def train_loop(
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
-                    denoiser_output, denoiser_uq_output, _ = \
-                        hydra(noisy_batch,
-                              training=True)
-
-                    _, _, superres_output = \
-                        hydra(downsampled_batch,
-                              training=True)
+                    denoiser_output, denoiser_uq_output, superres_output = \
+                        hydra(noisy_batch, training=True)
 
                     # compute the loss value for this mini-batch
                     denoiser_loss_map = \
                         denoiser_loss_fn(
-                            input_batch=input_batch,
+                            input_batch=input_batch_downsampled,
                             predicted_batch=denoiser_output)
                     denoiser_uq_loss_map = \
                         denoiser_uq_loss_fn(

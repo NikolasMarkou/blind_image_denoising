@@ -62,18 +62,17 @@ def model_builder(
     backbone_mid = model_backbone(input_normalized_layer)
 
     # heads
-    denoiser_mid, denoiser_uq_mid = model_denoiser(backbone_mid)
-    superres_mid = model_superres([backbone_mid, denoiser_uq_mid])
+    denoiser_backbone_mid, denoiser_mid, denoiser_uq_mid = model_denoiser(backbone_mid)
+    superres_mid = model_superres([denoiser_backbone_mid, denoiser_uq_mid])
 
     # denormalize
     denoiser_output = model_denormalizer(denoiser_mid, training=False)
     superres_output = model_denormalizer(superres_mid, training=False)
-    denoiser_uq_output = denoiser_uq_mid
 
     # wrap layers to set names
     denoiser_output = tf.keras.layers.Layer(name=DENOISER_STR)(denoiser_output)
     superres_output = tf.keras.layers.Layer(name=SUPERRES_STR)(superres_output)
-    denoiser_uq_output = tf.keras.layers.Layer(name=DENOISER_UQ_STR)(denoiser_uq_output)
+    denoiser_uq_output = tf.keras.layers.Layer(name=DENOISER_UQ_STR)(denoiser_uq_mid)
 
     # create model
     model_hydra = \
@@ -417,7 +416,7 @@ def model_denoiser_builder(
     x = model_input_layer
 
     backbone, _, _ = model_backbone_builder(config)
-    x = backbone(x)
+    x_backbone = backbone(x)
 
     kernel = \
         tf.linspace(
@@ -432,7 +431,7 @@ def model_denoiser_builder(
     for i in range(output_channels):
         x_i = \
             conv2d_wrapper(
-                input_layer=x,
+                input_layer=x_backbone,
                 bn_params=None,
                 conv_params=final_conv_params,
                 channelwise_scaling=False,
@@ -475,7 +474,7 @@ def model_denoiser_builder(
     model_head = \
         tf.keras.Model(
             inputs=model_input_layer,
-            outputs=[x_expected, x_uncertainty],
+            outputs=[x_backbone, x_expected, x_uncertainty],
             name=f"denoiser_uncertainty_head")
 
     return model_head
