@@ -164,7 +164,7 @@ def load_image_crop(
 
 # ---------------------------------------------------------------------
 
-
+@tf.function
 def load_image(
         path: Any,
         image_size: Tuple[int, int] = None,
@@ -192,26 +192,28 @@ def load_image(
     if isinstance(path, Path):
         path = str(path)
 
-    # --- read file, decode it
-    img = \
-        tf.io.read_file(
-            filename=path)
-    img = \
-        tf.image.decode_image(
-            contents=img,
-            channels=num_channels,
-            dtype=dtype,
-            expand_animations=False)
+    img = tf.random.uniform(shape=(64, 64, 3), minval=0, maxval=255, dtype=tf.int32)
+    img = tf.cast(img, dtype=tf.uint8)
 
-    # --- resize it
-    if image_size is not None:
-        img = \
-            tf.image.resize_with_pad(
-                image=img,
-                target_height=image_size[0],
-                target_width=image_size[1],
-                method=interpolation,
-                antialias=False)
+    # # --- read file, decode it
+    # raw = tf.io.read_file(filename=path)
+    #
+    # img = \
+    #     tf.image.decode_image(
+    #         contents=raw,
+    #         channels=num_channels,
+    #         dtype=dtype,
+    #         expand_animations=False)
+    #
+    # # --- resize it
+    # if image_size is not None:
+    #     img = \
+    #         tf.image.resize_with_pad(
+    #             image=img,
+    #             target_height=image_size[0],
+    #             target_width=image_size[1],
+    #             method=interpolation,
+    #             antialias=False)
 
     if expand_dims:
         img = tf.expand_dims(img, axis=0)
