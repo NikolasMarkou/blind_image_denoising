@@ -733,24 +733,20 @@ def random_crops(
     # fill y_range, x_range based on crop size and input batch size
     if y_range is None:
         y_range = (float(crop_size[0] / shape[1]),
-                   float(crop_size[0] / shape[1] + 0.01))
+                   float(crop_size[0] / shape[1]))
 
     if x_range is None:
         x_range = (float(crop_size[1] / shape[2]),
-                   float(crop_size[1] / shape[2] + 0.01))
+                   float(crop_size[1] / shape[2]))
 
     #
     y1 = tf.random.uniform(
         shape=(total_crops, 1), minval=0.0, maxval=1.0 - y_range[0])
-    y2 = y1 + \
-         tf.random.uniform(
-             shape=(total_crops, 1), minval=y_range[0], maxval=y_range[1])
+    y2 = y1 + y_range[1]
     #
     x1 = tf.random.uniform(
         shape=(total_crops, 1), minval=0.0, maxval=1.0 - x_range[0])
-    x2 = x1 + \
-         tf.random.uniform(
-             shape=(total_crops, 1), minval=x_range[0], maxval=x_range[1])
+    x2 = x1 + x_range[1]
     # limit the crops to the end of image
     y1 = tf.maximum(y1, 0.0)
     y2 = tf.minimum(y2, 1.0)

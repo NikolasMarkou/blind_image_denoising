@@ -440,7 +440,7 @@ def model_denoiser_builder(
     x = model_input_layer
 
     backbone, _, _ = model_backbone_builder(config)
-    x = backbone(x + DEFAULT_EPSILON)
+    x = backbone(x)
 
     kernel = \
         tf.linspace(
@@ -461,7 +461,7 @@ def model_denoiser_builder(
     for i in range(output_channels):
         x_i = \
             conv2d_wrapper(
-                input_layer=x + DEFAULT_EPSILON,
+                input_layer=x,
                 bn_params=None,
                 conv_params=final_conv_params,
                 channelwise_scaling=False,

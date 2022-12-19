@@ -114,7 +114,7 @@ def iter_valid_files(directory, follow_links, formats):
 
 # ---------------------------------------------------------------------
 
-
+@tf.function
 def load_image_crop(
         path: Any,
         image_size: Tuple[int, int] = None,
