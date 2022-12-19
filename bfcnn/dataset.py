@@ -350,29 +350,6 @@ def dataset_builder(
 
         return noisy_batch
 
-    # this will be use to augment data by mapping,
-    # so each image in the tensor
-    # is treated independently and gets a different noise type
-    def noise_augmentations_mix_fn(
-            x_input: tf.Tensor) -> tf.Tensor:
-
-        def noise_augmentations_map_fn(
-                x: tf.Tensor) -> tf.Tensor:
-            x = tf.expand_dims(x, axis=0)
-            x = noise_augmentations_fn(x)
-            x = tf.squeeze(x, axis=0)
-            return x
-
-        return tf.map_fn(
-            fn=noise_augmentations_map_fn,
-            elems=x_input,
-            dtype=tf.float32,
-            parallel_iterations=tf.shape(x_input)[0],
-            back_prop=False,
-            swap_memory=False,
-            infer_shape=False,
-        )
-
     # --- define generator function from directory
     if directory:
         dataset_training = \
@@ -385,13 +362,9 @@ def dataset_builder(
     # --- save the augmentation functions
     result = {
         SUPERRES_AUGMENTATION_FN_STR: superres_augmentation_fn,
-        GEOMETRIC_AUGMENTATION_FN_STR: geometric_augmentations_fn
+        GEOMETRIC_AUGMENTATION_FN_STR: geometric_augmentations_fn,
+        NOISE_AUGMENTATION_FN_STR: noise_augmentations_fn
     }
-
-    if mix_noise_types:
-        result[NOISE_AUGMENTATION_FN_STR] = noise_augmentations_mix_fn
-    else:
-        result[NOISE_AUGMENTATION_FN_STR] = noise_augmentations_fn
 
     @tf.function(
         input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)],
