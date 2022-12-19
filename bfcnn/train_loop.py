@@ -245,7 +245,6 @@ def train_loop(
                 model_hydra=hydra,
                 model_backbone=backbone,
                 model_denoiser=denoiser,
-                model_inpaint=inpaint,
                 model_superres=superres,
                 model_normalizer=normalizer,
                 model_denormalizer=denormalizer)
@@ -272,7 +271,6 @@ def train_loop(
 
         # downsample test image because it produces OOM
         test_images = superres_augmentation_fn(test_images)
-        mask_test_images = test_images[:, :, :, 0] * 0.0 + 1.0
 
         # ---
         while global_epoch < global_total_epochs:
@@ -296,7 +294,6 @@ def train_loop(
                 # create batches for all subnetworks
                 noisy_batch = noise_augmentation_fn(input_batch)
                 downsampled_batch = superres_augmentation_fn(input_batch)
-                masked_batch, mask_batch = inpaint_augmentation_fn(input_batch)
 
                 # Open a GradientTape to record the operations run
                 # during the forward pass,
@@ -306,18 +303,12 @@ def train_loop(
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
-                    denoiser_output, denoiser_uq_output, _, _ = \
-                        hydra([noisy_batch,
-                               (noisy_batch[:, :, :, 0] * 0.0 + 1.0)],
+                    denoiser_output, denoiser_uq_output, _ = \
+                        hydra(noisy_batch,
                               training=True)
 
-                    _, _, inpaint_output, _ = \
-                        hydra([masked_batch, mask_batch],
-                              training=True)
-
-                    _, _, _, superres_output = \
-                        hydra([downsampled_batch,
-                               (downsampled_batch[:, :, :, 0] * 0.0 + 1.0)],
+                    _, _, superres_output = \
+                        hydra(downsampled_batch,
                               training=True)
 
                     # compute the loss value for this mini-batch
@@ -327,13 +318,7 @@ def train_loop(
                             predicted_batch=denoiser_output)
                     denoiser_uq_loss_map = \
                         denoiser_uq_loss_fn(
-                            input_batch=input_batch,
-                            predicted_batch=denoiser_output,
                             uncertainty_batch=denoiser_uq_output)
-                    inpaint_loss_map = \
-                        inpaint_loss_fn(
-                            input_batch=input_batch,
-                            predicted_batch=inpaint_output)
                     superres_loss_map = \
                         superres_loss_fn(
                             input_batch=input_batch,
@@ -343,8 +328,6 @@ def train_loop(
 
                     if tf.reduce_any(tf.math.is_nan(denoiser_loss_map[TOTAL_LOSS_STR])).numpy():
                         logger.info("found NaN in denoiser_loss_map")
-                    if tf.reduce_any(tf.math.is_nan(inpaint_loss_map[TOTAL_LOSS_STR])).numpy():
-                        logger.info("found NaN in inpaint_loss_map")
                     if tf.reduce_any(tf.math.is_nan(superres_loss_map[TOTAL_LOSS_STR])).numpy():
                         logger.info("found NaN in superres_loss_map")
                     if tf.reduce_any(tf.math.is_nan(model_loss_map[TOTAL_LOSS_STR])).numpy():
@@ -353,9 +336,8 @@ def train_loop(
                         logger.info("found NaN in denoiser_uq_loss_map")
 
                     total_loss = \
-                        denoiser_loss_map[TOTAL_LOSS_STR] + \
-                        inpaint_loss_map[TOTAL_LOSS_STR] + \
-                        superres_loss_map[TOTAL_LOSS_STR] + \
+                        denoiser_loss_map[TOTAL_LOSS_STR] / 2.0 + \
+                        superres_loss_map[TOTAL_LOSS_STR] / 2.0 + \
                         model_loss_map[TOTAL_LOSS_STR] + \
                         denoiser_uq_loss_map[TOTAL_LOSS_STR]
 
@@ -379,10 +361,6 @@ def train_loop(
                                   data=tf.reduce_mean(denoiser_uq_output),
                                   step=global_step)
 
-                tf.summary.scalar(name="quality/inpaint_psnr", data=inpaint_loss_map[PSNR_STR], step=global_step)
-                tf.summary.scalar(name="loss/inpaint_mae", data=inpaint_loss_map[MAE_LOSS_STR], step=global_step)
-                tf.summary.scalar(name="loss/inpaint_total", data=inpaint_loss_map[TOTAL_LOSS_STR], step=global_step)
-
                 tf.summary.scalar(name="quality/superres_psnr", data=superres_loss_map[PSNR_STR], step=global_step)
                 tf.summary.scalar(name="loss/superres_mae", data=superres_loss_map[MAE_LOSS_STR], step=global_step)
                 tf.summary.scalar(name="loss/superres_total", data=superres_loss_map[TOTAL_LOSS_STR], step=global_step)
@@ -392,13 +370,12 @@ def train_loop(
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
-                    test_denoiser_output, _, _, test_superres_output = \
-                        hydra([test_images, mask_test_images], training=False)
+                    test_denoiser_output, _, test_superres_output = \
+                        hydra(test_images, training=False)
                     visualize(
                         global_step=global_step,
                         input_batch=input_batch,
                         noisy_batch=noisy_batch,
-                        inpaint_batch=inpaint_output,
                         denoiser_batch=denoiser_output,
                         superres_batch=superres_output,
                         denoiser_uq_batch=denoiser_uq_output,

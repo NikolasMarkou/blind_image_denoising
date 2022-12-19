@@ -201,18 +201,6 @@ def mae_diff(
                  axis=axis,
                  keepdims=False,
                  dtype=tf.float32))
-    else:
-        # mean over all values
-        d = \
-            tf.reduce_mean(
-                input_tensor=d,
-                axis=[1, 2],
-                keepdims=False)
-        d = \
-            tf.reduce_mean(
-                input_tensor=d,
-                axis=[0],
-                keepdims=False)
 
     # --- mean over batch
     return tf.reduce_mean(d)
@@ -261,7 +249,7 @@ def rmse_diff(
     d = tf.square(d)
     # mean over all dims
     d = tf.reduce_mean(d, axis=[1, 2, 3])
-    d = tf.sqrt(d)
+    d = tf.sqrt(tf.nn.relu(d))
     # mean over batch
     return tf.reduce_mean(d, axis=[0])
 
@@ -405,14 +393,10 @@ def loss_function_builder(
 
     # ---
     def denoiser_uq_loss(
-            input_batch: tf.Tensor,
-            predicted_batch: tf.Tensor,
             uncertainty_batch: tf.Tensor) -> tf.Tensor:
         uncertainty_batch = \
             tf.clip_by_value(uncertainty_batch, clip_value_min=0.05, clip_value_max=1.0)
-        uq_loss = tf.reduce_mean(uncertainty_batch, axis=[1, 2], keepdims=False)
-        uq_loss = tf.reduce_mean(uq_loss, axis=[0], keepdims=False)
-        uq_loss = tf.reduce_mean(uq_loss)
+        uq_loss = tf.reduce_mean(uncertainty_batch)
 
         return {
             TOTAL_LOSS_STR: uq_loss * uq_multiplier,

@@ -42,7 +42,6 @@ def visualize(
         noisy_batch,
         denoiser_batch,
         superres_batch,
-        inpaint_batch,
         denoiser_uq_batch,
         test_denoiser_batch=None,
         test_superres_batch=None,
@@ -88,14 +87,6 @@ def visualize(
             name="output/superres",
             step=global_step,
             data=superres_batch / 255,
-            max_outputs=visualization_number)
-
-    # --- output inpaint
-    if inpaint_batch is not None:
-        tf.summary.image(
-            name="output/inpaint",
-            step=global_step,
-            data=inpaint_batch / 255,
             max_outputs=visualization_number)
 
     # --- test denoiser
