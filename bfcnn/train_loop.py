@@ -270,35 +270,6 @@ def train_loop(
         else:
             logger.info("!!! Did NOT find checkpoint to restore !!!")
 
-        # augmentation function
-        geometric_augmentation_fn = \
-            tf.function(
-                func=geometric_augmentation_fn,
-                input_signature=[
-                    tf.TensorSpec(shape=[None, None, None, None],
-                                  dtype=tf.uint8)])
-
-        noise_augmentation_fn = \
-            tf.function(
-                func=noise_augmentation_fn,
-                input_signature=[
-                    tf.TensorSpec(shape=[None, None, None, None],
-                                  dtype=tf.float32)])
-
-        inpaint_augmentation_fn = \
-            tf.function(
-                func=inpaint_augmentation_fn,
-                input_signature=[
-                    tf.TensorSpec(shape=[None, None, None, None],
-                                  dtype=tf.float32)])
-
-        superres_augmentation_fn = \
-            tf.function(
-                func=superres_augmentation_fn,
-                input_signature=[
-                    tf.TensorSpec(shape=[None, None, None, None],
-                                  dtype=tf.float32)])
-
         # downsample test image because it produces OOM
         test_images = superres_augmentation_fn(test_images)
         mask_test_images = test_images[:, :, :, 0] * 0.0 + 1.0

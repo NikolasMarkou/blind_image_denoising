@@ -36,14 +36,17 @@ def dataset_builder(
     # crop image from dataset
     input_shape = config["input_shape"]
     color_mode = config.get("color_mode", "rgb").strip().lower()
-    if color_mode == "grayscale":
-        channels = 1
-    elif color_mode == "rgb":
-        channels = 3
+    if color_mode == "rgb":
+        num_channels = 3
     elif color_mode == "rgba":
-        channels = 4
+        num_channels = 4
+    elif color_mode == "grayscale":
+        num_channels = 1
     else:
-        raise ValueError(f"don't know how to handle color_mode [{color_mode}]")
+        raise ValueError(
+            '`color_mode` must be one of {"rgb", "rgba", "grayscale"}. '
+            f"Received: color_mode={color_mode}"
+        )
     # ---
     inputs = config["inputs"]
     # directory to load data from
@@ -119,6 +122,9 @@ def dataset_builder(
     # --- set random seed to get the same result
     tf.random.set_seed(0)
 
+    @tf.function(input_signature=[
+                    tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], num_channels],
+                                  dtype=tf.uint8)])
     def geometric_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -168,6 +174,9 @@ def dataset_builder(
         return input_batch
 
     # --- define inpainting augmentation function
+    @tf.function(input_signature=[
+                    tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], num_channels],
+                                  dtype=tf.float32)])
     def inpaint_augmentation_fn(
             input_batch: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
         input_shape_inference = tf.shape(input_batch)
@@ -193,6 +202,9 @@ def dataset_builder(
         return input_batch, mask_batch
 
     # --- define superres augmentation function
+    @tf.function(input_signature=[
+                    tf.TensorSpec(shape=[None, None, None, num_channels],
+                                  dtype=tf.float32)])
     def superres_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         downsampled_batch = \
@@ -209,6 +221,9 @@ def dataset_builder(
         return downsampled_batch
 
     # --- define noise augmentation function
+    @tf.function(input_signature=[
+                    tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], num_channels],
+                                  dtype=tf.float32)])
     def noise_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -404,26 +419,13 @@ def dataset_builder(
     else:
         result[NOISE_AUGMENTATION_FN_STR] = noise_augmentations_fn
 
-    # --- create the dataset
-    if color_mode == "rgb":
-        num_channels = 3
-    elif color_mode == "rgba":
-        num_channels = 4
-    elif color_mode == "grayscale":
-        num_channels = 1
-    else:
-        raise ValueError(
-            '`color_mode` must be one of {"rgb", "rgba", "grayscale"}. '
-            f"Received: color_mode={color_mode}"
-        )
-
     @tf.function(
         input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)],
         reduce_retracing=True)
     def load_image_fn(x):
         x = load_image_crop(
             path=x,
-            image_size=(input_shape[0] * 10, input_shape[1] * 10),
+            image_size=None,
             num_channels=num_channels,
             interpolation=tf.image.ResizeMethod.BILINEAR,
             crop_size=(input_shape[0], input_shape[1]),
@@ -432,6 +434,7 @@ def dataset_builder(
             no_crops_per_image=no_crops_per_image)
         return x
 
+    # --- create the dataset
     result[DATASET_TRAINING_FN_STR] = \
         dataset_training \
             .prefetch(buffer_size=64) \
