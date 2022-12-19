@@ -313,7 +313,6 @@ def train_loop(
                 logger.info(f"pruning weights at step [{int(global_step)}]")
                 hydra = prune_fn(model=hydra)
 
-            model_hydra_weights = hydra.trainable_weights
             start_time_epoch = time.time()
 
             # --- iterate over the batches of the dataset
@@ -381,11 +380,11 @@ def train_loop(
                     grads = \
                         tape.gradient(
                             target=total_loss,
-                            sources=model_hydra_weights)
+                            sources=hydra.trainable_weights)
 
                 # --- apply weights
                 optimizer.apply_gradients(
-                    grads_and_vars=zip(grads, model_hydra_weights))
+                    grads_and_vars=zip(grads, hydra.trainable_weights))
 
                 # --- add loss summaries for tensorboard
                 tf.summary.scalar(name="quality/denoiser_psnr", data=denoiser_loss_map[PSNR_STR], step=global_step)
@@ -473,6 +472,7 @@ def train_loop(
                     step=global_step)
 
                 # ---
+                hydra.reset_metrics()
                 global_step.assign_add(1)
 
                 # --- check if total steps reached
