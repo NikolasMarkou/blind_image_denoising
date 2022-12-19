@@ -275,7 +275,7 @@ def train_loop(
             if use_prune and (global_epoch >= prune_start_epoch):
                 logger.info(f"pruning weights at step [{int(global_step)}]")
                 hydra = prune_fn(model=hydra)
-
+            model_weights = hydra.trainable_weights
             start_time_epoch = time.time()
 
             # --- iterate over the batches of the dataset
@@ -283,7 +283,8 @@ def train_loop(
                 start_time_forward_backward = time.time()
 
                 # geometric augmentation and casting to float
-                input_batch = tf.cast(geometric_augmentation_fn(input_batch), dtype=tf.float32)
+                input_batch = geometric_augmentation_fn(input_batch)
+                input_batch = tf.cast(input_batch, dtype=tf.float32)
 
                 # create batches for all subnetworks
                 noisy_batch = noise_augmentation_fn(input_batch)
@@ -329,11 +330,11 @@ def train_loop(
                     grads = \
                         tape.gradient(
                             target=total_loss,
-                            sources=hydra.trainable_weights)
+                            sources=model_weights)
 
                 # --- apply weights
                 optimizer.apply_gradients(
-                    grads_and_vars=zip(grads, hydra.trainable_weights))
+                    grads_and_vars=zip(grads, model_weights))
 
                 # --- add loss summaries for tensorboard
                 tf.summary.scalar(name="quality/denoiser_psnr", data=denoiser_loss_map[PSNR_STR], step=global_step)
