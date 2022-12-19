@@ -467,7 +467,7 @@ def model_denoiser_builder(
                 input=x_i_prob,
                 filters=conv_kernel,
                 strides=(1, 1),
-                padding="SAME") + DEFAULT_EPSILON
+                padding="SAME")
         x_i_diff_square = \
             tf.nn.relu(
                 tf.square(column_kernel - x_i_expected)) + \

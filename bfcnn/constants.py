@@ -3,9 +3,9 @@ from typing import Union, Dict
 
 # ---------------------------------------------------------------------
 
-DEFAULT_EPSILON = 0.0001
-DEFAULT_BN_EPSILON = 1e-4
-DEFAULT_BN_MOMENTUM = 0.999
+DEFAULT_EPSILON = 1e-3
+DEFAULT_BN_EPSILON = 1e-3
+DEFAULT_BN_MOMENTUM = 0.995
 DEFAULT_MULTIPLIER_L1 = 1.0
 DEFAULT_CHANNELWISE_MULTIPLIER_L1 = 0.1
 
