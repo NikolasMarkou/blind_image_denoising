@@ -196,8 +196,8 @@ def train_loop(
 
         # The function to be traced.
         @tf.function
-        def optimized_model(x_input, x_mask):
-            return models.hydra([x_input, x_mask], training=False)
+        def optimized_model(x_input):
+            return models.hydra(x_input, training=False)
 
         x = \
             tf.random.uniform(
@@ -205,13 +205,7 @@ def train_loop(
                 minval=0.0,
                 maxval=255.0,
                 shape=random_batch_size)
-        m = \
-            tf.random.uniform(
-                seed=0,
-                minval=0.0,
-                maxval=1.0,
-                shape=tuple(random_batch_size[0:-1]) + (1,))
-        _ = optimized_model(x, m)
+        _ = optimized_model(x)
         tf.summary.trace_export(
             step=0,
             name="hydra")
