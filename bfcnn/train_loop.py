@@ -76,16 +76,14 @@ def train_loop(
     dataset_res = dataset_builder(config["dataset"])
     dataset_training = dataset_res[DATASET_TRAINING_FN_STR]
     noise_augmentation_fn = dataset_res[NOISE_AUGMENTATION_FN_STR]
-    inpaint_augmentation_fn = dataset_res[INPAINT_AUGMENTATION_FN_STR]
     superres_augmentation_fn = dataset_res[SUPERRES_AUGMENTATION_FN_STR]
     geometric_augmentation_fn = dataset_res[GEOMETRIC_AUGMENTATION_FN_STR]
 
     # --- build loss function
     loss_fn_map = loss_function_builder(config=config["loss"])
-    inpaint_loss_fn = tf.function(func=loss_fn_map[INPAINT_LOSS_FN_STR], reduce_retracing=True)
-    denoiser_loss_fn = tf.function(func=loss_fn_map[DENOISER_LOSS_FN_STR], reduce_retracing=True)
-    superres_loss_fn = tf.function(func=loss_fn_map[SUPERRES_LOSS_FN_STR], reduce_retracing=True)
-    denoiser_uq_loss_fn = tf.function(func=loss_fn_map[DENOISER_UQ_LOSS_FN_STR], reduce_retracing=True)
+    denoiser_loss_fn = tf.function(func=loss_fn_map[DENOISER_LOSS_FN_STR])
+    superres_loss_fn = tf.function(func=loss_fn_map[SUPERRES_LOSS_FN_STR])
+    denoiser_uq_loss_fn = tf.function(func=loss_fn_map[DENOISER_UQ_LOSS_FN_STR])
     model_loss_fn = loss_fn_map[MODEL_LOSS_FN_STR]
 
     # --- build optimizer
@@ -214,7 +212,6 @@ def train_loop(
 
     # get each model
     hydra = models.hydra
-    inpaint = models.hydra
     superres = models.superres
     backbone = models.backbone
     denoiser = models.denoiser
@@ -275,7 +272,7 @@ def train_loop(
             if use_prune and (global_epoch >= prune_start_epoch):
                 logger.info(f"pruning weights at step [{int(global_step)}]")
                 hydra = prune_fn(model=hydra)
-
+            model_weights = hydra.trainable_weights
             start_time_epoch = time.time()
 
             # --- iterate over the batches of the dataset
@@ -306,51 +303,37 @@ def train_loop(
                               training=True)
 
                     # compute the loss value for this mini-batch
-                    denoiser_loss_map = \
-                        denoiser_loss_fn(
-                            input_batch=input_batch,
-                            predicted_batch=denoiser_output)
-                    denoiser_uq_loss_map = \
-                        denoiser_uq_loss_fn(
-                            uncertainty_batch=denoiser_uq_output)
-                    superres_loss_map = \
-                        superres_loss_fn(
-                            input_batch=input_batch,
-                            predicted_batch=superres_output)
-                    model_loss_map = \
-                        model_loss_fn(model=hydra)
+                    denoiser_loss = denoiser_loss_fn(input_batch=input_batch, predicted_batch=denoiser_output)
+                    denoiser_uq_loss = denoiser_uq_loss_fn(uncertainty_batch=denoiser_uq_output)
+                    superres_loss = superres_loss_fn(input_batch=input_batch, predicted_batch=superres_output)
+                    model_loss = model_loss_fn(model=hydra)
 
                     total_loss = \
-                        denoiser_loss_map[TOTAL_LOSS_STR] / 2.0 + \
-                        superres_loss_map[TOTAL_LOSS_STR] / 2.0 + \
-                        model_loss_map[TOTAL_LOSS_STR] + \
-                        denoiser_uq_loss_map[TOTAL_LOSS_STR]
-
-                    grads = \
-                        tape.gradient(
-                            target=total_loss,
-                            sources=hydra.trainable_weights)
+                        denoiser_loss[TOTAL_LOSS_STR] / 2.0 + \
+                        superres_loss[TOTAL_LOSS_STR] / 2.0 + \
+                        model_loss[TOTAL_LOSS_STR] + \
+                        denoiser_uq_loss[TOTAL_LOSS_STR]
 
                 # --- apply weights
                 optimizer.apply_gradients(
-                    grads_and_vars=zip(grads, hydra.trainable_weights))
+                    grads_and_vars=zip(
+                        tape.gradient(target=total_loss, sources=model_weights),
+                        model_weights))
+                tape.reset()
 
                 # --- add loss summaries for tensorboard
-                tf.summary.scalar(name="quality/denoiser_psnr", data=denoiser_loss_map[PSNR_STR], step=global_step)
-                tf.summary.scalar(name="loss/denoiser_mae", data=denoiser_loss_map[MAE_LOSS_STR], step=global_step)
-                tf.summary.scalar(name="loss/denoiser_total", data=denoiser_loss_map[TOTAL_LOSS_STR], step=global_step)
+                tf.summary.scalar(name="quality/denoiser_psnr", data=denoiser_loss[PSNR_STR], step=global_step)
+                tf.summary.scalar(name="loss/denoiser_mae", data=denoiser_loss[MAE_LOSS_STR], step=global_step)
+                tf.summary.scalar(name="loss/denoiser_total", data=denoiser_loss[TOTAL_LOSS_STR], step=global_step)
                 tf.summary.scalar(name="loss/denoiser_uncertainty",
-                                  data=denoiser_uq_loss_map[TOTAL_LOSS_STR],
-                                  step=global_step)
-                tf.summary.scalar(name="quality/denoiser_uncertainty",
-                                  data=tf.reduce_mean(denoiser_uq_output),
+                                  data=denoiser_uq_loss[TOTAL_LOSS_STR],
                                   step=global_step)
 
-                tf.summary.scalar(name="quality/superres_psnr", data=superres_loss_map[PSNR_STR], step=global_step)
-                tf.summary.scalar(name="loss/superres_mae", data=superres_loss_map[MAE_LOSS_STR], step=global_step)
-                tf.summary.scalar(name="loss/superres_total", data=superres_loss_map[TOTAL_LOSS_STR], step=global_step)
+                tf.summary.scalar(name="quality/superres_psnr", data=superres_loss[PSNR_STR], step=global_step)
+                tf.summary.scalar(name="loss/superres_mae", data=superres_loss[MAE_LOSS_STR], step=global_step)
+                tf.summary.scalar(name="loss/superres_total", data=superres_loss[TOTAL_LOSS_STR], step=global_step)
 
-                tf.summary.scalar(name="loss/regularization", data=model_loss_map[REGULARIZATION_LOSS_STR], step=global_step)
+                tf.summary.scalar(name="loss/regularization", data=model_loss[REGULARIZATION_LOSS_STR], step=global_step)
                 tf.summary.scalar(name="loss/total", data=total_loss, step=global_step)
 
                 # --- add image prediction for tensorboard
