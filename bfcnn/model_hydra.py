@@ -416,8 +416,8 @@ def model_denoiser_builder(
     uncertainty_channels = config.get("uncertainty_channels", 16)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
-    linspace_start = config.get("linspace_start", -0.5)
-    linspace_stop = config.get("linspace_stop", +0.5)
+    lin_start = config.get("lin_start", -0.5)
+    lin_stop = config.get("lin_stop", +0.5)
 
     # --- set network parameters
     final_conv_params = dict(
@@ -444,17 +444,11 @@ def model_denoiser_builder(
 
     kernel = \
         tf.linspace(
-            start=linspace_start,
-            stop=linspace_stop,
+            start=lin_start,
+            stop=lin_stop,
             num=uncertainty_channels)
-    conv_kernel = \
-        tf.reshape(
-            tensor=kernel,
-            shape=(1, 1, -1, 1))
-    column_kernel = \
-        tf.reshape(
-            tensor=kernel,
-            shape=(1, 1, 1, -1))
+    conv_kernel = tf.reshape(tensor=kernel, shape=(1, 1, -1, 1))
+    column_kernel = tf.reshape(tensor=kernel, shape=(1, 1, 1, -1))
 
     x_expected = []
     x_uncertainty = []
