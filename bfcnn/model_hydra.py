@@ -33,7 +33,6 @@ BuilderResults = namedtuple(
         "normalizer",
         "denormalizer",
         "denoiser",
-        "inpaint",
         "superres",
         "hydra"
     })
@@ -48,7 +47,7 @@ def model_builder(
     model_backbone, model_normalizer, model_denormalizer = \
         model_backbone_builder(config=config[BACKBONE_STR])
 
-    # --- build denoiser, inpaint, superres
+    # --- build denoiser, superres
     model_denoiser = model_denoiser_builder(config=config[DENOISER_STR])
     model_superres = model_superres_builder(config=config[SUPERRES_STR])
 
@@ -478,103 +477,6 @@ def model_denoiser_builder(
             inputs=model_input_layer,
             outputs=[x_expected, x_uncertainty],
             name=f"denoiser_uncertainty_head")
-
-    return model_head
-
-
-# ---------------------------------------------------------------------
-
-
-def model_inpaint_builder(
-        config: Dict,
-        **kwargs):
-    """
-    builds the inpaint model on top of the backbone layer
-
-    :param config: dictionary with the inpaint configuration
-
-    :return: inpaint head model
-    """
-    # --- argument checking
-    logger.info(f"building inpaint model with [{config}]")
-    if kwargs:
-        logger.info(f"unused parameters [{kwargs}]")
-
-    # --- set configuration
-    use_bias = config.get("use_bias", False)
-    output_channels = config.get("output_channels", 3)
-    input_shape = input_shape_fixer(config.get("input_shape"))
-    final_activation = config.get("final_activation", "tanh")
-    kernel_initializer = config.get("kernel_initializer", "glorot_normal")
-    kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
-    # add one channel to accommodate the mask
-    backbone_config = copy.deepcopy(config)
-    backbone_config["input_shape"][2] += 1
-
-    # --- set network parameters
-    final_conv_params = dict(
-        kernel_size=1,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        filters=output_channels,
-        activation=final_activation,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
-    # --- define inpaint head here
-    model_input_layer = \
-        tf.keras.Input(
-            shape=input_shape,
-            name="input_tensor")
-    original_input_layer = \
-        tf.keras.Input(
-            shape=(None, None, output_channels),
-            name="original_input_tensor")
-    mask_input_layer = \
-        tf.keras.Input(
-            shape=(None, None, 1),
-            name="mask_input_tensor")
-
-    x = model_input_layer
-
-    x = \
-        tf.keras.layers.Concatenate()(
-            [x, mask_input_layer])
-
-    backbone, _, _ = model_backbone_builder(backbone_config)
-    x = backbone(x)
-
-    x = \
-        tf.keras.layers.Concatenate()(
-            [x, mask_input_layer])
-
-    x = \
-        conv2d_wrapper(
-            input_layer=x,
-            bn_params=None,
-            conv_params=final_conv_params,
-            channelwise_scaling=False,
-            multiplier_scaling=False)
-
-    x = \
-        tf.keras.layers.Multiply()([x, 1.0 - mask_input_layer]) + \
-        tf.keras.layers.Multiply()([original_input_layer, mask_input_layer])
-
-    x_result = \
-        tf.keras.layers.Layer(
-            name="output_tensor")(x)
-
-    model_head = \
-        tf.keras.Model(
-            inputs=[
-                model_input_layer,
-                original_input_layer,
-                mask_input_layer
-            ],
-            outputs=x_result,
-            name=f"inpaint_head")
 
     return model_head
 
