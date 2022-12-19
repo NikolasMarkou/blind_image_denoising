@@ -506,6 +506,9 @@ def model_superres_builder(
     final_activation = config.get("final_activation", "tanh")
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
+    # add one channel to accommodate the mask
+    backbone_config = copy.deepcopy(config)
+    backbone_config["input_shape"][2] += output_channels
 
     # --- set network parameters
     upsampling_params = dict(
@@ -530,7 +533,7 @@ def model_superres_builder(
             name="input_tensor")
     model_input_uncertainty_layer = \
         tf.keras.Input(
-            shape=input_shape,
+            shape=(None, None, output_channels),
             name="input_uncertainty_tensor")
 
     x = \
@@ -541,7 +544,7 @@ def model_superres_builder(
         tf.keras.layers.UpSampling2D(
             **upsampling_params)(x)
 
-    backbone, _, _ = model_backbone_builder(config)
+    backbone, _, _ = model_backbone_builder(backbone_config)
     x = backbone(x)
 
     x = \
