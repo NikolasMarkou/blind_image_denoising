@@ -17,7 +17,8 @@ def image_filenames_dataset_from_directory_gen(
         directory: Union[str, List[str]],
         follow_links=False) -> Generator[str, None, None]:
     """
-    Generates a `tf.data.Dataset` from image filenames in a directory.
+    Generates a `tf.data.Dataset`
+    from image filenames in a directory or multiple directories.
     """
 
     if isinstance(directory, str):
@@ -46,32 +47,6 @@ def image_filenames_dataset_from_directory_gen(
             output_signature=(
                 tf.TensorSpec(shape=(), dtype=tf.string)
             ))
-
-# ---------------------------------------------------------------------
-
-
-# def image_filenames_dataset_from_directory_gen(
-#         directory: str,
-#         follow_links=False):
-#     """
-#     Generates a `tf.data.Dataset` from image filenames in a directory.
-#     """
-#
-#     def gen_fn():
-#         return index_directory_gen(
-#                 directory=directory,
-#                 formats=SUPPORTED_IMAGE_LIST_FORMATS,
-#                 follow_links=follow_links)
-#
-#     dataset = \
-#         tf.data.Dataset.from_generator(
-#             generator=gen_fn,
-#             output_signature=(
-#                 tf.TensorSpec(shape=(), dtype=tf.string)
-#             ))
-#
-#     return dataset
-
 
 # ---------------------------------------------------------------------
 
