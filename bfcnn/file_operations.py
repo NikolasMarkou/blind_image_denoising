@@ -186,34 +186,29 @@ def load_image(
 
     :return: tensor
     """
-    # --- argument checking
-
     # --- set variables
     if isinstance(path, Path):
         path = str(path)
 
-    img = tf.random.uniform(shape=(64, 64, 3), minval=0, maxval=255, dtype=tf.int32)
-    img = tf.cast(img, dtype=tf.uint8)
+    # --- read file, decode it
+    raw = tf.io.read_file(filename=path)
 
-    # # --- read file, decode it
-    # raw = tf.io.read_file(filename=path)
-    #
-    # img = \
-    #     tf.image.decode_image(
-    #         contents=raw,
-    #         channels=num_channels,
-    #         dtype=dtype,
-    #         expand_animations=False)
-    #
-    # # --- resize it
-    # if image_size is not None:
-    #     img = \
-    #         tf.image.resize_with_pad(
-    #             image=img,
-    #             target_height=image_size[0],
-    #             target_width=image_size[1],
-    #             method=interpolation,
-    #             antialias=False)
+    img = \
+        tf.image.decode_image(
+            dtype=dtype,
+            contents=raw,
+            channels=num_channels,
+            expand_animations=False)
+
+    # --- resize it
+    if image_size is not None:
+        img = \
+            tf.image.resize_with_pad(
+                image=img,
+                target_height=image_size[0],
+                target_width=image_size[1],
+                method=interpolation,
+                antialias=False)
 
     if expand_dims:
         img = tf.expand_dims(img, axis=0)

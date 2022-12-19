@@ -423,7 +423,7 @@ def dataset_builder(
     def load_image_fn(x):
         x = load_image_crop(
             path=x,
-            image_size=None,
+            image_size=(input_shape[0] * 10, input_shape[1] * 10),
             num_channels=num_channels,
             interpolation=tf.image.ResizeMethod.BILINEAR,
             crop_size=(input_shape[0], input_shape[1]),
@@ -434,14 +434,14 @@ def dataset_builder(
 
     result[DATASET_TRAINING_FN_STR] = \
         dataset_training \
-            .prefetch(buffer_size=128) \
+            .prefetch(buffer_size=64) \
             .shuffle(
                 seed=0,
                 buffer_size=1024,
                 reshuffle_each_iteration=False) \
             .map(
                 map_func=load_image_fn,
-                num_parallel_calls=tf.data.AUTOTUNE) \
+                num_parallel_calls=batch_size) \
             .rebatch(batch_size=batch_size) \
             .prefetch(1)
 
