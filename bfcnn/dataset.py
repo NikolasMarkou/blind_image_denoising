@@ -194,7 +194,7 @@ def dataset_builder(
 
     # --- define noise augmentation function
     @tf.function(input_signature=[
-                    tf.TensorSpec(shape=[None, None, None, num_channels],
+                    tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], num_channels],
                                   dtype=tf.float32)])
     def noise_augmentations_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
@@ -388,7 +388,10 @@ def dataset_builder(
     if mix_noise_types:
         result[NOISE_AUGMENTATION_FN_STR] = noise_augmentations_mix_fn
     else:
-        result[NOISE_AUGMENTATION_FN_STR] = noise_augmentations_fn
+        result[NOISE_AUGMENTATION_FN_STR] = \
+            noise_augmentations_fn.get_concrete_function(
+                    tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], num_channels],
+                                  dtype=tf.float32))
 
     @tf.function(
         input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)],
