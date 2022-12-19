@@ -408,6 +408,8 @@ def loss_function_builder(
             input_batch: tf.Tensor,
             predicted_batch: tf.Tensor,
             uncertainty_batch: tf.Tensor) -> tf.Tensor:
+        uncertainty_batch = \
+            tf.clip_by_value(uncertainty_batch, clip_value_min=0.05, clip_value_max=1.0)
         uq_loss = tf.reduce_mean(uncertainty_batch, axis=[1, 2], keepdims=False)
         uq_loss = tf.reduce_mean(uq_loss, axis=[0], keepdims=False)
         uq_loss = tf.reduce_mean(uq_loss)
