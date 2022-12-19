@@ -63,7 +63,7 @@ def model_builder(
 
     # heads
     denoiser_mid, denoiser_uq_mid = model_denoiser(backbone_mid)
-    superres_mid = model_superres([backbone_mid, denoiser_uq_mid])
+    superres_mid = model_superres([backbone_mid, tf.stop_gradient(denoiser_uq_mid)])
 
     # denormalize
     denoiser_output = model_denormalizer(denoiser_mid, training=False)
