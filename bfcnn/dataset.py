@@ -381,13 +381,8 @@ def dataset_builder(
 
     # --- save the augmentation functions
     result = {
-        SUPERRES_AUGMENTATION_FN_STR: superres_augmentation_fn.get_concrete_function(
-                    tf.TensorSpec(shape=[None, input_shape[0]/2, input_shape[1]/2, num_channels],
-                                  dtype=tf.float32)),
-        GEOMETRIC_AUGMENTATION_FN_STR:
-            geometric_augmentations_fn.get_concrete_function(
-                    tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], num_channels],
-                                  dtype=tf.uint8))
+        SUPERRES_AUGMENTATION_FN_STR: superres_augmentation_fn,
+        GEOMETRIC_AUGMENTATION_FN_STR: geometric_augmentations_fn
     }
 
     if mix_noise_types:
