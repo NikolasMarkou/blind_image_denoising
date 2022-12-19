@@ -440,7 +440,7 @@ def model_denoiser_builder(
     x = model_input_layer
 
     backbone, _, _ = model_backbone_builder(config)
-    x = backbone(x)
+    x = backbone(x + DEFAULT_EPSILON)
 
     kernel = \
         tf.linspace(
@@ -461,21 +461,19 @@ def model_denoiser_builder(
     for i in range(output_channels):
         x_i = \
             conv2d_wrapper(
-                input_layer=x,
+                input_layer=x + DEFAULT_EPSILON,
                 bn_params=None,
                 conv_params=final_conv_params,
                 channelwise_scaling=False,
                 multiplier_scaling=False)
-        x_i = tf.nn.relu(x_i) + DEFAULT_EPSILON
-        x_i_prob = \
-            tf.nn.softmax(x_i, axis=3)
+        x_i_prob = tf.nn.softmax(x_i, axis=3) + DEFAULT_EPSILON
         # compute expected x_i
         x_i_expected = \
             tf.nn.conv2d(
                 input=x_i_prob,
                 filters=conv_kernel,
                 strides=(1, 1),
-                padding="SAME")
+                padding="SAME") + DEFAULT_EPSILON
         x_i_diff_square = \
             tf.nn.relu(
                 tf.square(column_kernel - x_i_expected)) + \
