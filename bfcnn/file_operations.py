@@ -1,5 +1,4 @@
 import os
-import numpy as np
 import tensorflow as tf
 from pathlib import Path
 from typing import Tuple, Union, Any, Generator, List
@@ -13,7 +12,7 @@ from .utilities import logger, random_crops, layer_normalize, merge_iterators
 SUPPORTED_IMAGE_LIST_FORMATS = (".bmp", ".gif", ".jpeg", ".jpg", ".png")
 
 
-def image_filenames_dataset_from_directory_gen(
+def image_filenames_dataset(
         directory: Union[str, List[str]],
         follow_links=False) -> Generator[str, None, None]:
     """
@@ -106,8 +105,8 @@ def index_subdirectory_gen(
 
 def iter_valid_files(directory, follow_links, formats):
     walk = os.walk(directory, followlinks=follow_links)
-    for root, _, files in sorted(walk, key=lambda x: x[0]):
-        for filename in sorted(files):
+    for root, _, files in walk:
+        for filename in files:
             if filename.lower().endswith(formats):
                 yield root, filename
 

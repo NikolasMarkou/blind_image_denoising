@@ -9,7 +9,7 @@ from typing import Dict, Callable, Iterator, Tuple
 from .custom_logger import logger
 from .utilities import merge_iterators
 from .file_operations import \
-    image_filenames_dataset_from_directory_gen, \
+    image_filenames_dataset, \
     load_image_crop
 
 # ---------------------------------------------------------------------
@@ -401,7 +401,7 @@ def dataset_builder(
     # --- define generator function from directory
     if directory:
         dataset_training = \
-            image_filenames_dataset_from_directory_gen(
+            image_filenames_dataset(
                 directory=directory,
                 follow_links=True)
     else:
