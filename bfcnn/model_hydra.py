@@ -63,7 +63,7 @@ def model_builder(
 
     # heads
     denoiser_mid, denoiser_uq_mid = model_denoiser(backbone_mid)
-    superres_mid = model_superres(backbone_mid)
+    superres_mid = model_superres([backbone_mid, denoiser_uq_mid])
 
     # denormalize
     denoiser_output = model_denormalizer(denoiser_mid, training=False)
@@ -528,8 +528,14 @@ def model_superres_builder(
         tf.keras.Input(
             shape=input_shape,
             name="input_tensor")
+    model_input_uncertainty_layer = \
+        tf.keras.Input(
+            shape=input_shape,
+            name="input_uncertainty_tensor")
 
-    x = model_input_layer
+    x = \
+        tf.keras.layers.Concatenate()(
+            [model_input_layer, model_input_uncertainty_layer])
 
     x = \
         tf.keras.layers.UpSampling2D(
@@ -552,7 +558,9 @@ def model_superres_builder(
 
     model_head = \
         tf.keras.Model(
-            inputs=model_input_layer,
+            inputs=[
+                model_input_layer,
+                model_input_uncertainty_layer],
             outputs=x_result,
             name=f"superres_head")
 

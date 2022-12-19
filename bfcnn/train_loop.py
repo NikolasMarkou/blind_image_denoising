@@ -320,15 +320,6 @@ def train_loop(
                     model_loss_map = \
                         model_loss_fn(model=hydra)
 
-                    if tf.reduce_any(tf.math.is_nan(denoiser_loss_map[TOTAL_LOSS_STR])).numpy():
-                        logger.info("found NaN in denoiser_loss_map")
-                    if tf.reduce_any(tf.math.is_nan(superres_loss_map[TOTAL_LOSS_STR])).numpy():
-                        logger.info("found NaN in superres_loss_map")
-                    if tf.reduce_any(tf.math.is_nan(model_loss_map[TOTAL_LOSS_STR])).numpy():
-                        logger.info("found NaN in model_loss_map")
-                    if tf.reduce_any(tf.math.is_nan(denoiser_uq_loss_map[TOTAL_LOSS_STR])).numpy():
-                        logger.info("found NaN in denoiser_uq_loss_map")
-
                     total_loss = \
                         denoiser_loss_map[TOTAL_LOSS_STR] / 2.0 + \
                         superres_loss_map[TOTAL_LOSS_STR] / 2.0 + \
