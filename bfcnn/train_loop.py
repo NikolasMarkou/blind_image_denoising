@@ -15,6 +15,7 @@ from .custom_logger import logger
 from .loss import \
     loss_function_builder, \
     MODEL_LOSS_FN_STR, \
+    INPAINT_LOSS_FN_STR, \
     DENOISER_LOSS_FN_STR, \
     SUPERRES_LOSS_FN_STR, \
     DENOISER_UQ_LOSS_FN_STR
@@ -27,6 +28,7 @@ from .dataset import \
     dataset_builder, \
     DATASET_TRAINING_FN_STR, \
     NOISE_AUGMENTATION_FN_STR, \
+    INPAINT_AUGMENTATION_FN_STR, \
     SUPERRES_AUGMENTATION_FN_STR, \
     GEOMETRIC_AUGMENTATION_FN_STR
 
@@ -74,11 +76,13 @@ def train_loop(
     dataset_res = dataset_builder(config["dataset"])
     dataset_training = dataset_res[DATASET_TRAINING_FN_STR]
     noise_augmentation_fn = dataset_res[NOISE_AUGMENTATION_FN_STR]
+    inpaint_augmentation_fn = dataset_res[INPAINT_AUGMENTATION_FN_STR]
     superres_augmentation_fn = dataset_res[SUPERRES_AUGMENTATION_FN_STR]
     geometric_augmentation_fn = dataset_res[GEOMETRIC_AUGMENTATION_FN_STR]
 
     # --- build loss function
     loss_fn_map = loss_function_builder(config=config["loss"])
+    inpaint_loss_fn = tf.function(func=loss_fn_map[INPAINT_LOSS_FN_STR], reduce_retracing=True)
     denoiser_loss_fn = tf.function(func=loss_fn_map[DENOISER_LOSS_FN_STR], reduce_retracing=True)
     superres_loss_fn = tf.function(func=loss_fn_map[SUPERRES_LOSS_FN_STR], reduce_retracing=True)
     denoiser_uq_loss_fn = tf.function(func=loss_fn_map[DENOISER_UQ_LOSS_FN_STR], reduce_retracing=True)
@@ -210,6 +214,7 @@ def train_loop(
 
     # get each model
     hydra = models.hydra
+    inpaint = models.hydra
     superres = models.superres
     backbone = models.backbone
     denoiser = models.denoiser
