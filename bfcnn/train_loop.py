@@ -293,24 +293,10 @@ def train_loop(
                 # geometric augmentation and casting to float
                 input_batch = tf.cast(geometric_augmentation_fn(input_batch), dtype=tf.float32)
 
-                if tf.reduce_any(tf.math.is_nan(input_batch)).numpy():
-                    logger.info("found NaN in input_batch")
-
                 # create batches for all subnetworks
                 noisy_batch = noise_augmentation_fn(input_batch)
-
-                if tf.reduce_any(tf.math.is_nan(noisy_batch)).numpy():
-                    logger.info("found NaN in noisy_batch")
-
                 downsampled_batch = superres_augmentation_fn(input_batch)
-
-                if tf.reduce_any(tf.math.is_nan(downsampled_batch)).numpy():
-                    logger.info("found NaN in downsampled_batch")
-
                 masked_batch, mask_batch = inpaint_augmentation_fn(input_batch)
-
-                if tf.reduce_any(tf.math.is_nan(masked_batch)).numpy():
-                    logger.info("found NaN in masked_batch")
 
                 # Open a GradientTape to record the operations run
                 # during the forward pass,
@@ -355,15 +341,23 @@ def train_loop(
                     model_loss_map = \
                         model_loss_fn(model=hydra)
 
+                    if tf.reduce_any(tf.math.is_nan(denoiser_loss_map[TOTAL_LOSS_STR])).numpy():
+                        logger.info("found NaN in denoiser_loss_map")
+                    if tf.reduce_any(tf.math.is_nan(inpaint_loss_map[TOTAL_LOSS_STR])).numpy():
+                        logger.info("found NaN in inpaint_loss_map")
+                    if tf.reduce_any(tf.math.is_nan(superres_loss_map[TOTAL_LOSS_STR])).numpy():
+                        logger.info("found NaN in superres_loss_map")
+                    if tf.reduce_any(tf.math.is_nan(model_loss_map[TOTAL_LOSS_STR])).numpy():
+                        logger.info("found NaN in model_loss_map")
+                    if tf.reduce_any(tf.math.is_nan(denoiser_uq_loss_map[TOTAL_LOSS_STR])).numpy():
+                        logger.info("found NaN in denoiser_uq_loss_map")
+
                     total_loss = \
                         denoiser_loss_map[TOTAL_LOSS_STR] + \
                         inpaint_loss_map[TOTAL_LOSS_STR] + \
                         superres_loss_map[TOTAL_LOSS_STR] + \
                         model_loss_map[TOTAL_LOSS_STR] + \
                         denoiser_uq_loss_map[TOTAL_LOSS_STR]
-
-                    if tf.reduce_any(tf.math.is_nan(total_loss)).numpy():
-                        logger.info("found NaN in total_loss")
 
                     grads = \
                         tape.gradient(
