@@ -298,60 +298,60 @@ def train_loop(
                     downsampled_batch = superres_augmentation_fn(input_batch)
                     masked_batch, mask_batch = inpaint_augmentation_fn(input_batch)
 
-                # Open a GradientTape to record the operations run
-                # during the forward pass,
-                # which enables auto-differentiation.
-                with tf.GradientTape() as tape:
-                    # run the forward pass of the layer.
-                    # The operations that the layer applies
-                    # to its inputs are going to be recorded
-                    # on the GradientTape.
-                    denoiser_output, denoiser_uq_output, _, _ = \
-                        hydra([noisy_batch,
-                               (noisy_batch[:, :, :, 0] * 0.0 + 1.0)],
-                              training=True)
+                    # Open a GradientTape to record the operations run
+                    # during the forward pass,
+                    # which enables auto-differentiation.
+                    with tf.GradientTape() as tape:
+                        # run the forward pass of the layer.
+                        # The operations that the layer applies
+                        # to its inputs are going to be recorded
+                        # on the GradientTape.
+                        denoiser_output, denoiser_uq_output, _, _ = \
+                            hydra([noisy_batch,
+                                   (noisy_batch[:, :, :, 0] * 0.0 + 1.0)],
+                                  training=True)
 
-                    _, _, inpaint_output, _ = \
-                        hydra([masked_batch, mask_batch],
-                              training=True)
+                        _, _, inpaint_output, _ = \
+                            hydra([masked_batch, mask_batch],
+                                  training=True)
 
-                    _, _, _, superres_output = \
-                        hydra([downsampled_batch,
-                               (downsampled_batch[:, :, :, 0] * 0.0 + 1.0)],
-                              training=True)
+                        _, _, _, superres_output = \
+                            hydra([downsampled_batch,
+                                   (downsampled_batch[:, :, :, 0] * 0.0 + 1.0)],
+                                  training=True)
 
-                    # compute the loss value for this mini-batch
-                    denoiser_loss_map = \
-                        denoiser_loss_fn(
-                            input_batch=input_batch,
-                            predicted_batch=denoiser_output)
-                    denoiser_uq_loss_map = \
-                        denoiser_uq_loss_fn(
-                            input_batch=input_batch,
-                            predicted_batch=denoiser_output,
-                            uncertainty_batch=denoiser_uq_output)
-                    inpaint_loss_map = \
-                        inpaint_loss_fn(
-                            input_batch=input_batch,
-                            predicted_batch=inpaint_output)
-                    superres_loss_map = \
-                        superres_loss_fn(
-                            input_batch=input_batch,
-                            predicted_batch=superres_output)
-                    model_loss_map = \
-                        model_loss_fn(model=hydra)
+                        # compute the loss value for this mini-batch
+                        denoiser_loss_map = \
+                            denoiser_loss_fn(
+                                input_batch=input_batch,
+                                predicted_batch=denoiser_output)
+                        denoiser_uq_loss_map = \
+                            denoiser_uq_loss_fn(
+                                input_batch=input_batch,
+                                predicted_batch=denoiser_output,
+                                uncertainty_batch=denoiser_uq_output)
+                        inpaint_loss_map = \
+                            inpaint_loss_fn(
+                                input_batch=input_batch,
+                                predicted_batch=inpaint_output)
+                        superres_loss_map = \
+                            superres_loss_fn(
+                                input_batch=input_batch,
+                                predicted_batch=superres_output)
+                        model_loss_map = \
+                            model_loss_fn(model=hydra)
 
-                    total_loss = \
-                        denoiser_loss_map[TOTAL_LOSS_STR] + \
-                        inpaint_loss_map[TOTAL_LOSS_STR] + \
-                        superres_loss_map[TOTAL_LOSS_STR] + \
-                        model_loss_map[TOTAL_LOSS_STR] + \
-                        denoiser_uq_loss_map[TOTAL_LOSS_STR]
+                        total_loss = \
+                            denoiser_loss_map[TOTAL_LOSS_STR] + \
+                            inpaint_loss_map[TOTAL_LOSS_STR] + \
+                            superres_loss_map[TOTAL_LOSS_STR] + \
+                            model_loss_map[TOTAL_LOSS_STR] + \
+                            denoiser_uq_loss_map[TOTAL_LOSS_STR]
 
-                    grads = \
-                        tape.gradient(
-                            target=total_loss,
-                            sources=hydra.trainable_weights)
+                        grads = \
+                            tape.gradient(
+                                target=total_loss,
+                                sources=hydra.trainable_weights)
 
                 # --- apply weights
                 optimizer.apply_gradients(
