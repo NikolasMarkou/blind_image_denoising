@@ -412,8 +412,6 @@ def train_loop(
                 if (global_step % visualization_every) == 0:
                     test_denoiser_output, _, _, test_superres_output = \
                         hydra([test_images, mask_test_images], training=False)
-                    test_denoiser_output, _, _, test_superres_output = \
-                        hydra([test_images, mask_test_images], training=False)
                     visualize(
                         global_step=global_step,
                         input_batch=input_batch,
@@ -425,20 +423,20 @@ def train_loop(
                         test_denoiser_batch=test_denoiser_output,
                         test_superres_batch=test_superres_output,
                         visualization_number=visualization_number)
-
+                    del test_denoiser_output
+                    del test_superres_output
                     # add weight visualization
-                    tf.summary.histogram(
-                        data=get_conv2d_weights(model=hydra),
-                        step=global_step,
-                        buckets=weight_buckets,
-                        name="training/weights")
+                    # tf.summary.histogram(
+                    #     data=get_conv2d_weights(model=hydra),
+                    #     step=global_step,
+                    #     buckets=weight_buckets,
+                    #     name="training/weights")
 
                 # --- prune conv2d
                 if use_prune and (global_epoch >= prune_start_epoch) and \
                         (int(prune_steps) != -1) and (global_step % prune_steps == 0):
                     logger.info(f"pruning weights at step [{int(global_step)}]")
                     hydra = prune_fn(model=hydra)
-                    model_hydra_weights = hydra.trainable_weights
 
                 # --- check if it is time to save a checkpoint
                 if checkpoint_every > 0 and \
