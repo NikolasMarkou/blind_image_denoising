@@ -314,12 +314,11 @@ def train_loop(
                         model_loss[TOTAL_LOSS_STR] + \
                         denoiser_uq_loss[TOTAL_LOSS_STR]
 
-                # --- apply weights
-                optimizer.apply_gradients(
-                    grads_and_vars=zip(
-                        tape.gradient(target=total_loss, sources=model_weights),
-                        model_weights))
-                tape.reset()
+                    # --- apply weights
+                    optimizer.apply_gradients(
+                        grads_and_vars=zip(
+                            tape.gradient(target=total_loss, sources=model_weights),
+                            model_weights))
 
                 # --- add loss summaries for tensorboard
                 tf.summary.scalar(name="quality/denoiser_psnr", data=denoiser_loss[PSNR_STR], step=global_step)
