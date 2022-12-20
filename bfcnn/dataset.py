@@ -174,9 +174,9 @@ def dataset_builder(
             input_batch: tf.Tensor) -> tf.Tensor:
         x = \
             tfa.image.gaussian_filter2d(
-                image=input_batch,
                 sigma=1,
-                filter_shape=(3, 3))
+                image=input_batch,
+                filter_shape=(5, 5))
         return \
             tf.nn.max_pool2d(
                 input=x,
