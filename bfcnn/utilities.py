@@ -773,8 +773,6 @@ def random_crops(
             extrapolation_value=extrapolation_value)
 
     # --- cast to original img dtype (no surprises principle)
-    result = tf.cast(result, dtype=original_dtype)
-
-    return result
+    return tf.cast(result, dtype=original_dtype)
 
 # ---------------------------------------------------------------------

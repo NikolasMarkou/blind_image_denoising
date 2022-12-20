@@ -129,10 +129,6 @@ def load_image(
 
     :return: tensor
     """
-    # --- set variables
-    if isinstance(path, Path):
-        path = str(path)
-
     # --- read file, decode it
     raw = tf.io.read_file(filename=path)
 
@@ -142,6 +138,7 @@ def load_image(
             contents=raw,
             channels=num_channels,
             expand_animations=False)
+    del raw
 
     # --- resize it
     if image_size is not None:

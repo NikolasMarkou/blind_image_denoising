@@ -69,7 +69,6 @@ def train_loop(
     # --- build dataset
     dataset_res = dataset_builder(config["dataset"])
     dataset_training = dataset_res[DATASET_TRAINING_FN_STR]
-    prepare_data_fn = dataset_res[PREPARE_DATA_FN_STR]
     superres_augmentation_fn = dataset_res[SUPERRES_AUGMENTATION_FN_STR]
 
     # --- build loss function
@@ -270,8 +269,6 @@ def train_loop(
         else:
             logger.info("!!! Did NOT find checkpoint to restore !!!")
 
-        # downsample test image because it produces OOM
-        test_images = superres_augmentation_fn(test_images)
         model_weights = hydra.trainable_weights
 
         # ---
@@ -288,10 +285,8 @@ def train_loop(
             start_time_epoch = time.time()
 
             # --- iterate over the batches of the dataset
-            for iter_batch in dataset_training:
+            for (input_batch, noisy_batch, downsampled_batch) in dataset_training:
                 start_time_forward_backward = time.time()
-                input_batch, noisy_batch, downsampled_batch = \
-                    prepare_data_fn(iter_batch)
 
                 # Open a GradientTape to record the operations run
                 # during the forward pass,
@@ -350,8 +345,7 @@ def train_loop(
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
-                    test_denoiser_output, test_superres_output = \
-                        test_step()
+                    test_denoiser_output, test_superres_output = test_step()
                     visualize(
                         global_step=global_step,
                         input_batch=input_batch,
@@ -372,8 +366,7 @@ def train_loop(
                     #     buckets=weight_buckets,
                     #     name="training/weights")
                 # -- clean leftovers
-                del iter_batch, \
-                    input_batch, \
+                del input_batch, \
                     noisy_batch, \
                     downsampled_batch, \
                     denoiser_output, \
@@ -389,7 +382,7 @@ def train_loop(
 
                 # --- prune conv2d
                 if use_prune and (global_epoch >= prune_start_epoch) and \
-                        (int(prune_steps) != -1) and (global_step % prune_steps == 0):
+                        (prune_steps > -1) and (global_step % prune_steps == 0):
                     logger.info(f"pruning weights at step [{int(global_step)}]")
                     hydra = prune_fn(model=hydra)
 

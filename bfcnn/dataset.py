@@ -387,30 +387,26 @@ def dataset_builder(
             tf.TensorSpec(shape=(), dtype=tf.string)
         ])
     def load_image_fn(path: tf.Tensor) -> tf.Tensor:
-        return \
-            tf.zeros(
-                shape=(1, input_shape[0], input_shape[1], num_channels),
-                dtype=tf.uint8)
-        # img = Image.open(path.numpy())
-        # img_tensor = tf.convert_to_tensor(img, dtype=tf.uint8)
-        # img_tensor = tf.expand_dims(img_tensor, axis=0)
+        img = \
+            load_image(
+                path=path,
+                image_size=None,
+                num_channels=num_channels,
+                interpolation=tf.image.ResizeMethod.BILINEAR,
+                expand_dims=True,
+                normalize=False)
 
-        # img = \
-        #     load_image(
-        #         path=path,
-        #         image_size=None,
-        #         num_channels=num_channels,
-        #         interpolation=tf.image.ResizeMethod.BILINEAR,
-        #         expand_dims=True,
-        #         normalize=False)
+        crops = \
+            random_crops(
+                input_batch=img,
+                crop_size=(input_shape[0], input_shape[1]),
+                x_range=None,
+                y_range=None,
+                no_crops_per_image=no_crops_per_image)
 
-        # return \
-        #     random_crops(
-        #         input_batch=img_tensor,
-        #         crop_size=(input_shape[0], input_shape[1]),
-        #         x_range=None,
-        #         y_range=None,
-        #         no_crops_per_image=no_crops_per_image)
+        del img
+
+        return crops
 
     # load_image_concrete_fn = \
     #     load_image_fn.get_concrete_function(
@@ -427,6 +423,8 @@ def dataset_builder(
                 map_func=load_image_fn,
                 num_parallel_calls=tf.data.AUTOTUNE) \
             .rebatch(batch_size=batch_size) \
+            .map(map_func=prepare_data_fn,
+                 num_parallel_calls=tf.data.AUTOTUNE) \
             .prefetch(1)
     options = tf.data.Options()
     options.deterministic = False
