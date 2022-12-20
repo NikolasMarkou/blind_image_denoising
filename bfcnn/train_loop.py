@@ -118,15 +118,6 @@ def train_loop(
             name="visualization_every")
     # how many visualizations to show
     visualization_number = train_config.get("visualization_number", 5)
-    # how many steps to make a decomposition
-    decomposition_every = \
-        tf.constant(
-            train_config.get("decomposition_every", 1000),
-            dtype=tf.dtypes.int64,
-            name="decomposition_every")
-    # how many times the random batch will be iterated
-    random_batch_iterations = \
-        train_config.get("random_batch_iterations", 1)
     # size of the random batch
     random_batch_size = \
         [visualization_number] + \
@@ -219,16 +210,19 @@ def train_loop(
         include_optimizer=False)
 
     @tf.function
-    def train_forward_step(noisy_batch: tf.Tensor, downsampled_batch: tf.Tensor) \
-            -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+    def train_forward_step(
+            noisy_batch: tf.Tensor,
+            downsampled_batch: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
         denoiser_output, denoiser_uq_output, _ = \
             hydra(noisy_batch,
                   training=True)
-
         _, _, superres_output = \
             hydra(downsampled_batch,
                   training=True)
-        return denoiser_output, denoiser_uq_output, superres_output
+        return \
+            denoiser_output, \
+            denoiser_uq_output, \
+            superres_output
 
     # --- train the model
     with summary_writer.as_default():
@@ -298,10 +292,14 @@ def train_loop(
                         train_forward_step(noisy_batch, downsampled_batch)
 
                     # compute the loss value for this mini-batch
-                    denoiser_loss = denoiser_loss_fn(input_batch=input_batch, predicted_batch=denoiser_output)
-                    denoiser_uq_loss = denoiser_uq_loss_fn(uncertainty_batch=denoiser_uq_output)
-                    superres_loss = superres_loss_fn(input_batch=input_batch, predicted_batch=superres_output)
-                    model_loss = model_loss_fn(model=hydra)
+                    denoiser_loss = \
+                        denoiser_loss_fn(input_batch=input_batch, predicted_batch=denoiser_output)
+                    denoiser_uq_loss = \
+                        denoiser_uq_loss_fn(uncertainty_batch=denoiser_uq_output)
+                    superres_loss = \
+                        superres_loss_fn(input_batch=input_batch, predicted_batch=superres_output)
+                    model_loss = \
+                        model_loss_fn(model=hydra)
 
                     total_loss = \
                         denoiser_loss[TOTAL_LOSS_STR] / 2.0 + \
@@ -332,7 +330,7 @@ def train_loop(
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
-                    test_denoiser_output, _, test_superres_output = \
+                    test_denoiser_output, test_denoiser_uq_output, test_superres_output = \
                         hydra(test_images, training=False)
                     visualize(
                         global_step=global_step,
@@ -344,7 +342,9 @@ def train_loop(
                         test_denoiser_batch=test_denoiser_output,
                         test_superres_batch=test_superres_output,
                         visualization_number=visualization_number)
-                    del test_denoiser_output, test_superres_output
+                    del test_denoiser_output, \
+                        test_denoiser_uq_output, \
+                        test_superres_output
                     # add weight visualization
                     # tf.summary.histogram(
                     #     data=get_conv2d_weights(model=hydra),
@@ -352,7 +352,8 @@ def train_loop(
                     #     buckets=weight_buckets,
                     #     name="training/weights")
                 # -- clean leftovers
-                del input_batch, \
+                del iter_batch,\
+                    input_batch, \
                     noisy_batch, \
                     downsampled_batch, \
                     denoiser_output, \
