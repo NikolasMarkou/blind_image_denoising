@@ -144,8 +144,11 @@ def load_image_crop(
             image_size=image_size,
             num_channels=num_channels,
             interpolation=interpolation,
-            expand_dims=True,
+            expand_dims=False,
             normalize=False)
+
+    # --- expand dims and crop
+    img = tf.expand_dims(img, axis=0)
 
     img = \
         random_crops(

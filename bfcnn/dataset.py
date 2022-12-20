@@ -437,23 +437,16 @@ def dataset_builder(
     # --- create the dataset
     result[DATASET_TRAINING_FN_STR] = \
         dataset_training \
+            .prefetch(buffer_size=64) \
+            .shuffle(
+                seed=0,
+                buffer_size=1024,
+                reshuffle_each_iteration=False) \
             .map(
                 map_func=load_image_fn,
                 num_parallel_calls=batch_size) \
             .rebatch(batch_size=batch_size) \
             .prefetch(1)
-    # result[DATASET_TRAINING_FN_STR] = \
-    #     dataset_training \
-    #         .prefetch(buffer_size=64) \
-    #         .shuffle(
-    #             seed=0,
-    #             buffer_size=1024,
-    #             reshuffle_each_iteration=False) \
-    #         .map(
-    #             map_func=load_image_fn,
-    #             num_parallel_calls=batch_size) \
-    #         .rebatch(batch_size=batch_size) \
-    #         .prefetch(1)
 
     return result
 
