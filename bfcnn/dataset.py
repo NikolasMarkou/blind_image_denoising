@@ -172,18 +172,12 @@ def dataset_builder(
     @tf.function
     def superres_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
-        downsampled_batch = \
-            tfa.image.gaussian_filter2d(
-                image=input_batch,
-                sigma=1,
-                filter_shape=(5, 5))
-        downsampled_batch = \
-            tf.nn.max_pool2d(
-                downsampled_batch,
-                ksize=(1, 1),
+        return \
+            tf.nn.avg_pool2d(
+                input_batch,
+                ksize=(3, 3),
                 strides=(2, 2),
                 padding="SAME")
-        return downsampled_batch
 
     # --- define noise augmentation function
     @tf.function
