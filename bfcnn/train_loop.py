@@ -3,7 +3,7 @@ import time
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
-from typing import Union, Dict
+from typing import Union, Dict, Tuple
 
 # ---------------------------------------------------------------------
 # local imports
@@ -225,6 +225,17 @@ def train_loop(
         filepath=os.path.join(model_dir, MODEL_HYDRA_DEFAULT_NAME_STR),
         include_optimizer=False)
 
+    @tf.function(input_signature=[
+                    tf.TensorSpec(shape=[None, None, None, None],
+                                  dtype=tf.uint8)])
+    def prepare_data(iter_batch: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+        # geometric augmentation and casting to float
+        input_batch = geometric_augmentation_fn(iter_batch)
+        input_batch = tf.cast(input_batch, dtype=tf.float32)
+        noisy_batch = noise_augmentation_fn(input_batch)
+        downsampled_batch = superres_augmentation_fn(input_batch)
+        return input_batch, noisy_batch, downsampled_batch
+
     # --- train the model
     with summary_writer.as_default():
         # checkpoint managing
@@ -276,15 +287,9 @@ def train_loop(
             start_time_epoch = time.time()
 
             # --- iterate over the batches of the dataset
-            for input_batch in dataset_training:
+            for iter_batch in dataset_training:
                 start_time_forward_backward = time.time()
-
-                # geometric augmentation and casting to float
-                input_batch = tf.cast(geometric_augmentation_fn(input_batch), dtype=tf.float32)
-
-                # create batches for all subnetworks
-                noisy_batch = noise_augmentation_fn(input_batch)
-                downsampled_batch = superres_augmentation_fn(input_batch)
+                input_batch, noisy_batch, downsampled_batch = prepare_data(iter_batch)
 
                 # Open a GradientTape to record the operations run
                 # during the forward pass,
