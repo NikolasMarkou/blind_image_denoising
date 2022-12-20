@@ -505,6 +505,7 @@ def model_superres_builder(
 
     # --- set configuration
     use_bias = config.get("use_bias", False)
+    no_filters = config.get("filters")
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
     final_activation = config.get("final_activation", "tanh")
@@ -551,8 +552,14 @@ def model_superres_builder(
              model_input_denoiser_uq_layer])
 
     x = \
-        tf.keras.layers.UpSampling2D(
-            **upsampling_params)(x)
+        tf.keras.layers.Conv2DTranspose(
+            filters=no_filters,
+            use_bias=use_bias,
+            kernel_size=(5, 5),
+            strides=(2, 2),
+            padding="same",
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer)
 
     backbone, _, _ = model_backbone_builder(backbone_config)
     x = backbone(x)
