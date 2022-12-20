@@ -423,34 +423,37 @@ def dataset_builder(
         input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)],
         reduce_retracing=True)
     def load_image_fn(x):
-        y = \
-            tf.zeros(
-                shape=(no_crops_per_image, input_shape[0], input_shape[1], num_channels),
-                dtype=tf.uint8)
-        # y = load_image_crop(
-        #     path=x,
-        #     image_size=None,
-        #     num_channels=num_channels,
-        #     interpolation=tf.image.ResizeMethod.BILINEAR,
-        #     crop_size=(input_shape[0], input_shape[1]),
-        #     x_range=None,
-        #     y_range=None,
-        #     no_crops_per_image=no_crops_per_image)
-        return y
+        x = load_image_crop(
+            path=x,
+            image_size=None,
+            num_channels=num_channels,
+            interpolation=tf.image.ResizeMethod.BILINEAR,
+            crop_size=(input_shape[0], input_shape[1]),
+            x_range=None,
+            y_range=None,
+            no_crops_per_image=no_crops_per_image)
+        return x
 
     # --- create the dataset
     result[DATASET_TRAINING_FN_STR] = \
         dataset_training \
-            .prefetch(buffer_size=batch_size) \
-            .shuffle(
-                seed=0,
-                buffer_size=1024,
-                reshuffle_each_iteration=False) \
             .map(
                 map_func=load_image_fn,
                 num_parallel_calls=batch_size) \
             .rebatch(batch_size=batch_size) \
             .prefetch(1)
+    # result[DATASET_TRAINING_FN_STR] = \
+    #     dataset_training \
+    #         .prefetch(buffer_size=64) \
+    #         .shuffle(
+    #             seed=0,
+    #             buffer_size=1024,
+    #             reshuffle_each_iteration=False) \
+    #         .map(
+    #             map_func=load_image_fn,
+    #             num_parallel_calls=batch_size) \
+    #         .rebatch(batch_size=batch_size) \
+    #         .prefetch(1)
 
     return result
 

@@ -95,11 +95,7 @@ def train_loop(
         0, trainable=False, dtype=tf.dtypes.int64, name="global_step")
     global_epoch = tf.Variable(
         0, trainable=False, dtype=tf.dtypes.int64, name="global_epoch")
-    summary_writer = \
-        tf.summary.create_file_writer(
-            logdir=model_dir,
-            max_queue=10,
-            flush_millis=120000)
+    summary_writer = tf.summary.create_file_writer(model_dir)
 
     # --- get the train configuration
     train_config = config["train"]
@@ -211,8 +207,8 @@ def train_loop(
         tf.summary.trace_export(
             step=0,
             name="hydra")
-    tf.summary.flush()
-    tf.summary.trace_off()
+        tf.summary.flush()
+        tf.summary.trace_off()
 
     # get each model
     hydra = models.hydra
