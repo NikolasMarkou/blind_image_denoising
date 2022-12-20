@@ -377,9 +377,8 @@ def dataset_builder(
     }
 
     @tf.function(
-        input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)],
-        reduce_retracing=True)
-    def load_image_fn(x):
+        input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)],)
+    def load_image_fn(x: tf.string) -> tf.Tensor:
         return \
             load_image_crop(
                 path=x,
@@ -391,6 +390,10 @@ def dataset_builder(
                 y_range=None,
                 no_crops_per_image=no_crops_per_image)
 
+    load_image_concrete_fn = \
+        load_image_fn.get_concrete_function(
+            tf.TensorSpec(shape=(), dtype=tf.string))
+
     # --- create the dataset
     result[DATASET_TRAINING_FN_STR] = \
         dataset_training \
@@ -400,7 +403,7 @@ def dataset_builder(
                 buffer_size=1024,
                 reshuffle_each_iteration=False) \
             .map(
-                map_func=load_image_fn,
+                map_func=load_image_concrete_fn,
                 num_parallel_calls=batch_size) \
             .rebatch(batch_size=batch_size) \
             .prefetch(1)

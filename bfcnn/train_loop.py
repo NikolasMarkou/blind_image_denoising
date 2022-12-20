@@ -218,6 +218,18 @@ def train_loop(
         filepath=os.path.join(model_dir, MODEL_HYDRA_DEFAULT_NAME_STR),
         include_optimizer=False)
 
+    @tf.function
+    def train_forward_step(noisy_batch: tf.Tensor, downsampled_batch: tf.Tensor) \
+            -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+        denoiser_output, denoiser_uq_output, _ = \
+            hydra(noisy_batch,
+                  training=True)
+
+        _, _, superres_output = \
+            hydra(downsampled_batch,
+                  training=True)
+        return denoiser_output, denoiser_uq_output, superres_output
+
     # --- train the model
     with summary_writer.as_default():
         # checkpoint managing
@@ -282,13 +294,8 @@ def train_loop(
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
-                    denoiser_output, denoiser_uq_output, _ = \
-                        hydra(noisy_batch,
-                              training=True)
-
-                    _, _, superres_output = \
-                        hydra(downsampled_batch,
-                              training=True)
+                    denoiser_output, denoiser_uq_output, superres_output = \
+                        train_forward_step(noisy_batch, downsampled_batch)
 
                     # compute the loss value for this mini-batch
                     denoiser_loss = denoiser_loss_fn(input_batch=input_batch, predicted_batch=denoiser_output)
@@ -337,14 +344,23 @@ def train_loop(
                         test_denoiser_batch=test_denoiser_output,
                         test_superres_batch=test_superres_output,
                         visualization_number=visualization_number)
-                    del test_denoiser_output
-                    del test_superres_output
+                    del test_denoiser_output, test_superres_output
                     # add weight visualization
                     # tf.summary.histogram(
                     #     data=get_conv2d_weights(model=hydra),
                     #     step=global_step,
                     #     buckets=weight_buckets,
                     #     name="training/weights")
+                del input_batch, \
+                    noisy_batch, \
+                    denoiser_output, \
+                    superres_output, \
+                    denoiser_uq_output
+                del denoiser_loss, \
+                    denoiser_uq_loss, \
+                    superres_loss,\
+                    model_loss, \
+                    total_loss
 
                 # --- prune conv2d
                 if use_prune and (global_epoch >= prune_start_epoch) and \
