@@ -1,4 +1,3 @@
-from PIL import Image
 import tensorflow as tf
 import tensorflow_addons as tfa
 from typing import Dict, Callable, Iterator, Tuple
@@ -388,9 +387,14 @@ def dataset_builder(
             tf.TensorSpec(shape=(), dtype=tf.string)
         ])
     def load_image_fn(path: tf.Tensor) -> tf.Tensor:
-        img = Image.open(path.numpy())
-        img_tensor = tf.convert_to_tensor(img, dtype=tf.uint8)
-        img_tensor = tf.expand_dims(img_tensor, axis=0)
+        return \
+            tf.zeros(
+                shape=(1, input_shape[0], input_shape[1], num_channels),
+                dtype=tf.uint8)
+        # img = Image.open(path.numpy())
+        # img_tensor = tf.convert_to_tensor(img, dtype=tf.uint8)
+        # img_tensor = tf.expand_dims(img_tensor, axis=0)
+
         # img = \
         #     load_image(
         #         path=path,
@@ -400,13 +404,13 @@ def dataset_builder(
         #         expand_dims=True,
         #         normalize=False)
 
-        return \
-            random_crops(
-                input_batch=img_tensor,
-                crop_size=(input_shape[0], input_shape[1]),
-                x_range=None,
-                y_range=None,
-                no_crops_per_image=no_crops_per_image)
+        # return \
+        #     random_crops(
+        #         input_batch=img_tensor,
+        #         crop_size=(input_shape[0], input_shape[1]),
+        #         x_range=None,
+        #         y_range=None,
+        #         no_crops_per_image=no_crops_per_image)
 
     # load_image_concrete_fn = \
     #     load_image_fn.get_concrete_function(
