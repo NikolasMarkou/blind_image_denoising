@@ -419,7 +419,7 @@ def dataset_builder(
                 buffer_size=1024,
                 reshuffle_each_iteration=False) \
             .map(
-                map_func=load_image_concrete_fn,
+                map_func=load_image_fn,
                 num_parallel_calls=tf.data.AUTOTUNE) \
             .rebatch(batch_size=batch_size) \
             .prefetch(1)
