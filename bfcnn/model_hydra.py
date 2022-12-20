@@ -63,7 +63,11 @@ def model_builder(
 
     # heads
     denoiser_mid, denoiser_uq_mid = model_denoiser(backbone_mid)
-    superres_mid = model_superres([backbone_mid, tf.stop_gradient(denoiser_uq_mid)])
+    superres_mid = \
+        model_superres([
+            backbone_mid,
+            tf.stop_gradient(denoiser_mid),
+            tf.stop_gradient(denoiser_uq_mid)])
 
     # denormalize
     denoiser_output = model_denormalizer(denoiser_mid, training=False)
@@ -508,7 +512,7 @@ def model_superres_builder(
     kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
     # add one channel to accommodate the mask
     backbone_config = copy.deepcopy(config)
-    backbone_config["input_shape"][2] += output_channels
+    backbone_config["input_shape"][2] += output_channels + output_channels
 
     # --- set network parameters
     upsampling_params = dict(
@@ -531,14 +535,20 @@ def model_superres_builder(
         tf.keras.Input(
             shape=input_shape,
             name="input_tensor")
-    model_input_uncertainty_layer = \
+    model_input_denoiser_layer = \
         tf.keras.Input(
             shape=(None, None, output_channels),
-            name="input_uncertainty_tensor")
+            name="input_denoiser_tensor")
+    model_input_denoiser_uq_layer = \
+        tf.keras.Input(
+            shape=(None, None, output_channels),
+            name="input_denoiser_uq_tensor")
 
     x = \
         tf.keras.layers.Concatenate()(
-            [model_input_layer, model_input_uncertainty_layer])
+            [model_input_layer,
+             model_input_denoiser_layer,
+             model_input_denoiser_uq_layer])
 
     x = \
         tf.keras.layers.UpSampling2D(
@@ -563,7 +573,8 @@ def model_superres_builder(
         tf.keras.Model(
             inputs=[
                 model_input_layer,
-                model_input_uncertainty_layer],
+                model_input_denoiser_layer,
+                model_input_denoiser_uq_layer],
             outputs=x_result,
             name=f"superres_head")
 
