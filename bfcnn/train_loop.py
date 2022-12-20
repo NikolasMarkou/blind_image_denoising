@@ -24,13 +24,7 @@ from .pruning import prune_function_builder, get_conv2d_weights
 from .model_hydra import model_builder as model_hydra_builder
 from .utilities import load_config
 from .file_operations import load_image
-from .dataset import \
-    dataset_builder, \
-    DATASET_TRAINING_FN_STR, \
-    NOISE_AUGMENTATION_FN_STR, \
-    INPAINT_AUGMENTATION_FN_STR, \
-    SUPERRES_AUGMENTATION_FN_STR, \
-    GEOMETRIC_AUGMENTATION_FN_STR
+from .dataset import *
 
 # ---------------------------------------------------------------------
 
@@ -75,9 +69,8 @@ def train_loop(
     # --- build dataset
     dataset_res = dataset_builder(config["dataset"])
     dataset_training = dataset_res[DATASET_TRAINING_FN_STR]
-    noise_augmentation_fn = dataset_res[NOISE_AUGMENTATION_FN_STR]
+    prepare_data_fn = dataset_res[PREPARE_DATA_FN_STR]
     superres_augmentation_fn = dataset_res[SUPERRES_AUGMENTATION_FN_STR]
-    geometric_augmentation_fn = dataset_res[GEOMETRIC_AUGMENTATION_FN_STR]
 
     # --- build loss function
     loss_fn_map = loss_function_builder(config=config["loss"])
@@ -225,17 +218,6 @@ def train_loop(
         filepath=os.path.join(model_dir, MODEL_HYDRA_DEFAULT_NAME_STR),
         include_optimizer=False)
 
-    @tf.function(input_signature=[
-                    tf.TensorSpec(shape=[None, None, None, None],
-                                  dtype=tf.uint8)])
-    def prepare_data(iter_batch: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
-        # geometric augmentation and casting to float
-        input_batch = geometric_augmentation_fn(iter_batch)
-        input_batch = tf.cast(input_batch, dtype=tf.float32)
-        noisy_batch = noise_augmentation_fn(input_batch)
-        downsampled_batch = superres_augmentation_fn(input_batch)
-        return input_batch, noisy_batch, downsampled_batch
-
     # --- train the model
     with summary_writer.as_default():
         # checkpoint managing
@@ -289,7 +271,8 @@ def train_loop(
             # --- iterate over the batches of the dataset
             for iter_batch in dataset_training:
                 start_time_forward_backward = time.time()
-                input_batch, noisy_batch, downsampled_batch = prepare_data(iter_batch)
+                input_batch, noisy_batch, downsampled_batch = \
+                    prepare_data_fn(iter_batch)
 
                 # Open a GradientTape to record the operations run
                 # during the forward pass,

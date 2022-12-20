@@ -7,13 +7,13 @@ from typing import Dict, Callable, Iterator, Tuple
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .utilities import merge_iterators
 from .file_operations import \
     image_filenames_dataset, \
     load_image_crop
 
 # ---------------------------------------------------------------------
 
+PREPARE_DATA_FN_STR = "prepare_data"
 DATASET_TESTING_FN_STR = "dataset_testing"
 DATASET_TRAINING_FN_STR = "dataset_training"
 DATASET_VALIDATION_FN_STR = "dataset_validation"
@@ -88,8 +88,6 @@ def dataset_builder(
     quantization = tf.constant(config.get("quantization", -1))
     # whether to crop or not
     random_crop = tf.constant(dataset_shape[0][0:2] != input_shape[0:2])
-    # mix noise types
-    mix_noise_types = config.get("mix_noise_types", False)
     # no crops per image
     no_crops_per_image = config.get("no_crops_per_image", 1)
 
@@ -122,10 +120,8 @@ def dataset_builder(
     # --- set random seed to get the same result
     tf.random.set_seed(0)
 
-    @tf.function(input_signature=[
-                    tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], num_channels],
-                                  dtype=tf.uint8)])
-    def geometric_augmentations_fn(
+    @tf.function
+    def geometric_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
         perform all the geometric augmentations
@@ -173,38 +169,8 @@ def dataset_builder(
 
         return input_batch
 
-    # --- define inpainting augmentation function
-    @tf.function(input_signature=[
-                    tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], num_channels],
-                                  dtype=tf.float32)])
-    def inpaint_augmentation_fn(
-            input_batch: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
-        input_shape_inference = tf.shape(input_batch)
-
-        # channel dependent noise
-        mask_batch = \
-            tf.random.uniform(
-                seed=0,
-                minval=-0.5,
-                maxval=0.5,
-                dtype=tf.float16,
-                shape=(input_shape_inference[0],
-                       input_shape_inference[1],
-                       input_shape_inference[2],
-                       1))
-
-        mask_batch = \
-            tf.cast(
-                x=tf.greater(mask_batch,
-                             tf.constant(0.0, dtype=tf.float16)),
-                dtype=tf.float32)
-
-        return input_batch, mask_batch
-
     # --- define superres augmentation function
-    @tf.function(input_signature=[
-                    tf.TensorSpec(shape=[None, None, None, num_channels],
-                                  dtype=tf.float32)])
+    @tf.function
     def superres_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         downsampled_batch = \
@@ -221,9 +187,7 @@ def dataset_builder(
         return downsampled_batch
 
     # --- define noise augmentation function
-    @tf.function(input_signature=[
-                    tf.TensorSpec(shape=[None, None, None, num_channels],
-                                  dtype=tf.float32)])
+    @tf.function
     def noise_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -233,6 +197,7 @@ def dataset_builder(
         noisy_batch = input_batch
         input_shape_inference = tf.shape(noisy_batch)
 
+        @tf.function
         def random_choice(
                 x: tf.Tensor,
                 size=tf.constant(1, dtype=tf.int64),
@@ -271,16 +236,16 @@ def dataset_builder(
                         stddev=additive_noise_std,
                         shape=input_shape_inference),
                     false_fn=lambda:
-                    # channel dependent noise
-                    tf.random.truncated_normal(
-                        mean=0.0,
-                        seed=0,
-                        dtype=tf.float32,
-                        stddev=additive_noise_std,
-                        shape=(input_shape_inference[0],
-                               input_shape[0],
-                               input_shape[1],
-                               1))
+                        # channel dependent noise
+                        tf.random.truncated_normal(
+                            mean=0.0,
+                            seed=0,
+                            dtype=tf.float32,
+                            stddev=additive_noise_std,
+                            shape=(input_shape_inference[0],
+                                   input_shape[0],
+                                   input_shape[1],
+                                   1))
                 )
             noisy_batch = tf.add(noisy_batch, additive_noise_batch)
             # blur to embed noise
@@ -290,10 +255,10 @@ def dataset_builder(
                         random_blur,
                         random_uniform_option_2),
                     true_fn=lambda:
-                    tfa.image.gaussian_filter2d(
-                        image=noisy_batch,
-                        sigma=1,
-                        filter_shape=(3, 3)),
+                        tfa.image.gaussian_filter2d(
+                            image=noisy_batch,
+                            sigma=1,
+                            filter_shape=(3, 3)),
                     false_fn=lambda: noisy_batch
                 )
 
@@ -303,22 +268,22 @@ def dataset_builder(
                 tf.cond(
                     pred=random_uniform_option_1,
                     true_fn=lambda:
-                    tf.random.truncated_normal(
-                        mean=1.0,
-                        seed=0,
-                        stddev=multiplicative_noise_std,
-                        shape=input_shape_inference,
-                        dtype=tf.float32),
+                        tf.random.truncated_normal(
+                            mean=1.0,
+                            seed=0,
+                            stddev=multiplicative_noise_std,
+                            shape=input_shape_inference,
+                            dtype=tf.float32),
                     false_fn=lambda:
-                    tf.random.truncated_normal(
-                        mean=1.0,
-                        seed=0,
-                        stddev=multiplicative_noise_std,
-                        shape=(input_shape_inference[0],
-                               input_shape_inference[1],
-                               input_shape_inference[2],
-                               1),
-                        dtype=tf.float32)
+                        tf.random.truncated_normal(
+                            mean=1.0,
+                            seed=0,
+                            stddev=multiplicative_noise_std,
+                            shape=(input_shape_inference[0],
+                                   input_shape_inference[1],
+                                   input_shape_inference[2],
+                                   1),
+                            dtype=tf.float32)
                 )
             noisy_batch = tf.multiply(noisy_batch, multiplicative_noise_batch)
             # blur to embed noise
@@ -375,6 +340,20 @@ def dataset_builder(
 
         return noisy_batch
 
+    @tf.function(input_signature=[
+                    tf.TensorSpec(shape=[None,
+                                         input_shape[0],
+                                         input_shape[1],
+                                         num_channels],
+                                  dtype=tf.uint8)])
+    def prepare_data_fn(iter_batch: tf.Tensor) -> \
+            Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+        input_batch = geometric_augmentation_fn(iter_batch)
+        input_batch = tf.cast(input_batch, dtype=tf.float32)
+        noisy_batch = noise_augmentation_fn(input_batch)
+        downsampled_batch = superres_augmentation_fn(input_batch)
+        return input_batch, noisy_batch, downsampled_batch
+
     # --- define generator function from directory
     if directory:
         dataset_training = \
@@ -386,10 +365,15 @@ def dataset_builder(
 
     # --- save the augmentation functions
     result = {
+        PREPARE_DATA_FN_STR: prepare_data_fn.get_concrete_function(
+            tf.TensorSpec(shape=[None,
+                                 input_shape[0],
+                                 input_shape[1],
+                                 num_channels],
+                          dtype=tf.uint8)),
         NOISE_AUGMENTATION_FN_STR: noise_augmentation_fn,
-        INPAINT_AUGMENTATION_FN_STR: inpaint_augmentation_fn,
         SUPERRES_AUGMENTATION_FN_STR: superres_augmentation_fn,
-        GEOMETRIC_AUGMENTATION_FN_STR: geometric_augmentations_fn
+        GEOMETRIC_AUGMENTATION_FN_STR: geometric_augmentation_fn
     }
 
     @tf.function(
