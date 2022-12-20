@@ -405,6 +405,7 @@ def dataset_builder(
                 no_crops_per_image=no_crops_per_image)
 
         del img
+        del path
 
         return crops
 
