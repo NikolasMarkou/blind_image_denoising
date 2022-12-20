@@ -261,6 +261,7 @@ def train_loop(
 
         # downsample test image because it produces OOM
         test_images = superres_augmentation_fn(test_images)
+        model_weights = hydra.trainable_weights
 
         # ---
         while global_epoch < global_total_epochs:
@@ -271,7 +272,8 @@ def train_loop(
             if use_prune and (global_epoch >= prune_start_epoch):
                 logger.info(f"pruning weights at step [{int(global_step)}]")
                 hydra = prune_fn(model=hydra)
-            model_weights = hydra.trainable_weights
+                model_weights = hydra.trainable_weights
+
             start_time_epoch = time.time()
 
             # --- iterate over the batches of the dataset

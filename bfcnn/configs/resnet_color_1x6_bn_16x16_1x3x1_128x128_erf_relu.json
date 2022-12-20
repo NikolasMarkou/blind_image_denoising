@@ -101,7 +101,6 @@
 		"batch_size": 16,
 		"no_crops_per_image": 1,
 		"no_iterations_per_batch": 1,
-		"mix_noise_types": false,
 		"value_range": [0, 255],
 		"clip_value": true,
 		"random_blur": true,
@@ -113,8 +112,8 @@
 		"color_mode": "rgb",
 		"random_left_right": true,
 		"input_shape": [128, 128, 3],
-		"multiplicative_noise": [0.05, 0.1, 0.2],
-		"additional_noise": [1, 5, 10, 20, 30, 40, 50, 60],
+		"multiplicative_noise": [0.05, 0.1],
+		"additional_noise": [1, 5, 10, 20],
 		"inputs": [{
 				"directory": "/media/data1_4tb/datasets/KITTI/data/depth/raw_image_values/"
 			},

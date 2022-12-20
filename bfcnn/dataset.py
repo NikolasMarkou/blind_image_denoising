@@ -6,10 +6,9 @@ from typing import Dict, Callable, Iterator, Tuple
 # local imports
 # ---------------------------------------------------------------------
 
+from .file_operations import *
 from .custom_logger import logger
-from .file_operations import \
-    image_filenames_dataset, \
-    load_image_crop
+from .utilities import random_crops
 
 # ---------------------------------------------------------------------
 
@@ -357,10 +356,17 @@ def dataset_builder(
 
     # --- define generator function from directory
     if directory:
-        dataset_training = \
-            image_filenames_dataset(
+        dataset_generator = \
+            image_filenames_generator(
                 directory=directory,
                 follow_links=True)
+
+        dataset_training = \
+            tf.data.Dataset.from_generator(
+                generator=dataset_generator,
+                output_signature=(
+                    tf.TensorSpec(shape=(), dtype=tf.string)
+                ))
     else:
         raise ValueError("don't know how to handle non directory datasets")
 
@@ -378,14 +384,21 @@ def dataset_builder(
     }
 
     @tf.function(
-        input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)])
-    def load_image_fn(x: tf.string) -> tf.Tensor:
-        return \
-            load_image_crop(
-                path=x,
+        input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)],
+        reduce_retracing=True)
+    def load_image_fn(path: tf.string) -> tf.Tensor:
+        img = \
+            load_image(
+                path=path,
                 image_size=None,
                 num_channels=num_channels,
                 interpolation=tf.image.ResizeMethod.BILINEAR,
+                expand_dims=True,
+                normalize=False)
+
+        return \
+            random_crops(
+                input_batch=img,
                 crop_size=(input_shape[0], input_shape[1]),
                 x_range=None,
                 y_range=None,
@@ -398,16 +411,15 @@ def dataset_builder(
     # --- create the dataset
     result[DATASET_TRAINING_FN_STR] = \
         dataset_training \
-            .prefetch(buffer_size=batch_size * 4) \
             .shuffle(
                 seed=0,
-                buffer_size=batch_size * 100,
+                buffer_size=1024,
                 reshuffle_each_iteration=False) \
             .map(
                 map_func=load_image_concrete_fn,
-                num_parallel_calls=batch_size) \
+                num_parallel_calls=tf.data.AUTOTUNE) \
             .rebatch(batch_size=batch_size) \
-            .prefetch(1)
+            .prefetch(2)
 
     return result
 

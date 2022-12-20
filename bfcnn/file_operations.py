@@ -5,29 +5,28 @@ from typing import Tuple, Union, Any, Generator, List
 
 # ---------------------------------------------------------------------
 
-from .utilities import logger, random_crops, layer_normalize, merge_iterators
+from .utilities import logger, layer_normalize, merge_iterators
 
 # ---------------------------------------------------------------------
 
 SUPPORTED_IMAGE_LIST_FORMATS = (".bmp", ".gif", ".jpeg", ".jpg", ".png")
 
 
-def image_filenames_dataset(
+def image_filenames_generator(
         directory: Union[str, List[str]],
         follow_links=False) -> Generator[str, None, None]:
     """
-    Generates a `tf.data.Dataset`
-    from image filenames in a directory or multiple directories.
+    creates a generator function
     """
 
     if isinstance(directory, str):
-        def gen_fn():
+        def gen_fn() -> Generator[str, None, None]:
             return index_directory_gen(
                     directory=directory,
                     formats=SUPPORTED_IMAGE_LIST_FORMATS,
                     follow_links=follow_links)
     elif isinstance(directory, List):
-        def gen_fn():
+        def gen_fn() -> Generator[str, None, None]:
             iterators = [
                 index_directory_gen(
                     directory=d,
@@ -40,12 +39,8 @@ def image_filenames_dataset(
     else:
         raise ValueError(f"don't know what to do with [{directory}]")
 
-    return \
-        tf.data.Dataset.from_generator(
-            generator=gen_fn,
-            output_signature=(
-                tf.TensorSpec(shape=(), dtype=tf.string)
-            ))
+    return gen_fn
+
 
 # ---------------------------------------------------------------------
 
@@ -110,60 +105,9 @@ def iter_valid_files(directory, follow_links, formats):
             if filename.lower().endswith(formats):
                 yield root, filename
 
-
 # ---------------------------------------------------------------------
 
-@tf.function
-def load_image_crop(
-        path: Any,
-        image_size: Tuple[int, int] = None,
-        num_channels: int = 3,
-        interpolation: tf.image.ResizeMethod = tf.image.ResizeMethod.BILINEAR,
-        no_crops_per_image: int = 1,
-        crop_size: Tuple[int, int] = (64, 64),
-        x_range: Tuple[float, float] = None,
-        y_range: Tuple[float, float] = None) -> tf.Tensor:
-    """
-    load an image from a path, resize it, crop it
 
-    :param path: string
-    :param image_size: resize dimensions
-    :param num_channels: number of channels
-    :param interpolation: interpolation type
-    :param no_crops_per_image:
-    :param crop_size:
-    :param x_range:
-    :param y_range:
-
-    :return: tensor
-    """
-    # --- load image
-    img = \
-        load_image(
-            path=path,
-            image_size=image_size,
-            num_channels=num_channels,
-            interpolation=interpolation,
-            expand_dims=False,
-            normalize=False)
-
-    # --- expand dims and crop
-    img = tf.expand_dims(img, axis=0)
-
-    img = \
-        random_crops(
-            input_batch=img,
-            crop_size=crop_size,
-            x_range=x_range,
-            y_range=y_range,
-            no_crops_per_image=no_crops_per_image)
-
-    return img
-
-
-# ---------------------------------------------------------------------
-
-@tf.function
 def load_image(
         path: Any,
         image_size: Tuple[int, int] = None,
