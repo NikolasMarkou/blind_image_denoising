@@ -43,6 +43,7 @@ def visualize(
         denoiser_batch,
         superres_batch,
         denoiser_uq_batch,
+        superres_uq_output,
         test_denoiser_batch=None,
         test_superres_batch=None,
         visualization_number: int = 3):
@@ -87,6 +88,14 @@ def visualize(
             name="output/superres",
             step=global_step,
             data=superres_batch / 255,
+            max_outputs=visualization_number)
+
+    # --- output superres uq
+    if superres_uq_output is not None:
+        tf.summary.image(
+            name="uncertainty/superres",
+            step=global_step,
+            data=superres_uq_output,
             max_outputs=visualization_number)
 
     # --- test denoiser

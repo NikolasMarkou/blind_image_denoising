@@ -212,17 +212,18 @@ def train_loop(
     @tf.function
     def train_forward_step(
             noisy_batch: tf.Tensor,
-            downsampled_batch: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
-        denoiser_output, denoiser_uq_output, _ = \
+            downsampled_batch: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+        denoiser_output, denoiser_uq_output, _, _ = \
             hydra(noisy_batch,
                   training=True)
-        _, _, superres_output = \
+        _, _, superres_output, superres_uq_output = \
             hydra(downsampled_batch,
                   training=True)
         return \
             denoiser_output, \
             denoiser_uq_output, \
-            superres_output
+            superres_output, \
+            superres_uq_output
 
     # --- train the model
     with summary_writer.as_default():
@@ -249,9 +250,9 @@ def train_loop(
             logger.info("!!! Found checkpoint to restore !!!")
             logger.info(f"latest checkpoint [{0}:{1}]".format(
                 latest_checkpoint, manager.latest_checkpoint))
-            checkpoint\
-                .restore(manager.latest_checkpoint)\
-                .expect_partial()\
+            checkpoint \
+                .restore(manager.latest_checkpoint) \
+                .expect_partial() \
                 .assert_existing_objects_matched()
             logger.info(f"restored checkpoint "
                         f"at epoch [{int(global_epoch)}] "
@@ -290,7 +291,8 @@ def train_loop(
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
-                    denoiser_output, denoiser_uq_output, superres_output = \
+                    denoiser_output, denoiser_uq_output, \
+                    superres_output, superres_uq_output = \
                         train_forward_step(noisy_batch, downsampled_batch)
 
                     # compute the loss value for this mini-batch
@@ -300,14 +302,17 @@ def train_loop(
                         denoiser_uq_loss_fn(uncertainty_batch=denoiser_uq_output)
                     superres_loss = \
                         superres_loss_fn(input_batch=input_batch, predicted_batch=superres_output)
+                    superres_uq_loss = \
+                        denoiser_uq_loss_fn(uncertainty_batch=superres_uq_output)
                     model_loss = \
                         model_loss_fn(model=hydra)
 
                     total_loss = \
                         denoiser_loss[TOTAL_LOSS_STR] / 2.0 + \
                         superres_loss[TOTAL_LOSS_STR] / 2.0 + \
-                        model_loss[TOTAL_LOSS_STR] + \
-                        denoiser_uq_loss[TOTAL_LOSS_STR]
+                        denoiser_uq_loss[TOTAL_LOSS_STR] + \
+                        superres_uq_loss[TOTAL_LOSS_STR] + \
+                        model_loss[TOTAL_LOSS_STR]
 
                     # --- apply weights
                     optimizer.apply_gradients(
@@ -322,17 +327,22 @@ def train_loop(
                 tf.summary.scalar(name="loss/denoiser_uncertainty",
                                   data=denoiser_uq_loss[TOTAL_LOSS_STR],
                                   step=global_step)
+                tf.summary.scalar(name="loss/superres_uncertainty",
+                                  data=superres_uq_loss[TOTAL_LOSS_STR],
+                                  step=global_step)
 
                 tf.summary.scalar(name="quality/superres_psnr", data=superres_loss[PSNR_STR], step=global_step)
                 tf.summary.scalar(name="loss/superres_mae", data=superres_loss[MAE_LOSS_STR], step=global_step)
                 tf.summary.scalar(name="loss/superres_total", data=superres_loss[TOTAL_LOSS_STR], step=global_step)
 
-                tf.summary.scalar(name="loss/regularization", data=model_loss[REGULARIZATION_LOSS_STR], step=global_step)
+                tf.summary.scalar(name="loss/regularization", data=model_loss[REGULARIZATION_LOSS_STR],
+                                  step=global_step)
                 tf.summary.scalar(name="loss/total", data=total_loss, step=global_step)
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
-                    test_denoiser_output, test_denoiser_uq_output, test_superres_output = \
+                    test_denoiser_output, test_denoiser_uq_output, \
+                    test_superres_output, test_superres_uq_output = \
                         hydra(test_images, training=False)
                     visualize(
                         global_step=global_step,
@@ -341,12 +351,14 @@ def train_loop(
                         denoiser_batch=denoiser_output,
                         superres_batch=superres_output,
                         denoiser_uq_batch=denoiser_uq_output,
+                        superres_uq_batch=superres_uq_output,
                         test_denoiser_batch=test_denoiser_output,
                         test_superres_batch=test_superres_output,
                         visualization_number=visualization_number)
                     del test_denoiser_output, \
                         test_denoiser_uq_output, \
-                        test_superres_output
+                        test_superres_output, \
+                        test_superres_uq_output
                     # add weight visualization
                     # tf.summary.histogram(
                     #     data=get_conv2d_weights(model=hydra),
@@ -354,16 +366,18 @@ def train_loop(
                     #     buckets=weight_buckets,
                     #     name="training/weights")
                 # -- clean leftovers
-                del iter_batch,\
+                del iter_batch, \
                     input_batch, \
                     noisy_batch, \
                     downsampled_batch, \
                     denoiser_output, \
                     superres_output, \
-                    denoiser_uq_output
+                    denoiser_uq_output, \
+                    superres_uq_output
                 del denoiser_loss, \
                     denoiser_uq_loss, \
-                    superres_loss,\
+                    superres_loss, \
+                    superres_uq_loss, \
                     model_loss, \
                     total_loss
 
@@ -420,7 +434,7 @@ def train_loop(
 
             # --- end of the epoch
             logger.info("checkpoint at end of epoch [{0}], took [{1}] minutes".format(
-                int(global_epoch), int(round(epoch_time/60))))
+                int(global_epoch), int(round(epoch_time / 60))))
             global_epoch.assign_add(1)
             manager.save()
             # save model so we can visualize it easier

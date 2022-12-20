@@ -49,5 +49,6 @@ BACKBONE_STR = "backbone"
 DENOISER_STR = "denoiser"
 SUPERRES_STR = "superres"
 DENOISER_UQ_STR = "denoiser_uq"
+SUPERRES_UQ_STR = "superres_uq"
 
 # ---------------------------------------------------------------------

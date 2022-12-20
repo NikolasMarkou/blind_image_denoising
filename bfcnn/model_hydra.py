@@ -63,7 +63,7 @@ def model_builder(
 
     # heads
     denoiser_mid, denoiser_uq_mid = model_denoiser(backbone_mid)
-    superres_mid = \
+    superres_mid, superres_uq_mid = \
         model_superres([
             backbone_mid,
             tf.stop_gradient(denoiser_mid),
@@ -73,11 +73,13 @@ def model_builder(
     denoiser_output = model_denormalizer(denoiser_mid, training=False)
     superres_output = model_denormalizer(superres_mid, training=False)
     denoiser_uq_output = denoiser_uq_mid
+    superres_uq_output = superres_uq_mid
 
     # wrap layers to set names
     denoiser_output = tf.keras.layers.Layer(name=DENOISER_STR)(denoiser_output)
     superres_output = tf.keras.layers.Layer(name=SUPERRES_STR)(superres_output)
     denoiser_uq_output = tf.keras.layers.Layer(name=DENOISER_UQ_STR)(denoiser_uq_output)
+    superres_uq_output = tf.keras.layers.Layer(name=SUPERRES_UQ_STR)(superres_uq_output)
 
     # create model
     model_hydra = \
@@ -88,7 +90,8 @@ def model_builder(
             outputs=[
                 denoiser_output,
                 denoiser_uq_output,
-                superres_output
+                superres_output,
+                superres_uq_output
             ],
             name=f"hydra")
 
@@ -505,10 +508,12 @@ def model_superres_builder(
 
     # --- set configuration
     use_bias = config.get("use_bias", False)
-    no_filters = config.get("filters")
+    lin_start = config.get("lin_start", -0.5)
+    lin_stop = config.get("lin_stop", +0.5)
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
-    final_activation = config.get("final_activation", "tanh")
+    final_activation = config.get("final_activation", "relu")
+    uncertainty_channels = config.get("uncertainty_channels", 16)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
     # add one channel to accommodate the mask
@@ -548,31 +553,68 @@ def model_superres_builder(
     x = \
         tf.keras.layers.Concatenate()(
             [model_input_layer,
+             model_input_denoiser_layer,
              model_input_denoiser_uq_layer])
 
     x = \
         tf.keras.layers.UpSampling2D(
             **upsampling_params)(x)
 
-    x_res = \
-        tf.keras.layers.UpSampling2D(**upsampling_params)(
-            model_input_denoiser_layer)
-
     backbone, _, _ = model_backbone_builder(backbone_config)
     x = backbone(x)
 
-    x = \
-        conv2d_wrapper(
-            input_layer=x,
-            bn_params=None,
-            conv_params=final_conv_params,
-            channelwise_scaling=False,
-            multiplier_scaling=False)
-    x = tf.keras.layers.Add()([x, x_res])
+    kernel = \
+        tf.linspace(
+            start=lin_start,
+            stop=lin_stop,
+            num=uncertainty_channels)
+    conv_kernel = tf.reshape(tensor=kernel, shape=(1, 1, -1, 1))
+    column_kernel = tf.reshape(tensor=kernel, shape=(1, 1, 1, -1))
 
-    x_result = \
+    x_expected = []
+    x_uncertainty = []
+    for i in range(output_channels):
+        x_i = \
+            conv2d_wrapper(
+                input_layer=x,
+                bn_params=None,
+                conv_params=final_conv_params,
+                channelwise_scaling=False,
+                multiplier_scaling=False)
+        x_i_prob = tf.nn.softmax(x_i, axis=3) + DEFAULT_EPSILON
+        # compute expected x_i
+        x_i_expected = \
+            tf.nn.conv2d(
+                input=x_i_prob,
+                filters=conv_kernel,
+                strides=(1, 1),
+                padding="SAME")
+        x_i_diff_square = \
+            tf.nn.relu(
+                tf.square(column_kernel - x_i_expected)) + \
+            DEFAULT_EPSILON
+        x_i_std = \
+            tf.sqrt(
+                tf.nn.relu(
+                    tf.reduce_sum(
+                        tf.multiply(x_i_diff_square, x_i_prob),
+                        axis=[3],
+                        keepdims=True)) +
+                DEFAULT_EPSILON
+            )
+        x_expected.append(x_i_expected)
+        x_uncertainty.append(x_i_std)
+
+    x_expected = tf.concat(x_expected, axis=3)
+    x_uncertainty = tf.concat(x_uncertainty, axis=3)
+
+    x_expected = \
         tf.keras.layers.Layer(
-            name="output_tensor")(x)
+            name="output_tensor_expected")(x_expected)
+
+    x_uncertainty = \
+        tf.keras.layers.Layer(
+            name="output_tensor_uncertainty")(x_uncertainty)
 
     model_head = \
         tf.keras.Model(
@@ -580,7 +622,10 @@ def model_superres_builder(
                 model_input_layer,
                 model_input_denoiser_layer,
                 model_input_denoiser_uq_layer],
-            outputs=x_result,
+            outputs=[
+                x_expected,
+                x_uncertainty
+            ],
             name=f"superres_head")
 
     return model_head
