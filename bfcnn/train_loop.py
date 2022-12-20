@@ -351,8 +351,10 @@ def train_loop(
                     #     step=global_step,
                     #     buckets=weight_buckets,
                     #     name="training/weights")
+                # -- clean leftovers
                 del input_batch, \
                     noisy_batch, \
+                    downsampled_batch, \
                     denoiser_output, \
                     superres_output, \
                     denoiser_uq_output

@@ -348,8 +348,9 @@ def dataset_builder(
                                   dtype=tf.uint8)])
     def prepare_data_fn(iter_batch: tf.Tensor) -> \
             Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
-        input_batch = geometric_augmentation_fn(iter_batch)
-        input_batch = tf.cast(input_batch, dtype=tf.float32)
+        input_batch = \
+            tf.cast(geometric_augmentation_fn(iter_batch),
+                    dtype=tf.float32)
         noisy_batch = noise_augmentation_fn(input_batch)
         downsampled_batch = superres_augmentation_fn(input_batch)
         return input_batch, noisy_batch, downsampled_batch
