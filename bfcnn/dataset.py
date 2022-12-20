@@ -384,9 +384,10 @@ def dataset_builder(
     }
 
     @tf.function(
-        input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)],
-        reduce_retracing=True)
-    def load_image_fn(path: tf.string) -> tf.Tensor:
+        input_signature=[
+            tf.TensorSpec(shape=(), dtype=tf.string)
+        ])
+    def load_image_fn(path: tf.Tensor) -> tf.Tensor:
         img = Image.open(path.numpy())
         img_tensor = tf.convert_to_tensor(img, dtype=tf.uint8)
         img_tensor = tf.expand_dims(img_tensor, axis=0)
