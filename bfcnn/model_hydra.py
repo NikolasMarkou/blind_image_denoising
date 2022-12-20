@@ -513,7 +513,7 @@ def model_superres_builder(
     kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
     # add one channel to accommodate the mask
     backbone_config = copy.deepcopy(config)
-    backbone_config["input_shape"][2] += output_channels + output_channels
+    backbone_config["input_shape"][2] += output_channels
 
     # --- set network parameters
     upsampling_params = dict(
