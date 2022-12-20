@@ -513,8 +513,13 @@ def model_superres_builder(
     kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
     # add one channel to accommodate the mask
     backbone_config = copy.deepcopy(config)
+    backbone_config["input_shape"][2] += output_channels + output_channels
 
     # --- set network parameters
+    upsampling_params = dict(
+        size=(2, 2),
+        interpolation="nearest")
+
     final_conv_params = dict(
         kernel_size=1,
         strides=(1, 1),
@@ -547,14 +552,8 @@ def model_superres_builder(
              model_input_denoiser_uq_layer])
 
     x = \
-        tf.keras.layers.Conv2DTranspose(
-            filters=no_filters,
-            use_bias=use_bias,
-            kernel_size=(5, 5),
-            strides=(2, 2),
-            padding="same",
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer)(x)
+        tf.keras.layers.UpSampling2D(
+            **upsampling_params)(x)
 
     backbone, _, _ = model_backbone_builder(backbone_config)
     x = backbone(x)

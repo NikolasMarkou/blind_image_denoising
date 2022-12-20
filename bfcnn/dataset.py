@@ -172,10 +172,15 @@ def dataset_builder(
     @tf.function
     def superres_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
+        x = \
+            tfa.image.gaussian_filter2d(
+                image=input_batch,
+                sigma=1,
+                filter_shape=(3, 3))
         return \
-            tf.nn.avg_pool2d(
-                input_batch,
-                ksize=(3, 3),
+            tf.nn.max_pool2d(
+                input=x,
+                ksize=(1, 1),
                 strides=(2, 2),
                 padding="SAME")
 
