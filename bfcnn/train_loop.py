@@ -213,17 +213,27 @@ def train_loop(
     def train_forward_step(
             noisy_batch: tf.Tensor,
             downsampled_batch: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
-        denoiser_output, denoiser_uq_output, _, _ = \
+        denoiser_output, denoiser_uq_output, x0, x1 = \
             hydra(noisy_batch,
                   training=True)
-        _, _, superres_output, superres_uq_output = \
+        x2, x3, superres_output, superres_uq_output = \
             hydra(downsampled_batch,
                   training=True)
+        del x0, x1, x2, x3
         return \
             denoiser_output, \
             denoiser_uq_output, \
             superres_output, \
             superres_uq_output
+
+    @tf.function
+    def test_step() -> Tuple[tf.Tensor, tf.Tensor]:
+        test_denoiser_output, x0, test_superres_output, x1 = \
+            hydra(test_images, training=False)
+        del x0, x1
+        return \
+            test_denoiser_output, \
+            test_superres_output
 
     # --- train the model
     with summary_writer.as_default():
@@ -291,8 +301,7 @@ def train_loop(
                     # The operations that the layer applies
                     # to its inputs are going to be recorded
                     # on the GradientTape.
-                    denoiser_output, denoiser_uq_output, \
-                    superres_output, superres_uq_output = \
+                    denoiser_output, denoiser_uq_output, superres_output, superres_uq_output = \
                         train_forward_step(noisy_batch, downsampled_batch)
 
                     # compute the loss value for this mini-batch
@@ -341,9 +350,8 @@ def train_loop(
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
-                    test_denoiser_output, test_denoiser_uq_output, \
-                    test_superres_output, test_superres_uq_output = \
-                        hydra(test_images, training=False)
+                    test_denoiser_output, test_superres_output = \
+                        test_step()
                     visualize(
                         global_step=global_step,
                         input_batch=input_batch,
@@ -356,9 +364,7 @@ def train_loop(
                         test_superres_batch=test_superres_output,
                         visualization_number=visualization_number)
                     del test_denoiser_output, \
-                        test_denoiser_uq_output, \
-                        test_superres_output, \
-                        test_superres_uq_output
+                        test_superres_output
                     # add weight visualization
                     # tf.summary.histogram(
                     #     data=get_conv2d_weights(model=hydra),
