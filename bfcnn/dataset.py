@@ -1,3 +1,4 @@
+from PIL import Image
 import tensorflow as tf
 import tensorflow_addons as tfa
 from typing import Dict, Callable, Iterator, Tuple
@@ -386,29 +387,32 @@ def dataset_builder(
         input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)],
         reduce_retracing=True)
     def load_image_fn(path: tf.string) -> tf.Tensor:
-        img = \
-            load_image(
-                path=path,
-                image_size=None,
-                num_channels=num_channels,
-                interpolation=tf.image.ResizeMethod.BILINEAR,
-                expand_dims=True,
-                normalize=False)
+        img = Image.open(path.numpy())
+        img_tensor = tf.convert_to_tensor(img, dtype=tf.uint8)
+        img_tensor = tf.expand_dims(img_tensor, axis=0)
+        # img = \
+        #     load_image(
+        #         path=path,
+        #         image_size=None,
+        #         num_channels=num_channels,
+        #         interpolation=tf.image.ResizeMethod.BILINEAR,
+        #         expand_dims=True,
+        #         normalize=False)
 
         return \
             random_crops(
-                input_batch=img,
+                input_batch=img_tensor,
                 crop_size=(input_shape[0], input_shape[1]),
                 x_range=None,
                 y_range=None,
                 no_crops_per_image=no_crops_per_image)
 
-    load_image_concrete_fn = \
-        load_image_fn.get_concrete_function(
-            tf.TensorSpec(shape=(), dtype=tf.string))
+    # load_image_concrete_fn = \
+    #     load_image_fn.get_concrete_function(
+    #         tf.TensorSpec(shape=(), dtype=tf.string))
 
     # --- create the dataset
-    result[DATASET_TRAINING_FN_STR] = \
+    dataset_training = \
         dataset_training \
             .shuffle(
                 seed=0,
@@ -419,6 +423,12 @@ def dataset_builder(
                 num_parallel_calls=tf.data.AUTOTUNE) \
             .rebatch(batch_size=batch_size) \
             .prefetch(1)
+    options = tf.data.Options()
+    options.deterministic = False
+    options.threading.private_threadpool_size = 12
+    dataset_training = dataset_training.with_options(options)
+
+    result[DATASET_TRAINING_FN_STR] = dataset_training
 
     return result
 
