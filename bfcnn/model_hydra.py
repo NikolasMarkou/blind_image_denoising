@@ -554,14 +554,9 @@ def model_superres_builder(
         tf.keras.layers.UpSampling2D(
             **upsampling_params)(x)
 
-    x_res = model_input_denoiser_layer
     x_res = \
-        tf.clip_by_value(
-            x_res,
-            clip_value_min=-0.5,
-            clip_value_max=+0.5)
-    x_res = \
-        tf.keras.layers.UpSampling2D(**upsampling_params)(x_res)
+        tf.keras.layers.UpSampling2D(**upsampling_params)(
+            model_input_denoiser_layer)
 
     backbone, _, _ = model_backbone_builder(backbone_config)
     x = backbone(x)
