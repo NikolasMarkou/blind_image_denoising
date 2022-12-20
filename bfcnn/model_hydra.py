@@ -559,7 +559,7 @@ def model_superres_builder(
             strides=(2, 2),
             padding="same",
             kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer)
+            kernel_initializer=kernel_initializer)(x)
 
     backbone, _, _ = model_backbone_builder(backbone_config)
     x = backbone(x)
