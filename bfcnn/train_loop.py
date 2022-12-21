@@ -73,9 +73,9 @@ def train_loop(
 
     # --- build loss function
     loss_fn_map = loss_function_builder(config=config["loss"])
-    denoiser_loss_fn = tf.function(func=loss_fn_map[DENOISER_LOSS_FN_STR])
-    superres_loss_fn = tf.function(func=loss_fn_map[SUPERRES_LOSS_FN_STR])
-    denoiser_uq_loss_fn = tf.function(func=loss_fn_map[DENOISER_UQ_LOSS_FN_STR])
+    denoiser_loss_fn = loss_fn_map[DENOISER_LOSS_FN_STR]
+    superres_loss_fn = loss_fn_map[SUPERRES_LOSS_FN_STR]
+    denoiser_uq_loss_fn = loss_fn_map[DENOISER_UQ_LOSS_FN_STR]
     model_loss_fn = loss_fn_map[MODEL_LOSS_FN_STR]
 
     # --- build optimizer
@@ -270,101 +270,83 @@ def train_loop(
             for (input_batch, noisy_batch, downsampled_batch) in dataset_training:
                 start_time_forward_backward = time.time()
 
-                # # Open a GradientTape to record the operations run
-                # # during the forward pass,
-                # # which enables auto-differentiation.
-                # with tf.GradientTape() as tape:
-                #     # run the forward pass of the layer.
-                #     # The operations that the layer applies
-                #     # to its inputs are going to be recorded
-                #     # on the GradientTape.
-                #     denoiser_output, denoiser_uq_output, superres_output, superres_uq_output = \
-                #         train_forward_step(noisy_batch, downsampled_batch)
-                #
-                #     # compute the loss value for this mini-batch
-                #     denoiser_loss = \
-                #         denoiser_loss_fn(input_batch=input_batch, predicted_batch=denoiser_output)
-                #     denoiser_uq_loss = \
-                #         denoiser_uq_loss_fn(uncertainty_batch=denoiser_uq_output)
-                #     superres_loss = \
-                #         superres_loss_fn(input_batch=input_batch, predicted_batch=superres_output)
-                #     superres_uq_loss = \
-                #         denoiser_uq_loss_fn(uncertainty_batch=superres_uq_output)
-                #     model_loss = \
-                #         model_loss_fn(model=hydra)
-                #
-                #     total_loss = \
-                #         denoiser_loss[TOTAL_LOSS_STR] / 2.0 + \
-                #         superres_loss[TOTAL_LOSS_STR] / 2.0 + \
-                #         denoiser_uq_loss[TOTAL_LOSS_STR] + \
-                #         superres_uq_loss[TOTAL_LOSS_STR] + \
-                #         model_loss[TOTAL_LOSS_STR]
-                #
-                #     # --- apply weights
-                #     optimizer.apply_gradients(
-                #         grads_and_vars=zip(
-                #             tape.gradient(target=total_loss, sources=hydra.trainable_weights),
-                #             hydra.trainable_weights))
-                #
-                # # --- add loss summaries for tensorboard
-                # tf.summary.scalar(name="quality/denoiser_psnr",
-                #                   data=denoiser_loss[PSNR_STR],
-                #                   step=global_step)
-                # tf.summary.scalar(name="loss/denoiser_mae",
-                #                   data=denoiser_loss[MAE_LOSS_STR],
-                #                   step=global_step)
-                # tf.summary.scalar(name="loss/denoiser_total",
-                #                   data=denoiser_loss[TOTAL_LOSS_STR], step=global_step)
-                # tf.summary.scalar(name="loss/denoiser_uncertainty",
-                #                   data=denoiser_uq_loss[TOTAL_LOSS_STR],
-                #                   step=global_step)
-                # tf.summary.scalar(name="loss/superres_uncertainty",
-                #                   data=superres_uq_loss[TOTAL_LOSS_STR],
-                #                   step=global_step)
-                # tf.summary.scalar(name="quality/superres_psnr",
-                #                   data=superres_loss[PSNR_STR],
-                #                   step=global_step)
-                # tf.summary.scalar(name="loss/superres_mae",
-                #                   data=superres_loss[MAE_LOSS_STR],
-                #                   step=global_step)
-                # tf.summary.scalar(name="loss/superres_total",
-                #                   data=superres_loss[TOTAL_LOSS_STR],
-                #                   step=global_step)
-                # tf.summary.scalar(name="loss/regularization",
-                #                   data=model_loss[REGULARIZATION_LOSS_STR],
-                #                   step=global_step)
-                # tf.summary.scalar(name="loss/total",
-                #                   data=total_loss,
-                #                   step=global_step)
-                #
-                # # --- add image prediction for tensorboard
-                # if (global_step % visualization_every) == 0:
-                #     visualize(
-                #         global_step=global_step,
-                #         input_batch=input_batch,
-                #         noisy_batch=noisy_batch,
-                #         denoiser_batch=denoiser_output,
-                #         superres_batch=superres_output,
-                #         denoiser_uq_batch=denoiser_uq_output,
-                #         superres_uq_batch=superres_uq_output,
-                #         test_denoiser_batch=None,
-                #         test_superres_batch=None,
-                #         visualization_number=visualization_number)
-                #
-                # # -- clean leftovers
-                # del input_batch, \
-                #     noisy_batch, \
-                #     downsampled_batch, \
-                #     denoiser_output, \
-                #     superres_output, \
-                #     denoiser_uq_output, \
-                #     superres_uq_output
-                # del denoiser_loss, \
-                #     denoiser_uq_loss, \
-                #     superres_loss, \
-                #     superres_uq_loss, \
-                #     model_loss, \
-                #     total_loss
+                # run the forward pass of the layer.
+                # The operations that the layer applies
+                # to its inputs are going to be recorded
+                # on the GradientTape.
+                with tf.GradientTape() as tape:
+                    denoiser_output, denoiser_uq_output, superres_output, superres_uq_output = \
+                        train_forward_step(noisy_batch, downsampled_batch)
+
+                    # compute the loss value for this mini-batch
+                    denoiser_loss = \
+                        denoiser_loss_fn(input_batch=input_batch, predicted_batch=denoiser_output)
+                    denoiser_uq_loss = \
+                        denoiser_uq_loss_fn(uncertainty_batch=denoiser_uq_output)
+                    superres_loss = \
+                        superres_loss_fn(input_batch=input_batch, predicted_batch=superres_output)
+                    superres_uq_loss = \
+                        denoiser_uq_loss_fn(uncertainty_batch=superres_uq_output)
+                    model_loss = \
+                        model_loss_fn(model=hydra)
+
+                    total_loss = \
+                        denoiser_loss[TOTAL_LOSS_STR] / 2.0 + \
+                        superres_loss[TOTAL_LOSS_STR] / 2.0 + \
+                        denoiser_uq_loss[TOTAL_LOSS_STR] + \
+                        superres_uq_loss[TOTAL_LOSS_STR] + \
+                        model_loss[TOTAL_LOSS_STR]
+
+                    # --- apply weights
+                    optimizer.apply_gradients(
+                        grads_and_vars=zip(
+                            tape.gradient(target=total_loss, sources=hydra.trainable_weights),
+                            hydra.trainable_weights))
+
+                # --- add loss summaries for tensorboard
+                tf.summary.scalar(name="quality/denoiser_psnr",
+                                  data=denoiser_loss[PSNR_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="loss/denoiser_mae",
+                                  data=denoiser_loss[MAE_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="loss/denoiser_total",
+                                  data=denoiser_loss[TOTAL_LOSS_STR], step=global_step)
+                tf.summary.scalar(name="loss/denoiser_uncertainty",
+                                  data=denoiser_uq_loss[TOTAL_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="loss/superres_uncertainty",
+                                  data=superres_uq_loss[TOTAL_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="quality/superres_psnr",
+                                  data=superres_loss[PSNR_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="loss/superres_mae",
+                                  data=superres_loss[MAE_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="loss/superres_total",
+                                  data=superres_loss[TOTAL_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="loss/regularization",
+                                  data=model_loss[REGULARIZATION_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="loss/total",
+                                  data=total_loss,
+                                  step=global_step)
+
+                # --- add image prediction for tensorboard
+                if (global_step % visualization_every) == 0:
+                    visualize(
+                        global_step=global_step,
+                        input_batch=input_batch,
+                        noisy_batch=noisy_batch,
+                        denoiser_batch=denoiser_output,
+                        superres_batch=superres_output,
+                        denoiser_uq_batch=denoiser_uq_output,
+                        superres_uq_batch=superres_uq_output,
+                        test_denoiser_batch=None,
+                        test_superres_batch=None,
+                        visualization_number=visualization_number)
 
                 # --- prune conv2d
                 if use_prune and (global_epoch >= prune_start_epoch) and \
