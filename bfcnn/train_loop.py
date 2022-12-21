@@ -10,12 +10,10 @@ from typing import Union, Dict, Tuple
 # ---------------------------------------------------------------------
 
 from .constants import *
-from .visualize import visualize
 from .custom_logger import logger
 from .loss import \
     loss_function_builder, \
     MODEL_LOSS_FN_STR, \
-    INPAINT_LOSS_FN_STR, \
     DENOISER_LOSS_FN_STR, \
     SUPERRES_LOSS_FN_STR, \
     DENOISER_UQ_LOSS_FN_STR
