@@ -371,12 +371,7 @@ def dataset_builder(
 
     # --- save the augmentation functions
     result = {
-        PREPARE_DATA_FN_STR: prepare_data_fn.get_concrete_function(
-            tf.TensorSpec(shape=[None,
-                                 input_shape[0],
-                                 input_shape[1],
-                                 num_channels],
-                          dtype=tf.uint8)),
+        PREPARE_DATA_FN_STR: prepare_data_fn,
         NOISE_AUGMENTATION_FN_STR: noise_augmentation_fn,
         SUPERRES_AUGMENTATION_FN_STR: superres_augmentation_fn,
         GEOMETRIC_AUGMENTATION_FN_STR: geometric_augmentation_fn

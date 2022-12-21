@@ -185,6 +185,7 @@ def train_loop(
                 seed=0,
                 minval=0.0,
                 maxval=255.0,
+                dtype=tf.float32,
                 shape=random_batch_size)
         _ = optimized_model(x)
         tf.summary.trace_export(
@@ -225,15 +226,6 @@ def train_loop(
             superres_output, \
             superres_uq_output
 
-    @tf.function
-    def test_step() -> Tuple[tf.Tensor, tf.Tensor]:
-        test_denoiser_output, x0, test_superres_output, x1 = \
-            hydra(test_images, training=False)
-        del x0, x1
-        return \
-            test_denoiser_output, \
-            test_superres_output
-
     # --- train the model
     with summary_writer.as_default():
         # checkpoint managing
@@ -268,8 +260,6 @@ def train_loop(
                         f"and step [{int(global_step)}]")
         else:
             logger.info("!!! Did NOT find checkpoint to restore !!!")
-
-        model_weights = hydra.trainable_weights
 
         # ---
         while global_epoch < global_total_epochs:
@@ -321,31 +311,42 @@ def train_loop(
                     # --- apply weights
                     optimizer.apply_gradients(
                         grads_and_vars=zip(
-                            tape.gradient(target=total_loss, sources=model_weights),
-                            model_weights))
+                            tape.gradient(target=total_loss, sources=hydra.trainable_weights),
+                            hydra.trainable_weights))
 
                 # --- add loss summaries for tensorboard
-                tf.summary.scalar(name="quality/denoiser_psnr", data=denoiser_loss[PSNR_STR], step=global_step)
-                tf.summary.scalar(name="loss/denoiser_mae", data=denoiser_loss[MAE_LOSS_STR], step=global_step)
-                tf.summary.scalar(name="loss/denoiser_total", data=denoiser_loss[TOTAL_LOSS_STR], step=global_step)
+                tf.summary.scalar(name="quality/denoiser_psnr",
+                                  data=denoiser_loss[PSNR_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="loss/denoiser_mae",
+                                  data=denoiser_loss[MAE_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="loss/denoiser_total",
+                                  data=denoiser_loss[TOTAL_LOSS_STR], step=global_step)
                 tf.summary.scalar(name="loss/denoiser_uncertainty",
                                   data=denoiser_uq_loss[TOTAL_LOSS_STR],
                                   step=global_step)
                 tf.summary.scalar(name="loss/superres_uncertainty",
                                   data=superres_uq_loss[TOTAL_LOSS_STR],
                                   step=global_step)
-
-                tf.summary.scalar(name="quality/superres_psnr", data=superres_loss[PSNR_STR], step=global_step)
-                tf.summary.scalar(name="loss/superres_mae", data=superres_loss[MAE_LOSS_STR], step=global_step)
-                tf.summary.scalar(name="loss/superres_total", data=superres_loss[TOTAL_LOSS_STR], step=global_step)
-
-                tf.summary.scalar(name="loss/regularization", data=model_loss[REGULARIZATION_LOSS_STR],
+                tf.summary.scalar(name="quality/superres_psnr",
+                                  data=superres_loss[PSNR_STR],
                                   step=global_step)
-                tf.summary.scalar(name="loss/total", data=total_loss, step=global_step)
+                tf.summary.scalar(name="loss/superres_mae",
+                                  data=superres_loss[MAE_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="loss/superres_total",
+                                  data=superres_loss[TOTAL_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="loss/regularization",
+                                  data=model_loss[REGULARIZATION_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="loss/total",
+                                  data=total_loss,
+                                  step=global_step)
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
-                    test_denoiser_output, test_superres_output = test_step()
                     visualize(
                         global_step=global_step,
                         input_batch=input_batch,
@@ -354,17 +355,10 @@ def train_loop(
                         superres_batch=superres_output,
                         denoiser_uq_batch=denoiser_uq_output,
                         superres_uq_batch=superres_uq_output,
-                        test_denoiser_batch=test_denoiser_output,
-                        test_superres_batch=test_superres_output,
+                        test_denoiser_batch=None,
+                        test_superres_batch=None,
                         visualization_number=visualization_number)
-                    del test_denoiser_output, \
-                        test_superres_output
-                    # add weight visualization
-                    # tf.summary.histogram(
-                    #     data=get_conv2d_weights(model=hydra),
-                    #     step=global_step,
-                    #     buckets=weight_buckets,
-                    #     name="training/weights")
+
                 # -- clean leftovers
                 del input_batch, \
                     noisy_batch, \
