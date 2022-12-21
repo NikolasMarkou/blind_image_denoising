@@ -212,7 +212,8 @@ def train_loop(
     @tf.function
     def train_forward_step(
             noisy_batch: tf.Tensor,
-            downsampled_batch: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+            downsampled_batch: tf.Tensor) -> \
+            Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
         denoiser_output, denoiser_uq_output, x0, x1 = \
             hydra(noisy_batch,
                   training=True)
@@ -270,7 +271,6 @@ def train_loop(
             if use_prune and (global_epoch >= prune_start_epoch):
                 logger.info(f"pruning weights at step [{int(global_step)}]")
                 hydra = prune_fn(model=hydra)
-                model_weights = hydra.trainable_weights
 
             start_time_epoch = time.time()
 

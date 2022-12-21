@@ -404,6 +404,7 @@ def dataset_builder(
 
         return crops
 
+    # --- compute concrete functions
     load_image_concrete_fn = \
         load_image_fn.get_concrete_function(
             tf.TensorSpec(shape=(), dtype=tf.string))
