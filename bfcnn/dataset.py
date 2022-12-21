@@ -377,27 +377,31 @@ def dataset_builder(
             tf.TensorSpec(shape=(), dtype=tf.string)
         ])
     def load_image_fn(path: tf.Tensor) -> tf.Tensor:
-        img = \
-            load_image(
-                path=path,
-                image_size=None,
-                num_channels=num_channels,
-                interpolation=tf.image.ResizeMethod.BILINEAR,
-                expand_dims=True,
-                normalize=False)
-
-        crops = \
-            random_crops(
-                input_batch=img,
-                crop_size=(input_shape[0], input_shape[1]),
-                x_range=None,
-                y_range=None,
-                no_crops_per_image=no_crops_per_image)
-
-        del img
-        del path
-
-        return crops
+        return \
+            tf.zeros(
+                shape=(1, input_shape[0], input_shape[1], num_channels),
+                dtype=tf.float32)
+        # img = \
+        #     load_image(
+        #         path=path,
+        #         image_size=None,
+        #         num_channels=num_channels,
+        #         interpolation=tf.image.ResizeMethod.BILINEAR,
+        #         expand_dims=True,
+        #         normalize=False)
+        #
+        # crops = \
+        #     random_crops(
+        #         input_batch=img,
+        #         crop_size=(input_shape[0], input_shape[1]),
+        #         x_range=None,
+        #         y_range=None,
+        #         no_crops_per_image=no_crops_per_image)
+        #
+        # del img
+        # del path
+        #
+        # return crops
 
     # --- compute concrete functions
     load_image_concrete_fn = \

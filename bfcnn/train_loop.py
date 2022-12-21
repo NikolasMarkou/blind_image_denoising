@@ -209,7 +209,7 @@ def train_loop(
         filepath=os.path.join(model_dir, MODEL_HYDRA_DEFAULT_NAME_STR),
         include_optimizer=False)
 
-    @tf.function
+    @tf.function(reduce_retracing=True)
     def train_forward_step(
             noisy_batch: tf.Tensor,
             downsampled_batch: tf.Tensor) -> \
