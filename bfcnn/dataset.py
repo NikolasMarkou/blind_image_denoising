@@ -8,7 +8,7 @@ from typing import Dict, Callable, Iterator, Tuple
 
 from .file_operations import *
 from .custom_logger import logger
-from .utilities import random_crops
+from .utilities import random_crops, downsample
 
 # ---------------------------------------------------------------------
 
@@ -26,7 +26,7 @@ GEOMETRIC_AUGMENTATION_FN_STR = "geometric_augmentation"
 
 
 def dataset_builder(
-        config: Dict):
+        config: Dict) -> tf.data.Dataset:
     # ---
     logger.info("creating dataset_builder with configuration [{0}]".format(config))
 
@@ -167,22 +167,6 @@ def dataset_builder(
                 false_fn=lambda: input_batch)
 
         return input_batch
-
-    # --- define superres augmentation function
-    @tf.function
-    def superres_augmentation_fn(
-            input_batch: tf.Tensor) -> tf.Tensor:
-        x = \
-            tfa.image.gaussian_filter2d(
-                sigma=1,
-                image=input_batch,
-                filter_shape=(5, 5))
-        return \
-            tf.nn.max_pool2d(
-                input=x,
-                ksize=(1, 1),
-                strides=(2, 2),
-                padding="SAME")
 
     # --- define noise augmentation function
     @tf.function
@@ -345,7 +329,7 @@ def dataset_builder(
             tf.cast(geometric_augmentation_fn(iter_batch),
                     dtype=tf.float32)
         noisy_batch = noise_augmentation_fn(input_batch)
-        downsampled_batch = superres_augmentation_fn(input_batch)
+        downsampled_batch = downsample(input_batch)
         return input_batch, noisy_batch, downsampled_batch
 
     # --- define generator function from directory
@@ -364,13 +348,6 @@ def dataset_builder(
         raise ValueError("don't know how to handle non directory datasets")
 
     # --- save the augmentation functions
-    result = {
-        PREPARE_DATA_FN_STR: prepare_data_fn,
-        NOISE_AUGMENTATION_FN_STR: noise_augmentation_fn,
-        SUPERRES_AUGMENTATION_FN_STR: superres_augmentation_fn,
-        GEOMETRIC_AUGMENTATION_FN_STR: geometric_augmentation_fn
-    }
-
     @tf.function(
         input_signature=[
             tf.TensorSpec(shape=(), dtype=tf.string)
@@ -412,11 +389,16 @@ def dataset_builder(
                           dtype=tf.uint8))
 
     # --- create the dataset
+    # !!!
+    # SHUFFLING ON FIXED SIZE BATCHES USES FIXED AMOUNT OF MEMORY
+    # SHUFFLING ON VARIABLE SIZE STRING USES A LOT OF MEMORY
+    # AND POSSIBLE LEAKING
+    # !!!
     dataset_training = \
         dataset_training \
             .map(
                 map_func=load_image_concrete_fn,
-                num_parallel_calls=tf.data.AUTOTUNE) \
+                num_parallel_calls=batch_size) \
             .shuffle(
                 seed=0,
                 buffer_size=1024,
@@ -429,11 +411,9 @@ def dataset_builder(
             .prefetch(1)
     options = tf.data.Options()
     options.deterministic = False
-    options.threading.private_threadpool_size = 12
+    options.threading.private_threadpool_size = 24
     dataset_training = dataset_training.with_options(options)
 
-    result[DATASET_TRAINING_FN_STR] = dataset_training
-
-    return result
+    return dataset_training
 
 # ---------------------------------------------------------------------

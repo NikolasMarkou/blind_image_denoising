@@ -477,7 +477,6 @@ def loss_function_builder(
     return {
         MODEL_LOSS_FN_STR: model_loss,
         DENOISER_LOSS_FN_STR: denoiser_loss,
-        INPAINT_LOSS_FN_STR: denoiser_loss,
         SUPERRES_LOSS_FN_STR: denoiser_loss,
         DENOISER_UQ_LOSS_FN_STR: denoiser_uq_loss
     }

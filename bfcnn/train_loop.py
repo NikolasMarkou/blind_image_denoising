@@ -67,16 +67,14 @@ def train_loop(
                 model_dir))
 
     # --- build dataset
-    dataset_res = dataset_builder(config["dataset"])
-    dataset_training = dataset_res[DATASET_TRAINING_FN_STR]
-    superres_augmentation_fn = dataset_res[SUPERRES_AUGMENTATION_FN_STR]
+    dataset_training = dataset_builder(config["dataset"])
 
     # --- build loss function
     loss_fn_map = loss_function_builder(config=config["loss"])
-    denoiser_loss_fn = loss_fn_map[DENOISER_LOSS_FN_STR]
-    superres_loss_fn = loss_fn_map[SUPERRES_LOSS_FN_STR]
-    denoiser_uq_loss_fn = loss_fn_map[DENOISER_UQ_LOSS_FN_STR]
-    model_loss_fn = loss_fn_map[MODEL_LOSS_FN_STR]
+    model_loss_fn = tf.function(func=loss_fn_map[MODEL_LOSS_FN_STR], reduce_retracing=True)
+    denoiser_loss_fn = tf.function(func=loss_fn_map[DENOISER_LOSS_FN_STR], reduce_retracing=True)
+    superres_loss_fn = tf.function(func=loss_fn_map[SUPERRES_LOSS_FN_STR], reduce_retracing=True)
+    denoiser_uq_loss_fn = tf.function(func=loss_fn_map[DENOISER_UQ_LOSS_FN_STR], reduce_retracing=True)
 
     # --- build optimizer
     optimizer, lr_schedule = \
@@ -311,7 +309,8 @@ def train_loop(
                                   data=denoiser_loss[MAE_LOSS_STR],
                                   step=global_step)
                 tf.summary.scalar(name="loss/denoiser_total",
-                                  data=denoiser_loss[TOTAL_LOSS_STR], step=global_step)
+                                  data=denoiser_loss[TOTAL_LOSS_STR],
+                                  step=global_step)
                 tf.summary.scalar(name="loss/denoiser_uncertainty",
                                   data=denoiser_uq_loss[TOTAL_LOSS_STR],
                                   step=global_step)
@@ -336,17 +335,24 @@ def train_loop(
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
-                    visualize(
-                        global_step=global_step,
-                        input_batch=input_batch,
-                        noisy_batch=noisy_batch,
-                        denoiser_batch=denoiser_output,
-                        superres_batch=superres_output,
-                        denoiser_uq_batch=denoiser_uq_output,
-                        superres_uq_batch=superres_uq_output,
-                        test_denoiser_batch=None,
-                        test_superres_batch=None,
-                        visualization_number=visualization_number)
+                    tf.summary.image(
+                        name="input", data=input_batch / 255,
+                        max_outputs=visualization_number, step=global_step)
+                    tf.summary.image(
+                        name="noisy", data=noisy_batch / 255,
+                        max_outputs=visualization_number, step=global_step)
+                    tf.summary.image(
+                        name="output/denoiser", data=denoiser_output / 255,
+                        max_outputs=visualization_number, step=global_step)
+                    tf.summary.image(
+                        name="uncertainty/denoiser", data=denoiser_uq_output,
+                        max_outputs=visualization_number, step=global_step)
+                    tf.summary.image(
+                        name="output/superres", data=superres_output,
+                        max_outputs=visualization_number, step=global_step)
+                    tf.summary.image(
+                        name="uncertainty/superres", data=superres_uq_output,
+                        max_outputs=visualization_number, step=global_step)
 
                 # --- prune conv2d
                 if use_prune and (global_epoch >= prune_start_epoch) and \
@@ -370,20 +376,12 @@ def train_loop(
                     stop_time_forward_backward - \
                     start_time_forward_backward
 
-                tf.summary.scalar(
-                    "training/steps_per_second",
-                    1.0 / (step_time_forward_backward + 0.00001),
-                    step=global_step)
-
-                tf.summary.scalar(
-                    "training/epoch",
-                    int(global_epoch),
-                    step=global_step)
-
-                tf.summary.scalar(
-                    "training/learning_rate",
-                    lr_schedule(int(global_step)),
-                    step=global_step)
+                tf.summary.scalar(name="training/epoch", data=int(global_epoch),
+                                  step=global_step)
+                tf.summary.scalar(name="training/learning_rate", data=lr_schedule(int(global_step)),
+                                  step=global_step)
+                tf.summary.scalar(name="training/steps_per_second", data=1.0 / (step_time_forward_backward + 0.00001),
+                                  step=global_step)
 
                 # ---
                 hydra.reset_metrics()
