@@ -338,12 +338,7 @@ def dataset_builder(
 
         return noisy_batch
 
-    @tf.function(input_signature=[
-                    tf.TensorSpec(shape=[None,
-                                         input_shape[0],
-                                         input_shape[1],
-                                         num_channels],
-                                  dtype=tf.uint8)])
+    @tf.function
     def prepare_data_fn(iter_batch: tf.Tensor) -> \
             Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
         input_batch = \
@@ -411,7 +406,7 @@ def dataset_builder(
 
     prepare_data_concrete_fn = \
         prepare_data_fn.get_concrete_function(
-            tf.TensorSpec(shape=[None,
+            tf.TensorSpec(shape=[batch_size,
                                  input_shape[0],
                                  input_shape[1],
                                  num_channels],
@@ -423,7 +418,8 @@ def dataset_builder(
             .map(
                 map_func=load_image_concrete_fn,
                 num_parallel_calls=tf.data.AUTOTUNE) \
-            .rebatch(batch_size=batch_size) \
+            .rebatch(batch_size=batch_size,
+                     drop_remainder=True) \
             .map(map_func=prepare_data_concrete_fn,
                  num_parallel_calls=tf.data.AUTOTUNE) \
             .prefetch(1)
