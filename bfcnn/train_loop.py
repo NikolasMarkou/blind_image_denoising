@@ -132,14 +132,12 @@ def train_loop(
                     load_image(
                         path=image_path,
                         num_channels=3,
-                        image_size=(512, 512),
+                        image_size=(256, 256),
                         expand_dims=True,
                         normalize=False)
                 test_images.append(image)
-        test_images = \
-            np.concatenate(
-                test_images,
-                axis=0)
+        test_images = np.concatenate(test_images, axis=0)
+        test_images = tf.constant(test_images)
 
     # --- prune strategy
     prune_config = \
@@ -352,6 +350,25 @@ def train_loop(
                         name="uncertainty/superres", data=superres_uq_output,
                         max_outputs=visualization_number, step=global_step)
 
+                    if use_test_images:
+                        test_denoiser_output, test_denoiser_uq_output, \
+                        test_superres_output, test_superres_uq_output = \
+                            hydra(test_images, training=False)
+                        tf.summary.image(
+                            name="test/denoiser", data=test_denoiser_output/255,
+                            max_outputs=visualization_number, step=global_step)
+                        tf.summary.image(
+                            name="test/denoiser_uncertainty", data=test_denoiser_uq_output,
+                            max_outputs=visualization_number, step=global_step)
+                        tf.summary.image(
+                            name="test/superres", data=test_superres_output/255,
+                            max_outputs=visualization_number, step=global_step)
+                        tf.summary.image(
+                            name="test/superres_uncertainty", data=test_superres_uq_output,
+                            max_outputs=visualization_number, step=global_step)
+                        del test_denoiser_output, test_denoiser_uq_output, \
+                            test_superres_output, test_superres_uq_output
+                
                 # --- free resources
                 del input_batch, noisy_batch, downsampled_batch
                 del denoiser_output, denoiser_uq_output, superres_output, superres_uq_output
