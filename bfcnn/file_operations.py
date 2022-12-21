@@ -1,4 +1,5 @@
 import os
+import glob
 import tensorflow as tf
 from pathlib import Path
 from typing import Tuple, Union, Any, Generator, List
@@ -46,64 +47,14 @@ def image_filenames_generator(
 
 
 def index_directory_gen(
-        directory,
-        formats,
-        follow_links=False) -> Generator[str, None, None]:
+        directory: str,
+        formats: List[str]) -> Generator[str, None, None]:
     """
-    Make list of all files in the subdirs of `directory`, with their labels.
-
-      Args:
-        directory: The target directory (string).
-        formats: Allowlist of file extensions to index (e.g. ".jpg", ".txt").
-        follow_links: Whether to visits subdirectories pointed to by symlinks.
+    get all image files
     """
-    # in the no-label case, index from the parent directory down.
-    sub_dirs = [""]
-
-    # Build an index of the files
-    # in the different class sub-folders.
-    for dir_path in (os.path.join(directory, subdir) for subdir in sub_dirs):
-        for partial_filename in index_subdirectory_gen(dir_path, follow_links, formats):
-            yield os.path.join(directory, partial_filename)
-
-
-# ---------------------------------------------------------------------
-
-
-def index_subdirectory_gen(
-        directory,
-        follow_links,
-        formats):
-    """Recursively walks directory and list image paths and their class index.
-
-    Args:
-        directory: string, target directory.
-        follow_links: boolean, whether to recursively follow subdirectories
-          (if False, we only list top-level images in `directory`).
-        formats: Allowlist of file extensions to index (e.g. ".jpg", ".txt").
-
-    Returns:
-        tuple `(filenames, labels)`. `filenames` is a list of relative file
-        paths, and `labels` is a list of integer labels corresponding to these
-        files.
-    """
-    dirname = os.path.basename(directory)
-    for root, filename in iter_valid_files(directory, follow_links, formats):
-        absolute_path = os.path.join(root, filename)
-        relative_path = os.path.join(
-            dirname, os.path.relpath(absolute_path, directory))
-        yield relative_path
-
-
-# ---------------------------------------------------------------------
-
-
-def iter_valid_files(directory, follow_links, formats):
-    walk = os.walk(directory, followlinks=follow_links)
-    for root, _, files in walk:
-        for filename in files:
-            if filename.lower().endswith(formats):
-                yield root, filename
+    for filename in glob.iglob(os.path.join(directory, "**/*"), recursive=True):
+        if filename.lower().endswith(formats):
+            yield filename
 
 # ---------------------------------------------------------------------
 
