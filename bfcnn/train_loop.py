@@ -346,11 +346,15 @@ def train_loop(
                         name="uncertainty/denoiser", data=denoiser_uq_output,
                         max_outputs=visualization_number, step=global_step)
                     tf.summary.image(
-                        name="output/superres", data=superres_output,
+                        name="output/superres", data=superres_output / 255,
                         max_outputs=visualization_number, step=global_step)
                     tf.summary.image(
                         name="uncertainty/superres", data=superres_uq_output,
                         max_outputs=visualization_number, step=global_step)
+
+                # --- free resources
+                del input_batch, noisy_batch, downsampled_batch
+                del denoiser_output, denoiser_uq_output, superres_output, superres_uq_output
 
                 # --- prune conv2d
                 if use_prune and (global_epoch >= prune_start_epoch) and \
@@ -374,11 +378,14 @@ def train_loop(
                     stop_time_forward_backward - \
                     start_time_forward_backward
 
-                tf.summary.scalar(name="training/epoch", data=int(global_epoch),
+                tf.summary.scalar(name="training/epoch",
+                                  data=int(global_epoch),
                                   step=global_step)
-                tf.summary.scalar(name="training/learning_rate", data=lr_schedule(int(global_step)),
+                tf.summary.scalar(name="training/learning_rate",
+                                  data=lr_schedule(int(global_step)),
                                   step=global_step)
-                tf.summary.scalar(name="training/steps_per_second", data=1.0 / (step_time_forward_backward + 0.00001),
+                tf.summary.scalar(name="training/steps_per_second",
+                                  data=1.0 / (step_time_forward_backward + 0.00001),
                                   step=global_step)
 
                 # ---
