@@ -380,7 +380,7 @@ def dataset_builder(
         return \
             tf.zeros(
                 shape=(1, input_shape[0], input_shape[1], num_channels),
-                dtype=tf.float32)
+                dtype=tf.uint8)
         # img = \
         #     load_image(
         #         path=path,
