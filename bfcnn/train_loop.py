@@ -358,17 +358,11 @@ def train_loop(
                             name="test/denoiser", data=test_denoiser_output/255,
                             max_outputs=visualization_number, step=global_step)
                         tf.summary.image(
-                            name="test/denoiser_uncertainty", data=test_denoiser_uq_output,
-                            max_outputs=visualization_number, step=global_step)
-                        tf.summary.image(
                             name="test/superres", data=test_superres_output/255,
-                            max_outputs=visualization_number, step=global_step)
-                        tf.summary.image(
-                            name="test/superres_uncertainty", data=test_superres_uq_output,
                             max_outputs=visualization_number, step=global_step)
                         del test_denoiser_output, test_denoiser_uq_output, \
                             test_superres_output, test_superres_uq_output
-                
+
                 # --- free resources
                 del input_batch, noisy_batch, downsampled_batch
                 del denoiser_output, denoiser_uq_output, superres_output, superres_uq_output
