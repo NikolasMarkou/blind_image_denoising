@@ -45,7 +45,7 @@ def image_filenames_generator(
 
 def index_directory_gen(
         directory: str,
-        formats: List[str]) -> Generator[str, None, None]:
+        formats: Tuple = SUPPORTED_IMAGE_LIST_FORMATS) -> Generator[str, None, None]:
     """
     get all image files
     """
