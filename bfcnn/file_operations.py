@@ -14,8 +14,7 @@ SUPPORTED_IMAGE_LIST_FORMATS = (".bmp", ".gif", ".jpeg", ".jpg", ".png")
 
 
 def image_filenames_generator(
-        directory: Union[str, List[str]],
-        follow_links=False) -> Generator[str, None, None]:
+        directory: Union[str, List[str]]) -> Generator[str, None, None]:
     """
     creates a generator function
     """
@@ -24,15 +23,13 @@ def image_filenames_generator(
         def gen_fn() -> Generator[str, None, None]:
             return index_directory_gen(
                     directory=directory,
-                    formats=SUPPORTED_IMAGE_LIST_FORMATS,
-                    follow_links=follow_links)
+                    formats=SUPPORTED_IMAGE_LIST_FORMATS)
     elif isinstance(directory, List):
         def gen_fn() -> Generator[str, None, None]:
             iterators = [
                 index_directory_gen(
                     directory=d,
-                    formats=SUPPORTED_IMAGE_LIST_FORMATS,
-                    follow_links=follow_links)
+                    formats=SUPPORTED_IMAGE_LIST_FORMATS)
                 for d in directory
             ]
 
