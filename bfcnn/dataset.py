@@ -352,8 +352,7 @@ def dataset_builder(
     if directory:
         dataset_generator = \
             image_filenames_generator(
-                directory=directory,
-                follow_links=True)
+                directory=directory)
 
         dataset_training = \
             tf.data.Dataset.from_generator(
