@@ -520,10 +520,6 @@ def model_superres_builder(
     backbone_config["input_shape"][2] += output_channels
 
     # --- set network parameters
-    upsampling_params = dict(
-        size=(2, 2),
-        interpolation="nearest")
-
     final_conv_params = dict(
         kernel_size=1,
         strides=(1, 1),
@@ -546,16 +542,18 @@ def model_superres_builder(
             name="input_denoiser_tensor")
 
     x = \
-        tf.keras.layers.Concatenate()(
-            [model_input_layer,
-             model_input_denoiser_layer])
-
-    x = \
         tf.keras.layers.UpSampling2D(
-            **upsampling_params)(x)
+            size=(2, 2), interpolation="nearest")(model_input_layer)
 
     backbone, _, _ = model_backbone_builder(backbone_config)
     x = backbone(x)
+
+    x_denoiser = \
+        tf.keras.layers.UpSampling2D(
+            size=(2, 2), interpolation="bilinear")(model_input_denoiser_layer)
+
+    x = \
+        tf.keras.layers.Concatenate()([x, x_denoiser])
 
     kernel = \
         tf.linspace(
