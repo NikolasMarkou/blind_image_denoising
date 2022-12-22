@@ -409,7 +409,7 @@ def model_denoiser_builder(
             filters=uncertainty_channels,
             activation=final_activation,
             kernel_regularizer="l2",
-            kernel_initializer=kernel_initializer) for k in [1, 3, 5]]
+            kernel_initializer=kernel_initializer) for k in [1, 3]]
 
     # --- define superres network here
     model_input_layer = \
@@ -527,7 +527,7 @@ def model_superres_builder(
             filters=uncertainty_channels,
             activation=final_activation,
             kernel_regularizer="l2",
-            kernel_initializer=kernel_initializer) for k in [1, 3, 5]]
+            kernel_initializer=kernel_initializer) for k in [1, 3]]
 
     # --- define superres network here
     model_input_layer = \
