@@ -360,20 +360,13 @@ def dataset_builder(
                 interpolation=tf.image.ResizeMethod.BILINEAR,
                 expand_dims=True,
                 normalize=False)
-        if no_crops_per_image == 1:
-            crops = \
-                tf.image.random_crop(
-                    seed=0,
-                    value=img,
-                    size=(1, input_shape[0], input_shape[1], num_channels))
-        else:
-            crops = \
-                random_crops(
-                    input_batch=img,
-                    crop_size=(input_shape[0], input_shape[1]),
-                    x_range=None,
-                    y_range=None,
-                    no_crops_per_image=no_crops_per_image)
+        crops = \
+            random_crops(
+                input_batch=img,
+                crop_size=(input_shape[0], input_shape[1]),
+                x_range=None,
+                y_range=None,
+                no_crops_per_image=no_crops_per_image)
 
         del img
         del path

@@ -727,6 +727,12 @@ def random_crops(
     original_dtype = input_batch.dtype
     batch_size = shape[0]
 
+    if shape[1] <= 0 or shape[2] <= 0:
+        return \
+            tf.zeros(
+                shape=(no_crops_per_image, crop_size[0], crop_size[1], shape[3]),
+                dtype=original_dtype)
+
     # computer the total number of crops
     total_crops = no_crops_per_image * batch_size
 
