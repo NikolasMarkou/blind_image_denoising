@@ -414,23 +414,20 @@ def expected_uncertainty_head(
     x_expected = []
     x_uncertainty = []
     for i in range(output_channels):
-        x_i_k = [
-            conv2d_wrapper(
-                input_layer=input_layer,
+        x_i_k = input_layer
+        for params in conv_parameters:
+            x_i_k = conv2d_wrapper(
+                input_layer=x_i_k,
                 bn_params=None,
                 conv_params=params,
                 channelwise_scaling=False,
                 multiplier_scaling=False)
-            for params in conv_parameters
-        ]
-        if len(x_i_k) > 1:
-            x_i = tf.keras.layers.Add()(x_i_k)
-        else:
-            x_i = x_i_k[0]
+        x_i = x_i_k
         x_i_prob = tf.nn.softmax(x_i, axis=3) + DEFAULT_EPSILON
 
         # --- clip if selected
-        if probability_threshold is not None and probability_threshold < 1.0:
+        if probability_threshold is not None and \
+                0.0 < probability_threshold < 1.0:
             # clip
             x_i_prob = tf.nn.relu(x_i_prob - probability_threshold) + DEFAULT_EPSILON
             # re-normalize

@@ -429,7 +429,7 @@ def model_denoiser_builder(
             conv_parameters=final_conv_params,
             uncertainty_channels=uncertainty_channels,
             output_channels=output_channels,
-            probability_threshold=1e-2,
+            probability_threshold=1e-3,
             linspace_start_stop=(lin_start, lin_stop))
 
     x_expected = \
@@ -479,7 +479,16 @@ def model_superres_builder(
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
 
     # --- set network parameters
-    final_conv_params = \
+    final_conv_params = [
+        dict(
+            kernel_size=3,
+            strides=(1, 1),
+            padding="same",
+            use_bias=use_bias,
+            filters=uncertainty_channels,
+            activation="relu",
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer),
         dict(
             kernel_size=1,
             strides=(1, 1),
@@ -488,7 +497,8 @@ def model_superres_builder(
             filters=uncertainty_channels,
             activation=final_activation,
             kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer)
+            kernel_initializer=kernel_initializer),
+    ]
 
     # --- define superres network here
     model_input_layer = \
@@ -509,7 +519,7 @@ def model_superres_builder(
             conv_parameters=final_conv_params,
             uncertainty_channels=uncertainty_channels,
             output_channels=output_channels,
-            probability_threshold=1e-2,
+            probability_threshold=1e-3,
             linspace_start_stop=(lin_start, lin_stop))
 
     x_expected = \
