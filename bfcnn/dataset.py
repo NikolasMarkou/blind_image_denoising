@@ -349,9 +349,8 @@ def dataset_builder(
 
     # --- save the augmentation functions
     @tf.function(
-        input_signature=[
-            tf.TensorSpec(shape=(), dtype=tf.string)
-        ])
+        input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)],
+        reduce_retracing=True)
     def load_image_fn(path: tf.Tensor) -> tf.Tensor:
         img = \
             load_image(
@@ -361,14 +360,20 @@ def dataset_builder(
                 interpolation=tf.image.ResizeMethod.BILINEAR,
                 expand_dims=True,
                 normalize=False)
-
-        crops = \
-            random_crops(
-                input_batch=img,
-                crop_size=(input_shape[0], input_shape[1]),
-                x_range=None,
-                y_range=None,
-                no_crops_per_image=no_crops_per_image)
+        if no_crops_per_image == 1:
+            crops = \
+                tf.image.random_crop(
+                    seed=0,
+                    value=img,
+                    size=(input_shape[0], input_shape[1]))
+        else:
+            crops = \
+                random_crops(
+                    input_batch=img,
+                    crop_size=(input_shape[0], input_shape[1]),
+                    x_range=None,
+                    y_range=None,
+                    no_crops_per_image=no_crops_per_image)
 
         del img
         del path
