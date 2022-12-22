@@ -269,6 +269,7 @@ def conv2d_wrapper(
         conv_params: Dict,
         bn_params: Dict = None,
         pre_activation: str = None,
+        channel_mean_removal: bool = False,
         channelwise_scaling: bool = False,
         multiplier_scaling: bool = False,
         conv_type: Union[ConvType, str] = ConvType.CONV2D):
@@ -279,6 +280,7 @@ def conv2d_wrapper(
     :param conv_params: conv2d parameters
     :param bn_params: batchnorm parameters, None to disable bn
     :param pre_activation: activation after the batchnorm, None to disable
+    :param channel_mean_removal: if true, remove mean per channel after convolution
     :param conv_type: if true use depthwise convolution,
     :param channelwise_scaling: if True add a learnable channel wise scaling at the end
     :param multiplier_scaling: if True add a learnable single scale at the end
@@ -326,6 +328,11 @@ def conv2d_wrapper(
     else:
         raise ValueError(f"don't know how to handle this [{conv_type}]")
 
+    # --- remove mean
+    if channel_mean_removal:
+        x_channel_mean = tf.reduce_mean(x, axis=3, keepdims=True)
+        x = tf.keras.layers.Subtract()([x, x_channel_mean])
+        
     # --- learn the proper scale of the previous layer
     if channelwise_scaling:
         x = \
