@@ -400,16 +400,16 @@ def model_denoiser_builder(
     lin_stop = config.get("lin_stop", +0.5)
 
     # --- set network parameters
-    final_conv_params = dict(
-        kernel_size=1,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        filters=uncertainty_channels,
-        activation=final_activation,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
+    final_conv_params = [
+        dict(
+            kernel_size=k,
+            strides=(1, 1),
+            padding="same",
+            use_bias=use_bias,
+            filters=uncertainty_channels,
+            activation=final_activation,
+            kernel_regularizer="l2",
+            kernel_initializer=kernel_initializer) for k in [1, 3, 5]]
 
     # --- define superres network here
     model_input_layer = \
@@ -433,13 +433,16 @@ def model_denoiser_builder(
     x_expected = []
     x_uncertainty = []
     for i in range(output_channels):
-        x_i = \
+        x_i_k = [
             conv2d_wrapper(
                 input_layer=x,
                 bn_params=None,
-                conv_params=final_conv_params,
+                conv_params=params,
                 channelwise_scaling=False,
                 multiplier_scaling=False)
+            for params in final_conv_params
+        ]
+        x_i = tf.keras.layers.Add()(x_i_k)
         x_i_prob = tf.nn.softmax(x_i, axis=3) + DEFAULT_EPSILON
         # compute expected x_i
         x_i_expected = \
@@ -515,16 +518,16 @@ def model_superres_builder(
     backbone_config = copy.deepcopy(config)
 
     # --- set network parameters
-    final_conv_params = dict(
-        kernel_size=3,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        filters=uncertainty_channels,
-        activation=final_activation,
-        kernel_regularizer="l2",
-        kernel_initializer=kernel_initializer
-    )
+    final_conv_params = [
+        dict(
+            kernel_size=k,
+            strides=(1, 1),
+            padding="same",
+            use_bias=use_bias,
+            filters=uncertainty_channels,
+            activation=final_activation,
+            kernel_regularizer="l2",
+            kernel_initializer=kernel_initializer) for k in [1, 3, 5]]
 
     # --- define superres network here
     model_input_layer = \
@@ -550,13 +553,16 @@ def model_superres_builder(
     x_expected = []
     x_uncertainty = []
     for i in range(output_channels):
-        x_i = \
+        x_i_k = [
             conv2d_wrapper(
                 input_layer=x,
                 bn_params=None,
-                conv_params=final_conv_params,
+                conv_params=params,
                 channelwise_scaling=False,
                 multiplier_scaling=False)
+            for params in final_conv_params
+        ]
+        x_i = tf.keras.layers.Add()(x_i_k)
         x_i_prob = tf.nn.softmax(x_i, axis=3) + DEFAULT_EPSILON
         # compute expected x_i
         x_i_expected = \
