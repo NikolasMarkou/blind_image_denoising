@@ -63,10 +63,7 @@ def model_builder(
 
     # heads
     denoiser_mid, denoiser_uq_mid = model_denoiser(backbone_mid)
-    superres_mid, superres_uq_mid = \
-        model_superres([
-            backbone_mid,
-            tf.stop_gradient(denoiser_mid)])
+    superres_mid, superres_uq_mid = model_superres(backbone_mid)
 
     # denormalize
     denoiser_output = model_denormalizer(denoiser_mid, training=False)
@@ -535,25 +532,13 @@ def model_superres_builder(
         tf.keras.Input(
             shape=input_shape,
             name="input_tensor")
-    model_input_denoiser_layer = \
-        tf.keras.Input(
-            shape=(None, None, output_channels),
-            name="input_denoiser_tensor")
 
-    # TODO: check if bilinear gives better results
     x = \
         tf.keras.layers.UpSampling2D(
-            size=(2, 2), interpolation="bilinear")(model_input_layer)
+            size=(2, 2), interpolation="nearest")(x)
 
     backbone, _, _ = model_backbone_builder(backbone_config)
     x = backbone(x)
-
-    x_denoiser = \
-        tf.keras.layers.UpSampling2D(
-            size=(2, 2), interpolation="bilinear")(model_input_denoiser_layer)
-
-    x = \
-        tf.keras.layers.Concatenate()([x, x_denoiser])
 
     kernel = \
         tf.linspace(
@@ -610,9 +595,7 @@ def model_superres_builder(
 
     model_head = \
         tf.keras.Model(
-            inputs=[
-                model_input_layer,
-                model_input_denoiser_layer],
+            inputs=model_input_layer,
             outputs=[
                 x_expected,
                 x_uncertainty
