@@ -535,7 +535,7 @@ def model_superres_builder(
 
     x = \
         tf.keras.layers.UpSampling2D(
-            size=(2, 2), interpolation="nearest")(x)
+            size=(2, 2), interpolation="nearest")(model_input_layer)
 
     backbone, _, _ = model_backbone_builder(backbone_config)
     x = backbone(x)
