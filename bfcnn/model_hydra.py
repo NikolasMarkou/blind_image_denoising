@@ -540,9 +540,10 @@ def model_superres_builder(
             shape=(None, None, output_channels),
             name="input_denoiser_tensor")
 
+    # TODO: check if bilinear gives better results
     x = \
         tf.keras.layers.UpSampling2D(
-            size=(2, 2), interpolation="nearest")(model_input_layer)
+            size=(2, 2), interpolation="bilinear")(model_input_layer)
 
     backbone, _, _ = model_backbone_builder(backbone_config)
     x = backbone(x)
