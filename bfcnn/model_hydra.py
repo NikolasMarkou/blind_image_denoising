@@ -429,6 +429,7 @@ def model_denoiser_builder(
             conv_parameters=final_conv_params,
             uncertainty_channels=uncertainty_channels,
             output_channels=output_channels,
+            probability_threshold=1e-2,
             linspace_start_stop=(lin_start, lin_stop))
 
     x_expected = \
@@ -480,7 +481,7 @@ def model_superres_builder(
     # --- set network parameters
     final_conv_params = \
         dict(
-            kernel_size=3,
+            kernel_size=1,
             strides=(1, 1),
             padding="same",
             use_bias=use_bias,
@@ -497,7 +498,7 @@ def model_superres_builder(
 
     x = \
         tf.keras.layers.UpSampling2D(
-            size=(2, 2), interpolation="bilinear")(model_input_layer)
+            size=(2, 2), interpolation="nearest")(model_input_layer)
 
     backbone, _, _ = model_backbone_builder(config)
     x = backbone(x)
@@ -508,6 +509,7 @@ def model_superres_builder(
             conv_parameters=final_conv_params,
             uncertainty_channels=uncertainty_channels,
             output_channels=output_channels,
+            probability_threshold=1e-2,
             linspace_start_stop=(lin_start, lin_stop))
 
     x_expected = \

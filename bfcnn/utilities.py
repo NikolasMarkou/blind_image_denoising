@@ -390,6 +390,7 @@ def expected_uncertainty_head(
         conv_parameters: Union[Dict, List[Dict]],
         uncertainty_channels: int,
         output_channels: int,
+        probability_threshold: float = None,
         linspace_start_stop: Tuple[float, float] = (-0.5, +0.5)):
     # --- argument checking
     if input_layer is None:
@@ -427,7 +428,15 @@ def expected_uncertainty_head(
         else:
             x_i = x_i_k
         x_i_prob = tf.nn.softmax(x_i, axis=3) + DEFAULT_EPSILON
-        # compute expected x_i
+
+        # --- clip if selected
+        if probability_threshold is not None and probability_threshold < 1.0:
+            # clip
+            x_i_prob = tf.nn.relu(x_i_prob - probability_threshold) + DEFAULT_EPSILON
+            # re-normalize
+            x_i_prob = x_i_prob / (tf.reduce_sum(x_i_prob, axis=3, keepdims=True) + DEFAULT_EPSILON)
+
+        # --- compute expected x_i and variance
         x_i_expected = \
             tf.nn.conv2d(
                 input=x_i_prob,
