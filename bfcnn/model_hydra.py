@@ -408,7 +408,7 @@ def model_denoiser_builder(
             use_bias=use_bias,
             filters=uncertainty_channels,
             activation=final_activation,
-            kernel_regularizer="l2",
+            kernel_regularizer=kernel_regularizer,
             kernel_initializer=kernel_initializer) for k in [1, 3]]
 
     # --- define superres network here
@@ -513,6 +513,7 @@ def model_superres_builder(
     input_shape = input_shape_fixer(config.get("input_shape"))
     final_activation = config.get("final_activation", "relu")
     uncertainty_channels = config.get("uncertainty_channels", 16)
+    kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     # add one channel to accommodate the mask
     backbone_config = copy.deepcopy(config)
@@ -526,7 +527,7 @@ def model_superres_builder(
             use_bias=use_bias,
             filters=uncertainty_channels,
             activation=final_activation,
-            kernel_regularizer="l2",
+            kernel_regularizer=kernel_regularizer,
             kernel_initializer=kernel_initializer) for k in [1, 3]]
 
     # --- define superres network here
