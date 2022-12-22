@@ -365,7 +365,7 @@ def dataset_builder(
                 tf.image.random_crop(
                     seed=0,
                     value=img,
-                    size=(input_shape[0], input_shape[1]))
+                    size=(1, input_shape[0], input_shape[1], num_channels))
         else:
             crops = \
                 random_crops(
