@@ -426,7 +426,7 @@ def expected_uncertainty_head(
         if len(x_i_k) > 1:
             x_i = tf.keras.layers.Add()(x_i_k)
         else:
-            x_i = x_i_k
+            x_i = x_i_k[0]
         x_i_prob = tf.nn.softmax(x_i, axis=3) + DEFAULT_EPSILON
 
         # --- clip if selected
