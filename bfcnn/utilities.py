@@ -385,6 +385,78 @@ def dense_wrapper(
 # ---------------------------------------------------------------------
 
 
+def expected_uncertainty_head(
+        input_layer,
+        conv_parameters: Union[Dict, List[Dict]],
+        uncertainty_channels: int,
+        output_channels: int,
+        linspace_start_stop: Tuple[float, float] = (-0.5, +0.5)):
+    # --- argument checking
+    if input_layer is None:
+        raise ValueError("input_layer should not be None")
+    if uncertainty_channels <= 0:
+        raise ValueError("uncertainty_channels should be > 0")
+    if output_channels <= 0:
+        raise ValueError("output_channels should be > 0")
+    if isinstance(conv_parameters, Dict):
+        conv_parameters = [conv_parameters]
+
+    # --- build heads
+    kernel = \
+        tf.linspace(
+            start=linspace_start_stop[0],
+            stop=linspace_start_stop[1],
+            num=uncertainty_channels)
+    conv_kernel = tf.reshape(tensor=kernel, shape=(1, 1, -1, 1))
+    column_kernel = tf.reshape(tensor=kernel, shape=(1, 1, 1, -1))
+
+    x_expected = []
+    x_uncertainty = []
+    for i in range(output_channels):
+        x_i_k = [
+            conv2d_wrapper(
+                input_layer=input_layer,
+                bn_params=None,
+                conv_params=params,
+                channelwise_scaling=False,
+                multiplier_scaling=False)
+            for params in conv_parameters
+        ]
+        if len(x_i_k) > 1:
+            x_i = tf.keras.layers.Add()(x_i_k)
+        else:
+            x_i = x_i_k
+        x_i_prob = tf.nn.softmax(x_i, axis=3) + DEFAULT_EPSILON
+        # compute expected x_i
+        x_i_expected = \
+            tf.nn.conv2d(
+                input=x_i_prob,
+                filters=conv_kernel,
+                strides=(1, 1),
+                padding="SAME")
+        x_i_diff_square = \
+            tf.nn.relu(
+                tf.square(column_kernel - x_i_expected)) + \
+            DEFAULT_EPSILON
+        x_i_std = \
+            tf.sqrt(
+                tf.nn.relu(
+                    tf.reduce_sum(
+                        tf.multiply(x_i_diff_square, x_i_prob),
+                        axis=[3],
+                        keepdims=True)) +
+                DEFAULT_EPSILON
+            )
+        x_expected.append(x_i_expected)
+        x_uncertainty.append(x_i_std)
+
+    x_expected = tf.concat(x_expected, axis=3)
+    x_uncertainty = tf.concat(x_uncertainty, axis=3)
+    return x_expected, x_uncertainty
+
+# ---------------------------------------------------------------------
+
+
 def mean_variance_local(
         input_layer,
         kernel_size: Tuple[int, int] = (5, 5)):
