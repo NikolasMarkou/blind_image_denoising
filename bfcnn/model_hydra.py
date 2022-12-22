@@ -429,7 +429,6 @@ def model_denoiser_builder(
             conv_parameters=final_conv_params,
             uncertainty_channels=uncertainty_channels,
             output_channels=output_channels,
-            probability_threshold=1e-2,
             linspace_start_stop=(lin_start, lin_stop))
 
     x_expected = \
@@ -509,7 +508,6 @@ def model_superres_builder(
             conv_parameters=final_conv_params,
             uncertainty_channels=uncertainty_channels,
             output_channels=output_channels,
-            probability_threshold=1e-2,
             linspace_start_stop=(lin_start, lin_stop))
 
     x_expected = \
