@@ -511,19 +511,18 @@ def model_superres_builder(
     final_activation = config.get("final_activation", "relu")
     uncertainty_channels = config.get("uncertainty_channels", 16)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
-    kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
     # add one channel to accommodate the mask
     backbone_config = copy.deepcopy(config)
 
     # --- set network parameters
     final_conv_params = dict(
-        kernel_size=1,
+        kernel_size=3,
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
         filters=uncertainty_channels,
         activation=final_activation,
-        kernel_regularizer=kernel_regularizer,
+        kernel_regularizer="l2",
         kernel_initializer=kernel_initializer
     )
 
