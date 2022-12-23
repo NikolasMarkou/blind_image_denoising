@@ -375,7 +375,7 @@ def loss_function_builder(
         "levels": 3,
         "type": "laplacian",
         "xy_max": (1.0, 1.0),
-        "kernel_size": (3, 3)
+        "kernel_size": (5, 5)
     }
     pyramid_model = \
         build_pyramid_model(
@@ -395,7 +395,7 @@ def loss_function_builder(
     def denoiser_uq_loss(
             uncertainty_batch: tf.Tensor) -> tf.Tensor:
         uncertainty_batch = \
-            tf.clip_by_value(uncertainty_batch, clip_value_min=0.05, clip_value_max=1.0)
+            tf.clip_by_value(uncertainty_batch, clip_value_min=0.01, clip_value_max=1.0)
         uq_loss = tf.reduce_mean(uncertainty_batch)
 
         return {
@@ -428,7 +428,7 @@ def loss_function_builder(
                     mae_prediction_loss += \
                         mae(original=input_batch_multiscale[i],
                             prediction=prediction_batch_multiscale[i],
-                            hinge=float(hinge * (float(i+1) / float(pyramid_levels))),
+                            hinge=hinge,
                             cutoff=cutoff,
                             mask=mask,
                             count_non_zero_mean=count_non_zero_mean)
