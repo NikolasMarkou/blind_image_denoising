@@ -425,10 +425,14 @@ def loss_function_builder(
                 prediction_batch_multiscale = \
                     pyramid_model(predicted_batch, training=False)
                 for i in range(pyramid_levels):
+                    if i == pyramid_levels-1:
+                        hinge_level = 0.0
+                    else:
+                        hinge_level = hinge
                     mae_prediction_loss += \
                         mae(original=input_batch_multiscale[i],
                             prediction=prediction_batch_multiscale[i],
-                            hinge=hinge,
+                            hinge=hinge_level,
                             cutoff=cutoff,
                             mask=mask,
                             count_non_zero_mean=count_non_zero_mean)

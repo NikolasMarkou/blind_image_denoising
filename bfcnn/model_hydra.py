@@ -479,16 +479,7 @@ def model_superres_builder(
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
 
     # --- set network parameters
-    final_conv_params = [
-        dict(
-            kernel_size=3,
-            strides=(1, 1),
-            padding="same",
-            use_bias=use_bias,
-            filters=uncertainty_channels,
-            activation="relu",
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer),
+    final_conv_params = \
         dict(
             kernel_size=1,
             strides=(1, 1),
@@ -497,8 +488,7 @@ def model_superres_builder(
             filters=uncertainty_channels,
             activation=final_activation,
             kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer),
-    ]
+            kernel_initializer=kernel_initializer)
 
     # --- define superres network here
     model_input_layer = \
