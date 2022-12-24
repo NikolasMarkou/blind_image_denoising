@@ -7,10 +7,11 @@
 			"kernel_size": 7,
 			"block_kernels": [1, 3, 1],
 			"block_filters": [16, 32, 16],
+			"block_groups": [1, 2, 4],
 			"value_range": [0, 255],
 			"type": "resnet",
 			"batchnorm": true,
-			"activation": "relu",
+			"activation": "relu6",
 			"kernel_initializer": "glorot_normal",
 			"kernel_regularizer": {
 				"type": "erf",
@@ -26,13 +27,14 @@
 			"final_activation": "linear",
 			"filters": 16,
 			"uncertainty_channels": 32,
-			"no_layers": 3,
+			"no_layers": 6,
 			"kernel_size": 1,
 			"block_kernels": [1, 3, 1],
 			"block_filters": [16, 32, 16],
+			"block_groups": [1, 2, 4],
 			"type": "resnet",
 			"batchnorm": true,
-			"activation": "relu",
+			"activation": "relu6",
 			"kernel_initializer": "glorot_normal",
 			"kernel_regularizer": {
 				"type": "erf",
@@ -48,13 +50,14 @@
 			"final_activation": "linear",
 			"filters": 16,
 			"uncertainty_channels": 32,
-			"no_layers": 3,
+			"no_layers": 6,
 			"kernel_size": 5,
 			"block_kernels": [1, 3, 1],
 			"block_filters": [16, 32, 16],
+			"block_groups": [1, 2, 4],
 			"type": "resnet",
 			"batchnorm": true,
-			"activation": "relu",
+			"activation": "relu6",
 			"kernel_initializer": "glorot_normal",
 			"kernel_regularizer": {
 				"type": "erf",
@@ -90,13 +93,13 @@
 		}
 	},
 	"loss": {
-		"hinge": 0.5,
+		"hinge": 2.0,
 		"cutoff": 255.0,
 		"uq_multiplier": 1.0,
 		"mae_multiplier": 1.0,
 		"regularization": 0.01,
 		"use_multiscale": true,
-		"count_non_zero_mean": false
+		"count_non_zero_mean": true
 	},
 	"dataset": {
 		"batch_size": 16,
