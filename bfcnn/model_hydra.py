@@ -148,8 +148,8 @@ def model_backbone_builder(
     block_kernels = config.get("block_kernels", (3, 3))
     block_filters = config.get("block_filters", (32, 32))
     block_depthwise = config.get("block_depthwise", None)
-
     add_initial_bn = config.get("add_initial_bn", False)
+    base_conv_params = config.get("base_conv_params", None)
     add_concat_input = config.get("add_concat_input", False)
     input_shape = config.get("input_shape", (None, None, 3))
     output_multiplier = config.get("output_multiplier", 1.0)
@@ -217,6 +217,7 @@ def model_backbone_builder(
         stop_gradient=stop_gradient,
         add_initial_bn=add_initial_bn,
         add_concat_input=add_concat_input,
+        base_conv_params=base_conv_params,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
         add_sparse_features=add_sparse_features,
@@ -511,11 +512,11 @@ def model_superres_builder(
             dict(
                 kernel_size=config["kernel_size"],
                 filters=config["filters"],
-                strides=(2, 2),
+                strides=(1, 1),
                 padding="same",
                 use_bias=use_bias,
                 activation="linear",
-                dilation_rate=(1, 1),
+                dilation_rate=(2, 2),
                 kernel_regularizer=kernel_regularizer,
                 kernel_initializer=kernel_initializer
             )
