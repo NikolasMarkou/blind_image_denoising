@@ -511,11 +511,11 @@ def model_superres_builder(
             dict(
                 kernel_size=config["kernel_size"],
                 filters=config["filters"],
-                strides=(1, 1),
+                strides=(2, 2),
                 padding="same",
                 use_bias=use_bias,
                 activation="linear",
-                dilation_rate=(2, 2),
+                dilation_rate=(1, 1),
                 kernel_regularizer=kernel_regularizer,
                 kernel_initializer=kernel_initializer
             )
