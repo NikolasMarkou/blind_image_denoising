@@ -27,6 +27,7 @@ def builder(
         block_depthwise: List[int] = None,
         activation: str = "relu",
         base_activation: str = "linear",
+        base_conv_params: Dict = None,
         use_bn: bool = True,
         use_bias: bool = False,
         kernel_regularizer="l1",
@@ -63,6 +64,7 @@ def builder(
     :param activation: activation of the convolutional layers
     :param base_activation: activation of the base layer,
         residual blocks outputs must conform to this
+    :param base_conv_params: base convolution parameters to override defaults
     :param dropout_rate: probability of resnet block shutting off
     :param use_bn: use batch normalization
     :param use_bias: use bias (bias free means this should be off
@@ -81,6 +83,7 @@ def builder(
     :param add_selector: if true add a selector block in skip connections
     :param add_squash: if True squash results with a tanh activation
     :param add_sparse_features: if true set feature map to be sparse
+    :param output_layer_name: the output layer name
     :param name: name of the model
 
     :return: resnet model
@@ -122,16 +125,17 @@ def builder(
             epsilon=DEFAULT_BN_EPSILON
         )
 
-    base_conv_params = dict(
-        kernel_size=kernel_size,
-        filters=filters,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation=base_activation,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
+    if base_conv_params is None:
+        base_conv_params = dict(
+            kernel_size=kernel_size,
+            filters=filters,
+            strides=(1, 1),
+            padding="same",
+            use_bias=use_bias,
+            activation=base_activation,
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer
+        )
 
     convs_params = [None] * 3
     no_blocks = len(block_kernels)

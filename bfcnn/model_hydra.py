@@ -477,6 +477,7 @@ def model_superres_builder(
     uncertainty_channels = config.get("uncertainty_channels", 16)
     kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
+    upscale_type = config.get("upscale_type", "nearest").strip().lower()
 
     # --- set network parameters
     final_conv_params = \
@@ -495,10 +496,31 @@ def model_superres_builder(
         tf.keras.Input(
             shape=input_shape,
             name="input_tensor")
+    x = model_input_layer
 
-    x = \
-        tf.keras.layers.UpSampling2D(
-            size=(2, 2), interpolation="nearest")(model_input_layer)
+    if upscale_type == "nearest":
+        x = \
+            tf.keras.layers.UpSampling2D(
+                size=(2, 2), interpolation="nearest")(x)
+    elif upscale_type == "bilinear":
+        x = \
+            tf.keras.layers.UpSampling2D(
+                size=(2, 2), interpolation="bilinear")(x)
+    elif upscale_type == "dilate":
+        config["base_conv_params"] = \
+            dict(
+                kernel_size=config["kernel_size"],
+                filters=config["filters"],
+                strides=(1, 1),
+                padding="same",
+                use_bias=use_bias,
+                activation="linear",
+                dilation_rate=(1, 1),
+                kernel_regularizer=kernel_regularizer,
+                kernel_initializer=kernel_initializer
+            )
+    else:
+        raise ValueError(f"don't know how to handle upscale_type: [{upscale_type}]")
 
     backbone, _, _ = model_backbone_builder(config)
     x = backbone(x)
