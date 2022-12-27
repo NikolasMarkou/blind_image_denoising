@@ -512,7 +512,7 @@ def model_superres_builder(
             dict(
                 kernel_size=config["kernel_size"],
                 filters=config["filters"],
-                strides=(1, 1),
+                strides=(2, 2),
                 padding="same",
                 use_bias=use_bias,
                 activation="linear",
