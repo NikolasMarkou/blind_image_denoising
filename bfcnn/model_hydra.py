@@ -516,7 +516,7 @@ def model_superres_builder(
                 padding="same",
                 use_bias=use_bias,
                 activation="linear",
-                dilation_rate=(2, 2),
+                dilation_rate=(1, 1),
                 kernel_regularizer=kernel_regularizer,
                 kernel_initializer=kernel_initializer
             )
