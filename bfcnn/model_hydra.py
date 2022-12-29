@@ -504,6 +504,10 @@ def model_superres_builder(
             name="input_tensor")
     x = model_input_layer
 
+    # NOTE
+    # nearest / bilinear -> conv2d (no artifacts)
+    # conv2dTranspose (no artifacts)
+    # conv2d -> conv2dTranspose (artifacts)
     if upscale_type == "nearest":
         x = \
             tf.keras.layers.UpSampling2D(
@@ -513,22 +517,6 @@ def model_superres_builder(
             tf.keras.layers.UpSampling2D(
                 size=(2, 2), interpolation="bilinear")(x)
     elif upscale_type == "dilate":
-        x = \
-            conv2d_wrapper(
-                input_layer=x,
-                bn_params=None,
-                conv_params=dict(
-                    kernel_size=1,
-                    filters=config["filters"],
-                    strides=(1, 1),
-                    padding="same",
-                    use_bias=use_bias,
-                    activation="relu",
-                    kernel_regularizer=kernel_regularizer,
-                    kernel_initializer=kernel_initializer
-                ),
-                channelwise_scaling=False,
-                multiplier_scaling=False)
         config["base_conv_params"] = \
             dict(
                 kernel_size=config["kernel_size"],
