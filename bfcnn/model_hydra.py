@@ -515,7 +515,7 @@ def model_superres_builder(
                 bn_params=None,
                 conv_params=dict(
                     kernel_size=1,
-                    filters=config["filters"] * 2,
+                    filters=config["filters"],
                     strides=(1, 1),
                     padding="same",
                     use_bias=use_bias,
