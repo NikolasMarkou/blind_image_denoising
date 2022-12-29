@@ -402,26 +402,27 @@ def dense_wrapper(
 def expected_uncertainty_head(
         input_layer,
         conv_parameters: Union[Dict, List[Dict]],
-        uncertainty_channels: int,
         output_channels: int,
         probability_threshold: float = None,
         linspace_start_stop: Tuple[float, float] = (-0.5, +0.5)):
     # --- argument checking
     if input_layer is None:
         raise ValueError("input_layer should not be None")
-    if uncertainty_channels <= 0:
-        raise ValueError("uncertainty_channels should be > 0")
-    if output_channels <= 0:
+    if conv_parameters is None:
+        raise ValueError("conv_parameters cannot be None")
+    if output_channels is None or output_channels <= 0:
         raise ValueError("output_channels should be > 0")
     if isinstance(conv_parameters, Dict):
         conv_parameters = [conv_parameters]
+
+    uncertainty_buckets = conv_parameters["filters"]
 
     # --- build heads
     kernel = \
         tf.linspace(
             start=linspace_start_stop[0],
             stop=linspace_start_stop[1],
-            num=uncertainty_channels)
+            num=uncertainty_buckets)
     conv_kernel = tf.reshape(tensor=kernel, shape=(1, 1, -1, 1))
     column_kernel = tf.reshape(tensor=kernel, shape=(1, 1, 1, -1))
 
@@ -443,9 +444,11 @@ def expected_uncertainty_head(
         if probability_threshold is not None and \
                 0.0 < probability_threshold < 1.0:
             # clip
-            x_i_prob = tf.nn.relu(x_i_prob - probability_threshold) + DEFAULT_EPSILON
+            x_i_prob = \
+                tf.nn.relu(x_i_prob - probability_threshold) + DEFAULT_EPSILON
             # re-normalize
-            x_i_prob = x_i_prob / (tf.reduce_sum(x_i_prob, axis=3, keepdims=True) + DEFAULT_EPSILON)
+            x_i_prob = \
+                x_i_prob / (tf.reduce_sum(x_i_prob, axis=3, keepdims=True) + DEFAULT_EPSILON)
 
         # --- compute expected x_i and variance
         x_i_expected = \

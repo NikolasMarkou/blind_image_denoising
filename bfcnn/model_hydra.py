@@ -45,26 +45,26 @@ def model_builder(
     # TODO
 
     # --- build backbone
-    model_backbone, model_normalizer, model_denormalizer = \
+    model_backbone_low, model_normalizer, model_denormalizer = \
         model_backbone_builder(config=config[BACKBONE_STR])
 
     # --- build denoiser, superres
     model_denoiser = model_denoiser_builder(config=config[DENOISER_STR])
     model_superres = model_superres_builder(config=config[SUPERRES_STR])
 
-    input_shape = tf.keras.backend.int_shape(model_backbone.inputs[0])[1:]
+    input_shape = tf.keras.backend.int_shape(model_backbone_low.inputs[0])[1:]
     logger.info("input_shape: [{0}]".format(input_shape))
 
     # --- build hydra combined model
     input_layer = tf.keras.Input(shape=input_shape, name="input_tensor")
     input_normalized_layer = model_normalizer(input_layer, training=False)
 
-    # common backbone
-    backbone_mid = model_backbone(input_normalized_layer)
+    # common backbone low level
+    backbone_low_level = model_backbone_low(input_normalized_layer)
 
-    # heads
-    denoiser_mid, denoiser_uq_mid = model_denoiser(backbone_mid)
-    superres_mid, superres_uq_mid = model_superres(backbone_mid)
+    # low level heads
+    denoiser_mid, denoiser_uq_mid = model_denoiser(backbone_low_level)
+    superres_mid, superres_uq_mid = model_superres(backbone_low_level)
 
     # denormalize
     denoiser_output = model_denormalizer(denoiser_mid, training=False)
@@ -95,7 +95,7 @@ def model_builder(
     # --- pack results
     return \
         BuilderResults(
-            backbone=model_backbone,
+            backbone=model_backbone_low,
             normalizer=model_normalizer,
             denormalizer=model_denormalizer,
             denoiser=model_denoiser,
@@ -391,25 +391,26 @@ def model_denoiser_builder(
         logger.info(f"unused parameters [{kwargs}]")
 
     # --- set configuration
+    kernel_regularizer = "l2"
+    kernel_initializer = "glorot_normal"
+    uncertainty_activation = "linear"
+    uncertainty_threshold = None
     use_bias = config.get("use_bias", False)
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
-    final_activation = config.get("final_activation", "relu")
     uncertainty_channels = config.get("uncertainty_channels", 16)
-    kernel_initializer = config.get("kernel_initializer", "glorot_normal")
-    kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
     lin_start = config.get("lin_start", -0.5)
     lin_stop = config.get("lin_stop", +0.5)
 
     # --- set network parameters
-    final_conv_params = \
+    uncertainty_conv_params = \
         dict(
             kernel_size=1,
             strides=(1, 1),
             padding="same",
             use_bias=use_bias,
             filters=uncertainty_channels,
-            activation=final_activation,
+            activation=uncertainty_activation,
             kernel_regularizer=kernel_regularizer,
             kernel_initializer=kernel_initializer)
 
@@ -427,10 +428,9 @@ def model_denoiser_builder(
     x_expected, x_uncertainty = \
         expected_uncertainty_head(
             input_layer=x,
-            conv_parameters=final_conv_params,
-            uncertainty_channels=uncertainty_channels,
+            conv_parameters=uncertainty_conv_params,
             output_channels=output_channels,
-            probability_threshold=1e-3,
+            probability_threshold=uncertainty_threshold,
             linspace_start_stop=(lin_start, lin_stop))
 
     x_expected = \
@@ -469,26 +469,27 @@ def model_superres_builder(
         logger.info(f"unused parameters [{kwargs}]")
 
     # --- set configuration
+    kernel_regularizer = "l2"
+    kernel_initializer = "glorot_normal"
+    uncertainty_activation = "linear"
+    uncertainty_threshold = None
     use_bias = config.get("use_bias", False)
     lin_start = config.get("lin_start", -0.5)
     lin_stop = config.get("lin_stop", +0.5)
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
-    final_activation = config.get("final_activation", "relu")
-    uncertainty_channels = config.get("uncertainty_channels", 16)
-    kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
-    kernel_initializer = config.get("kernel_initializer", "glorot_normal")
+    uncertainty_buckets = config.get("uncertainty_channels", 16)
     upscale_type = config.get("upscale_type", "nearest").strip().lower()
 
     # --- set network parameters
-    final_conv_params = \
+    uncertainty_conv_params = \
         dict(
             kernel_size=1,
             strides=(1, 1),
             padding="same",
             use_bias=use_bias,
-            filters=uncertainty_channels,
-            activation=final_activation,
+            filters=uncertainty_buckets,
+            activation=uncertainty_activation,
             kernel_regularizer=kernel_regularizer,
             kernel_initializer=kernel_initializer)
 
@@ -529,10 +530,9 @@ def model_superres_builder(
     x_expected, x_uncertainty = \
         expected_uncertainty_head(
             input_layer=x,
-            conv_parameters=final_conv_params,
-            uncertainty_channels=uncertainty_channels,
+            conv_parameters=uncertainty_conv_params,
             output_channels=output_channels,
-            probability_threshold=1e-3,
+            probability_threshold=uncertainty_threshold,
             linspace_start_stop=(lin_start, lin_stop))
 
     x_expected = \

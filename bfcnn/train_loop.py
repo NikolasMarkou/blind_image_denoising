@@ -259,6 +259,7 @@ def train_loop(
                 del x0, x1, x2, x3
                 return de, de_uq, s, s_uq
 
+            trainable_weights = hydra.trainable_weights
             start_time_epoch = time.time()
 
             # --- iterate over the batches of the dataset
@@ -285,18 +286,18 @@ def train_loop(
                     model_loss = \
                         model_loss_fn(model=hydra)
 
+                    # NOTE do not use uncertainty for loss,
+                    # only for observation
                     total_loss = \
+                        model_loss[TOTAL_LOSS_STR] + \
                         denoiser_loss[TOTAL_LOSS_STR] / 2.0 + \
-                        superres_loss[TOTAL_LOSS_STR] / 2.0 + \
-                        denoiser_uq_loss[TOTAL_LOSS_STR] + \
-                        superres_uq_loss[TOTAL_LOSS_STR] + \
-                        model_loss[TOTAL_LOSS_STR]
+                        superres_loss[TOTAL_LOSS_STR] / 2.0
 
                     # --- apply weights
                     optimizer.apply_gradients(
                         grads_and_vars=zip(
-                            tape.gradient(target=total_loss, sources=hydra.trainable_weights),
-                            hydra.trainable_weights))
+                            tape.gradient(target=total_loss, sources=trainable_weights),
+                            trainable_weights))
 
                 # --- add loss summaries for tensorboard
                 tf.summary.scalar(name="quality/denoiser_psnr",
@@ -308,10 +309,10 @@ def train_loop(
                 tf.summary.scalar(name="loss/denoiser_total",
                                   data=denoiser_loss[TOTAL_LOSS_STR],
                                   step=global_step)
-                tf.summary.scalar(name="loss/denoiser_uncertainty",
+                tf.summary.scalar(name="uncertainty/denoiser",
                                   data=denoiser_uq_loss[TOTAL_LOSS_STR],
                                   step=global_step)
-                tf.summary.scalar(name="loss/superres_uncertainty",
+                tf.summary.scalar(name="uncertainty/superres",
                                   data=superres_uq_loss[TOTAL_LOSS_STR],
                                   step=global_step)
                 tf.summary.scalar(name="quality/superres_psnr",
@@ -356,10 +357,10 @@ def train_loop(
                         test_superres_output, test_superres_uq_output = \
                             hydra(test_images, training=False)
                         tf.summary.image(
-                            name="test/denoiser", data=test_denoiser_output/255,
+                            name="test/denoiser", data=test_denoiser_output / 255,
                             max_outputs=visualization_number, step=global_step)
                         tf.summary.image(
-                            name="test/superres", data=test_superres_output/255,
+                            name="test/superres", data=test_superres_output / 255,
                             max_outputs=visualization_number, step=global_step)
                         del test_denoiser_output, test_denoiser_uq_output, \
                             test_superres_output, test_superres_uq_output
@@ -373,6 +374,7 @@ def train_loop(
                         (prune_steps > -1) and (global_step % prune_steps == 0):
                     logger.info(f"pruning weights at step [{int(global_step)}]")
                     hydra = prune_fn(model=hydra)
+                    trainable_weights = hydra.trainable_weights
 
                 # --- check if it is time to save a checkpoint
                 if checkpoint_every > 0 and \

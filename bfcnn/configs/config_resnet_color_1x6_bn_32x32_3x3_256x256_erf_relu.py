@@ -16,7 +16,6 @@ config["model_denoise"] = {
     "batchnorm": True,
     "use_bias": False,
     "activation": "relu",
-    "final_activation": "tanh",
     "base_activation": "linear",
     "input_shape": ["?", "?", 3],
     "kernel_initializer": "glorot_normal",
