@@ -445,7 +445,7 @@ def expected_uncertainty_head(
                 0.0 < probability_threshold < 1.0:
             # clip
             x_i_prob = \
-                tf.nn.relu(x_i_prob - probability_threshold) + DEFAULT_EPSILON
+                tf.nn.relu(x_i_prob - probability_threshold)
             # re-normalize
             x_i_prob = \
                 x_i_prob / (tf.reduce_sum(x_i_prob, axis=3, keepdims=True) + DEFAULT_EPSILON)

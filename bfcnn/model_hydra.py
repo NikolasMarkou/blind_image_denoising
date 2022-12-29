@@ -394,13 +394,14 @@ def model_denoiser_builder(
     use_bias = config.get("use_bias", False)
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
-    uncertainty_buckets = config.get("uncertainty_channels", 16)
     lin_start = config.get("lin_start", -0.5)
     lin_stop = config.get("lin_stop", +0.5)
     kernel_regularizer = "l1"
     kernel_initializer = "glorot_normal"
-    uncertainty_activation = "linear"
-    uncertainty_threshold = 1.0 / (4.0 * uncertainty_buckets)
+
+    uncertainty_buckets = config.get("uncertainty_buckets", 16)
+    uncertainty_threshold = config.get("uncertainty_threshold", None)
+    uncertainty_activation = config.get("uncertainty_activation", "linear")
 
     # --- set network parameters
     uncertainty_conv_params = \
@@ -474,12 +475,13 @@ def model_superres_builder(
     lin_stop = config.get("lin_stop", +0.5)
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
-    uncertainty_buckets = config.get("uncertainty_channels", 16)
     upscale_type = config.get("upscale_type", "nearest").strip().lower()
     kernel_regularizer = "l1"
     kernel_initializer = "glorot_normal"
-    uncertainty_activation = "linear"
-    uncertainty_threshold = 1.0 / (4.0 * uncertainty_buckets)
+
+    uncertainty_buckets = config.get("uncertainty_buckets", 16)
+    uncertainty_threshold = config.get("uncertainty_threshold", None)
+    uncertainty_activation = config.get("uncertainty_activation", "linear")
 
     # --- set network parameters
     uncertainty_conv_params = \

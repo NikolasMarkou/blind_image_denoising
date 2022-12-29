@@ -302,28 +302,28 @@ def train_loop(
                             trainable_weights))
 
                 # --- add loss summaries for tensorboard
-                tf.summary.scalar(name="quality/denoiser_psnr",
+                tf.summary.scalar(name="quality/denoiser/psnr",
                                   data=denoiser_loss[PSNR_STR],
                                   step=global_step)
-                tf.summary.scalar(name="loss/denoiser_mae",
+                tf.summary.scalar(name="loss/denoiser/mae",
                                   data=denoiser_loss[MAE_LOSS_STR],
                                   step=global_step)
-                tf.summary.scalar(name="loss/denoiser_total",
+                tf.summary.scalar(name="loss/denoiser/total",
                                   data=denoiser_loss[TOTAL_LOSS_STR],
                                   step=global_step)
-                tf.summary.scalar(name="loss/uncertainty/denoiser",
+                tf.summary.scalar(name="loss/denoiser/uncertainty",
                                   data=denoiser_uq_loss[TOTAL_LOSS_STR],
                                   step=global_step)
-                tf.summary.scalar(name="loss/uncertainty/superres",
+                tf.summary.scalar(name="loss/superres/uncertainty",
                                   data=superres_uq_loss[TOTAL_LOSS_STR],
                                   step=global_step)
-                tf.summary.scalar(name="quality/superres_psnr",
+                tf.summary.scalar(name="quality/superres/psnr",
                                   data=superres_loss[PSNR_STR],
                                   step=global_step)
-                tf.summary.scalar(name="loss/superres_mae",
+                tf.summary.scalar(name="loss/superres/mae",
                                   data=superres_loss[MAE_LOSS_STR],
                                   step=global_step)
-                tf.summary.scalar(name="loss/superres_total",
+                tf.summary.scalar(name="loss/superres/total",
                                   data=superres_loss[TOTAL_LOSS_STR],
                                   step=global_step)
                 tf.summary.scalar(name="loss/regularization",
