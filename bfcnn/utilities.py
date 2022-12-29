@@ -415,7 +415,7 @@ def expected_uncertainty_head(
     if isinstance(conv_parameters, Dict):
         conv_parameters = [conv_parameters]
 
-    uncertainty_buckets = conv_parameters["filters"]
+    uncertainty_buckets = conv_parameters[0]["filters"]
 
     # --- build heads
     kernel = \
