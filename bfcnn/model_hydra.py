@@ -506,7 +506,7 @@ def model_superres_builder(
 
     # NOTE
     # nearest / bilinear -> conv2d (no artifacts)
-    # conv2dTranspose (no artifacts)
+    # conv2dTranspose 3x3 (no artifacts)
     # conv2d -> conv2dTranspose (artifacts)
     if upscale_type == "nearest":
         x = \

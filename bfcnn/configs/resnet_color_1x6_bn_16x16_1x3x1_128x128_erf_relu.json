@@ -50,9 +50,8 @@
 			"input_shape": ["?", "?", 16],
 			"output_channels": 3,
 			"filters": 16,
-			"upscale_type": "dilate",
 			"no_layers": 3,
-			"kernel_size": 3,
+			"kernel_size": 5,
 			"block_kernels": [1, 3, 1],
 			"block_filters": [16, 32, 16],
 			"block_groups": [1, 2, 4],
@@ -67,6 +66,7 @@
 					"l1_coefficient": 0.025
 				}
 			},
+			"upscale_type": "dilate",
 			"uncertainty_buckets": 32,
 			"uncertainty_threshold": 0.001,
 			"uncertainty_activation": "linear"
