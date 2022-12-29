@@ -43,7 +43,7 @@
 				}
 			},
 			"uncertainty_buckets": 32,
-			"uncertainty_threshold": 0.001,
+			"uncertainty_threshold": 0.0,
 			"uncertainty_activation": "linear"
 		},
 		"superres": {
@@ -68,7 +68,7 @@
 			},
 			"upscale_type": "dilate",
 			"uncertainty_buckets": 32,
-			"uncertainty_threshold": 0.001,
+			"uncertainty_threshold": 0.0,
 			"uncertainty_activation": "linear"
 		}
 	},
@@ -97,9 +97,9 @@
 		}
 	},
 	"loss": {
-		"hinge": 2.0,
+		"hinge": 1.0,
 		"cutoff": 255.0,
-		"uq_multiplier": 12.0,
+		"uq_multiplier": 6.0,
 		"mae_multiplier": 1.0,
 		"regularization": 0.01,
 		"use_multiscale": false,
