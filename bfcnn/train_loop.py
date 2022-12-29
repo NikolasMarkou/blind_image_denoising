@@ -326,7 +326,7 @@ def train_loop(
                                   data=superres_loss[PSNR_STR],
                                   step=global_step)
                 tf.summary.scalar(name="quality/superres/uncertainty",
-                                  data=superres_loss[UNCERTAINTY_LOSS_STR],
+                                  data=superres_uq_loss[UNCERTAINTY_LOSS_STR],
                                   step=global_step)
                 tf.summary.scalar(name="loss/superres/mae",
                                   data=superres_loss[MAE_LOSS_STR],
