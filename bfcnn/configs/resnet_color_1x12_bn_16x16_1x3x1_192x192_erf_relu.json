@@ -12,7 +12,7 @@
 			"type": "resnet",
 			"batchnorm": true,
 			"activation": "relu6",
-			"add_final_bn": true,
+			"add_final_bn": false,
 			"kernel_initializer": "glorot_normal",
 			"kernel_regularizer": {
 				"type": "erf",
