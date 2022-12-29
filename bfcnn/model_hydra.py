@@ -479,11 +479,11 @@ def model_superres_builder(
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
 
-    uncertainty_kernel_regularizer = "l1"
-    uncertainty_kernel_initializer = "glorot_normal"
     uncertainty_buckets = config.get("uncertainty_buckets", 16)
     uncertainty_threshold = config.get("uncertainty_threshold", None)
     uncertainty_activation = config.get("uncertainty_activation", "linear")
+    uncertainty_kernel_regularizer = config.get("uncertainty_kernel_regularizer", "l2")
+    uncertainty_kernel_initializer = config.get("uncertainty_kernel_initializer", "glorot_normal")
 
     # --- set network parameters
     uncertainty_conv_params = \

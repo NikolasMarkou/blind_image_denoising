@@ -85,3 +85,14 @@ PRUNING
       }]
     }
 ```
+
+SOFT-ORTHONORMAL
+```json
+    "uncertainty_kernel_regularizer": {
+        "type": "soft_orthonormal",
+        "config": {
+            "lambda_coefficient": 0.1,
+            "l1_coefficient": 0.001
+      }
+    }
+```

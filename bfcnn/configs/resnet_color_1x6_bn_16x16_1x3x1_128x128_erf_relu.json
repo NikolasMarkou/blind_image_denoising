@@ -44,7 +44,15 @@
 			},
 			"uncertainty_buckets": 32,
 			"uncertainty_threshold": 0.0,
-			"uncertainty_activation": "linear"
+			"uncertainty_activation": "linear",
+			"uncertainty_kernel_initializer": "glorot_normal",
+			"uncertainty_kernel_regularizer": {
+				"type": "soft_orthonormal",
+				"config": {
+					"lambda_coefficient": 0.1,
+					"l1_coefficient": 0.001
+			  }
+			}
 		},
 		"superres": {
 			"input_shape": ["?", "?", 16],
@@ -69,7 +77,15 @@
 			"upscale_type": "dilate",
 			"uncertainty_buckets": 32,
 			"uncertainty_threshold": 0.0,
-			"uncertainty_activation": "linear"
+			"uncertainty_activation": "linear",
+			"uncertainty_kernel_initializer": "glorot_normal",
+			"uncertainty_kernel_regularizer": {
+				"type": "soft_orthonormal",
+				"config": {
+					"lambda_coefficient": 0.1,
+					"l1_coefficient": 0.001
+			  }
+			}
 		}
 	},
 	"train": {
