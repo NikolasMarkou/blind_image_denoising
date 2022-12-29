@@ -396,9 +396,9 @@ def model_denoiser_builder(
     input_shape = input_shape_fixer(config.get("input_shape"))
     lin_start = config.get("lin_start", -0.5)
     lin_stop = config.get("lin_stop", +0.5)
-    kernel_regularizer = "l1"
-    kernel_initializer = "glorot_normal"
 
+    uncertainty_kernel_regularizer = "l1"
+    uncertainty_kernel_initializer = "glorot_normal"
     uncertainty_buckets = config.get("uncertainty_buckets", 16)
     uncertainty_threshold = config.get("uncertainty_threshold", None)
     uncertainty_activation = config.get("uncertainty_activation", "linear")
@@ -412,8 +412,8 @@ def model_denoiser_builder(
             use_bias=use_bias,
             filters=uncertainty_buckets,
             activation=uncertainty_activation,
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer)
+            kernel_regularizer=uncertainty_kernel_regularizer,
+            kernel_initializer=uncertainty_kernel_initializer)
 
     # --- define superres network here
     model_input_layer = \
@@ -476,9 +476,11 @@ def model_superres_builder(
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
     upscale_type = config.get("upscale_type", "nearest").strip().lower()
-    kernel_regularizer = "l1"
-    kernel_initializer = "glorot_normal"
+    kernel_initializer = config.get("kernel_initializer", "glorot_normal")
+    kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
 
+    uncertainty_kernel_regularizer = "l1"
+    uncertainty_kernel_initializer = "glorot_normal"
     uncertainty_buckets = config.get("uncertainty_buckets", 16)
     uncertainty_threshold = config.get("uncertainty_threshold", None)
     uncertainty_activation = config.get("uncertainty_activation", "linear")
@@ -492,8 +494,8 @@ def model_superres_builder(
             use_bias=use_bias,
             filters=uncertainty_buckets,
             activation=uncertainty_activation,
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer)
+            kernel_regularizer=uncertainty_kernel_regularizer,
+            kernel_initializer=uncertainty_kernel_initializer)
 
     # --- define superres network here
     model_input_layer = \
