@@ -43,8 +43,8 @@
 				}
 			},
 			"uncertainty_buckets": 32,
-			"uncertainty_threshold": 0.0001,
-			"uncertainty_activation": "relu"
+			"uncertainty_threshold": 0.001,
+			"uncertainty_activation": "linear"
 		},
 		"superres": {
 			"input_shape": ["?", "?", 16],
@@ -68,8 +68,8 @@
 				}
 			},
 			"uncertainty_buckets": 32,
-			"uncertainty_threshold": 0.0001,
-			"uncertainty_activation": "relu"
+			"uncertainty_threshold": 0.001,
+			"uncertainty_activation": "linear"
 		}
 	},
 	"train": {
@@ -99,11 +99,11 @@
 	"loss": {
 		"hinge": 2.0,
 		"cutoff": 255.0,
-		"uq_multiplier": 10.0,
+		"uq_multiplier": 1.0,
 		"mae_multiplier": 1.0,
 		"regularization": 0.01,
-		"use_multiscale": true,
-		"count_non_zero_mean": true
+		"use_multiscale": false,
+		"count_non_zero_mean": false
 	},
 	"dataset": {
 		"batch_size": 16,

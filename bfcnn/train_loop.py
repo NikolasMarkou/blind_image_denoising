@@ -302,6 +302,7 @@ def train_loop(
                             trainable_weights))
 
                 # --- add loss summaries for tensorboard
+                # denoiser
                 tf.summary.scalar(name="quality/denoiser/psnr",
                                   data=denoiser_loss[PSNR_STR],
                                   step=global_step)
@@ -314,11 +315,18 @@ def train_loop(
                 tf.summary.scalar(name="loss/denoiser/uncertainty",
                                   data=denoiser_uq_loss[TOTAL_LOSS_STR],
                                   step=global_step)
+                tf.summary.scalar(name="quality/denoiser/uncertainty",
+                                  data=denoiser_uq_loss[UNCERTAINTY_LOSS_STR],
+                                  step=global_step)
+                # superres
                 tf.summary.scalar(name="loss/superres/uncertainty",
                                   data=superres_uq_loss[TOTAL_LOSS_STR],
                                   step=global_step)
                 tf.summary.scalar(name="quality/superres/psnr",
                                   data=superres_loss[PSNR_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="quality/superres/uncertainty",
+                                  data=superres_loss[UNCERTAINTY_LOSS_STR],
                                   step=global_step)
                 tf.summary.scalar(name="loss/superres/mae",
                                   data=superres_loss[MAE_LOSS_STR],
@@ -326,6 +334,7 @@ def train_loop(
                 tf.summary.scalar(name="loss/superres/total",
                                   data=superres_loss[TOTAL_LOSS_STR],
                                   step=global_step)
+                # model
                 tf.summary.scalar(name="loss/regularization",
                                   data=model_loss[REGULARIZATION_LOSS_STR],
                                   step=global_step)
