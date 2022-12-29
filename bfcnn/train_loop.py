@@ -291,7 +291,9 @@ def train_loop(
                     total_loss = \
                         model_loss[TOTAL_LOSS_STR] + \
                         denoiser_loss[TOTAL_LOSS_STR] / 2.0 + \
-                        superres_loss[TOTAL_LOSS_STR] / 2.0
+                        superres_loss[TOTAL_LOSS_STR] / 2.0 + \
+                        denoiser_uq_loss[TOTAL_LOSS_STR] + \
+                        superres_uq_loss[TOTAL_LOSS_STR]
 
                     # --- apply weights
                     optimizer.apply_gradients(
@@ -309,10 +311,10 @@ def train_loop(
                 tf.summary.scalar(name="loss/denoiser_total",
                                   data=denoiser_loss[TOTAL_LOSS_STR],
                                   step=global_step)
-                tf.summary.scalar(name="uncertainty/denoiser",
+                tf.summary.scalar(name="loss/uncertainty/denoiser",
                                   data=denoiser_uq_loss[TOTAL_LOSS_STR],
                                   step=global_step)
-                tf.summary.scalar(name="uncertainty/superres",
+                tf.summary.scalar(name="loss/uncertainty/superres",
                                   data=superres_uq_loss[TOTAL_LOSS_STR],
                                   step=global_step)
                 tf.summary.scalar(name="quality/superres_psnr",

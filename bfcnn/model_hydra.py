@@ -391,16 +391,16 @@ def model_denoiser_builder(
         logger.info(f"unused parameters [{kwargs}]")
 
     # --- set configuration
-    kernel_regularizer = "l2"
-    kernel_initializer = "glorot_normal"
-    uncertainty_activation = "linear"
-    uncertainty_threshold = None
     use_bias = config.get("use_bias", False)
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
-    uncertainty_channels = config.get("uncertainty_channels", 16)
+    uncertainty_buckets = config.get("uncertainty_channels", 16)
     lin_start = config.get("lin_start", -0.5)
     lin_stop = config.get("lin_stop", +0.5)
+    kernel_regularizer = "l1"
+    kernel_initializer = "glorot_normal"
+    uncertainty_activation = "linear"
+    uncertainty_threshold = 1.0 / (4.0 * uncertainty_buckets)
 
     # --- set network parameters
     uncertainty_conv_params = \
@@ -409,7 +409,7 @@ def model_denoiser_builder(
             strides=(1, 1),
             padding="same",
             use_bias=use_bias,
-            filters=uncertainty_channels,
+            filters=uncertainty_buckets,
             activation=uncertainty_activation,
             kernel_regularizer=kernel_regularizer,
             kernel_initializer=kernel_initializer)
@@ -469,10 +469,6 @@ def model_superres_builder(
         logger.info(f"unused parameters [{kwargs}]")
 
     # --- set configuration
-    kernel_regularizer = "l2"
-    kernel_initializer = "glorot_normal"
-    uncertainty_activation = "linear"
-    uncertainty_threshold = None
     use_bias = config.get("use_bias", False)
     lin_start = config.get("lin_start", -0.5)
     lin_stop = config.get("lin_stop", +0.5)
@@ -480,6 +476,10 @@ def model_superres_builder(
     input_shape = input_shape_fixer(config.get("input_shape"))
     uncertainty_buckets = config.get("uncertainty_channels", 16)
     upscale_type = config.get("upscale_type", "nearest").strip().lower()
+    kernel_regularizer = "l1"
+    kernel_initializer = "glorot_normal"
+    uncertainty_activation = "linear"
+    uncertainty_threshold = 1.0 / (4.0 * uncertainty_buckets)
 
     # --- set network parameters
     uncertainty_conv_params = \
