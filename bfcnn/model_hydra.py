@@ -506,34 +506,37 @@ def model_superres_builder(
             name="input_tensor")
     x = model_input_layer
 
+    x = \
+        tf.keras.layers.UpSampling2D(
+            size=(2, 2), interpolation="nearest")(x)
     # NOTE
-    # nearest / bilinear -> conv2d (no artifacts)
+    # nearest -> conv2d (no artifacts)
     # conv2dTranspose 3x3 (artifacts)
-    # conv2dTranspose 5x5 (no artifacts)
+    # conv2dTranspose 5x5 (artifacts)
     # conv2d -> conv2dTranspose (artifacts)
-    if upscale_type == "nearest":
-        x = \
-            tf.keras.layers.UpSampling2D(
-                size=(2, 2), interpolation="nearest")(x)
-    elif upscale_type == "bilinear":
-        x = \
-            tf.keras.layers.UpSampling2D(
-                size=(2, 2), interpolation="bilinear")(x)
-    elif upscale_type == "dilate":
-        config["base_conv_params"] = \
-            dict(
-                kernel_size=config["kernel_size"],
-                filters=config["filters"],
-                strides=(2, 2),
-                padding="same",
-                use_bias=use_bias,
-                activation="linear",
-                dilation_rate=(1, 1),
-                kernel_regularizer=kernel_regularizer,
-                kernel_initializer=kernel_initializer
-            )
-    else:
-        raise ValueError(f"don't know how to handle upscale_type: [{upscale_type}]")
+    # if upscale_type == "nearest":
+    #     x = \
+    #         tf.keras.layers.UpSampling2D(
+    #             size=(2, 2), interpolation="nearest")(x)
+    # elif upscale_type == "bilinear":
+    #     x = \
+    #         tf.keras.layers.UpSampling2D(
+    #             size=(2, 2), interpolation="bilinear")(x)
+    # elif upscale_type == "dilate":
+    #     config["base_conv_params"] = \
+    #         dict(
+    #             kernel_size=config["kernel_size"],
+    #             filters=config["filters"],
+    #             strides=(2, 2),
+    #             padding="same",
+    #             use_bias=use_bias,
+    #             activation="linear",
+    #             dilation_rate=(1, 1),
+    #             kernel_regularizer=kernel_regularizer,
+    #             kernel_initializer=kernel_initializer
+    #         )
+    # else:
+    #     raise ValueError(f"don't know how to handle upscale_type: [{upscale_type}]")
 
     backbone, _, _ = model_backbone_builder(config)
     x = backbone(x)
