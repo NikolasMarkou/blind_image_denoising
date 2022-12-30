@@ -225,8 +225,8 @@ def dataset_builder(
                             dtype=tf.float32,
                             stddev=additive_noise_std,
                             shape=(input_shape_inference[0],
-                                   input_shape[0],
-                                   input_shape[1],
+                                   input_shape_inference[1],
+                                   input_shape_inference[2],
                                    1))
                 )
             noisy_batch = tf.add(noisy_batch, additive_noise_batch)
