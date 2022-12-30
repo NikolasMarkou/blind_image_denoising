@@ -276,7 +276,7 @@ def train_loop(
 
                     # compute the loss value for this mini-batch
                     denoiser_loss = \
-                        denoiser_loss_fn(input_batch=input_batch, predicted_batch=denoiser_output)
+                        denoiser_loss_fn(input_batch=downsampled_batch, predicted_batch=denoiser_output)
                     denoiser_uq_loss = \
                         denoiser_uq_loss_fn(uncertainty_batch=denoiser_uq_output)
                     superres_loss = \
@@ -348,6 +348,7 @@ def train_loop(
                     tf.summary.image(
                         name="input", data=input_batch / 255,
                         max_outputs=visualization_number, step=global_step)
+
                     # augmented
                     tf.summary.image(
                         name="augmented/denoiser", data=noisy_batch / 255,
