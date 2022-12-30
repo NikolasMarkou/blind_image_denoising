@@ -344,20 +344,29 @@ def train_loop(
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
+                    # original input
                     tf.summary.image(
                         name="input", data=input_batch / 255,
                         max_outputs=visualization_number, step=global_step)
+                    # augmented
                     tf.summary.image(
-                        name="noisy", data=noisy_batch / 255,
+                        name="augmented/denoiser", data=noisy_batch / 255,
                         max_outputs=visualization_number, step=global_step)
+                    tf.summary.image(
+                        name="augmented/superres", data=downsampled_batch / 255,
+                        max_outputs=visualization_number, step=global_step)
+
+                    # output
                     tf.summary.image(
                         name="output/denoiser", data=denoiser_output / 255,
                         max_outputs=visualization_number, step=global_step)
                     tf.summary.image(
-                        name="uncertainty/denoiser", data=denoiser_uq_output,
-                        max_outputs=visualization_number, step=global_step)
-                    tf.summary.image(
                         name="output/superres", data=superres_output / 255,
+                        max_outputs=visualization_number, step=global_step)
+
+                    # uncertainty
+                    tf.summary.image(
+                        name="uncertainty/denoiser", data=denoiser_uq_output,
                         max_outputs=visualization_number, step=global_step)
                     tf.summary.image(
                         name="uncertainty/superres", data=superres_uq_output,
