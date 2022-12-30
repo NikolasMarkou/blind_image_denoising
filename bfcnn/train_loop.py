@@ -135,7 +135,7 @@ def train_loop(
                         image_size=(256, 256),
                         expand_dims=True,
                         normalize=False,
-                        interpolation=tf.image.ResizeMethod.LANCZOS5)
+                        interpolation=tf.image.ResizeMethod.BILINEAR)
                 test_images.append(image)
         test_images = np.concatenate(test_images, axis=0)
         test_images = tf.constant(test_images)

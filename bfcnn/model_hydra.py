@@ -475,10 +475,6 @@ def model_superres_builder(
     lin_stop = config.get("lin_stop", +0.5)
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
-    upscale_type = config.get("upscale_type", "nearest").strip().lower()
-    kernel_initializer = config.get("kernel_initializer", "glorot_normal")
-    kernel_regularizer = regularizer_builder(config.get("kernel_regularizer", "l2"))
-    kernel_regularizer = regularizer_builder(kernel_regularizer)
 
     uncertainty_buckets = config.get("uncertainty_buckets", 16)
     uncertainty_threshold = config.get("uncertainty_threshold", None)
@@ -506,37 +502,14 @@ def model_superres_builder(
             name="input_tensor")
     x = model_input_layer
 
-    x = \
-        tf.keras.layers.UpSampling2D(
-            size=(2, 2), interpolation="nearest")(x)
     # NOTE
     # nearest -> conv2d (no artifacts)
     # conv2dTranspose 3x3 (artifacts)
     # conv2dTranspose 5x5 (artifacts)
     # conv2d -> conv2dTranspose (artifacts)
-    # if upscale_type == "nearest":
-    #     x = \
-    #         tf.keras.layers.UpSampling2D(
-    #             size=(2, 2), interpolation="nearest")(x)
-    # elif upscale_type == "bilinear":
-    #     x = \
-    #         tf.keras.layers.UpSampling2D(
-    #             size=(2, 2), interpolation="bilinear")(x)
-    # elif upscale_type == "dilate":
-    #     config["base_conv_params"] = \
-    #         dict(
-    #             kernel_size=config["kernel_size"],
-    #             filters=config["filters"],
-    #             strides=(2, 2),
-    #             padding="same",
-    #             use_bias=use_bias,
-    #             activation="linear",
-    #             dilation_rate=(1, 1),
-    #             kernel_regularizer=kernel_regularizer,
-    #             kernel_initializer=kernel_initializer
-    #         )
-    # else:
-    #     raise ValueError(f"don't know how to handle upscale_type: [{upscale_type}]")
+    x = \
+        tf.keras.layers.UpSampling2D(
+            size=(2, 2), interpolation="nearest")(x)
 
     backbone, _, _ = model_backbone_builder(config)
     x = backbone(x)

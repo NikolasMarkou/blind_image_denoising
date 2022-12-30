@@ -74,7 +74,6 @@
 					"l1_coefficient": 0.025
 				}
 			},
-			"upscale_type": "dilate",
 			"uncertainty_buckets": 32,
 			"uncertainty_threshold": 0.0,
 			"uncertainty_activation": "linear",
