@@ -73,7 +73,6 @@ def dataset_builder(
 
     # --- dataset augmentation
     random_blur = tf.constant(config.get("random_blur", False))
-    subsample_size = config.get("subsample_size", -1)
     # in radians
     random_rotate = tf.constant(config.get("random_rotate", 0.0))
     use_random_rotate = tf.constant(random_rotate > 0.0)
@@ -102,13 +101,8 @@ def dataset_builder(
     else:
         multiplicative_noise = [1.0]
 
-    if subsample_size > 0:
-        noise_choices.append(2)
-    else:
-        subsample_size = 2
-
     if quantization > 1:
-        noise_choices.append(3)
+        noise_choices.append(2)
     else:
         quantization = 1
 
@@ -201,8 +195,7 @@ def dataset_builder(
 
         use_additive_noise = tf.equal(noise_type, tf.constant(0, dtype=tf.int64))
         use_multiplicative_noise = tf.equal(noise_type, tf.constant(1, dtype=tf.int64))
-        use_subsample_noise = tf.equal(noise_type, tf.constant(2, dtype=tf.int64))
-        use_quantize_noise = tf.equal(noise_type, tf.constant(3, dtype=tf.int64))
+        use_quantize_noise = tf.equal(noise_type, tf.constant(2, dtype=tf.int64))
 
         # --- additive noise
         if use_additive_noise:
@@ -282,25 +275,13 @@ def dataset_builder(
                     false_fn=lambda: noisy_batch
                 )
 
-        # -- subsample noise
-        if use_subsample_noise:
-            noisy_batch = \
-                tf.image.resize(
-                    images=noisy_batch,
-                    method=tf.image.ResizeMethod.AREA,
-                    size=(int(input_shape[0] / subsample_size),
-                          int(input_shape[1] / subsample_size)))
-            noisy_batch = \
-                tf.image.resize(
-                    images=noisy_batch,
-                    method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
-                    size=(input_shape[0], input_shape[1]))
-
         # --- quantize noise
-        if use_quantize_noise:
-            noisy_batch = tf.round(noisy_batch / quantization)
-            noisy_batch = noisy_batch * quantization
-            noisy_batch = tf.round(noisy_batch)
+        noisy_batch = \
+            tf.cond(
+                pred=use_quantize_noise,
+                true_fn=lambda: tf.round(noisy_batch / quantization) * quantization,
+                false_fn=lambda: noisy_batch
+            )
 
         # --- round values to nearest integer
         noisy_batch = \
@@ -349,8 +330,7 @@ def dataset_builder(
 
     # --- save the augmentation functions
     @tf.function(
-        input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)],
-        reduce_retracing=True)
+        input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)])
     def load_image_fn(path: tf.Tensor) -> tf.Tensor:
         img = \
             load_image(

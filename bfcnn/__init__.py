@@ -66,16 +66,12 @@ if pretrained_dir.is_dir():
         def load_denoiser_module():
             return tf.saved_model.load(str(directory / DENOISER_STR))
 
-        def load_inpaint_module():
-            return tf.saved_model.load(str(directory / INPAINT_STR))
-
         def load_superres_module():
             return tf.saved_model.load(str(directory / SUPERRES_STR))
 
         # --- define structure for each model
         models[model_name] = {
             "directory": directory,
-            INPAINT_STR: load_inpaint_module,
             SUPERRES_STR: load_superres_module,
             DENOISER_STR: load_denoiser_module,
             "configuration": str(directory / "pipeline.json"),
@@ -137,26 +133,10 @@ def load_superres_model(model_path: str):
 
     raise ValueError("model_path [{0}] does not exist".format(model_path))
 
-
 # ---------------------------------------------------------------------
 
-
-def load_inpaint_model(model_path: str):
-    # --- argument checking
-    if model_path is None or len(model_path) <= 0:
-        raise ValueError("model_path cannot be empty")
-
-    # --- load from pretrained
-    if model_path in models:
-        return models[model_path][INPAINT_STR]()
-
-    raise ValueError("model_path [{0}] does not exist".format(model_path))
-
-
-# ---------------------------------------------------------------------
 
 # offer a descent pretrained model fore each
-load_default_inpaint = list(models.values())[0][INPAINT_STR]
 load_default_denoiser = list(models.values())[0][DENOISER_STR]
 load_default_superres = list(models.values())[0][SUPERRES_STR]
 
@@ -173,11 +153,9 @@ __all__ = [
     model_builder,
     schedule_builder,
     optimizer_builder,
-    load_inpaint_model,
     load_denoiser_model,
     load_superres_model,
     build_pyramid_model,
-    load_default_inpaint,
     load_default_denoiser,
     load_default_superres,
     build_inverse_pyramid_model

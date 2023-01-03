@@ -123,11 +123,9 @@
 	"dataset": {
 		"batch_size": 16,
 		"no_crops_per_image": 1,
-		"no_iterations_per_batch": 1,
 		"value_range": [0, 255],
 		"clip_value": true,
 		"random_blur": true,
-		"subsample_size": -1,
 		"round_values": true,
 		"random_invert": false,
 		"random_rotate": 0.314,
@@ -137,7 +135,8 @@
 		"input_shape": [128, 128, 3],
 		"multiplicative_noise": [0.05, 0.1],
 		"additional_noise": [1, 5, 10, 20],
-		"inputs": [{
+		"inputs": [
+			{
 				"directory": "/media/data1_4tb/datasets/KITTI/data/depth/raw_image_values/"
 			},
 			{
