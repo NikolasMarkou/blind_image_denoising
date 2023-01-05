@@ -53,6 +53,8 @@ several types of noise and then try to recover the original image
 * normally distributed additive noise (same per channel / different same per channel)
 * normally distributed multiplicative noise (same per channel / different same per channel)
 
+in addition to that there is a small smoothing kernel (3x3) that probabilistically embeds the noise. 
+
 
 ## Pretrained models
 
@@ -149,16 +151,13 @@ denoised_tensor = denoiser_model(input_tensor)
 ```
 
 ## Designing the best possible denoiser
-1. Add a small hinge at the MAE loss. 2 (from 255) seems to work very good
+1. Add a small hinge at the MAE loss. values from 0.5 - 2.0 (from 255) seem to work very good
 2. Multiscale models work better, 3-4 scales is ideal. LUnet seems to perform very well.
 3. Soft-Orthogonal regularization provides better generalization, but it's slower to train.
 4. Effective Receptive Field regularization provides better generalization, but it's slower to train.
 5. Squeeze-and-Excite provides a small boost without many additional parameters.
 6. Avoid Batch Normalization at the end.
-7. Residual learning (learning the noise) trains faster and gives better metrics 
-   but may give out artifacts, so better avoid it.
-8. Every sample in each batch uses independent forms of noise.
-
+7. Residual learning (learning the noise) trains faster and gives better metrics but may give out artifacts, so better avoid it.
 All these options are supported in the configuration.
 
 ## Model types
@@ -231,11 +230,8 @@ Custom regularization that gives incentive to convolutional kernels to have high
 4. [Can We Gain More from Orthogonality Regularizations in Training Deep CNNs?](https://arxiv.org/abs/1810.09102)
 5. [Squeeze-and-Excitation Networks](https://arxiv.org/abs/1709.01507)
 
-## Installation notes
-
->`tensorflow_graphics` requires that you install the following packages:
->>`libopenexr-dev`
->>`python3-dev`
-
 ## Special Thanks
 I would like to thank [Pantelis Georgiades](https://www.linkedin.com/in/pantelisgeor/) and Alexandros Georgiou from the [Cyprus Institute ](https://www.cyi.ac.cy/) for doing precious hyperparameter search for me on their super computer. Their help accelerated my project enormously.
+
+
+
