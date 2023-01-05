@@ -121,7 +121,7 @@
 		"count_non_zero_mean": false
 	},
 	"dataset": {
-		"batch_size": 16,
+		"batch_size": 8,
 		"no_crops_per_image": 1,
 		"value_range": [0, 255],
 		"clip_value": true,
