@@ -1,9 +1,5 @@
 r"""export a bfcnn model"""
 
-__author__ = "Nikolas Markou"
-__version__ = "1.0.0"
-__license__ = "MIT"
-
 # ---------------------------------------------------------------------
 
 import os
@@ -15,8 +11,7 @@ from enum import Enum
 # local imports
 # ---------------------------------------------------------------------
 
-from .export_model_denoiser import export_model as export_model_denoise
-from .export_model_decomposition import export_model as export_model_decomposition
+from .export_model import export_model as export_model_denoise
 
 # ---------------------------------------------------------------------
 
@@ -59,13 +54,6 @@ def main(args):
 
     if args.model_type == ModelType.DENOISE:
         export_model_denoise(
-            pipeline_config=args.pipeline_config,
-            checkpoint_directory=args.checkpoint_directory,
-            output_directory=args.output_directory,
-            to_tflite=args.to_tflite,
-            test_model=args.test_model)
-    elif args.model_type == ModelType.DECOMPOSITION:
-        export_model_decomposition(
             pipeline_config=args.pipeline_config,
             checkpoint_directory=args.checkpoint_directory,
             output_directory=args.output_directory,
@@ -124,11 +112,6 @@ if __name__ == "__main__":
         action="store_true",
         dest="test_model",
         help="run model with random input")
-
-    parser.add_argument(
-        "--version",
-        action="version",
-        version="%(prog)s (version {version})".format(version=__version__))
 
     # parse the arguments and pass them to main
     args = parser.parse_args()

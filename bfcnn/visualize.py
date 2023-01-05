@@ -1,7 +1,6 @@
 r"""Tensorboard samples visualization"""
 
 import numpy as np
-import tensorflow as tf
 
 # ---------------------------------------------------------------------
 
@@ -31,67 +30,5 @@ def collage(
                 result = np.vstack([result, tmp])
             images.clear()
     return result
-
-
-# ---------------------------------------------------------------------
-
-
-def visualize(
-        global_step,
-        input_batch,
-        noisy_batch,
-        prediction_batch,
-        random_batch=None,
-        test_input_batch=None,
-        test_output_batch=None,
-        visualization_number: int = 3):
-    """
-    Prepare images and add them to tensorboard
-    """
-    # --- save train images
-    if input_batch is not None:
-        tf.summary.image(
-            name="input",
-            step=global_step,
-            data=input_batch / 255,
-            max_outputs=visualization_number)
-
-    # --- noisy
-    if noisy_batch is not None:
-        tf.summary.image(
-            name="noisy",
-            step=global_step,
-            data=noisy_batch / 255,
-            max_outputs=visualization_number)
-
-    # --- prediction
-    if prediction_batch is not None:
-        tf.summary.image(
-            name="prediction",
-            step=global_step,
-            data=prediction_batch / 255,
-            max_outputs=visualization_number)
-
-    # --- random
-    if random_batch is not None:
-        tf.summary.image(
-            name="random",
-            step=global_step,
-            data=random_batch / 255,
-            max_outputs=visualization_number)
-
-    # --- test
-    if test_input_batch is not None:
-        tf.summary.image(
-            name="test_input",
-            step=global_step,
-            data=test_input_batch / 255,
-            max_outputs=visualization_number)
-    if test_output_batch is not None:
-        tf.summary.image(
-            name="test_output",
-            step=global_step,
-            data=test_output_batch / 255,
-            max_outputs=visualization_number)
 
 # ---------------------------------------------------------------------

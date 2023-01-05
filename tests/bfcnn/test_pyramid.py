@@ -41,8 +41,9 @@ def test_none_grayscale_1_level(target_size):
     x = \
         bfcnn.load_image(
             path=LENA_IMAGE_PATH,
-            color_mode="grayscale",
-            target_size=target_size,
+            num_channels=1,
+            image_size=target_size,
+            expand_dims=True,
             normalize=True)
 
     x_pyramid = laplacian_pyramid_model.predict(x)
@@ -79,8 +80,9 @@ def test_none_color_1_level(target_size):
     x = \
         bfcnn.load_image(
             path=LENA_IMAGE_PATH,
-            color_mode="rgb",
-            target_size=target_size,
+            num_channels=3,
+            image_size=target_size,
+            expand_dims=True,
             normalize=True)
 
     x_pyramid = laplacian_pyramid_model.predict(x)
@@ -124,8 +126,9 @@ def test_laplacian_grayscale_1_level(target_size):
     x = \
         bfcnn.load_image(
             path=LENA_IMAGE_PATH,
-            color_mode="grayscale",
-            target_size=target_size,
+            num_channels=1,
+            image_size=target_size,
+            expand_dims=True,
             normalize=True)
 
     x_pyramid = laplacian_pyramid_model.predict(x)
@@ -168,8 +171,9 @@ def test_laplacian_grayscale_3_level(target_size):
     x = \
         bfcnn.load_image(
             path=LENA_IMAGE_PATH,
-            color_mode="grayscale",
-            target_size=target_size,
+            num_channels=1,
+            image_size=target_size,
+            expand_dims=True,
             normalize=True)
 
     x_pyramid = laplacian_pyramid_model.predict(x)
@@ -211,8 +215,9 @@ def test_laplacian_color_1_level(target_size):
     x = \
         bfcnn.load_image(
             path=LENA_IMAGE_PATH,
-            color_mode="rgb",
-            target_size=target_size,
+            num_channels=3,
+            image_size=target_size,
+            expand_dims=True,
             normalize=True)
 
     x_pyramid = laplacian_pyramid_model.predict(x)
@@ -254,8 +259,9 @@ def test_laplacian_color_3_level(target_size):
     x = \
         bfcnn.load_image(
             path=LENA_IMAGE_PATH,
-            color_mode="rgb",
-            target_size=target_size,
+            num_channels=3,
+            image_size=target_size,
+            expand_dims=True,
             normalize=True)
 
     x_pyramid = laplacian_pyramid_model.predict(x)
@@ -298,8 +304,9 @@ def test_gaussian_grayscale_3_level(target_size):
     x = \
         bfcnn.load_image(
             path=LENA_IMAGE_PATH,
-            color_mode="grayscale",
-            target_size=target_size,
+            num_channels=1,
+            image_size=target_size,
+            expand_dims=True,
             normalize=True)
 
     x_pyramid = gaussian_pyramid_model.predict(x)
@@ -341,8 +348,9 @@ def test_gaussian_color_1_level(target_size):
     x = \
         bfcnn.load_image(
             path=LENA_IMAGE_PATH,
-            color_mode="rgb",
-            target_size=target_size,
+            num_channels=3,
+            image_size=target_size,
+            expand_dims=True,
             normalize=True)
 
     x_pyramid = gaussian_pyramid_model.predict(x)
@@ -384,8 +392,9 @@ def test_gaussian_color_3_level(target_size):
     x = \
         bfcnn.load_image(
             path=LENA_IMAGE_PATH,
-            color_mode="rgb",
-            target_size=target_size,
+            num_channels=3,
+            image_size=target_size,
+            expand_dims=True,
             normalize=True)
 
     x_pyramid = gaussian_pyramid_model.predict(x)

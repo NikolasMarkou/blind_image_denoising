@@ -375,3 +375,102 @@ class DifferentiableReluLayer(tf.keras.layers.Layer):
         return input_shape
 
 # ---------------------------------------------------------------------
+
+
+class DifferentiableGateLayer(tf.keras.layers.Layer):
+    def __init__(self,
+                 multiplier: float = 1.0,
+                 min_value: float = 0.001,
+                 regularizer: Any = "l1",
+                 trainable: bool = True,
+                 name=None,
+                 **kwargs):
+        """
+        GELU with a twist to force it to become binary
+        Creates a differentiable gate layer, it multiplies the input with a learnable sigmoid gate
+        The gate starts as a normal sigmoid and it is being squeezed from the regularizer to become binary
+        as the multiplier goes to zero
+
+        :param multiplier: controls the initial steepness
+        :param min_value: controls the maximum steepness
+        :param regularizer: regularizer required to push multiplier down and increase the steepness
+
+        :result: activation layer
+        """
+        super(DifferentiableGateLayer, self).__init__(
+            trainable=trainable,
+            name=name,
+            **kwargs)
+        self._multiplier = multiplier
+        self._min_value = min_value
+        self._regularizer = keras.regularizers.get(regularizer)
+
+    def build(self, input_shape):
+
+        def init_min_value(shape, dtype):
+            return np.zeros(shape, dtype=np.float32) + self._min_value
+
+        def init_multiplier_fn(shape, dtype):
+            return np.ones(shape, dtype=np.float32) * self._multiplier
+
+        self._min_value = \
+            self.add_weight(
+                shape=[1],
+                trainable=False,
+                regularizer=None,
+                name="min_value",
+                initializer=init_min_value)
+        self._multiplier = \
+            self.add_weight(
+                shape=[1],
+                trainable=True,
+                regularizer=self._regularizer,
+                name="multiplier",
+                initializer=init_multiplier_fn)
+        super(DifferentiableGateLayer, self).build(input_shape)
+
+    def call(self, inputs, training):
+        # minimum value of 1 gives a max multiplier of 1.0 / 1.0 = 1
+        # minimum value of 0.1 gives a max multiplier of 1.0 / 0.1 = 10
+        # minimum value of 0.01 gives a max multiplier of 1.0 / 0.01 = 100
+        # minimum value of 0.001 gives a max multiplier of 1.0 / 0.001 = 1000
+        x = tf.math.sigmoid(inputs * (1.0 / (tf.nn.relu(self._multiplier) + self._min_value)))
+        return tf.keras.layers.Multiply()([x, inputs])
+
+    def get_config(self):
+        return {
+            "regularizer": self._regularizer,
+            "min_value": self._min_value.numpy(),
+            "multiplier": self._multiplier.numpy(),
+        }
+
+    def compute_output_shape(self, input_shape):
+        return input_shape
+
+# ---------------------------------------------------------------------
+
+
+class Patches(tf.keras.layers.Layer):
+    def __init__(self, patch_size):
+        super(Patches, self).__init__()
+        self._patch_size = patch_size
+
+    def call(self, images):
+        batch_size = tf.shape(images)[0]
+        patches = \
+            tf.image.extract_patches(
+                images=images,
+                sizes=[1, self._patch_size, self._patch_size, 1],
+                strides=[1, self._patch_size, self._patch_size, 1],
+                rates=[1, 1, 1, 1],
+                padding="valid")
+        patch_dims = patches.shape[-1]
+        patches = tf.reshape(patches, [batch_size, -1, patch_dims])
+        return patches
+
+    def get_config(self):
+        return {
+            "patch_size": self._patch_size
+        }
+
+# ---------------------------------------------------------------------

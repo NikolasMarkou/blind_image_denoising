@@ -157,6 +157,8 @@ denoised_tensor = denoiser_model(input_tensor)
 6. Avoid Batch Normalization at the end.
 7. Residual learning (learning the noise) trains faster and gives better metrics 
    but may give out artifacts, so better avoid it.
+8. Every sample in each batch uses independent forms of noise.
+
 All these options are supported in the configuration.
 
 ## Model types
@@ -229,8 +231,11 @@ Custom regularization that gives incentive to convolutional kernels to have high
 4. [Can We Gain More from Orthogonality Regularizations in Training Deep CNNs?](https://arxiv.org/abs/1810.09102)
 5. [Squeeze-and-Excitation Networks](https://arxiv.org/abs/1709.01507)
 
+## Installation notes
+
+>`tensorflow_graphics` requires that you install the following packages:
+>>`libopenexr-dev`
+>>`python3-dev`
+
 ## Special Thanks
 I would like to thank [Pantelis Georgiades](https://www.linkedin.com/in/pantelisgeor/) and Alexandros Georgiou from the [Cyprus Institute ](https://www.cyi.ac.cy/) for doing precious hyperparameter search for me on their super computer. Their help accelerated my project enormously.
-
-
-

@@ -6,7 +6,7 @@ from enum import Enum
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
-from tensorflow import keras
+import tensorflow_addons as tfa
 from typing import List, Tuple, Union, Dict, Iterable
 
 # ---------------------------------------------------------------------
@@ -17,38 +17,41 @@ from .constants import *
 from .custom_logger import logger
 from .custom_layers import \
     Multiplier, \
-    RandomOnOff, \
-    ChannelwiseMultiplier, \
-    DifferentiableReluLayer
+    ChannelwiseMultiplier
 
 # ---------------------------------------------------------------------
 
 
-def load_image(
-        path: Union[str, Path],
-        color_mode: str = "rgb",
-        target_size: Tuple[int, int] = None,
-        normalize: bool = True) -> np.ndarray:
+def clip_normalized_tensor(
+        input_tensor: tf.Tensor) -> tf.Tensor:
     """
-    load image from file
+    clip an input to [-0.5, +0.5]
 
-    :param path:
-    :param color_mode: grayscale or rgb
-    :param target_size: size or None
-    :param normalize: if true normalize to (-1,+1)
-    :return: loaded normalized image
+    :param input_tensor:
+    :return:
     """
-    x = \
-        tf.keras.preprocessing.image.load_img(
-            path=path,
-            color_mode=color_mode,
-            target_size=target_size)
+    return \
+        tf.clip_by_value(
+            input_tensor,
+            clip_value_min=-0.5,
+            clip_value_max=+0.5)
 
-    x = tf.keras.preprocessing.image.img_to_array(x)
-    x = np.array([x])
-    if normalize:
-        x = layer_normalize((x, 0.0, 255.0))
-    return x
+# ---------------------------------------------------------------------
+
+
+def clip_unnormalized_tensor(
+        input_tensor: tf.Tensor) -> tf.Tensor:
+    """
+    clip an input to [0.0, 255.0]
+
+    :param input_tensor:
+    :return:
+    """
+    return \
+        tf.clip_by_value(
+            input_tensor,
+            clip_value_min=0.0,
+            clip_value_max=255.0)
 
 # ---------------------------------------------------------------------
 
@@ -107,6 +110,29 @@ def merge_iterators(
             if value is not empty:
                 yield value
 
+# ---------------------------------------------------------------------
+
+
+def probabilistic_drop_off(
+        iterator: Iterable,
+        probability: float = 0.5):
+    """
+    randomly zero out an element of the iterator
+
+    optimizer.apply_gradients(
+        grads_and_vars=zip(
+            probabilistic_drop_off(tape.gradient(target=total_loss, sources=trainable_weights)),
+            trainable_weights))
+
+    :param iterator:
+    :param probability: probability of an element not being affected
+    :return:
+    """
+    for value in iterator:
+        if np.random.uniform(low=0, high=1.0, size=None) > probability:
+            yield value * 0.0
+        else:
+            yield value
 
 # ---------------------------------------------------------------------
 
@@ -181,21 +207,6 @@ def normal_empirical_cdf(
 # ---------------------------------------------------------------------
 
 
-def random_choice(
-        x: tf.Tensor,
-        size: int = 1,
-        axis: int = 0) -> tf.Tensor:
-    """
-    Randomly select size options from x
-    """
-    dim_x = tf.cast(tf.shape(x)[axis], tf.int64)
-    indices = tf.range(0, dim_x, dtype=tf.int64)
-    sample_index = tf.random.shuffle(indices)[:size]
-    return tf.gather(x, sample_index, axis=axis)
-
-# ---------------------------------------------------------------------
-
-
 def coords_layer(
         input_layer):
     """
@@ -263,6 +274,8 @@ def conv2d_wrapper(
         conv_params: Dict,
         bn_params: Dict = None,
         pre_activation: str = None,
+        sample_mean_removal: bool = False,
+        channel_mean_removal: bool = False,
         channelwise_scaling: bool = False,
         multiplier_scaling: bool = False,
         conv_type: Union[ConvType, str] = ConvType.CONV2D):
@@ -273,6 +286,8 @@ def conv2d_wrapper(
     :param conv_params: conv2d parameters
     :param bn_params: batchnorm parameters, None to disable bn
     :param pre_activation: activation after the batchnorm, None to disable
+    :param sample_mean_removal: if true, remove the whole sample mean after convolution
+    :param channel_mean_removal: if true, remove mean per channel after convolution
     :param conv_type: if true use depthwise convolution,
     :param channelwise_scaling: if True add a learnable channel wise scaling at the end
     :param multiplier_scaling: if True add a learnable single scale at the end
@@ -319,6 +334,16 @@ def conv2d_wrapper(
         x = tf.keras.layers.Conv2DTranspose(**conv_params)(x)
     else:
         raise ValueError(f"don't know how to handle this [{conv_type}]")
+
+    # --- remove sample mean
+    if sample_mean_removal:
+        x_sample_mean = tf.reduce_mean(x, axis=[1, 2, 3], keepdims=True)
+        x = tf.keras.layers.Subtract()([x, x_sample_mean])
+
+    # --- remove channel mean
+    if channel_mean_removal:
+        x_channel_mean = tf.reduce_mean(x, axis=[1, 2], keepdims=True)
+        x = tf.keras.layers.Subtract()([x, x_channel_mean])
 
     # --- learn the proper scale of the previous layer
     if channelwise_scaling:
@@ -375,6 +400,87 @@ def dense_wrapper(
     if use_elementwise:
         x = ChannelwiseMultiplier(**elementwise_params)(x)
     return x
+
+# ---------------------------------------------------------------------
+
+
+def expected_uncertainty_head(
+        input_layer,
+        conv_parameters: Union[Dict, List[Dict]],
+        output_channels: int,
+        probability_threshold: float = None,
+        linspace_start_stop: Tuple[float, float] = (-0.5, +0.5)):
+    # --- argument checking
+    if input_layer is None:
+        raise ValueError("input_layer should not be None")
+    if conv_parameters is None:
+        raise ValueError("conv_parameters cannot be None")
+    if output_channels is None or output_channels <= 0:
+        raise ValueError("output_channels should be > 0")
+    if isinstance(conv_parameters, Dict):
+        conv_parameters = [conv_parameters]
+
+    uncertainty_buckets = conv_parameters[0]["filters"]
+
+    # --- build heads
+    kernel = \
+        tf.linspace(
+            start=linspace_start_stop[0],
+            stop=linspace_start_stop[1],
+            num=uncertainty_buckets)
+    conv_kernel = tf.reshape(tensor=kernel, shape=(1, 1, -1, 1))
+    column_kernel = tf.reshape(tensor=kernel, shape=(1, 1, 1, -1))
+
+    x_expected = []
+    x_uncertainty = []
+    for i in range(output_channels):
+        x_i_k = input_layer
+        for params in conv_parameters:
+            x_i_k = conv2d_wrapper(
+                input_layer=x_i_k,
+                bn_params=None,
+                conv_params=params,
+                channelwise_scaling=False,
+                multiplier_scaling=False)
+        x_i = x_i_k
+        x_i_prob = tf.nn.softmax(x_i, axis=3) + DEFAULT_EPSILON
+
+        # --- clip if selected
+        if probability_threshold is not None and \
+                0.0 < probability_threshold < 1.0:
+            # clip
+            x_i_prob = \
+                tf.nn.relu(x_i_prob - probability_threshold)
+            # re-normalize
+            x_i_prob = \
+                x_i_prob / (tf.reduce_sum(x_i_prob, axis=3, keepdims=True) + DEFAULT_EPSILON)
+
+        # --- compute expected x_i and variance
+        x_i_expected = \
+            tf.nn.conv2d(
+                input=x_i_prob,
+                filters=conv_kernel,
+                strides=(1, 1),
+                padding="SAME")
+        x_i_diff_square = \
+            tf.nn.relu(
+                tf.square(column_kernel - x_i_expected)) + \
+            DEFAULT_EPSILON
+        x_i_std = \
+            tf.sqrt(
+                tf.nn.relu(
+                    tf.reduce_sum(
+                        tf.multiply(x_i_diff_square, x_i_prob),
+                        axis=[3],
+                        keepdims=True)) +
+                DEFAULT_EPSILON
+            )
+        x_expected.append(x_i_expected)
+        x_uncertainty.append(x_i_std)
+
+    x_expected = tf.concat(x_expected, axis=3)
+    x_uncertainty = tf.concat(x_uncertainty, axis=3)
+    return x_expected, x_uncertainty
 
 # ---------------------------------------------------------------------
 
@@ -436,7 +542,7 @@ def mean_sigma_local(
             input_layer=input_layer,
             kernel_size=kernel_size)
 
-    sigma = tf.sqrt(tf.abs(variance) + epsilon)
+    sigma = tf.sqrt(variance + epsilon)
 
     return mean, sigma
 
@@ -476,12 +582,12 @@ def mean_sigma_global(
 
 
 def sparse_block(
-        input_layer,
+        input_layer: tf.Tensor,
         bn_params: Dict = None,
         threshold_sigma: float = 1.0,
         symmetrical: bool = False,
         reverse: bool = False,
-        soft_sparse: bool = True):
+        soft_sparse: bool = False) -> tf.Tensor:
     """
     create sparsity in an input layer (keeps only positive)
 
@@ -546,30 +652,73 @@ def sparse_block(
 # ---------------------------------------------------------------------
 
 
-def layer_denormalize(args):
+def mean_sigma_block(
+        input_layer: tf.Tensor,
+        axis: List[int] = [1, 2]) -> tf.Tensor:
+    """
+    compute the mean / sigma of tensor per channel
+
+    """
+    x = input_layer
+    x_mean = tf.reduce_mean(x, axis=axis, keepdims=True)
+    x_variance = \
+        tf.reduce_mean(
+            tf.square(x - x_mean), axis=axis, keepdims=False)
+    x_sigma = tf.sqrt(x_variance + DEFAULT_EPSILON)
+    x_mean = tf.squeeze(x_mean, axis=axis)
+    return \
+        tf.keras.layers.Concatenate(axis=-1)([
+            x_mean,
+            x_sigma
+        ])
+# ---------------------------------------------------------------------
+
+
+def min_max_mean_sigma_block(
+        input_layer: tf.Tensor,
+        axis: List[int] = [1, 2]) -> tf.Tensor:
+    """
+    compute the basic stats of a tensor per channel
+
+    """
+    x = input_layer
+    x_max = tf.reduce_max(x, axis=axis, keepdims=False)
+    x_min = tf.reduce_min(x, axis=axis, keepdims=False)
+    x_mean_sigma = mean_sigma_block(input_layer=input_layer, axis=axis)
+    return \
+        tf.keras.layers.Concatenate(axis=-1)([
+            x_max,
+            x_min,
+            x_mean_sigma
+        ])
+
+# ---------------------------------------------------------------------
+
+
+def layer_denormalize(
+        input_layer: tf.Tensor,
+        v_min: float,
+        v_max: float) -> tf.Tensor:
     """
     Convert input [-0.5, +0.5] to [v0, v1] range
     """
-    y, v_min, v_max = args
-    y_clip = \
-        tf.clip_by_value(
-            t=y,
-            clip_value_min=-0.5,
-            clip_value_max=0.5)
+    y_clip = clip_normalized_tensor(input_layer)
     return (y_clip + 0.5) * (v_max - v_min) + v_min
 
 
 # ---------------------------------------------------------------------
 
 
-def layer_normalize(args):
+def layer_normalize(
+        input_layer: tf.Tensor,
+        v_min: float,
+        v_max: float) -> tf.Tensor:
     """
     Convert input from [v0, v1] to [-0.5, +0.5] range
     """
-    y, v_min, v_max = args
     y_clip = \
         tf.clip_by_value(
-            t=y,
+            t=input_layer,
             clip_value_min=v_min,
             clip_value_max=v_max)
     return (y_clip - v_min) / (v_max - v_min) - 0.5
@@ -590,6 +739,7 @@ def build_normalize_model(
     :param min_value: Minimum value
     :param max_value: Maximum value
     :param name: name of the model
+
     :return: normalization model
     """
     model_input = tf.keras.Input(shape=input_dims)
@@ -597,11 +747,10 @@ def build_normalize_model(
     # --- normalize input
     # from [min_value, max_value] to [-0.5, +0.5]
     model_output = \
-        tf.keras.layers.Lambda(
-            function=layer_normalize,
-            trainable=False)([model_input,
-                              float(min_value),
-                              float(max_value)])
+        layer_normalize(
+            input_layer=model_input,
+            v_min=float(min_value),
+            v_max=float(max_value))
 
     # --- wrap model
     return tf.keras.Model(
@@ -626,18 +775,18 @@ def build_denormalize_model(
     :param min_value: Minimum value
     :param max_value: Maximum value
     :param name: name of the model
+
     :return: denormalization model
     """
     model_input = tf.keras.Input(shape=input_dims)
 
-    # --- normalize input
+    # --- denormalize input
     # from [-0.5, +0.5] to [v0, v1] range
     model_output = \
-        tf.keras.layers.Lambda(
-            function=layer_denormalize,
-            trainable=False)([model_input,
-                              float(min_value),
-                              float(max_value)])
+        layer_denormalize(
+            input_layer=model_input,
+            v_min=float(min_value),
+            v_max=float(max_value))
 
     # --- wrap model
     return \
@@ -647,5 +796,106 @@ def build_denormalize_model(
             inputs=model_input,
             outputs=model_output)
 
+# ---------------------------------------------------------------------
+
+
+def random_crops(
+        input_batch: tf.Tensor,
+        no_crops_per_image: int = 16,
+        crop_size: Tuple[int, int] = (64, 64),
+        x_range: Tuple[float, float] = None,
+        y_range: Tuple[float, float] = None,
+        extrapolation_value: float = 0.0,
+        interpolation_method: str = "bilinear") -> tf.Tensor:
+    """
+    random crop from each image in the batch
+
+    :param input_batch: 4D tensor
+    :param no_crops_per_image: number of crops per image in batch
+    :param crop_size: final crop size output
+    :param x_range: manually set x_range
+    :param y_range: manually set y_range
+    :param extrapolation_value: value set to beyond the image crop
+    :param interpolation_method: interpolation method
+    :return: tensor with shape
+        [input_batch[0] * no_crops_per_image,
+         crop_size[0],
+         crop_size[1],
+         input_batch[3]]
+    """
+    shape = tf.shape(input_batch)
+    original_dtype = input_batch.dtype
+    batch_size = shape[0]
+
+    if shape[1] <= 0 or shape[2] <= 0:
+        return \
+            tf.zeros(
+                shape=(no_crops_per_image, crop_size[0], crop_size[1], shape[3]),
+                dtype=original_dtype)
+
+    # computer the total number of crops
+    total_crops = no_crops_per_image * batch_size
+
+    # fill y_range, x_range based on crop size and input batch size
+    if y_range is None:
+        y_range = (float(crop_size[0] / shape[1]),
+                   float(crop_size[0] / shape[1]))
+
+    if x_range is None:
+        x_range = (float(crop_size[1] / shape[2]),
+                   float(crop_size[1] / shape[2]))
+
+    #
+    y1 = tf.random.uniform(
+        shape=(total_crops, 1), minval=0.0, maxval=1.0 - y_range[0])
+    y2 = y1 + y_range[1]
+    #
+    x1 = tf.random.uniform(
+        shape=(total_crops, 1), minval=0.0, maxval=1.0 - x_range[0])
+    x2 = x1 + x_range[1]
+    # limit the crops to the end of image
+    y1 = tf.maximum(y1, 0.0)
+    y2 = tf.minimum(y2, 1.0)
+    x1 = tf.maximum(x1, 0.0)
+    x2 = tf.minimum(x2, 1.0)
+    # concat the dimensions to create [total_crops, 4] boxes
+    boxes = tf.concat([y1, x1, y2, x2], axis=1)
+
+    # --- randomly choose the image to crop inside the batch
+    box_indices = \
+        tf.random.uniform(
+            shape=(total_crops,),
+            minval=0,
+            maxval=batch_size,
+            dtype=tf.int32)
+
+    result = \
+        tf.image.crop_and_resize(
+            image=input_batch,
+            boxes=boxes,
+            box_indices=box_indices,
+            crop_size=crop_size,
+            method=interpolation_method,
+            extrapolation_value=extrapolation_value)
+
+    # --- cast to original img dtype (no surprises principle)
+    return tf.cast(result, dtype=original_dtype)
+
+# ---------------------------------------------------------------------
+
+
+def downsample(
+        input_batch: tf.Tensor) -> tf.Tensor:
+    x = \
+        tfa.image.gaussian_filter2d(
+            sigma=1,
+            image=input_batch,
+            filter_shape=(5, 5))
+    return \
+        tf.nn.max_pool2d(
+            input=x,
+            ksize=(1, 1),
+            strides=(2, 2),
+            padding="SAME")
 
 # ---------------------------------------------------------------------

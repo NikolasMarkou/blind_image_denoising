@@ -1,27 +1,30 @@
-from typing import Union, Dict
 from tensorflow import keras
+from typing import Union, Dict
 
 # ---------------------------------------------------------------------
 
-DEFAULT_EPSILON = 0.0001
-DEFAULT_BN_EPSILON = 1e-4
-DEFAULT_BN_MOMENTUM = 0.99
-DEFAULT_MULTIPLIER_L1 = 1e-3
-DEFAULT_CHANNELWISE_MULTIPLIER_L1 = 1e-3
+DEFAULT_EPSILON = 1e-3
+DEFAULT_BN_EPSILON = 1e-3
+DEFAULT_BN_MOMENTUM = 0.995
+DEFAULT_MULTIPLIER_L1 = 1.0
+DEFAULT_CHANNELWISE_MULTIPLIER_L1 = 0.1
 
 TYPE_STR = "type"
 CONFIG_STR = "config"
+MODEL_STR = "model"
 MODEL_DENOISE_STR = "model_denoise"
 MODEL_DISCRIMINATE_STR = "model_discriminate"
+MODEL_HYDRA_DEFAULT_NAME_STR = "model_hydra.h5"
 MODEL_DENOISE_DEFAULT_NAME_STR = "model_denoise.h5"
 MODEL_DISCRIMINATE_DEFAULT_NAME_STR = "model_discriminate.h5"
 
-SNR_STR = "snr"
+PSNR_STR = "psnr"
 KL_LOSS_STR = "kl_loss"
 MAE_LOSS_STR = "mae_loss"
 NAE_NOISE_STR = "nae_noise"
+TOTAL_LOSS_STR = "total_loss"
+UNCERTAINTY_LOSS_STR = "uq_loss"
 NAE_PREDICTION_STR = "nae_prediction"
-MEAN_TOTAL_LOSS_STR = "mean_total_loss"
 NAE_IMPROVEMENT_STR = "nae_improvement"
 NAE_PREDICTION_LOSS_STR = "nae_prediction"
 DISCRIMINATE_LOSS_STR = "discriminate_loss"
@@ -38,5 +41,14 @@ L2_COEFFICIENT_STR = "l2_coefficient"
 DIAG_COEFFICIENT_STR = "diag_coefficient"
 LAMBDA_COEFFICIENT_STR = "lambda_coefficient"
 REGULARIZER_ALLOWED_TYPES = Union[str, Dict, keras.regularizers.Regularizer]
+
+# ---------------------------------------------------------------------
+
+INPAINT_STR = "inpaint"
+BACKBONE_STR = "backbone"
+DENOISER_STR = "denoiser"
+SUPERRES_STR = "superres"
+DENOISER_UQ_STR = "denoiser_uq"
+SUPERRES_UQ_STR = "superres_uq"
 
 # ---------------------------------------------------------------------

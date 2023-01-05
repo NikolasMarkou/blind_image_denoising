@@ -1,9 +1,9 @@
-import keras
 import pytest
 
 import os
 import sys
 import numpy as np
+from tensorflow import keras
 
 from .constants import *
 

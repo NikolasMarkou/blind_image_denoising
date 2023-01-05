@@ -25,18 +25,18 @@ from bfcnn.pruning import \
 
 
 @pytest.mark.parametrize(
-    "config", bfcnn.CONFIGS)
+    "config", bfcnn.configs)
 def test_get_conv2d_weights(config):
     config = config[1]
-    models = bfcnn.model_builder(config=config["model_denoise"])
-    model_weights = bfcnn.pruning.get_conv2d_weights(models.denoiser)
+    models = bfcnn.model_builder(config=config["model"])
+    model_weights = bfcnn.pruning.get_conv2d_weights(models.hydra)
     assert model_weights.shape[0] > 0
 
 
 # ---------------------------------------------------------------------
 
 @pytest.mark.parametrize(
-    "config", bfcnn.CONFIGS)
+    "config", bfcnn.configs)
 def test_prune_function_builder(config):
     config = config[1]
     train_config = config["train"]
@@ -55,10 +55,10 @@ def test_prune_function_builder(config):
 
 
 @pytest.mark.parametrize(
-    "config", bfcnn.CONFIGS)
+    "config", bfcnn.configs)
 def test_build_model_and_prune_configs(config):
     config = config[1]
-    models = bfcnn.model_builder(config=config["model_denoise"])
+    models = bfcnn.model_builder(config=config["model"])
     train_config = config["train"]
     if "prune" not in train_config:
         return

@@ -1,27 +1,32 @@
 import tensorflow as tf
-from tensorflow import keras
 import tensorflow_addons as tfa
-from typing import Dict, Callable, Iterator
+from typing import Dict, Callable, Iterator, Tuple
 
 # ---------------------------------------------------------------------
 # local imports
 # ---------------------------------------------------------------------
 
+from .file_operations import *
 from .custom_logger import logger
-from .utilities import merge_iterators, random_choice
+from .utilities import random_crops, downsample
 
 # ---------------------------------------------------------------------
 
-DATASET_FN_STR = "dataset"
-AUGMENTATION_FN_STR = "augmentation"
+PREPARE_DATA_FN_STR = "prepare_data"
 DATASET_TESTING_FN_STR = "dataset_testing"
+DATASET_TRAINING_FN_STR = "dataset_training"
+DATASET_VALIDATION_FN_STR = "dataset_validation"
+NOISE_AUGMENTATION_FN_STR = "noise_augmentation"
+INPAINT_AUGMENTATION_FN_STR = "inpaint_augmentation"
+SUPERRES_AUGMENTATION_FN_STR = "superres_augmentation"
+GEOMETRIC_AUGMENTATION_FN_STR = "geometric_augmentation"
 
 
 # ---------------------------------------------------------------------
 
 
 def dataset_builder(
-        config: Dict):
+        config: Dict) -> tf.data.Dataset:
     # ---
     logger.info("creating dataset_builder with configuration [{0}]".format(config))
 
@@ -29,8 +34,18 @@ def dataset_builder(
     batch_size = config["batch_size"]
     # crop image from dataset
     input_shape = config["input_shape"]
-    color_mode = config.get("color_mode", "rgb")
-
+    color_mode = config.get("color_mode", "rgb").strip().lower()
+    if color_mode == "rgb":
+        num_channels = 3
+    elif color_mode == "rgba":
+        num_channels = 4
+    elif color_mode == "grayscale":
+        num_channels = 1
+    else:
+        raise ValueError(
+            '`color_mode` must be one of {"rgb", "rgba", "grayscale"}. '
+            f"Received: color_mode={color_mode}"
+        )
     # ---
     inputs = config["inputs"]
     # directory to load data from
@@ -48,8 +63,9 @@ def dataset_builder(
         raise ValueError("dont know how to handle anything else than list and dict")
 
     # --- clip values to min max
-    min_value = config.get("min_value", 0)
-    max_value = config.get("max_value", 255)
+    value_range = config.get("value_range", [0, 255])
+    min_value = tf.constant(value_range[0], dtype=tf.float32)
+    max_value = tf.constant(value_range[1], dtype=tf.float32)
     clip_value = tf.constant(config.get("clip_value", True))
 
     # --- if true round values
@@ -57,12 +73,9 @@ def dataset_builder(
 
     # --- dataset augmentation
     random_blur = tf.constant(config.get("random_blur", False))
-    subsample_size = config.get("subsample_size", -1)
     # in radians
     random_rotate = tf.constant(config.get("random_rotate", 0.0))
     use_random_rotate = tf.constant(random_rotate > 0.0)
-    # if true randomly invert
-    random_invert = tf.constant(config.get("random_invert", False))
     # if true randomly invert upside down image
     random_up_down = tf.constant(config.get("random_up_down", False))
     # if true randomly invert left right image
@@ -71,12 +84,10 @@ def dataset_builder(
     multiplicative_noise = config.get("multiplicative_noise", [])
     # quantization value, -1 disabled, otherwise 2, 4, 8
     quantization = tf.constant(config.get("quantization", -1))
-    # min/max scale
-    min_scale = tf.constant(config.get("min_scale", 0.25))
-    max_scale = tf.constant(config.get("max_scale", 1.0))
     # whether to crop or not
-    random_crop = dataset_shape[0][0:2] != input_shape[0:2]
-    random_crop = tf.constant(random_crop)
+    random_crop = tf.constant(dataset_shape[0][0:2] != input_shape[0:2])
+    # no crops per image
+    no_crops_per_image = config.get("no_crops_per_image", 1)
 
     # --- build noise options
     noise_choices = []
@@ -90,13 +101,8 @@ def dataset_builder(
     else:
         multiplicative_noise = [1.0]
 
-    if subsample_size > 0:
-        noise_choices.append(2)
-    else:
-        subsample_size = 2
-
     if quantization > 1:
-        noise_choices.append(3)
+        noise_choices.append(2)
     else:
         quantization = 1
 
@@ -107,256 +113,285 @@ def dataset_builder(
     # --- set random seed to get the same result
     tf.random.set_seed(0)
 
-    # --- define generator function from directory
-    if directory:
-        dataset = [
-            tf.keras.utils.image_dataset_from_directory(
-                directory=d,
-                labels=None,
-                label_mode=None,
-                class_names=None,
-                color_mode=color_mode,
-                batch_size=batch_size,
-                shuffle=True,
-                image_size=s,
-                seed=0,
-                validation_split=None,
-                subset=None,
-                interpolation="bilinear",
-                crop_to_aspect_ratio=True)
-            for d, s in zip(directory, dataset_shape)
-        ]
-    else:
-        raise ValueError("don't know how to handle non directory datasets")
-
-    @tf.function(
-        input_signature=[
-            tf.TensorSpec(shape=[None, None, None, None], dtype=tf.float32)])
-    def geometric_augmentations_fn(
+    @tf.function
+    def geometric_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
         perform all the geometric augmentations
         """
+
+        # --- get shape and options
         input_shape_inference = tf.shape(input_batch)
-
-        # --- crop randomly
-        if random_crop:
-            # pick random number
-            random_number = \
-                tf.random.uniform(
-                    shape=(1,),
-                    minval=min_scale,
-                    maxval=max_scale,
-                    dtype=tf.dtypes.float32)[0]
-            crop_width = \
-                tf.cast(
-                    tf.round(
-                        random_number *
-                        tf.cast(input_shape_inference[1], tf.float32)),
-                    dtype=tf.int32)
-            crop_height = \
-                tf.cast(
-                    tf.round(
-                        random_number *
-                        tf.cast(input_shape_inference[2], tf.float32)),
-                    dtype=tf.int32)
-            crop_size = \
-                tf.math.minimum(
-                    x=crop_width,
-                    y=crop_height)
-            # crop
-            input_batch = \
-                tf.image.random_crop(
-                    value=input_batch,
-                    size=(
-                        input_shape_inference[0],
-                        crop_size,
-                        crop_size,
-                        input_shape_inference[3])
-                )
-
-        # --- resize to input_shape
-        input_batch = \
-            tf.image.resize(
-                images=input_batch,
-                size=(input_shape[0], input_shape[1]))
+        random_uniform_option_1 = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
+        random_uniform_option_2 = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
+        random_uniform_option_3 = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
 
         # --- flip left right
-        if random_left_right and tf.random.uniform(()) > 0.5:
-            input_batch = \
-                tf.image.flip_left_right(input_batch)
+        input_batch = \
+            tf.cond(
+                pred=tf.math.logical_and(random_left_right,
+                                         random_uniform_option_1),
+                true_fn=lambda: tf.image.flip_left_right(input_batch),
+                false_fn=lambda: input_batch)
 
         # --- flip up down
-        if random_up_down and tf.random.uniform(()) > 0.5:
-            input_batch = \
-                tf.image.flip_up_down(input_batch)
+        input_batch = \
+            tf.cond(
+                pred=tf.math.logical_and(random_up_down,
+                                         random_uniform_option_2),
+                true_fn=lambda: tf.image.flip_up_down(input_batch),
+                false_fn=lambda: input_batch)
 
         # --- randomly rotate input
-        if use_random_rotate and tf.random.uniform(()) > 0.5:
-            angles = \
-                tf.random.uniform(
-                    dtype=tf.float32,
-                    minval=-random_rotate,
-                    maxval=random_rotate,
-                    shape=(input_shape_inference[0],))
-            input_batch = \
+        input_batch = \
+            tf.cond(
+                pred=tf.math.logical_and(use_random_rotate,
+                                         random_uniform_option_3),
+                true_fn=lambda:
                 tfa.image.rotate(
-                    angles=angles,
+                    angles=tf.random.uniform(
+                        dtype=tf.float32,
+                        seed=0,
+                        minval=-random_rotate,
+                        maxval=random_rotate,
+                        shape=(input_shape_inference[0],)),
                     images=input_batch,
                     fill_mode="reflect",
-                    interpolation="bilinear")
-
-        # --- random invert colors
-        if random_invert and tf.random.uniform(()) > 0.5:
-            input_batch = max_value - (input_batch - min_value)
+                    interpolation="bilinear"),
+                false_fn=lambda: input_batch)
 
         return input_batch
 
-    # --- define augmentation function
-    @tf.function(
-        input_signature=[
-            tf.TensorSpec(shape=[None, input_shape[0], input_shape[1], None], dtype=tf.float32)])
-    def noise_augmentations_fn(
+    # --- define noise augmentation function
+    @tf.function
+    def noise_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
         perform all the noise augmentations
         """
         # --- copy input batch
-        noisy_batch = tf.identity(input_batch)
+        noisy_batch = input_batch
         input_shape_inference = tf.shape(noisy_batch)
 
-        # --- random select noise type
-        noise_type = \
-            random_choice(noise_choices, size=1)[0]
-        additional_noise_std = \
-            random_choice(additional_noise, size=1)[0]
-        multiplicative_noise_std = \
-            random_choice(multiplicative_noise, size=1)[0]
+        @tf.function
+        def random_choice(
+                x: tf.Tensor,
+                size=tf.constant(1, dtype=tf.int64),
+                axis=tf.constant(0, dtype=tf.int64)) -> tf.Tensor:
+            """
+            Randomly select size options from x
+            """
+            dim_x = tf.cast(tf.shape(x)[axis], tf.int64)
+            indices = tf.range(0, dim_x, dtype=tf.int64)
+            sample_index = tf.random.shuffle(indices, seed=0)[:size]
+            return tf.gather(x, sample_index, axis=axis)
 
-        logger.info(f"noise_type: {noise_type}")
+        # --- random select noise type and options
+        noise_type = random_choice(noise_choices, size=1)[0]
+        additive_noise_std = random_choice(additional_noise, size=1)[0]
+        multiplicative_noise_std = random_choice(multiplicative_noise, size=1)[0]
+        random_uniform_option_1 = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
+        random_uniform_option_2 = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
 
-        if noise_type == tf.constant(0, dtype=tf.int64):
-            # additional noise
-            if tf.random.uniform(()) > 0.5:
-                # channel independent noise
-                noisy_batch = \
-                    noisy_batch + \
+        use_additive_noise = tf.equal(noise_type, tf.constant(0, dtype=tf.int64))
+        use_multiplicative_noise = tf.equal(noise_type, tf.constant(1, dtype=tf.int64))
+        use_quantize_noise = tf.equal(noise_type, tf.constant(2, dtype=tf.int64))
+
+        # --- additive noise
+        if use_additive_noise:
+            additive_noise_batch = \
+                tf.cond(
+                    pred=random_uniform_option_1,
+                    true_fn=lambda:
+                    # channel independent noise
                     tf.random.truncated_normal(
-                        mean=0,
-                        stddev=additional_noise_std,
-                        shape=input_shape_inference)
-            else:
-                # channel dependent noise
-                tmp_noisy_batch = \
-                    tf.random.truncated_normal(
-                        mean=0,
-                        stddev=additional_noise_std,
-                        shape=(input_shape_inference[0],
-                               input_shape[0],
-                               input_shape[1],
-                               1))
-                tmp_noisy_batch = \
-                    tf.repeat(
-                        tmp_noisy_batch,
-                        axis=3,
-                        repeats=[input_shape_inference[3]])
-                noisy_batch = noisy_batch + tmp_noisy_batch
+                        mean=0.0,
+                        seed=0,
+                        dtype=tf.float32,
+                        stddev=additive_noise_std,
+                        shape=input_shape_inference),
+                    false_fn=lambda:
+                        # channel dependent noise
+                        tf.random.truncated_normal(
+                            mean=0.0,
+                            seed=0,
+                            dtype=tf.float32,
+                            stddev=additive_noise_std,
+                            shape=(input_shape_inference[0],
+                                   input_shape_inference[1],
+                                   input_shape_inference[2],
+                                   1))
+                )
+            noisy_batch = tf.add(noisy_batch, additive_noise_batch)
             # blur to embed noise
-            if random_blur:
-                if tf.random.uniform(()) > 0.5:
-                    noisy_batch = \
+            noisy_batch = \
+                tf.cond(
+                    pred=tf.math.logical_and(
+                        random_blur,
+                        random_uniform_option_2),
+                    true_fn=lambda:
                         tfa.image.gaussian_filter2d(
                             image=noisy_batch,
                             sigma=1,
-                            filter_shape=(3, 3))
-        elif noise_type == tf.constant(1, dtype=tf.int64):
-            # multiplicative noise
-            if tf.random.uniform(()) > 0.5:
-                # channel independent noise
-                noisy_batch = \
-                    noisy_batch * \
-                    tf.random.truncated_normal(
-                        mean=1,
-                        stddev=multiplicative_noise_std,
-                        shape=input_shape_inference)
-            else:
-                # channel dependent noise
-                tmp_noisy_batch = \
-                    tf.random.truncated_normal(
-                        mean=1,
-                        stddev=multiplicative_noise_std,
-                        shape=(input_shape_inference[0],
-                               input_shape[0],
-                               input_shape[1],
-                               1))
-                tmp_noisy_batch = \
-                    tf.repeat(
-                        tmp_noisy_batch,
-                        axis=3,
-                        repeats=[input_shape_inference[3]])
-                noisy_batch = noisy_batch * tmp_noisy_batch
+                            filter_shape=(3, 3)),
+                    false_fn=lambda: noisy_batch
+                )
 
+        # --- multiplicative noise
+        if use_multiplicative_noise:
+            multiplicative_noise_batch = \
+                tf.cond(
+                    pred=random_uniform_option_1,
+                    true_fn=lambda:
+                        tf.random.truncated_normal(
+                            mean=1.0,
+                            seed=0,
+                            stddev=multiplicative_noise_std,
+                            shape=input_shape_inference,
+                            dtype=tf.float32),
+                    false_fn=lambda:
+                        tf.random.truncated_normal(
+                            mean=1.0,
+                            seed=0,
+                            stddev=multiplicative_noise_std,
+                            shape=(input_shape_inference[0],
+                                   input_shape_inference[1],
+                                   input_shape_inference[2],
+                                   1),
+                            dtype=tf.float32)
+                )
+            noisy_batch = tf.multiply(noisy_batch, multiplicative_noise_batch)
             # blur to embed noise
-            if random_blur:
-                if tf.random.uniform(()) > 0.5:
-                    noisy_batch = \
-                        tfa.image.gaussian_filter2d(
-                            image=noisy_batch,
-                            sigma=1,
-                            filter_shape=(3, 3))
-        elif noise_type == tf.constant(2, dtype=tf.int64):
-            # subsample
-            stride = (subsample_size, subsample_size)
             noisy_batch = \
-                keras.layers.MaxPool2D(
-                    pool_size=(1, 1),
-                    strides=stride)(noisy_batch)
-            noisy_batch = \
-                keras.layers.UpSampling2D(
-                    size=stride)(noisy_batch)
-        elif noise_type == tf.constant(3, dtype=tf.int64):
-            # quantize values
-            noisy_batch = tf.round(noisy_batch / quantization)
-            noisy_batch = noisy_batch * quantization
-            noisy_batch = tf.round(noisy_batch)
-        else:
-            logger.info(
-                "don't know how to handle noise_type [{0}]".format(
-                    noise_type))
+                tf.cond(
+                    pred=tf.math.logical_and(
+                        random_blur,
+                        random_uniform_option_2),
+                    true_fn=lambda:
+                    tfa.image.gaussian_filter2d(
+                        image=noisy_batch,
+                        sigma=1,
+                        filter_shape=(3, 3)),
+                    false_fn=lambda: noisy_batch
+                )
+
+        # --- quantize noise
+        noisy_batch = \
+            tf.cond(
+                pred=use_quantize_noise,
+                true_fn=lambda: tf.round(noisy_batch / quantization) * quantization,
+                false_fn=lambda: noisy_batch
+            )
+
+        # --- round values to nearest integer
+        noisy_batch = \
+            tf.cond(
+                pred=round_values,
+                true_fn=lambda: tf.round(noisy_batch),
+                false_fn=lambda: noisy_batch)
 
         # --- clip values within boundaries
-        if clip_value:
-            noisy_batch = \
+        noisy_batch = \
+            tf.cond(
+                pred=clip_value,
+                true_fn=lambda:
                 tf.clip_by_value(
                     noisy_batch,
                     clip_value_min=min_value,
-                    clip_value_max=max_value)
-
-        # --- round values to nearest integer
-        if round_values:
-            noisy_batch = tf.round(noisy_batch)
+                    clip_value_max=max_value),
+                false_fn=lambda: noisy_batch)
 
         return noisy_batch
 
-    # --- create the dataset
-    result = dict()
+    @tf.function
+    def prepare_data_fn(iter_batch: tf.Tensor) -> \
+            Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+        input_batch = \
+            tf.cast(geometric_augmentation_fn(iter_batch),
+                    dtype=tf.float32)
+        downsampled_batch = downsample(input_batch)
+        noisy_batch = noise_augmentation_fn(downsampled_batch)
+        return input_batch, noisy_batch, downsampled_batch
 
-    result[AUGMENTATION_FN_STR] = noise_augmentations_fn
+    # --- define generator function from directory
+    if directory:
+        dataset_generator = \
+            image_filenames_generator(
+                directory=directory)
 
-    # dataset produces the dataset with basic geometric distortions
-    if len(dataset) == 0:
-        raise ValueError("don't know how to handle zero datasets")
-    elif len(dataset) == 1:
-        result[DATASET_FN_STR] = \
-            dataset[0].map(
-                map_func=geometric_augmentations_fn,
-                num_parallel_calls=tf.data.AUTOTUNE).prefetch(2)
+        dataset_training = \
+            tf.data.Dataset.from_generator(
+                generator=dataset_generator,
+                output_signature=(
+                    tf.TensorSpec(shape=(), dtype=tf.string)
+                ))
     else:
-        result[DATASET_FN_STR] = \
-            tf.data.Dataset.sample_from_datasets(dataset).map(
-                map_func=geometric_augmentations_fn,
-                num_parallel_calls=tf.data.AUTOTUNE).prefetch(2)
+        raise ValueError("don't know how to handle non directory datasets")
 
-    return result
+    # --- save the augmentation functions
+    @tf.function(
+        input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)])
+    def load_image_fn(path: tf.Tensor) -> tf.Tensor:
+        img = \
+            load_image(
+                path=path,
+                image_size=None,
+                num_channels=num_channels,
+                interpolation=tf.image.ResizeMethod.BILINEAR,
+                expand_dims=True,
+                normalize=False)
+        crops = \
+            random_crops(
+                input_batch=img,
+                crop_size=(input_shape[0], input_shape[1]),
+                x_range=None,
+                y_range=None,
+                no_crops_per_image=no_crops_per_image)
+
+        del img
+        del path
+
+        return crops
+
+    # --- compute concrete functions
+    load_image_concrete_fn = \
+        load_image_fn.get_concrete_function(
+            tf.TensorSpec(shape=(), dtype=tf.string))
+
+    prepare_data_concrete_fn = \
+        prepare_data_fn.get_concrete_function(
+            tf.TensorSpec(shape=[batch_size,
+                                 input_shape[0],
+                                 input_shape[1],
+                                 num_channels],
+                          dtype=tf.uint8))
+
+    # --- create the dataset
+    # !!!
+    # SHUFFLING ON FIXED SIZE BATCHES USES FIXED AMOUNT OF MEMORY
+    # SHUFFLING ON VARIABLE SIZE STRING USES A LOT OF MEMORY
+    # AND POSSIBLE LEAKING
+    # !!!
+    dataset_training = \
+        dataset_training \
+            .map(
+                map_func=load_image_concrete_fn,
+                num_parallel_calls=batch_size) \
+            .shuffle(
+                seed=0,
+                buffer_size=1024,
+                reshuffle_each_iteration=False) \
+            .rebatch(
+                batch_size=batch_size,
+                drop_remainder=True) \
+            .map(map_func=prepare_data_concrete_fn,
+                 num_parallel_calls=tf.data.AUTOTUNE) \
+            .prefetch(1)
+    options = tf.data.Options()
+    options.deterministic = False
+    options.threading.private_threadpool_size = 24
+    dataset_training = dataset_training.with_options(options)
+
+    return dataset_training
 
 # ---------------------------------------------------------------------

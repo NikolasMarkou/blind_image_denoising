@@ -20,8 +20,7 @@ import bfcnn
 @pytest.mark.parametrize(
     "config", [{
         "batch_size": 2,
-        "min_value": 0,
-        "max_value": 255,
+        "value_range": [0, 255],
         "clip_value": True,
         "random_blur": True,
         "subsample_size": 3,
@@ -40,8 +39,7 @@ import bfcnn
         }]
     }, {
         "batch_size": 2,
-        "min_value": 0,
-        "max_value": 255,
+        "value_range": [0, 255],
         "clip_value": True,
         "random_blur": True,
         "subsample_size": 3,
@@ -60,8 +58,7 @@ import bfcnn
         }]
     }, {
         "batch_size": 2,
-        "min_value": 0,
-        "max_value": 255,
+        "value_range": [0, 255],
         "clip_value": True,
         "random_blur": True,
         "subsample_size": 3,
@@ -80,8 +77,7 @@ import bfcnn
         }]
     }, {
         "batch_size": 2,
-        "min_value": 0,
-        "max_value": 255,
+        "value_range": [0, 255],
         "clip_value": True,
         "random_blur": True,
         "subsample_size": 3,
@@ -100,8 +96,7 @@ import bfcnn
         }]
     }, {
         "batch_size": 2,
-        "min_value": 0,
-        "max_value": 255,
+        "value_range": [0, 255],
         "clip_value": True,
         "random_blur": True,
         "subsample_size": 3,
@@ -117,17 +112,17 @@ import bfcnn
         "inputs": [{
             "dataset_shape": [256, 768],
             "directory": str(MEGADEPTH_DIR)
-        },{
+        }, {
             "dataset_shape": [256, 768],
             "directory": str(KITTI_DIR)
         }]
     }])
 def test_dataset_builder_build(config):
     dataset_results = bfcnn.dataset.dataset_builder(config=config)
-    assert bfcnn.dataset.DATASET_FN_STR in dataset_results
-    assert bfcnn.dataset.AUGMENTATION_FN_STR in dataset_results
+    assert bfcnn.dataset.DATASET_TRAINING_FN_STR in dataset_results
+    assert bfcnn.dataset.NOISE_AUGMENTATION_FN_STR in dataset_results
 
-    for input_batch in dataset_results[bfcnn.dataset.DATASET_FN_STR]:
+    for input_batch in dataset_results[bfcnn.dataset.DATASET_TRAINING_FN_STR]:
         assert input_batch.shape[0] <= config["batch_size"]
         assert input_batch.shape[1] == config["input_shape"][0]
         assert input_batch.shape[2] == config["input_shape"][1]
@@ -137,11 +132,9 @@ def test_dataset_builder_build(config):
         if config["color_mode"] == "rgb":
             assert input_batch.shape[3] == 3
 
-        assert np.max(input_batch) <= config["max_value"]
-        assert np.min(input_batch) >= config["min_value"]
-        assert input_batch.dtype == np.float32
-
-
-
+        assert np.min(input_batch) >= config["value_range"][0]
+        assert np.max(input_batch) <= config["value_range"][1]
+        assert input_batch.dtype == np.uint8
 
 # ---------------------------------------------------------------------
+

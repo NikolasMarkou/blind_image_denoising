@@ -19,7 +19,7 @@ import bfcnn
 
 
 @pytest.mark.parametrize(
-    "config", bfcnn.CONFIGS)
+    "config", bfcnn.configs)
 def test_optimizer_builder(config):
     config = config[1]
     optimizer, learning_rate = \

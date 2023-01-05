@@ -14,7 +14,7 @@ KITTI_DIR = \
 
 # all the kitti test images
 KITTI_IMAGES = \
-    [img for img in (KITTI_DIR / "files").glob("*.png")]
+    [str(img) for img in (KITTI_DIR / "files").glob("*.png")]
 
 # ---------------------------------------------------------------------
 
@@ -24,12 +24,11 @@ MEGADEPTH_DIR = \
 
 # all the megadepth test images
 MEGADEPTH_IMAGES = \
-    [img for img in (MEGADEPTH_DIR / "files").glob("*.jpg")]
+    [str(img) for img in (MEGADEPTH_DIR / "files").glob("*.jpg")]
 
 # ---------------------------------------------------------------------
 
 # lena image
-LENA_IMAGE_PATH = \
-    IMAGES_TEST_DIR / "etc" / "lena.jpg"
+LENA_IMAGE_PATH = str(IMAGES_TEST_DIR / "etc" / "lena.jpg")
 
 # ---------------------------------------------------------------------

@@ -3,21 +3,26 @@ import time
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
-from typing import Union, Dict
+from typing import Union, Dict, Tuple
 
 # ---------------------------------------------------------------------
 # local imports
 # ---------------------------------------------------------------------
 
 from .constants import *
-from .visualize import visualize
 from .custom_logger import logger
-from .loss import loss_function_builder
+from .loss import \
+    loss_function_builder, \
+    MODEL_LOSS_FN_STR, \
+    DENOISER_LOSS_FN_STR, \
+    SUPERRES_LOSS_FN_STR, \
+    DENOISER_UQ_LOSS_FN_STR
 from .optimizer import optimizer_builder
-from .utilities import load_config, load_image
-from .model_denoiser import model_builder as model_denoise_builder
-from .dataset import dataset_builder, DATASET_FN_STR, AUGMENTATION_FN_STR
-from .pruning import prune_function_builder, PruneStrategy, get_conv2d_weights
+from .pruning import prune_function_builder, get_conv2d_weights
+from .model_hydra import model_builder as model_hydra_builder
+from .utilities import load_config
+from .file_operations import load_image
+from .dataset import *
 
 # ---------------------------------------------------------------------
 
@@ -60,12 +65,14 @@ def train_loop(
                 model_dir))
 
     # --- build dataset
-    dataset_res = dataset_builder(config=config["dataset"])
-    dataset = dataset_res[DATASET_FN_STR]
-    augmentation_fn = tf.function(dataset_res[AUGMENTATION_FN_STR])
+    dataset_training = dataset_builder(config["dataset"])
 
     # --- build loss function
-    loss_fn = loss_function_builder(config=config["loss"])
+    loss_fn_map = loss_function_builder(config=config["loss"])
+    model_loss_fn = tf.function(func=loss_fn_map[MODEL_LOSS_FN_STR], reduce_retracing=True)
+    denoiser_loss_fn = tf.function(func=loss_fn_map[DENOISER_LOSS_FN_STR], reduce_retracing=True)
+    superres_loss_fn = tf.function(func=loss_fn_map[SUPERRES_LOSS_FN_STR], reduce_retracing=True)
+    denoiser_uq_loss_fn = tf.function(func=loss_fn_map[DENOISER_UQ_LOSS_FN_STR], reduce_retracing=True)
 
     # --- build optimizer
     optimizer, lr_schedule = \
@@ -81,12 +88,10 @@ def train_loop(
     # --- get the train configuration
     train_config = config["train"]
     epochs = train_config["epochs"]
-    same_sample_iterations = train_config.get("same_sample_iterations", 1)
+    no_iterations_per_batch = train_config.get("no_iterations_per_batch", 1)
     global_total_epochs = tf.Variable(
         epochs, trainable=False, dtype=tf.dtypes.int64, name="global_total_epochs")
-    trace_every = train_config.get("trace_every", 100)
     weight_buckets = train_config.get("weight_buckets", 100)
-    error_buckets = train_config.get("error_buckets", 255)
     total_steps = \
         tf.constant(
             train_config.get("total_steps", -1),
@@ -108,19 +113,11 @@ def train_loop(
             name="visualization_every")
     # how many visualizations to show
     visualization_number = train_config.get("visualization_number", 5)
-    # how many steps to make a decomposition
-    decomposition_every = \
-        tf.constant(
-            train_config.get("decomposition_every", 1000),
-            dtype=tf.dtypes.int64,
-            name="decomposition_every")
-    # how many times the random batch will be iterated
-    random_batch_iterations = \
-        train_config.get("random_batch_iterations", 1)
     # size of the random batch
     random_batch_size = \
         [visualization_number] + \
         train_config.get("random_batch_size", [128, 128, 3])
+
     # test images
     use_test_images = train_config.get("use_test_images", False)
     test_images = []
@@ -134,14 +131,14 @@ def train_loop(
                 image = \
                     load_image(
                         path=image_path,
-                        color_mode="rgb",
-                        target_size=(512, 512),
-                        normalize=True)
+                        num_channels=3,
+                        image_size=(256, 256),
+                        expand_dims=True,
+                        normalize=False,
+                        interpolation=tf.image.ResizeMethod.BILINEAR)
                 test_images.append(image)
-        test_images = \
-            np.concatenate(
-                test_images,
-                axis=0)
+        test_images = np.concatenate(test_images, axis=0)
+        test_images = tf.constant(test_images)
 
     # --- prune strategy
     prune_config = \
@@ -166,125 +163,81 @@ def train_loop(
     else:
         use_prune = False
     use_prune = tf.constant(use_prune)
-    prune_fn = \
-        prune_function_builder(prune_strategies)
+    prune_fn = prune_function_builder(prune_strategies)
 
-    # --- build the denoise model
+    # --- build the hydra model
     tf.summary.trace_on(graph=True, profiler=False)
     with summary_writer.as_default():
-        models = \
-            model_denoise_builder(config=config[MODEL_DENOISE_STR])
+        models = model_hydra_builder(config=config[MODEL_STR])
 
         # The function to be traced.
         @tf.function
         def optimized_model(x_input):
-            return models.denoiser(x_input, training=False)
+            return models.hydra(x_input, training=False)
 
         x = \
-            tf.random.truncated_normal(
+            tf.random.uniform(
                 seed=0,
-                mean=0.0,
-                stddev=0.25,
+                minval=0.0,
+                maxval=255.0,
+                dtype=tf.float32,
                 shape=random_batch_size)
         _ = optimized_model(x)
         tf.summary.trace_export(
             step=0,
-            name="denoiser")
+            name="hydra")
         tf.summary.flush()
         tf.summary.trace_off()
 
     # get each model
+    hydra = models.hydra
+    superres = models.superres
+    backbone = models.backbone
     denoiser = models.denoiser
     normalizer = models.normalizer
     denormalizer = models.denormalizer
-    denoiser_decomposition = models.backbone
 
     # summary of model
-    denoiser.summary(print_fn=logger.info)
+    hydra.summary(print_fn=logger.info)
     # save model so we can visualize it easier
-    denoiser.save(
-        filepath=os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR),
+    hydra.save(
+        filepath=os.path.join(model_dir, MODEL_HYDRA_DEFAULT_NAME_STR),
         include_optimizer=False)
-
-    # --- test image
-    def denoise_test_batch():
-        x_noisy = \
-            tf.random.truncated_normal(
-                seed=0,
-                mean=0.0,
-                stddev=0.25,
-                shape=test_images.shape) + \
-            test_images
-        x_noisy = \
-            tf.clip_by_value(
-                x_noisy,
-                clip_value_min=-0.5,
-                clip_value_max=+0.5)
-        x_noisy_denormalized = \
-            denormalizer(
-                x_noisy,
-                training=False)
-        x_denoised = \
-            denoiser(x_noisy, training=False)
-        x_denoised_denormalized = \
-            denormalizer(x_denoised, training=False)
-
-        return x_noisy_denormalized, x_denoised_denormalized
-
-    # --- create random image and iterate through the model
-    def create_random_batch():
-        x_iteration = 0
-        x_random = \
-            tf.random.truncated_normal(
-                seed=0,
-                mean=0.0,
-                stddev=0.25,
-                shape=random_batch_size)
-        while x_iteration < random_batch_iterations:
-            x_random = denoiser(x_random, training=False)
-            x_random = \
-                tf.clip_by_value(
-                    x_random,
-                    clip_value_min=-0.5,
-                    clip_value_max=+0.5)
-            x_iteration += 1
-        return \
-            denormalizer(
-                x_random,
-                training=False)
 
     # --- train the model
     with summary_writer.as_default():
+        # checkpoint managing
         checkpoint = \
             tf.train.Checkpoint(
                 step=global_step,
                 epoch=global_epoch,
                 optimizer=optimizer,
-                model_denoise=denoiser,
-                model_normalize=normalizer,
-                model_denormalize=denormalizer,
-                model_denoise_decomposition=denoiser_decomposition)
+                model_hydra=hydra,
+                model_backbone=backbone,
+                model_denoiser=denoiser,
+                model_superres=superres,
+                model_normalizer=normalizer,
+                model_denormalizer=denormalizer)
         manager = \
             tf.train.CheckpointManager(
                 checkpoint=checkpoint,
                 directory=model_dir,
                 max_to_keep=checkpoints_to_keep)
-        status = \
-            checkpoint.restore(manager.latest_checkpoint).expect_partial()
+        latest_checkpoint = manager.restore_or_initialize()
 
-        # --- define denoise fn
-        @tf.function
-        def denoise_fn(x_input):
-            # denoised merged
-            x_denoised = denoiser(x_input, training=True)
-            # denoised denormalized
-            x_denoised_denormalized = denormalizer(x_denoised, training=False)
-            return x_denoised, x_denoised_denormalized
-
-        # --- define decompose fn
-        @tf.function
-        def decompose_fn(x_input):
-            return denoiser_decomposition(x_input, training=False)
+        if latest_checkpoint:
+            logger.info("!!! Found checkpoint to restore !!!")
+            logger.info(f"latest checkpoint [{0}:{1}]".format(
+                latest_checkpoint, manager.latest_checkpoint))
+            checkpoint \
+                .restore(manager.latest_checkpoint) \
+                .expect_partial() \
+                .assert_existing_objects_matched()
+            logger.info(f"restored checkpoint "
+                        f"at epoch [{int(global_epoch)}] "
+                        f"and step [{int(global_step)}]")
+        else:
+            logger.info("!!! Did NOT find checkpoint to restore !!!")
 
         # ---
         while global_epoch < global_total_epochs:
@@ -294,133 +247,155 @@ def train_loop(
             # --- pruning strategy
             if use_prune and (global_epoch >= prune_start_epoch):
                 logger.info(f"pruning weights at step [{int(global_step)}]")
-                denoiser = \
-                    prune_fn(model=denoiser)
+                hydra = prune_fn(model=hydra)
 
-            model_denoise_weights = \
-                denoiser.trainable_weights
+            @tf.function(reduce_retracing=True)
+            def train_forward_step(
+                    n: tf.Tensor,
+                    d: tf.Tensor) -> \
+                    Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+                de, de_uq, x0, x1 = hydra(n, training=True)
+                x2, x3, s, s_uq = hydra(d, training=True)
+                del x0, x1, x2, x3
+                return de, de_uq, s, s_uq
+
+            trainable_weights = hydra.trainable_weights
+            start_time_epoch = time.time()
 
             # --- iterate over the batches of the dataset
-            for input_batch in dataset:
-                start_time = time.time()
+            for (input_batch, noisy_batch, downsampled_batch) in dataset_training:
+                start_time_forward_backward = time.time()
 
-                # augment data
-                noisy_batch = augmentation_fn(input_batch)
+                # run the forward pass of the layer.
+                # The operations that the layer applies
+                # to its inputs are going to be recorded
+                # on the GradientTape.
+                with tf.GradientTape() as tape:
+                    denoiser_output, denoiser_uq_output, superres_output, superres_uq_output = \
+                        train_forward_step(noisy_batch, downsampled_batch)
 
-                normalized_noisy_batch = \
-                    normalizer(noisy_batch, training=False)
+                    # compute the loss value for this mini-batch
+                    denoiser_loss = \
+                        denoiser_loss_fn(input_batch=downsampled_batch, predicted_batch=denoiser_output)
+                    denoiser_uq_loss = \
+                        denoiser_uq_loss_fn(uncertainty_batch=denoiser_uq_output)
+                    superres_loss = \
+                        superres_loss_fn(input_batch=input_batch, predicted_batch=superres_output)
+                    superres_uq_loss = \
+                        denoiser_uq_loss_fn(uncertainty_batch=superres_uq_output)
+                    model_loss = \
+                        model_loss_fn(model=hydra)
 
-                grads = None
-                for i in range(same_sample_iterations):
-                    # Open a GradientTape to record the operations run
-                    # during the forward pass,
-                    # which enables auto-differentiation.
-                    with tf.GradientTape() as tape:
-                        # run the forward pass of the layer.
-                        # The operations that the layer applies
-                        # to its inputs are going to be recorded
-                        # on the GradientTape.
-                        denoised_batch, denormalized_denoised_batch = \
-                            denoise_fn(normalized_noisy_batch)
+                    # NOTE do not use uncertainty for loss,
+                    # only for observation
+                    total_loss = \
+                        model_loss[TOTAL_LOSS_STR] + \
+                        denoiser_loss[TOTAL_LOSS_STR] / 2.0 + \
+                        superres_loss[TOTAL_LOSS_STR] / 2.0 + \
+                        denoiser_uq_loss[TOTAL_LOSS_STR] + \
+                        superres_uq_loss[TOTAL_LOSS_STR]
 
-                        # compute the loss value for this mini-batch
-                        loss_map = \
-                            loss_fn(
-                                input_batch=input_batch,
-                                noisy_batch=noisy_batch,
-                                model_losses=denoiser.losses,
-                                prediction_batch=denormalized_denoised_batch)
-
-                        # use the gradient tape to automatically retrieve
-                        # the gradients of the trainable variables
-                        # with respect to the loss.
-                        if grads is None:
-                            grads = \
-                                tape.gradient(
-                                    target=loss_map[MEAN_TOTAL_LOSS_STR],
-                                    sources=model_denoise_weights)
-                        else:
-                            tmp_grads = \
-                                tape.gradient(
-                                    target=loss_map[MEAN_TOTAL_LOSS_STR],
-                                    sources=model_denoise_weights)
-                            for j in range(len(tmp_grads)):
-                                grads[j] += tmp_grads[j]
-
-                    # set it back so we can iterate again
-                    if i < (same_sample_iterations - 1):
-                        denoised_batch = \
-                            tf.clip_by_value(
-                                denoised_batch,
-                                clip_value_min=-0.5,
-                                clip_value_max=0.5)
-                        noisy_batch = (denormalized_denoised_batch + noisy_batch) / 2
-                        normalized_noisy_batch = (denoised_batch + normalized_noisy_batch) / 2
-
-                # run one step of gradient descent by updating
-                # the value of the variables to minimize the loss.
-                optimizer.apply_gradients(
-                    grads_and_vars=zip(grads, model_denoise_weights))
+                    # --- apply weights
+                    optimizer.apply_gradients(
+                        grads_and_vars=zip(
+                            tape.gradient(target=total_loss, sources=trainable_weights),
+                            trainable_weights))
 
                 # --- add loss summaries for tensorboard
-                for name, key in [
-                    ("loss/mae", MAE_LOSS_STR),
-                    ("loss/kl_loss", KL_LOSS_STR),
-                    ("loss/total", MEAN_TOTAL_LOSS_STR),
-                    ("quality/nae_noise", NAE_NOISE_STR),
-                    ("loss/nae", NAE_PREDICTION_LOSS_STR),
-                    ("quality/signal_to_noise_ratio", SNR_STR),
-                    ("loss/regularization", REGULARIZATION_LOSS_STR),
-                    ("quality/nae_improvement", NAE_IMPROVEMENT_QUALITY_STR)
-                ]:
-                    if key in loss_map:
-                        tf.summary.scalar(
-                            name=name,
-                            data=loss_map[key],
-                            step=global_step)
+                # denoiser
+                tf.summary.scalar(name="quality/denoiser/psnr",
+                                  data=denoiser_loss[PSNR_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="loss/denoiser/mae",
+                                  data=denoiser_loss[MAE_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="loss/denoiser/total",
+                                  data=denoiser_loss[TOTAL_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="loss/denoiser/uncertainty",
+                                  data=denoiser_uq_loss[TOTAL_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="quality/denoiser/uncertainty",
+                                  data=denoiser_uq_loss[UNCERTAINTY_LOSS_STR],
+                                  step=global_step)
+                # superres
+                tf.summary.scalar(name="loss/superres/uncertainty",
+                                  data=superres_uq_loss[TOTAL_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="quality/superres/psnr",
+                                  data=superres_loss[PSNR_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="quality/superres/uncertainty",
+                                  data=superres_uq_loss[UNCERTAINTY_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="loss/superres/mae",
+                                  data=superres_loss[MAE_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="loss/superres/total",
+                                  data=superres_loss[TOTAL_LOSS_STR],
+                                  step=global_step)
+                # model
+                tf.summary.scalar(name="loss/regularization",
+                                  data=model_loss[REGULARIZATION_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="loss/total",
+                                  data=total_loss,
+                                  step=global_step)
 
                 # --- add image prediction for tensorboard
                 if (global_step % visualization_every) == 0:
-                    test_input_batch = None
-                    test_output_batch = None
-                    if use_test_images:
-                        test_input_batch, test_output_batch = denoise_test_batch()
-                    visualize(
-                        global_step=global_step,
-                        input_batch=input_batch,
-                        noisy_batch=noisy_batch,
-                        random_batch=create_random_batch(),
-                        test_input_batch=test_input_batch,
-                        test_output_batch=test_output_batch,
-                        prediction_batch=denormalized_denoised_batch,
-                        visualization_number=visualization_number)
-                    # add weight visualization
-                    tf.summary.histogram(
-                        data=get_conv2d_weights(model=denoiser),
-                        step=global_step,
-                        buckets=weight_buckets,
-                        name="training/weights")
-
-                # --- add image decomposition
-                if decomposition_every > 0 and \
-                        (global_step % decomposition_every) == 0:
-                    test_image = test_images[0, :, :, :]
-                    test_image = tf.expand_dims(test_image, axis=0)
-                    test_image = tf.image.resize(test_image, size=(128, 128))
-                    decomposed_image = decompose_fn(test_image)
-                    decomposed_image = decomposed_image + 0.5
-                    decomposed_image = tf.transpose(decomposed_image, perm=(3, 1, 2, 0))
+                    # original input
                     tf.summary.image(
-                        name=f"test_output_decomposition_0",
-                        step=global_step,
-                        data=decomposed_image,
-                        max_outputs=12)
+                        name="input", data=input_batch / 255,
+                        max_outputs=visualization_number, step=global_step)
+
+                    # augmented
+                    tf.summary.image(
+                        name="augmented/denoiser", data=noisy_batch / 255,
+                        max_outputs=visualization_number, step=global_step)
+                    tf.summary.image(
+                        name="augmented/superres", data=downsampled_batch / 255,
+                        max_outputs=visualization_number, step=global_step)
+
+                    # output
+                    tf.summary.image(
+                        name="output/denoiser", data=denoiser_output / 255,
+                        max_outputs=visualization_number, step=global_step)
+                    tf.summary.image(
+                        name="output/superres", data=superres_output / 255,
+                        max_outputs=visualization_number, step=global_step)
+
+                    # uncertainty
+                    tf.summary.image(
+                        name="uncertainty/denoiser", data=denoiser_uq_output,
+                        max_outputs=visualization_number, step=global_step)
+                    tf.summary.image(
+                        name="uncertainty/superres", data=superres_uq_output,
+                        max_outputs=visualization_number, step=global_step)
+
+                    if use_test_images:
+                        test_denoiser_output, test_denoiser_uq_output, \
+                        test_superres_output, test_superres_uq_output = \
+                            hydra(test_images, training=False)
+                        tf.summary.image(
+                            name="test/denoiser", data=test_denoiser_output / 255,
+                            max_outputs=visualization_number, step=global_step)
+                        tf.summary.image(
+                            name="test/superres", data=test_superres_output / 255,
+                            max_outputs=visualization_number, step=global_step)
+                        del test_denoiser_output, test_denoiser_uq_output, \
+                            test_superres_output, test_superres_uq_output
+
+                # --- free resources
+                del input_batch, noisy_batch, downsampled_batch
+                del denoiser_output, denoiser_uq_output, superres_output, superres_uq_output
 
                 # --- prune conv2d
                 if use_prune and (global_epoch >= prune_start_epoch) and \
-                        (int(prune_steps) != -1) and (global_step % prune_steps == 0):
+                        (prune_steps > -1) and (global_step % prune_steps == 0):
                     logger.info(f"pruning weights at step [{int(global_step)}]")
-                    denoiser = prune_fn(model=denoiser)
+                    hydra = prune_fn(model=hydra)
+                    trainable_weights = hydra.trainable_weights
 
                 # --- check if it is time to save a checkpoint
                 if checkpoint_every > 0 and \
@@ -429,29 +404,27 @@ def train_loop(
                         int(global_step)))
                     manager.save()
                     # save model so we can visualize it easier
-                    denoiser.save(
-                        os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR))
+                    hydra.save(
+                        os.path.join(model_dir, MODEL_HYDRA_DEFAULT_NAME_STR))
 
                 # --- keep time of steps per second
-                stop_time = time.time()
-                step_time = stop_time - start_time
+                stop_time_forward_backward = time.time()
+                step_time_forward_backward = \
+                    stop_time_forward_backward - \
+                    start_time_forward_backward
 
-                tf.summary.scalar(
-                    "training/steps_per_second",
-                    1.0 / (step_time + 0.00001),
-                    step=global_step)
-
-                tf.summary.scalar(
-                    "training/epoch",
-                    int(global_epoch),
-                    step=global_step)
-
-                tf.summary.scalar(
-                    "training/learning_rate",
-                    lr_schedule(int(global_step)),
-                    step=global_step)
+                tf.summary.scalar(name="training/epoch",
+                                  data=int(global_epoch),
+                                  step=global_step)
+                tf.summary.scalar(name="training/learning_rate",
+                                  data=lr_schedule(int(global_step)),
+                                  step=global_step)
+                tf.summary.scalar(name="training/steps_per_second",
+                                  data=1.0 / (step_time_forward_backward + 0.00001),
+                                  step=global_step)
 
                 # ---
+                hydra.reset_metrics()
                 global_step.assign_add(1)
 
                 # --- check if total steps reached
@@ -461,14 +434,17 @@ def train_loop(
                             int(total_steps)))
                         break
 
+            end_time_epoch = time.time()
+            epoch_time = end_time_epoch - start_time_epoch
+
             # --- end of the epoch
-            logger.info("checkpoint at end of epoch: {0}".format(
-                int(global_epoch)))
+            logger.info("checkpoint at end of epoch [{0}], took [{1}] minutes".format(
+                int(global_epoch), int(round(epoch_time / 60))))
             global_epoch.assign_add(1)
             manager.save()
             # save model so we can visualize it easier
-            denoiser.save(
-                os.path.join(model_dir, MODEL_DENOISE_DEFAULT_NAME_STR))
+            hydra.save(
+                os.path.join(model_dir, MODEL_HYDRA_DEFAULT_NAME_STR))
 
     logger.info("finished training")
 

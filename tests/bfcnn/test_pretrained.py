@@ -21,9 +21,9 @@ import bfcnn
 
 
 @pytest.mark.parametrize(
-    "model_name", bfcnn.pretrained_models.keys())
+    "model_name", bfcnn.models.keys())
 def test_pretrained_models(model_name):
-    model_structure = bfcnn.pretrained_models[model_name]
+    model_structure = bfcnn.models[model_name]
     model = model_structure["load_tf"]()
     for img_path in KITTI_IMAGES:
         # load image
