@@ -119,6 +119,11 @@ def probabilistic_drop_off(
     """
     randomly zero out an element of the iterator
 
+    optimizer.apply_gradients(
+        grads_and_vars=zip(
+            probabilistic_drop_off(tape.gradient(target=total_loss, sources=trainable_weights)),
+            trainable_weights))
+
     :param iterator:
     :param probability: probability of an element not being affected
     :return:
