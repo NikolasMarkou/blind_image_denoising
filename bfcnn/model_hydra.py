@@ -448,7 +448,7 @@ def model_denoiser_builder(
 
     x_entropy = \
         tf.keras.layers.Layer(
-            name="output_tensor_entropy")(x_sigma)
+            name="output_tensor_entropy")(x_entropy)
 
     model_head = \
         tf.keras.Model(
@@ -544,7 +544,7 @@ def model_superres_builder(
 
     x_entropy = \
         tf.keras.layers.Layer(
-            name="output_tensor_entropy")(x_sigma)
+            name="output_tensor_entropy")(x_entropy)
 
     model_head = \
         tf.keras.Model(
