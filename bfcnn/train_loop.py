@@ -306,6 +306,9 @@ def train_loop(
                 tf.summary.scalar(name="loss/denoiser/mae",
                                   data=de_loss[MAE_LOSS_STR],
                                   step=global_step)
+                tf.summary.scalar(name="loss/denoiser/ssim",
+                                  data=de_loss[SSIM_LOSS_STR],
+                                  step=global_step)
                 tf.summary.scalar(name="loss/denoiser/total",
                                   data=de_loss[TOTAL_LOSS_STR],
                                   step=global_step)
@@ -324,6 +327,9 @@ def train_loop(
                                   step=global_step)
                 tf.summary.scalar(name="loss/superres/mae",
                                   data=sr_loss[MAE_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="loss/superres/ssim",
+                                  data=sr_loss[SSIM_LOSS_STR],
                                   step=global_step)
                 tf.summary.scalar(name="loss/superres/total",
                                   data=sr_loss[TOTAL_LOSS_STR],

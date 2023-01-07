@@ -353,6 +353,10 @@ def loss_function_builder(
     mae_multiplier = config.get("mae_multiplier", 1.0)
     use_mae = mae_multiplier > 0.0
 
+    # --- ssim
+    ssim_multiplier = config.get("ssim_multiplier", 1.0)
+    use_ssim = ssim_multiplier > 0.0
+
     # --- mse
     mse_multiplier = config.get("mse_multiplier", 0.0)
     use_mse = mse_multiplier > 0.0
@@ -362,8 +366,7 @@ def loss_function_builder(
     uq_sigma_min = config.get("uq_min", 0.01)
     uq_sigma_max = config.get("uq_max", 1.0)
     uq_sigma_multiplier = config.get("uq_sigma_multiplier", 1.0)
-    uq_entropy_multiplier = config.get("uq_entropy_multiplier", -1)
-    use_entropy = uq_entropy_multiplier > 0.0
+    uq_entropy_multiplier = config.get("uq_entropy_multiplier", 1.0)
 
     # --- regularization
     regularization_multiplier = config.get("regularization", 1.0)
@@ -424,6 +427,12 @@ def loss_function_builder(
                     hinge=hinge,
                     cutoff=cutoff)
 
+        # --- loss ssim
+        ssim_loss = tf.constant(0.0, dtype=tf.float32)
+        if use_ssim:
+            ssim_loss = \
+                tf.reduce_mean(tf.image.ssim(input_batch, predicted_batch, 255.0))
+
         # --- loss prediction on mse
         mse_prediction_loss = \
             tf.constant(0.0, dtype=tf.float32)
@@ -441,8 +450,10 @@ def loss_function_builder(
         return {
             TOTAL_LOSS_STR:
                 mae_prediction_loss * mae_multiplier +
-                mse_prediction_loss * mse_multiplier,
+                mse_prediction_loss * mse_multiplier +
+                ssim_loss * ssim_multiplier,
             MAE_LOSS_STR: mae_actual,
+            SSIM_LOSS_STR: ssim_loss,
             PSNR_STR: peak_signal_to_noise_ratio
         }
 
