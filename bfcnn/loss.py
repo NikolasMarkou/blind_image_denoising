@@ -394,7 +394,7 @@ def loss_function_builder(
 
         entropy_loss = tf.constant(0.0, dtype=tf.float32)
         if entropy_batch is not None:
-            entropy_loss += tf.reduce_mean(entropy_loss)
+            entropy_loss += tf.reduce_mean(entropy_batch)
 
         return {
             TOTAL_LOSS_STR:
