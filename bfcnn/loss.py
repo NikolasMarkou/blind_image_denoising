@@ -382,7 +382,7 @@ def loss_function_builder(
     # ---
     def uq_loss(
             sigma_batch: tf.Tensor = None,
-            entropy_batch: tf.Tenosr = None) -> tf.Tensor:
+            entropy_batch: tf.Tensor = None) -> tf.Tensor:
         sigma_loss = tf.constant(0.0, dtype=tf.float32)
         if sigma_batch is not None:
             sigma_batch = \
