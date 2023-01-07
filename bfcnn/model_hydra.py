@@ -15,7 +15,7 @@ from .utilities import \
     input_shape_fixer, \
     build_normalize_model, \
     build_denormalize_model, \
-    expected_uncertainty_head
+    expected_sigma_entropy_head
 from .backbone_unet import builder as builder_unet
 from .backbone_lunet import builder as builder_lunet
 from .backbone_resnet import builder as builder_resnet
@@ -63,20 +63,21 @@ def model_builder(
     backbone_low_level = model_backbone_low(input_normalized_layer)
 
     # low level heads
-    denoiser_mid, denoiser_uq_mid = model_denoiser(backbone_low_level)
-    superres_mid, superres_uq_mid = model_superres(backbone_low_level)
+    de_exp, de_sigma, de_entropy = model_denoiser(backbone_low_level)
+    sr_exp, sr_sigma, sr_entropy = model_superres(backbone_low_level)
 
     # denormalize
-    denoiser_output = model_denormalizer(denoiser_mid, training=False)
-    superres_output = model_denormalizer(superres_mid, training=False)
-    denoiser_uq_output = denoiser_uq_mid
-    superres_uq_output = superres_uq_mid
+    de_exp = model_denormalizer(de_exp, training=False)
+    sr_exp = model_denormalizer(sr_exp, training=False)
 
     # wrap layers to set names
-    denoiser_output = tf.keras.layers.Layer(name=DENOISER_STR)(denoiser_output)
-    superres_output = tf.keras.layers.Layer(name=SUPERRES_STR)(superres_output)
-    denoiser_uq_output = tf.keras.layers.Layer(name=DENOISER_UQ_STR)(denoiser_uq_output)
-    superres_uq_output = tf.keras.layers.Layer(name=SUPERRES_UQ_STR)(superres_uq_output)
+    de_exp_output = tf.keras.layers.Layer(name=DENOISER_STR)(de_exp)
+    de_sigma_output = tf.keras.layers.Layer(name=DENOISER_SIGMA_STR)(de_sigma)
+    de_entropy_output = tf.keras.layers.Layer(name=DENOISER_ENTROPY_STR)(de_entropy)
+
+    sr_exp_output = tf.keras.layers.Layer(name=SUPERRES_STR)(sr_exp)
+    sr_sigma_output = tf.keras.layers.Layer(name=SUPERRES_SIGMA_STR)(sr_sigma)
+    sr_entropy_output = tf.keras.layers.Layer(name=SUPERRES_ENTROPY_STR)(sr_entropy)
 
     # create model
     model_hydra = \
@@ -85,10 +86,12 @@ def model_builder(
                 input_layer
             ],
             outputs=[
-                denoiser_output,
-                denoiser_uq_output,
-                superres_output,
-                superres_uq_output
+                de_exp_output,
+                de_sigma_output,
+                de_entropy_output,
+                sr_exp_output,
+                sr_sigma_output,
+                sr_entropy_output
             ],
             name=f"hydra")
 
@@ -397,11 +400,12 @@ def model_denoiser_builder(
     lin_start = config.get("lin_start", -0.5)
     lin_stop = config.get("lin_stop", +0.5)
 
-    uncertainty_kernel_regularizer = "l1"
-    uncertainty_kernel_initializer = "glorot_normal"
     uncertainty_buckets = config.get("uncertainty_buckets", 16)
     uncertainty_threshold = config.get("uncertainty_threshold", None)
     uncertainty_activation = config.get("uncertainty_activation", "linear")
+    uncertainty_kernel_regularizer = config.get("uncertainty_kernel_regularizer", "l2")
+    uncertainty_kernel_initializer = config.get("uncertainty_kernel_initializer", "glorot_normal")
+    uncertainty_kernel_regularizer = regularizer_builder(uncertainty_kernel_regularizer)
 
     # --- set network parameters
     uncertainty_conv_params = \
@@ -426,8 +430,8 @@ def model_denoiser_builder(
     backbone, _, _ = model_backbone_builder(config)
     x = backbone(x)
 
-    x_expected, x_uncertainty = \
-        expected_uncertainty_head(
+    x_expected, x_sigma, x_entropy = \
+        expected_sigma_entropy_head(
             input_layer=x,
             conv_parameters=uncertainty_conv_params,
             output_channels=output_channels,
@@ -438,14 +442,22 @@ def model_denoiser_builder(
         tf.keras.layers.Layer(
             name="output_tensor_expected")(x_expected)
 
-    x_uncertainty = \
+    x_sigma = \
         tf.keras.layers.Layer(
-            name="output_tensor_uncertainty")(x_uncertainty)
+            name="output_tensor_sigma")(x_sigma)
+
+    x_entropy = \
+        tf.keras.layers.Layer(
+            name="output_tensor_entropy")(x_sigma)
 
     model_head = \
         tf.keras.Model(
             inputs=model_input_layer,
-            outputs=[x_expected, x_uncertainty],
+            outputs=[
+                x_expected,
+                x_sigma,
+                x_entropy
+            ],
             name=f"denoiser_head")
 
     return model_head
@@ -514,8 +526,8 @@ def model_superres_builder(
     backbone, _, _ = model_backbone_builder(config)
     x = backbone(x)
 
-    x_expected, x_uncertainty = \
-        expected_uncertainty_head(
+    x_expected, x_sigma, x_entropy = \
+        expected_sigma_entropy_head(
             input_layer=x,
             conv_parameters=uncertainty_conv_params,
             output_channels=output_channels,
@@ -526,16 +538,21 @@ def model_superres_builder(
         tf.keras.layers.Layer(
             name="output_tensor_expected")(x_expected)
 
-    x_uncertainty = \
+    x_sigma = \
         tf.keras.layers.Layer(
-            name="output_tensor_uncertainty")(x_uncertainty)
+            name="output_tensor_sigma")(x_sigma)
+
+    x_entropy = \
+        tf.keras.layers.Layer(
+            name="output_tensor_entropy")(x_sigma)
 
     model_head = \
         tf.keras.Model(
             inputs=model_input_layer,
             outputs=[
                 x_expected,
-                x_uncertainty
+                x_sigma,
+                x_entropy
             ],
             name=f"superres_head")
 

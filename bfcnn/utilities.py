@@ -404,18 +404,31 @@ def dense_wrapper(
 # ---------------------------------------------------------------------
 
 
-def expected_uncertainty_head(
+def expected_sigma_entropy_head(
         input_layer,
         conv_parameters: Union[Dict, List[Dict]],
         output_channels: int,
-        probability_threshold: float = None,
-        linspace_start_stop: Tuple[float, float] = (-0.5, +0.5)):
+        probability_threshold: float = 0.0,
+        linspace_start_stop: Tuple[float, float] = (-0.5, +0.5)) \
+            -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+    """
+    computes expected, sigma and entropy per output channel
+
+    :param input_layer:
+    :param conv_parameters:
+    :param output_channels:
+    :param probability_threshold:
+    :param linspace_start_stop:
+
+    :return: expected value tensor, sigma tensor, entropy tensor (all per output channel)
+    """
     # --- argument checking
     if input_layer is None:
         raise ValueError("input_layer should not be None")
     if conv_parameters is None:
         raise ValueError("conv_parameters cannot be None")
-    if output_channels is None or output_channels <= 0:
+    if output_channels is None or \
+            output_channels <= 0:
         raise ValueError("output_channels should be > 0")
     if isinstance(conv_parameters, Dict):
         conv_parameters = [conv_parameters]
@@ -431,8 +444,10 @@ def expected_uncertainty_head(
     conv_kernel = tf.reshape(tensor=kernel, shape=(1, 1, -1, 1))
     column_kernel = tf.reshape(tensor=kernel, shape=(1, 1, 1, -1))
 
+    x_sigma = []
+    x_entropy = []
     x_expected = []
-    x_uncertainty = []
+
     for i in range(output_channels):
         x_i_k = input_layer
         for params in conv_parameters:
@@ -443,19 +458,17 @@ def expected_uncertainty_head(
                 channelwise_scaling=False,
                 multiplier_scaling=False)
         x_i = x_i_k
-        x_i_prob = tf.nn.softmax(x_i, axis=3) + DEFAULT_EPSILON
+        # convert to probability
+        x_i_prob = tf.nn.softmax(x_i, axis=3)
 
-        # --- clip if selected
-        if probability_threshold is not None and \
-                0.0 < probability_threshold < 1.0:
-            # clip
-            x_i_prob = \
-                tf.nn.relu(x_i_prob - probability_threshold)
+        # --- clip low probabilities and re-normalize
+        if 0.0 < probability_threshold < 1.0:
+            # clip low probabilities
+            x_i_prob = tf.nn.relu(x_i_prob - probability_threshold)
             # re-normalize
-            x_i_prob = \
-                x_i_prob / (tf.reduce_sum(x_i_prob, axis=3, keepdims=True) + DEFAULT_EPSILON)
+            x_i_prob = x_i_prob / (tf.reduce_sum(x_i_prob, axis=[3], keepdims=True) + DEFAULT_EPSILON)
 
-        # --- compute expected x_i and variance
+        # --- compute expected value, sigma and entropy
         x_i_expected = \
             tf.nn.conv2d(
                 input=x_i_prob,
@@ -463,24 +476,32 @@ def expected_uncertainty_head(
                 strides=(1, 1),
                 padding="SAME")
         x_i_diff_square = \
-            tf.nn.relu(
-                tf.square(column_kernel - x_i_expected)) + \
-            DEFAULT_EPSILON
-        x_i_std = \
-            tf.sqrt(
-                tf.nn.relu(
-                    tf.reduce_sum(
-                        tf.multiply(x_i_diff_square, x_i_prob),
-                        axis=[3],
-                        keepdims=True)) +
-                DEFAULT_EPSILON
-            )
+            tf.math.square(
+                column_kernel - x_i_expected)
+        x_i_sigma = \
+            tf.math.sqrt(
+                tf.reduce_sum(
+                    tf.math.multiply(x_i_diff_square, x_i_prob),
+                    axis=[3],
+                    keepdims=True) +
+                DEFAULT_EPSILON)
+        x_i_entropy = \
+            -tf.reduce_sum(
+                tf.math.multiply(
+                    tf.math.log(x_i_prob + DEFAULT_EPSILON) / tf.math.log(2.0),
+                    x_i_prob),
+                axis=[3],
+                keepdims=True)
+        x_sigma.append(x_i_sigma)
+        x_entropy.append(x_i_entropy)
         x_expected.append(x_i_expected)
-        x_uncertainty.append(x_i_std)
 
+    # --- concat to connect all output channels
+    x_sigma = tf.concat(x_sigma, axis=3)
+    x_entropy = tf.concat(x_entropy, axis=3)
     x_expected = tf.concat(x_expected, axis=3)
-    x_uncertainty = tf.concat(x_uncertainty, axis=3)
-    return x_expected, x_uncertainty
+
+    return x_expected, x_sigma, x_entropy
 
 # ---------------------------------------------------------------------
 

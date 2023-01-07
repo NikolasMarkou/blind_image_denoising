@@ -358,30 +358,15 @@ def loss_function_builder(
     use_mse = mse_multiplier > 0.0
 
     # --- uq
-    uq_multiplier = config.get("uq_multiplier", 1.0)
-
-    # --- count non zero
-    count_non_zero_mean = config.get("count_non_zero_mean", False)
-
-    # --- delta
-    use_delta = config.get("use_delta", False)
+    # forces the uncertainty to have a small variance
+    uq_sigma_min = config.get("uq_min", 0.01)
+    uq_sigma_max = config.get("uq_max", 1.0)
+    uq_sigma_multiplier = config.get("uq_sigma_multiplier", 1.0)
+    uq_entropy_multiplier = config.get("uq_entropy_multiplier", -1)
+    use_entropy = uq_entropy_multiplier > 0.0
 
     # --- regularization
     regularization_multiplier = config.get("regularization", 1.0)
-
-    # --- multiscale mae
-    use_multiscale = config.get("use_multiscale", False)
-    laplacian_config = {
-        "levels": 3,
-        "type": "laplacian",
-        "xy_max": (1.0, 1.0),
-        "kernel_size": (5, 5)
-    }
-    pyramid_model = \
-        build_pyramid_model(
-            input_dims=(None, None, None),
-            config=laplacian_config)
-    pyramid_levels = laplacian_config["levels"]
 
     def model_loss(model):
         regularization_loss = \
@@ -392,15 +377,28 @@ def loss_function_builder(
         }
 
     # ---
-    def denoiser_uq_loss(
-            uncertainty_batch: tf.Tensor) -> tf.Tensor:
-        uncertainty_batch = \
-            tf.clip_by_value(uncertainty_batch, clip_value_min=0.01, clip_value_max=1.0)
-        uq_loss = tf.reduce_mean(uncertainty_batch)
+    def uq_loss(
+            sigma_batch: tf.Tensor = None,
+            entropy_batch: tf.Tenosr = None) -> tf.Tensor:
+        sigma_loss = tf.constant(0.0, dtype=tf.float32)
+        if sigma_batch is not None:
+            sigma_batch = \
+                tf.clip_by_value(
+                    sigma_batch,
+                    clip_value_min=uq_sigma_min,
+                    clip_value_max=uq_sigma_max)
+            sigma_loss += tf.reduce_mean(sigma_batch)
+
+        entropy_loss = tf.constant(0.0, dtype=tf.float32)
+        if entropy_batch is not None:
+            entropy_loss += tf.reduce_mean(entropy_loss)
 
         return {
-            TOTAL_LOSS_STR: uq_loss * uq_multiplier,
-            UNCERTAINTY_LOSS_STR: uq_loss
+            TOTAL_LOSS_STR:
+                sigma_loss * uq_sigma_multiplier +
+                entropy_loss * uq_entropy_multiplier,
+            SIGMA_LOSS_STR: sigma_loss,
+            ENTROPY_LOSS_STR: entropy_loss
         }
 
     # ---
@@ -419,41 +417,12 @@ def loss_function_builder(
         mae_prediction_loss = \
             tf.constant(0.0, dtype=tf.float32)
         if use_mae:
-            if use_multiscale:
-                input_batch_multiscale = \
-                    pyramid_model(input_batch, training=False)
-                prediction_batch_multiscale = \
-                    pyramid_model(predicted_batch, training=False)
-                for i in range(pyramid_levels):
-                    if i == pyramid_levels-1:
-                        hinge_level = 0.0
-                    else:
-                        hinge_level = hinge
-                    mae_prediction_loss += \
-                        mae(original=input_batch_multiscale[i],
-                            prediction=prediction_batch_multiscale[i],
-                            hinge=hinge_level,
-                            cutoff=cutoff,
-                            mask=mask,
-                            count_non_zero_mean=count_non_zero_mean)
-                mae_prediction_loss = \
-                    mae_prediction_loss / float(pyramid_levels)
-            elif use_delta:
-                mae_prediction_loss += \
-                    mae_weighted_delta(
-                        original=input_batch,
-                        prediction=predicted_batch,
-                        mask=mask,
-                        hinge=hinge,
-                        cutoff=cutoff)
-            else:
-                mae_prediction_loss += \
-                    mae(original=input_batch,
-                        prediction=predicted_batch,
-                        mask=mask,
-                        hinge=hinge,
-                        cutoff=cutoff,
-                        count_non_zero_mean=count_non_zero_mean)
+            mae_prediction_loss += \
+                mae(original=input_batch,
+                    prediction=predicted_batch,
+                    mask=mask,
+                    hinge=hinge,
+                    cutoff=cutoff)
 
         # --- loss prediction on mse
         mse_prediction_loss = \
@@ -482,7 +451,7 @@ def loss_function_builder(
         MODEL_LOSS_FN_STR: model_loss,
         DENOISER_LOSS_FN_STR: denoiser_loss,
         SUPERRES_LOSS_FN_STR: denoiser_loss,
-        DENOISER_UQ_LOSS_FN_STR: denoiser_uq_loss
+        DENOISER_UQ_LOSS_FN_STR: uq_loss
     }
 
 # ---------------------------------------------------------------------

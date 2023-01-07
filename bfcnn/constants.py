@@ -23,7 +23,9 @@ KL_LOSS_STR = "kl_loss"
 MAE_LOSS_STR = "mae_loss"
 NAE_NOISE_STR = "nae_noise"
 TOTAL_LOSS_STR = "total_loss"
+SIGMA_LOSS_STR = "sigma_loss"
 UNCERTAINTY_LOSS_STR = "uq_loss"
+ENTROPY_LOSS_STR = "entropy_loss"
 NAE_PREDICTION_STR = "nae_prediction"
 NAE_IMPROVEMENT_STR = "nae_improvement"
 NAE_PREDICTION_LOSS_STR = "nae_prediction"
@@ -46,9 +48,13 @@ REGULARIZER_ALLOWED_TYPES = Union[str, Dict, keras.regularizers.Regularizer]
 
 INPAINT_STR = "inpaint"
 BACKBONE_STR = "backbone"
+
 DENOISER_STR = "denoiser"
+DENOISER_SIGMA_STR = "denoiser_sigma"
+DENOISER_ENTROPY_STR = "denoiser_entropy"
+
 SUPERRES_STR = "superres"
-DENOISER_UQ_STR = "denoiser_uq"
-SUPERRES_UQ_STR = "superres_uq"
+SUPERRES_SIGMA_STR = "superres_sigma"
+SUPERRES_ENTROPY_STR = "superres_entropy"
 
 # ---------------------------------------------------------------------

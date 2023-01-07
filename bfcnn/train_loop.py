@@ -72,7 +72,7 @@ def train_loop(
     model_loss_fn = tf.function(func=loss_fn_map[MODEL_LOSS_FN_STR], reduce_retracing=True)
     denoiser_loss_fn = tf.function(func=loss_fn_map[DENOISER_LOSS_FN_STR], reduce_retracing=True)
     superres_loss_fn = tf.function(func=loss_fn_map[SUPERRES_LOSS_FN_STR], reduce_retracing=True)
-    denoiser_uq_loss_fn = tf.function(func=loss_fn_map[DENOISER_UQ_LOSS_FN_STR], reduce_retracing=True)
+    uq_loss_fn = tf.function(func=loss_fn_map[DENOISER_UQ_LOSS_FN_STR], reduce_retracing=True)
 
     # --- build optimizer
     optimizer, lr_schedule = \
@@ -253,11 +253,12 @@ def train_loop(
             def train_forward_step(
                     n: tf.Tensor,
                     d: tf.Tensor) -> \
-                    Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
-                de, de_uq, x0, x1 = hydra(n, training=True)
-                x2, x3, s, s_uq = hydra(d, training=True)
-                del x0, x1, x2, x3
-                return de, de_uq, s, s_uq
+                    Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+                de, de_sigma, de_entropy, x0, x1, x2 = hydra(n, training=True)
+                y0, y1, y2, sr, sr_sigma, sr_entropy = hydra(d, training=True)
+                del x0, x1, x2, y0, y1, y2
+                return de, de_sigma, de_entropy, \
+                       sr, sr_sigma, sr_entropy
 
             trainable_weights = hydra.trainable_weights
             start_time_epoch = time.time()
@@ -271,29 +272,25 @@ def train_loop(
                 # to its inputs are going to be recorded
                 # on the GradientTape.
                 with tf.GradientTape() as tape:
-                    denoiser_output, denoiser_uq_output, superres_output, superres_uq_output = \
+                    de_exp, de_sigma, de_entropy, \
+                    sr_exp, sr_sigma, sr_entropy = \
                         train_forward_step(noisy_batch, downsampled_batch)
 
                     # compute the loss value for this mini-batch
-                    denoiser_loss = \
-                        denoiser_loss_fn(input_batch=downsampled_batch, predicted_batch=denoiser_output)
-                    denoiser_uq_loss = \
-                        denoiser_uq_loss_fn(uncertainty_batch=denoiser_uq_output)
-                    superres_loss = \
-                        superres_loss_fn(input_batch=input_batch, predicted_batch=superres_output)
-                    superres_uq_loss = \
-                        denoiser_uq_loss_fn(uncertainty_batch=superres_uq_output)
-                    model_loss = \
-                        model_loss_fn(model=hydra)
+                    de_loss = denoiser_loss_fn(input_batch=downsampled_batch, predicted_batch=de_exp)
+                    de_uq_loss = uq_loss_fn(sigma_batch=de_sigma, entropy_batch=de_entropy)
+                    sr_loss = superres_loss_fn(input_batch=input_batch, predicted_batch=sr_exp)
+                    sr_uq_loss = uq_loss_fn(sigma_batch=sr_sigma, entropy_batch=sr_entropy)
+                    model_loss = model_loss_fn(model=hydra)
 
                     # NOTE do not use uncertainty for loss,
                     # only for observation
                     total_loss = \
                         model_loss[TOTAL_LOSS_STR] + \
-                        denoiser_loss[TOTAL_LOSS_STR] / 2.0 + \
-                        superres_loss[TOTAL_LOSS_STR] / 2.0 + \
-                        denoiser_uq_loss[TOTAL_LOSS_STR] + \
-                        superres_uq_loss[TOTAL_LOSS_STR]
+                        de_loss[TOTAL_LOSS_STR] / 2.0 + \
+                        sr_loss[TOTAL_LOSS_STR] / 2.0 + \
+                        de_uq_loss[TOTAL_LOSS_STR] + \
+                        sr_uq_loss[TOTAL_LOSS_STR]
 
                     # --- apply weights
                     optimizer.apply_gradients(
@@ -304,35 +301,41 @@ def train_loop(
                 # --- add loss summaries for tensorboard
                 # denoiser
                 tf.summary.scalar(name="quality/denoiser/psnr",
-                                  data=denoiser_loss[PSNR_STR],
+                                  data=de_loss[PSNR_STR],
                                   step=global_step)
                 tf.summary.scalar(name="loss/denoiser/mae",
-                                  data=denoiser_loss[MAE_LOSS_STR],
+                                  data=de_loss[MAE_LOSS_STR],
                                   step=global_step)
                 tf.summary.scalar(name="loss/denoiser/total",
-                                  data=denoiser_loss[TOTAL_LOSS_STR],
+                                  data=de_loss[TOTAL_LOSS_STR],
                                   step=global_step)
                 tf.summary.scalar(name="loss/denoiser/uncertainty",
-                                  data=denoiser_uq_loss[TOTAL_LOSS_STR],
+                                  data=de_uq_loss[TOTAL_LOSS_STR],
                                   step=global_step)
-                tf.summary.scalar(name="quality/denoiser/uncertainty",
-                                  data=denoiser_uq_loss[UNCERTAINTY_LOSS_STR],
+                tf.summary.scalar(name="quality/denoiser/sigma",
+                                  data=de_uq_loss[SIGMA_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="quality/denoiser/entropy",
+                                  data=de_uq_loss[ENTROPY_LOSS_STR],
                                   step=global_step)
                 # superres
-                tf.summary.scalar(name="loss/superres/uncertainty",
-                                  data=superres_uq_loss[TOTAL_LOSS_STR],
-                                  step=global_step)
                 tf.summary.scalar(name="quality/superres/psnr",
-                                  data=superres_loss[PSNR_STR],
-                                  step=global_step)
-                tf.summary.scalar(name="quality/superres/uncertainty",
-                                  data=superres_uq_loss[UNCERTAINTY_LOSS_STR],
+                                  data=sr_loss[PSNR_STR],
                                   step=global_step)
                 tf.summary.scalar(name="loss/superres/mae",
-                                  data=superres_loss[MAE_LOSS_STR],
+                                  data=sr_loss[MAE_LOSS_STR],
                                   step=global_step)
                 tf.summary.scalar(name="loss/superres/total",
-                                  data=superres_loss[TOTAL_LOSS_STR],
+                                  data=sr_loss[TOTAL_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="loss/superres/uncertainty",
+                                  data=sr_uq_loss[TOTAL_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="quality/superres/sigma",
+                                  data=sr_uq_loss[SIGMA_LOSS_STR],
+                                  step=global_step)
+                tf.summary.scalar(name="quality/superres/entropy",
+                                  data=sr_uq_loss[ENTROPY_LOSS_STR],
                                   step=global_step)
                 # model
                 tf.summary.scalar(name="loss/regularization",
@@ -359,23 +362,23 @@ def train_loop(
 
                     # output
                     tf.summary.image(
-                        name="output/denoiser", data=denoiser_output / 255,
+                        name="output/denoiser", data=de_exp / 255,
                         max_outputs=visualization_number, step=global_step)
                     tf.summary.image(
-                        name="output/superres", data=superres_output / 255,
+                        name="output/superres", data=sr_exp / 255,
                         max_outputs=visualization_number, step=global_step)
 
                     # uncertainty
                     tf.summary.image(
-                        name="uncertainty/denoiser", data=denoiser_uq_output,
+                        name="uncertainty/denoiser/sigma", data=de_sigma,
                         max_outputs=visualization_number, step=global_step)
                     tf.summary.image(
-                        name="uncertainty/superres", data=superres_uq_output,
+                        name="uncertainty/superres/sigma", data=sr_sigma,
                         max_outputs=visualization_number, step=global_step)
 
                     if use_test_images:
-                        test_denoiser_output, test_denoiser_uq_output, \
-                        test_superres_output, test_superres_uq_output = \
+                        test_denoiser_output, test_denoiser_sigma_output, test_denoiser_entropy_output, \
+                        test_superres_output, test_superres_sigma_output, test_superres_entropy_output = \
                             hydra(test_images, training=False)
                         tf.summary.image(
                             name="test/denoiser", data=test_denoiser_output / 255,
@@ -383,12 +386,12 @@ def train_loop(
                         tf.summary.image(
                             name="test/superres", data=test_superres_output / 255,
                             max_outputs=visualization_number, step=global_step)
-                        del test_denoiser_output, test_denoiser_uq_output, \
-                            test_superres_output, test_superres_uq_output
+                        del test_denoiser_output, test_denoiser_sigma_output, test_denoiser_entropy_output, \
+                            test_superres_output, test_superres_sigma_output, test_superres_entropy_output
 
                 # --- free resources
                 del input_batch, noisy_batch, downsampled_batch
-                del denoiser_output, denoiser_uq_output, superres_output, superres_uq_output
+                del de_exp, de_sigma, de_entropy, sr_exp, sr_sigma, sr_entropy
 
                 # --- prune conv2d
                 if use_prune and (global_epoch >= prune_start_epoch) and \
