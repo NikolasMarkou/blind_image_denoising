@@ -381,20 +381,10 @@ def loss_function_builder(
 
     # ---
     def uq_loss(
-            sigma_batch: tf.Tensor = None,
-            entropy_batch: tf.Tensor = None) -> tf.Tensor:
-        sigma_loss = tf.constant(0.0, dtype=tf.float32)
-        if sigma_batch is not None:
-            sigma_batch = \
-                tf.clip_by_value(
-                    sigma_batch,
-                    clip_value_min=uq_sigma_min,
-                    clip_value_max=uq_sigma_max)
-            sigma_loss += tf.reduce_mean(sigma_batch)
-
-        entropy_loss = tf.constant(0.0, dtype=tf.float32)
-        if entropy_batch is not None:
-            entropy_loss += tf.reduce_mean(entropy_batch)
+            sigma_batch: tf.Tensor = tf.constant(0.0, dtype=tf.float32),
+            entropy_batch: tf.Tensor = tf.constant(0.0, dtype=tf.float32)) -> tf.Tensor:
+        sigma_loss = tf.reduce_mean(sigma_batch)
+        entropy_loss = tf.reduce_mean(entropy_batch)
 
         return {
             TOTAL_LOSS_STR:
