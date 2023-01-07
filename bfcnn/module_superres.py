@@ -68,7 +68,7 @@ class SuperresModule(tf.Module):
         x = self._model_backbone(x)
 
         # --- run superres model
-        x = self._model_superres(x)
+        x, _, _ = self._model_superres(x)
 
         # --- denormalize
         x = self._model_denormalizer(x)
