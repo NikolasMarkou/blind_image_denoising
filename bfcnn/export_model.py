@@ -65,7 +65,6 @@ def export_model(
     models = model_builder(pipeline_config[MODEL_STR])
     # get each model
     hydra = models.hydra
-    inpaint = models.inpaint
     superres = models.superres
     backbone = models.backbone
     denoiser = models.denoiser
@@ -104,7 +103,6 @@ def export_model(
             model_hydra=hydra,
             model_backbone=backbone,
             model_denoiser=denoiser,
-            model_inpaint=inpaint,
             model_superres=superres,
             model_normalizer=normalizer,
             model_denormalizer=denormalizer)
@@ -247,63 +245,8 @@ def export_model(
         with open(output_tflite_model, "wb") as f:
             f.write(tflite_model)
 
-    ##################################################################################
-    # combine inpaint, normalize and denormalize
-    ##################################################################################
-
-    output_saved_model_inpaint = os.path.join(output_directory, "inpaint")
-    logger.info("building inpaint module")
-    logger.info("combining backbone, inpaint, normalize and denormalize model")
-    inpaint_module = \
-        InpaintModule(
-            cast_to_uint8=True,
-            model_backbone=backbone,
-            model_inpaint=inpaint,
-            model_normalizer=normalizer,
-            model_denormalizer=denormalizer)
-
-    # getting the concrete function traces the graph
-    # and forces variables to
-    # be constructed, only after this can we save the
-    # checkpoint and saved model.
-    inpaint_concrete_function = \
-        inpaint_module.__call__.get_concrete_function(
-            tf.TensorSpec(shape=[1, None, None, training_channels], dtype=tf.uint8),
-            tf.TensorSpec(shape=[1, None, None, 1], dtype=tf.uint8)
-        )
-
-    # export the model as save_model format (default)
-    logger.info(f"saving module: [{output_saved_model_inpaint}]")
-    tf.saved_model.save(
-        obj=inpaint_module,
-        signatures=inpaint_concrete_function,
-        export_dir=output_saved_model_inpaint,
-        options=tf.saved_model.SaveOptions(save_debug_info=False))
-
-    # --- export to tflite
-    if to_tflite:
-        converter = \
-            tf.lite.TFLiteConverter.from_concrete_functions(
-                [inpaint_concrete_function])
-        converter.target_spec.supported_ops = [
-            tf.lite.OpsSet.TFLITE_BUILTINS,
-            tf.lite.OpsSet.SELECT_TF_OPS
-        ]
-        converter.optimizations = [
-            tf.lite.Optimize.DEFAULT
-        ]
-        tflite_model = converter.convert()
-        output_tflite_model = \
-            os.path.join(
-                output_directory,
-                "inpaint_model.tflite")
-        # save the model.
-        with open(output_tflite_model, "wb") as f:
-            f.write(tflite_model)
-
     return \
         denoiser_module, \
-        superres_module, \
-        inpaint_module
+        superres_module
 
 # ---------------------------------------------------------------------
