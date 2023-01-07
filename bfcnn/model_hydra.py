@@ -401,7 +401,7 @@ def model_denoiser_builder(
     lin_stop = config.get("lin_stop", +0.5)
 
     uncertainty_buckets = config.get("uncertainty_buckets", 16)
-    uncertainty_threshold = config.get("uncertainty_threshold", None)
+    uncertainty_threshold = config.get("uncertainty_threshold", 0.0)
     uncertainty_activation = config.get("uncertainty_activation", "linear")
     uncertainty_kernel_regularizer = config.get("uncertainty_kernel_regularizer", "l2")
     uncertainty_kernel_initializer = config.get("uncertainty_kernel_initializer", "glorot_normal")
@@ -489,7 +489,7 @@ def model_superres_builder(
     input_shape = input_shape_fixer(config.get("input_shape"))
 
     uncertainty_buckets = config.get("uncertainty_buckets", 16)
-    uncertainty_threshold = config.get("uncertainty_threshold", None)
+    uncertainty_threshold = config.get("uncertainty_threshold", 0.0)
     uncertainty_activation = config.get("uncertainty_activation", "linear")
     uncertainty_kernel_regularizer = config.get("uncertainty_kernel_regularizer", "l2")
     uncertainty_kernel_initializer = config.get("uncertainty_kernel_initializer", "glorot_normal")

@@ -433,7 +433,7 @@ def loss_function_builder(
             ssim_loss = \
                 tf.reduce_mean(
                     tf.image.ssim(input_batch, predicted_batch, 255.0))
-            ssim_loss = 1.0 / (ssim_loss + DEFAULT_EPSILON)
+            ssim_loss = 1.0 - ssim_loss
 
         # --- loss prediction on mse
         mse_prediction_loss = \
