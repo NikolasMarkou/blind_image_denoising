@@ -11,6 +11,7 @@
 			"value_range": [0, 255],
 			"type": "resnet",
 			"batchnorm": true,
+			"add_selector": true,
 			"activation": "relu6",
 			"add_final_bn": false,
 			"kernel_initializer": "glorot_normal",
@@ -20,6 +21,11 @@
 					"l2_coefficient": 0.0,
 					"l1_coefficient": 0.025
 				}
+			},
+			"pyramid": {
+			  "levels": 2,
+			  "type": "laplacian",
+			  "kernel_size": [5, 5]
 			}
 		},
 		"denoiser": {
@@ -33,6 +39,7 @@
 			"block_groups": [1, 2, 4],
 			"type": "resnet",
 			"batchnorm": true,
+			"add_selector": true,
 			"activation": "relu6",
 			"kernel_initializer": "glorot_normal",
 			"kernel_regularizer": {
@@ -59,6 +66,7 @@
 			"block_groups": [1, 2, 4],
 			"type": "resnet",
 			"batchnorm": true,
+			"add_selector": true,
 			"activation": "relu6",
 			"kernel_initializer": "glorot_normal",
 			"kernel_regularizer": {
