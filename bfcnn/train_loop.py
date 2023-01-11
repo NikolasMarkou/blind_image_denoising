@@ -396,7 +396,7 @@ def train_loop(
                             test_subsample_output, test_subsample_sigma_output, test_subsample_entropy_output
 
                 # --- free resources
-                del input_batch, noisy_batch, downsampled_batch, subsampled_batch
+                del input_batch, noisy_batch, downsampled_batch
                 del de_exp, de_sigma, de_entropy, \
                     sr_exp, sr_sigma, sr_entropy,\
                     ss_exp, ss_sigma, ss_entropy
