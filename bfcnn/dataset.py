@@ -311,11 +311,9 @@ def dataset_builder(
                     dtype=tf.float32)
         noisy_batch = noise_augmentation_fn(input_batch)
         downsampled_batch = downsample(input_batch)
-        subsampled_batch = subsample(input_batch)
         return input_batch, \
                noisy_batch, \
-               downsampled_batch, \
-               subsampled_batch
+               downsampled_batch
 
     # --- define generator function from directory
     if directory:

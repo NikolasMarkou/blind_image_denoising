@@ -276,7 +276,7 @@ def train_loop(
                         train_forward_step(
                             n=noisy_batch,
                             d=downsampled_batch,
-                            s=subsampled_batch)
+                            s=input_batch)
 
                     # compute the loss value for this mini-batch
                     # denoiser
