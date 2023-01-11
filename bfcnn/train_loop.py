@@ -239,6 +239,17 @@ def train_loop(
         else:
             logger.info("!!! Did NOT find checkpoint to restore !!!")
 
+        @tf.function(reduce_retracing=True)
+        def train_forward_step(
+                n: tf.Tensor,
+                d: tf.Tensor) -> \
+                Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+            de, de_sigma, de_entropy, x0, x1, x2 = hydra(n, training=True)
+            y0, y1, y2, sr, sr_sigma, sr_entropy = hydra(d, training=True)
+            del x0, x1, x2, y0, y1, y2
+            return de, de_sigma, de_entropy, \
+                   sr, sr_sigma, sr_entropy
+
         # ---
         while global_epoch < global_total_epochs:
             logger.info("epoch: {0}, step: {1}".format(
@@ -248,17 +259,6 @@ def train_loop(
             if use_prune and (global_epoch >= prune_start_epoch):
                 logger.info(f"pruning weights at step [{int(global_step)}]")
                 hydra = prune_fn(model=hydra)
-
-            @tf.function(reduce_retracing=True)
-            def train_forward_step(
-                    n: tf.Tensor,
-                    d: tf.Tensor) -> \
-                    Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
-                de, de_sigma, de_entropy, x0, x1, x2 = hydra(n, training=True)
-                y0, y1, y2, sr, sr_sigma, sr_entropy = hydra(d, training=True)
-                del x0, x1, x2, y0, y1, y2
-                return de, de_sigma, de_entropy, \
-                       sr, sr_sigma, sr_entropy
 
             trainable_weights = hydra.trainable_weights
             start_time_epoch = time.time()
@@ -274,19 +274,16 @@ def train_loop(
                 with tf.GradientTape() as tape:
                     de_exp, de_sigma, de_entropy, \
                     sr_exp, sr_sigma, sr_entropy = \
-                        train_forward_step(noisy_batch, downsampled_batch)
+                        train_forward_step(n=noisy_batch, d=downsampled_batch)
 
                     # compute the loss value for this mini-batch
                     de_loss = denoiser_loss_fn(input_batch=input_batch, predicted_batch=de_exp)
                     de_uq_loss = uq_loss_fn(sigma_batch=de_sigma, entropy_batch=de_entropy)
-                    
                     sr_loss = superres_loss_fn(input_batch=input_batch, predicted_batch=sr_exp)
                     sr_uq_loss = uq_loss_fn(sigma_batch=sr_sigma, entropy_batch=sr_entropy)
-
                     model_loss = model_loss_fn(model=hydra)
 
-                    # NOTE do not use uncertainty for loss,
-                    # only for observation
+                    # combine losses
                     total_loss = \
                         model_loss[TOTAL_LOSS_STR] + \
                         de_loss[TOTAL_LOSS_STR] + \
