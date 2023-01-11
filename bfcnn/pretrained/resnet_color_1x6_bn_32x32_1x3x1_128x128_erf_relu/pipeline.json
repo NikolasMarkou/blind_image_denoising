@@ -81,13 +81,7 @@
             "uncertainty_threshold": 0.0,
             "uncertainty_activation": "linear",
             "uncertainty_kernel_initializer": "glorot_normal",
-            "uncertainty_kernel_regularizer": {
-                "type": "soft_orthonormal",
-                "config": {
-                    "lambda_coefficient": 0.1,
-                    "l1_coefficient": 0.001
-                }
-            }
+            "uncertainty_kernel_regularizer": "l2"
         },
         "superres": {
             "input_shape": [
@@ -129,13 +123,7 @@
             "uncertainty_threshold": 0.0,
             "uncertainty_activation": "linear",
             "uncertainty_kernel_initializer": "glorot_normal",
-            "uncertainty_kernel_regularizer": {
-                "type": "soft_orthonormal",
-                "config": {
-                    "lambda_coefficient": 0.1,
-                    "l1_coefficient": 0.001
-                }
-            }
+            "uncertainty_kernel_regularizer": "l2"
         }
     },
     "train": {
@@ -169,14 +157,15 @@
     "loss": {
         "hinge": 1.0,
         "cutoff": 255.0,
-        "uq_multiplier": 6.0,
         "mae_multiplier": 1.0,
+        "ssim_multiplier": 1.0,
         "regularization": 0.01,
-        "use_multiscale": false,
-        "count_non_zero_mean": false
+        "sigma_multiplier": 5.0,
+        "entropy_multiplier": 0.5
     },
     "dataset": {
-        "batch_size": 16,
+        "batch_size": 32,
+        "color_mode": "rgb",
         "no_crops_per_image": 1,
         "value_range": [
             0,
@@ -185,10 +174,8 @@
         "clip_value": true,
         "random_blur": true,
         "round_values": true,
-        "random_invert": false,
         "random_rotate": 0.314,
         "random_up_down": true,
-        "color_mode": "rgb",
         "random_left_right": true,
         "input_shape": [
             128,

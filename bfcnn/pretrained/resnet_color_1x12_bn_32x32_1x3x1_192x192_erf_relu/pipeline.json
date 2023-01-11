@@ -169,11 +169,11 @@
     "loss": {
         "hinge": 1.0,
         "cutoff": 255.0,
-        "uq_multiplier": 6.0,
         "mae_multiplier": 1.0,
+        "ssim_multiplier": 1.0,
         "regularization": 0.01,
-        "use_multiscale": false,
-        "count_non_zero_mean": false
+        "sigma_multiplier": 6.0,
+        "entropy_multiplier": 1.0
     },
     "dataset": {
         "batch_size": 16,
