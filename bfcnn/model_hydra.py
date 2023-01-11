@@ -50,7 +50,7 @@ def model_builder(
 
     # --- build denoiser, superres
     model_denoiser = model_denoiser_builder(config=config[DENOISER_STR])
-    #model_superres = model_superres_builder(config=config[SUPERRES_STR])
+    model_superres = model_superres_builder(config=config[SUPERRES_STR])
 
     input_shape = tf.keras.backend.int_shape(model_backbone_low.inputs[0])[1:]
     logger.info("input_shape: [{0}]".format(input_shape))
