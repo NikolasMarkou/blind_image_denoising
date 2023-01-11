@@ -33,7 +33,8 @@ def test_pretrained_models(model_name):
                 num_channels=3,
                 expand_dims=True,
                 normalize=False,
-                dtype=tf.float32)
+                dtype=tf.uint8)
+        img_original = tf.cast(img_original, dtype=tf.float32)
         # corrupt it
         img_noisy = \
             img_original + \
@@ -42,10 +43,14 @@ def test_pretrained_models(model_name):
                 mean=0,
                 stddev=10,
                 shape=img_original.shape)
-        img_noisy = tf.clip_by_value(img_noisy, clip_value_min=0, clip_value_max=255)
-        img_noisy = tf.round(img_noisy)
-        img_noisy = tf.cast(img_noisy, dtype=tf.uint8)
-        img_original = tf.cast(img_original, dtype=tf.uint8)
+        img_noisy = \
+            tf.cast(
+                tf.round(
+                    tf.clip_by_value(
+                        img_noisy,
+                        clip_value_min=0,
+                        clip_value_max=255)),
+                dtype=tf.uint8)
         # denoise it
         img_denoised = model(img_noisy)
         # compare
