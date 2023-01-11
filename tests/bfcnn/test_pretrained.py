@@ -21,7 +21,7 @@ from bfcnn.constants import *
 # ---------------------------------------------------------------------
 
 @pytest.mark.parametrize(
-    "noise_std", [4, 5, 6, 7, 8, 9, 10])
+    "noise_std", [5.0, 10.0, 20.0])
 @pytest.mark.parametrize(
     "model_name", bfcnn.models.keys())
 def test_pretrained_models(noise_std, model_name):

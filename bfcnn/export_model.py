@@ -13,7 +13,6 @@ from .constants import *
 from .custom_logger import logger
 from .utilities import load_config
 from .model_hydra import model_builder
-from .module_inpaint import InpaintModule
 from .module_denoiser import DenoiserModule
 from .module_superres import SuperresModule
 

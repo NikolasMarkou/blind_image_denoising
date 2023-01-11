@@ -1,13 +1,10 @@
-import os
 import tensorflow as tf
-from tensorflow import keras
 
 # ---------------------------------------------------------------------
 # local imports
 # ---------------------------------------------------------------------
 
 from .constants import *
-from .custom_logger import logger
 
 # ---------------------------------------------------------------------
 
@@ -17,10 +14,10 @@ class SuperresModule(tf.Module):
 
     def __init__(
             self,
-            model_backbone: keras.Model,
-            model_superres: keras.Model,
-            model_normalizer: keras.Model,
-            model_denormalizer: keras.Model,
+            model_backbone: tf.keras.Model,
+            model_superres: tf.keras.Model,
+            model_normalizer: tf.keras.Model,
+            model_denormalizer: tf.keras.Model,
             cast_to_uint8: bool = True):
         """
         Initializes a module for super resolution.
@@ -57,6 +54,7 @@ class SuperresModule(tf.Module):
         Cast image to float and run inference.
 
         :param image: uint8 Tensor of shape
+
         :return: super resolution image: uint8 Tensor of shape if the input
         """
         x = tf.cast(image, dtype=tf.float32)
