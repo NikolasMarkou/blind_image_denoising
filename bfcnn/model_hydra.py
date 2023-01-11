@@ -50,7 +50,7 @@ def model_builder(
 
     # --- build denoiser, superres
     model_denoiser = model_denoiser_builder(config=config[DENOISER_STR])
-    model_superres = model_superres_builder(config=config[SUPERRES_STR])
+    #model_superres = model_superres_builder(config=config[SUPERRES_STR])
 
     input_shape = tf.keras.backend.int_shape(model_backbone_low.inputs[0])[1:]
     logger.info("input_shape: [{0}]".format(input_shape))
@@ -60,11 +60,16 @@ def model_builder(
     input_normalized_layer = model_normalizer(input_layer, training=False)
 
     # common backbone low level
-    backbone_low_level = model_backbone_low(input_normalized_layer)
+    backbone = model_backbone_low(input_normalized_layer)
+
+    backbone_upsample = \
+        tf.keras.layers.UpSampling2D(
+            size=(2, 2), interpolation="nearest")(backbone)
 
     # low level heads
-    de_exp, de_sigma, de_entropy = model_denoiser(backbone_low_level)
-    sr_exp, sr_sigma, sr_entropy = model_superres(backbone_low_level)
+    de_exp, de_sigma, de_entropy = model_denoiser(backbone)
+    sr_exp, sr_sigma, sr_entropy = model_denoiser(backbone_upsample)
+    #sr_exp, sr_sigma, sr_entropy = model_superres(backbone)
 
     # denormalize
     de_exp = model_denormalizer(de_exp, training=False)
