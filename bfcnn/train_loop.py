@@ -287,8 +287,8 @@ def train_loop(
                     # only for observation
                     total_loss = \
                         model_loss[TOTAL_LOSS_STR] + \
-                        de_loss[TOTAL_LOSS_STR] / 2.0 + \
-                        sr_loss[TOTAL_LOSS_STR] / 2.0 + \
+                        de_loss[TOTAL_LOSS_STR] + \
+                        sr_loss[TOTAL_LOSS_STR] + \
                         de_uq_loss[TOTAL_LOSS_STR] + \
                         sr_uq_loss[TOTAL_LOSS_STR]
 

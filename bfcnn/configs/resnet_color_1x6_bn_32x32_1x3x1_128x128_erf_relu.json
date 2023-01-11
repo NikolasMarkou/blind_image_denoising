@@ -42,7 +42,7 @@
 					"l1_coefficient": 0.025
 				}
 			},
-			"uncertainty_buckets": 32,
+			"uncertainty_buckets": 10,
 			"uncertainty_threshold": 0.0,
 			"uncertainty_activation": "linear",
 			"uncertainty_kernel_initializer": "glorot_normal",
@@ -68,7 +68,7 @@
 					"l1_coefficient": 0.025
 				}
 			},
-			"uncertainty_buckets": 32,
+			"uncertainty_buckets": 10,
 			"uncertainty_threshold": 0.0,
 			"uncertainty_activation": "linear",
 			"uncertainty_kernel_initializer": "glorot_normal",
@@ -76,7 +76,7 @@
 		}
 	},
 	"train": {
-		"epochs": 20,
+		"epochs": 50,
 		"total_steps": -1,
 		"use_test_images": true,
 		"checkpoints_to_keep": 3,
@@ -121,7 +121,7 @@
 		"random_left_right": true,
 		"input_shape": [128, 128, 3],
 		"multiplicative_noise": [0.05, 0.1],
-		"additional_noise": [1, 5, 10, 20],
+		"additional_noise": [1, 2, 5, 10, 20, 30, 40],
 		"inputs": [
 			{
 				"directory": "/media/data1_4tb/datasets/KITTI/data/depth/raw_image_values/"

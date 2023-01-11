@@ -309,8 +309,8 @@ def dataset_builder(
         input_batch = \
             tf.cast(geometric_augmentation_fn(iter_batch),
                     dtype=tf.float32)
+        noisy_batch = noise_augmentation_fn(input_batch)
         downsampled_batch = downsample(input_batch)
-        noisy_batch = noise_augmentation_fn(downsampled_batch)
         return input_batch, noisy_batch, downsampled_batch
 
     # --- define generator function from directory
