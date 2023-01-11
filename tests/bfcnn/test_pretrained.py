@@ -17,12 +17,14 @@ sys.path.append(os.getcwd() + "/../")
 import bfcnn
 from bfcnn.constants import *
 
+
 # ---------------------------------------------------------------------
 
-
+@pytest.mark.parametrize(
+    "noise_std", [4, 5, 6, 7, 8, 9, 10])
 @pytest.mark.parametrize(
     "model_name", bfcnn.models.keys())
-def test_pretrained_models(model_name):
+def test_pretrained_models(noise_std, model_name):
     model_structure = bfcnn.models[model_name]
     model = model_structure[DENOISER_STR]()
     for img_path in KITTI_IMAGES:
@@ -41,7 +43,7 @@ def test_pretrained_models(model_name):
             tf.random.truncated_normal(
                 seed=0,
                 mean=0.0,
-                stddev=10.0,
+                stddev=noise_std,
                 dtype=tf.float32,
                 shape=img_original.shape)
         img_noisy = \
@@ -63,8 +65,7 @@ def test_pretrained_models(model_name):
         mae_denoised_original = np.mean(np.abs(img_denoised - img_original), axis=None)
         assert img_denoised.shape == img_noisy.shape
         assert img_denoised.shape == img_original.shape
-        assert mae_noisy_original < 10
+        assert mae_noisy_original < noise_std
         assert mae_denoised_original < mae_noisy_original
 
 # ---------------------------------------------------------------------
-
