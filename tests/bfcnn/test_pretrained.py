@@ -40,8 +40,9 @@ def test_pretrained_models(model_name):
             img_original + \
             tf.random.truncated_normal(
                 seed=0,
-                mean=0,
-                stddev=10,
+                mean=0.0,
+                stddev=10.0,
+                dtype=tf.float32,
                 shape=img_original.shape)
         img_noisy = \
             tf.cast(
@@ -53,10 +54,10 @@ def test_pretrained_models(model_name):
                 dtype=tf.uint8)
         # denoise it
         img_denoised = model(img_noisy)
-        # compare
-        img_noisy = tf.cast(img_noisy, dtype=tf.float32)
-        img_original = tf.cast(img_original, dtype=tf.float32)
-        img_denoised = tf.cast(img_denoised, dtype=tf.float32)
+        # convert
+        img_noisy = tf.cast(img_noisy, dtype=tf.float32).numpy()
+        img_denoised = tf.cast(img_denoised, dtype=tf.float32).numpy()
+        img_original = img_original.numpy()
         # mae
         mae_noisy_original = np.mean(np.abs(img_noisy - img_original), axis=None)
         mae_denoised_original = np.mean(np.abs(img_denoised - img_original), axis=None)
