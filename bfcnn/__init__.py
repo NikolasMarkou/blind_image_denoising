@@ -137,8 +137,12 @@ def load_superres_model(model_path: str):
 
 
 # offer a descent pretrained model fore each
-load_default_denoiser = list(models.values())[0][DENOISER_STR]
-load_default_superres = list(models.values())[0][SUPERRES_STR]
+if len(models) > 0:
+    load_default_denoiser = list(models.values())[0][DENOISER_STR]
+    load_default_superres = list(models.values())[0][SUPERRES_STR]
+else:
+    load_default_denoiser = None
+    load_default_superres = None
 
 # ---------------------------------------------------------------------
 
