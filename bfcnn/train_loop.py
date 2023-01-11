@@ -277,10 +277,12 @@ def train_loop(
                         train_forward_step(noisy_batch, downsampled_batch)
 
                     # compute the loss value for this mini-batch
-                    de_loss = denoiser_loss_fn(input_batch=downsampled_batch, predicted_batch=de_exp)
+                    de_loss = denoiser_loss_fn(input_batch=input_batch, predicted_batch=de_exp)
                     de_uq_loss = uq_loss_fn(sigma_batch=de_sigma, entropy_batch=de_entropy)
+                    
                     sr_loss = superres_loss_fn(input_batch=input_batch, predicted_batch=sr_exp)
                     sr_uq_loss = uq_loss_fn(sigma_batch=sr_sigma, entropy_batch=sr_entropy)
+
                     model_loss = model_loss_fn(model=hydra)
 
                     # NOTE do not use uncertainty for loss,
