@@ -36,10 +36,9 @@ def test_pretrained_models(noise_std, model_name):
                 expand_dims=True,
                 normalize=False,
                 dtype=tf.uint8)
-        img_original = tf.cast(img_original, dtype=tf.float32)
         # corrupt it
         img_noisy = \
-            img_original + \
+            tf.cast(img_original, dtype=tf.float32) + \
             tf.random.truncated_normal(
                 seed=0,
                 mean=0.0,
@@ -59,13 +58,14 @@ def test_pretrained_models(noise_std, model_name):
         # convert
         img_noisy = tf.cast(img_noisy, dtype=tf.float32).numpy()
         img_denoised = tf.cast(img_denoised, dtype=tf.float32).numpy()
-        img_original = img_original.numpy()
+        img_original = tf.cast(img_original, dtype=tf.float32).numpy()
         # mae
         mae_noisy_original = np.mean(np.abs(img_noisy - img_original), axis=None)
         mae_denoised_original = np.mean(np.abs(img_denoised - img_original), axis=None)
-        assert img_denoised.shape == img_noisy.shape
-        assert img_denoised.shape == img_original.shape
+        # assertions
         assert mae_noisy_original < noise_std
         assert mae_denoised_original < mae_noisy_original
+        assert img_denoised.shape == img_noisy.shape
+        assert img_denoised.shape == img_original.shape
 
 # ---------------------------------------------------------------------
