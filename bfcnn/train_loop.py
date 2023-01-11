@@ -354,9 +354,6 @@ def train_loop(
                     tf.summary.image(
                         name="input_augmented/superres", data=downsampled_batch / 255,
                         max_outputs=visualization_number, step=global_step)
-                    tf.summary.image(
-                        name="input_augmented/subsample", data=subsampled_batch / 255,
-                        max_outputs=visualization_number, step=global_step)
 
                     # output
                     tf.summary.image(
