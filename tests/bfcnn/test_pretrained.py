@@ -58,10 +58,8 @@ def test_pretrained_models(model_name):
         img_original = tf.cast(img_original, dtype=tf.float32)
         img_denoised = tf.cast(img_denoised, dtype=tf.float32)
         # mae
-        mae_noisy_original = \
-            tf.keras.losses.MeanAbsoluteError(img_noisy, img_original).numpy()
-        mae_denoised_original = \
-            tf.keras.losses.MeanAbsoluteError(img_denoised, img_original).numpy()
+        mae_noisy_original = np.mean(np.abs(img_noisy - img_original), axis=None)
+        mae_denoised_original = np.mean(np.abs(img_denoised - img_original), axis=None)
         assert img_denoised.shape == img_noisy.shape
         assert img_denoised.shape == img_original.shape
         assert mae_noisy_original < 10
