@@ -82,7 +82,7 @@ def load_image(
 
     img = \
         tf.image.decode_image(
-            dtype=dtype,
+            dtype=tf.uint8,
             contents=raw,
             channels=num_channels,
             expand_animations=False)
@@ -104,6 +104,8 @@ def load_image(
     if normalize:
         img = tf.cast(img, dtype=tf.float32)
         img = layer_normalize(img, v_min=0.0, v_max=255.0)
+    else:
+        img = tf.cast(img, dtype=dtype)
 
     return img
 
