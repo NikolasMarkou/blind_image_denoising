@@ -262,7 +262,7 @@ def train_loop(
             start_time_epoch = time.time()
 
             # --- iterate over the batches of the dataset
-            for (input_batch, noisy_batch, downsampled_batch, subsampled_batch) in dataset_training:
+            for (input_batch, noisy_batch, downsampled_batch) in dataset_training:
                 start_time_forward_backward = time.time()
 
                 # run the forward pass of the layer.
