@@ -34,7 +34,6 @@ BuilderResults = namedtuple(
         "normalizer",
         "denormalizer",
         "denoiser",
-        "superres",
         "hydra"
     })
 
@@ -50,7 +49,6 @@ def model_builder(
 
     # --- build denoiser, superres
     model_denoiser = model_denoiser_builder(config=config[DENOISER_STR])
-    model_superres = model_superres_builder(config=config[SUPERRES_STR])
 
     input_shape = tf.keras.backend.int_shape(model_backbone_low.inputs[0])[1:]
     logger.info("input_shape: [{0}]".format(input_shape))
@@ -64,25 +62,40 @@ def model_builder(
 
     backbone_upsample = \
         tf.keras.layers.UpSampling2D(
-            size=(2, 2), interpolation="nearest")(backbone)
+            size=(2, 2),
+            interpolation="nearest")(backbone)
+
+    backbone_subsample = \
+        tf.keras.layers.MaxPooling2D(
+            pool_size=(1, 1),
+            strides=(2, 2),
+            padding="same")(backbone)
 
     # low level heads
     de_exp, de_sigma, de_entropy = model_denoiser(backbone)
     sr_exp, sr_sigma, sr_entropy = model_denoiser(backbone_upsample)
-    #sr_exp, sr_sigma, sr_entropy = model_superres(backbone)
+    ss_exp, ss_sigma, ss_entropy = model_denoiser(backbone_subsample)
 
     # denormalize
     de_exp = model_denormalizer(de_exp, training=False)
     sr_exp = model_denormalizer(sr_exp, training=False)
+    ss_exp = model_denormalizer(ss_exp, training=False)
 
     # wrap layers to set names
+    # denoiser
     de_exp_output = tf.keras.layers.Layer(name=DENOISER_STR)(de_exp)
     de_sigma_output = tf.keras.layers.Layer(name=DENOISER_SIGMA_STR)(de_sigma)
     de_entropy_output = tf.keras.layers.Layer(name=DENOISER_ENTROPY_STR)(de_entropy)
 
+    # superres
     sr_exp_output = tf.keras.layers.Layer(name=SUPERRES_STR)(sr_exp)
     sr_sigma_output = tf.keras.layers.Layer(name=SUPERRES_SIGMA_STR)(sr_sigma)
     sr_entropy_output = tf.keras.layers.Layer(name=SUPERRES_ENTROPY_STR)(sr_entropy)
+
+    # subsample
+    ss_exp_output = tf.keras.layers.Layer(name=SUBSAMPLE_STR)(ss_exp)
+    ss_sigma_output = tf.keras.layers.Layer(name=SUBSAMPLE_SIGMA_STR)(ss_sigma)
+    ss_entropy_output = tf.keras.layers.Layer(name=SUBSAMPLE_ENTROPY_STR)(ss_entropy)
 
     # create model
     model_hydra = \
@@ -91,12 +104,18 @@ def model_builder(
                 input_layer
             ],
             outputs=[
+                # denoiser
                 de_exp_output,
                 de_sigma_output,
                 de_entropy_output,
+                # superres
                 sr_exp_output,
                 sr_sigma_output,
-                sr_entropy_output
+                sr_entropy_output,
+                # subsample
+                ss_exp_output,
+                ss_sigma_output,
+                ss_entropy_output
             ],
             name=f"hydra")
 
@@ -107,7 +126,6 @@ def model_builder(
             normalizer=model_normalizer,
             denormalizer=model_denormalizer,
             denoiser=model_denoiser,
-            superres=model_superres,
             hydra=model_hydra
         )
 

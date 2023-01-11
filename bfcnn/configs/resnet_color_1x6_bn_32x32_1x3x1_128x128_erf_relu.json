@@ -47,32 +47,6 @@
 			"uncertainty_activation": "linear",
 			"uncertainty_kernel_initializer": "glorot_normal",
 			"uncertainty_kernel_regularizer": "l2"
-		},
-		"superres": {
-			"input_shape": ["?", "?", 32],
-			"output_channels": 3,
-			"filters": 32,
-			"no_layers": 3,
-			"kernel_size": 3,
-			"block_kernels": [1, 3, 1],
-			"block_filters": [32, 64, 32],
-			"block_groups": [1, 2, 4],
-			"type": "resnet",
-			"batchnorm": true,
-			"activation": "relu6",
-			"kernel_initializer": "glorot_normal",
-			"kernel_regularizer": {
-				"type": "erf",
-				"config": {
-					"l2_coefficient": 0.0,
-					"l1_coefficient": 0.025
-				}
-			},
-			"uncertainty_buckets": 10,
-			"uncertainty_threshold": 0.0,
-			"uncertainty_activation": "linear",
-			"uncertainty_kernel_initializer": "glorot_normal",
-			"uncertainty_kernel_regularizer": "l2"
 		}
 	},
 	"train": {
@@ -87,7 +61,7 @@
 		"random_batch_size": [128, 128, 3],
 		"random_batch_min_difference": 0.1,
 		"optimizer": {
-			"type": "RMSprop",
+			"type": "ADAM",
 			"gradient_clipping_by_norm": 1.0,
 			"schedule": {
 				"type": "exponential_decay",

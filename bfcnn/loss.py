@@ -11,13 +11,6 @@ from typing import List, Dict, Callable
 from .constants import *
 from .custom_logger import logger
 from .delta import delta_xy_magnitude
-from .pyramid import build_pyramid_model
-
-MODEL_LOSS_FN_STR = "model"
-INPAINT_LOSS_FN_STR = "inpaint"
-DENOISER_LOSS_FN_STR = "denoiser"
-SUPERRES_LOSS_FN_STR = "superres"
-DENOISER_UQ_LOSS_FN_STR = "denoiser_uq"
 
 # ---------------------------------------------------------------------
 
@@ -452,9 +445,10 @@ def loss_function_builder(
     # ----
     return {
         MODEL_LOSS_FN_STR: model_loss,
+        DENOISER_UQ_LOSS_FN_STR: uq_loss,
         DENOISER_LOSS_FN_STR: denoiser_loss,
         SUPERRES_LOSS_FN_STR: denoiser_loss,
-        DENOISER_UQ_LOSS_FN_STR: uq_loss
+        SUBSAMPLE_LOSS_FN_STR: denoiser_loss
     }
 
 # ---------------------------------------------------------------------

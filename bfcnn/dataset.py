@@ -8,7 +8,7 @@ from typing import Dict, Callable, Iterator, Tuple
 
 from .file_operations import *
 from .custom_logger import logger
-from .utilities import random_crops, downsample
+from .utilities import random_crops, downsample, subsample
 
 # ---------------------------------------------------------------------
 
@@ -305,13 +305,17 @@ def dataset_builder(
 
     @tf.function
     def prepare_data_fn(iter_batch: tf.Tensor) -> \
-            Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+            Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
         input_batch = \
             tf.cast(geometric_augmentation_fn(iter_batch),
                     dtype=tf.float32)
         noisy_batch = noise_augmentation_fn(input_batch)
         downsampled_batch = downsample(input_batch)
-        return input_batch, noisy_batch, downsampled_batch
+        subsampled_batch = subsample(input_batch)
+        return input_batch, \
+               noisy_batch, \
+               downsampled_batch, \
+               subsampled_batch
 
     # --- define generator function from directory
     if directory:

@@ -922,3 +922,16 @@ def downsample(
             padding="SAME")
 
 # ---------------------------------------------------------------------
+
+
+@tf.function
+def subsample(
+        input_batch: tf.Tensor) -> tf.Tensor:
+    return \
+        tf.nn.max_pool2d(
+            input=input_batch,
+            ksize=(1, 1),
+            strides=(2, 2),
+            padding="SAME")
+
+# ---------------------------------------------------------------------
