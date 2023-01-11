@@ -433,7 +433,6 @@ def train_loop(
                                   step=global_step)
 
                 # ---
-                hydra.reset_metrics()
                 global_step.assign_add(1)
 
                 # --- check if total steps reached

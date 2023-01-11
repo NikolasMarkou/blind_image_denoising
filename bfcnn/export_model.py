@@ -1,6 +1,5 @@
 import os
 import json
-from abc import ABC
 import tensorflow as tf
 from pathlib import Path
 from typing import List, Union, Tuple, Dict
@@ -15,11 +14,6 @@ from .utilities import load_config
 from .model_hydra import model_builder
 from .module_denoiser import DenoiserModule
 from .module_superres import SuperresModule
-
-# ---------------------------------------------------------------------
-
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-
 
 # ---------------------------------------------------------------------
 
@@ -62,6 +56,7 @@ def export_model(
     logger.info("building model")
     pipeline_config = load_config(pipeline_config)
     models = model_builder(pipeline_config[MODEL_STR])
+
     # get each model
     hydra = models.hydra
     superres = models.superres
@@ -132,11 +127,11 @@ def export_model(
     # save keras model
     ##################################################################################
 
-    output_keras_model = \
+    logger.info("saving hydra model")
+    hydra.save(
         os.path.join(
             output_directory,
-            "model.h5")
-    hydra.save(output_keras_model)
+            MODEL_HYDRA_DEFAULT_NAME_STR))
 
     ##################################################################################
     # combine denoiser, normalize and denormalize
