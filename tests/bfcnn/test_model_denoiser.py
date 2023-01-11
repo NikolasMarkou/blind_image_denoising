@@ -11,7 +11,7 @@ sys.path.append(os.getcwd() + "/../")
 # ---------------------------------------------------------------------
 
 import bfcnn
-
+from bfcnn.module_denoiser import DenoiserModule
 # ---------------------------------------------------------------------
 
 
@@ -27,8 +27,8 @@ def test_model_builder(config):
     assert isinstance(models.backbone, keras.Model)
     # denoiser
     assert isinstance(models.denoiser, keras.Model)
-    # inpaint
-    assert isinstance(models.inpaint, keras.Model)
+    # superres
+    assert isinstance(models.superres, keras.Model)
     # normalize
     assert isinstance(models.normalizer, keras.Model)
     # denormalize
@@ -42,22 +42,21 @@ def test_model_builder(config):
             minval=-0.5,
             maxval=+0.5,
             dtype=tf.float32)
-        m = tf.zeros_like(x)[:,:,:,0]
         # denoiser_output,
-        # inpaint_output,
         # superres_output
-        y = models.hydra([x, m])
+        d, ds, de, s, ss, se = models.hydra(x)
 
-        assert y[0].shape == x.shape
-        assert y[1].shape == x.shape
-        assert y[2].shape[0] == x.shape[0]
-        assert y[2].shape[1] == x.shape[1] * 2
-        assert y[2].shape[2] == x.shape[2] * 2
-        assert y[2].shape[3] == x.shape[3]
+        assert d.shape == x.shape
+        assert ds.shape == x.shape
+        assert de.shape == x.shape
+        assert s.shape[0] == x.shape[0]
+        assert s.shape[1] == x.shape[1] * 2
+        assert s.shape[2] == x.shape[2] * 2
+        assert s.shape[3] == x.shape[3]
 
     # export
     denoiser_module = \
-        bfcnn.module_builder_denoiser(
+        DenoiserModule(
             model_backbone=models.backbone,
             model_denoiser=models.denoiser,
             model_normalizer=models.normalizer,

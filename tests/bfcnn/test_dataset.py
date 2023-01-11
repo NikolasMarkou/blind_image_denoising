@@ -23,7 +23,6 @@ import bfcnn
         "value_range": [0, 255],
         "clip_value": True,
         "random_blur": True,
-        "subsample_size": 3,
         "round_values": True,
         "random_invert": True,
         "random_rotate": 0.314,
@@ -34,7 +33,6 @@ import bfcnn
         "multiplicative_noise": [0.1, 0.2],
         "additional_noise": [1, 5, 10, 20, 40],
         "inputs": [{
-            "dataset_shape": [256, 768],
             "directory": str(KITTI_DIR)
         }]
     }, {
@@ -42,7 +40,6 @@ import bfcnn
         "value_range": [0, 255],
         "clip_value": True,
         "random_blur": True,
-        "subsample_size": 3,
         "round_values": True,
         "random_invert": True,
         "random_rotate": 0.314,
@@ -53,7 +50,6 @@ import bfcnn
         "multiplicative_noise": [0.1, 0.2],
         "additional_noise": [1, 5, 10, 20, 40],
         "inputs": [{
-            "dataset_shape": [256, 768],
             "directory": str(KITTI_DIR)
         }]
     }, {
@@ -61,7 +57,6 @@ import bfcnn
         "value_range": [0, 255],
         "clip_value": True,
         "random_blur": True,
-        "subsample_size": 3,
         "round_values": True,
         "random_invert": True,
         "random_rotate": 0.314,
@@ -72,7 +67,6 @@ import bfcnn
         "multiplicative_noise": [0.1, 0.2],
         "additional_noise": [1, 5, 10, 20, 40],
         "inputs": [{
-            "dataset_shape": [256, 768],
             "directory": str(MEGADEPTH_DIR)
         }]
     }, {
@@ -80,7 +74,6 @@ import bfcnn
         "value_range": [0, 255],
         "clip_value": True,
         "random_blur": True,
-        "subsample_size": 3,
         "round_values": True,
         "random_invert": True,
         "random_rotate": 0.314,
@@ -91,7 +84,6 @@ import bfcnn
         "multiplicative_noise": [0.1, 0.2],
         "additional_noise": [1, 5, 10, 20, 40],
         "inputs": [{
-            "dataset_shape": [256, 768],
             "directory": str(MEGADEPTH_DIR)
         }]
     }, {
@@ -99,7 +91,6 @@ import bfcnn
         "value_range": [0, 255],
         "clip_value": True,
         "random_blur": True,
-        "subsample_size": 3,
         "round_values": True,
         "random_invert": True,
         "random_rotate": 0.314,
@@ -110,31 +101,37 @@ import bfcnn
         "multiplicative_noise": [0.1, 0.2],
         "additional_noise": [1, 5, 10, 20, 40],
         "inputs": [{
-            "dataset_shape": [256, 768],
             "directory": str(MEGADEPTH_DIR)
         }, {
-            "dataset_shape": [256, 768],
             "directory": str(KITTI_DIR)
         }]
     }])
 def test_dataset_builder_build(config):
-    dataset_results = bfcnn.dataset.dataset_builder(config=config)
-    assert bfcnn.dataset.DATASET_TRAINING_FN_STR in dataset_results
-    assert bfcnn.dataset.NOISE_AUGMENTATION_FN_STR in dataset_results
+    dataset_training = bfcnn.dataset.dataset_builder(config=config)
 
-    for input_batch in dataset_results[bfcnn.dataset.DATASET_TRAINING_FN_STR]:
+    for (input_batch, noisy_batch, downsampled_batch) in dataset_training:
         assert input_batch.shape[0] <= config["batch_size"]
         assert input_batch.shape[1] == config["input_shape"][0]
         assert input_batch.shape[2] == config["input_shape"][1]
+
+        assert noisy_batch.shape[0] <= config["batch_size"]
+        assert noisy_batch.shape[1] == config["input_shape"][0] / 2
+        assert noisy_batch.shape[2] == config["input_shape"][1] / 2
+
+        assert downsampled_batch.shape[0] <= config["batch_size"]
+        assert downsampled_batch.shape[1] == config["input_shape"][0] / 2
+        assert downsampled_batch.shape[2] == config["input_shape"][1] / 2
 
         if config["color_mode"] == "grayscale":
             assert input_batch.shape[3] == 1
         if config["color_mode"] == "rgb":
             assert input_batch.shape[3] == 3
+        if config["color_mode"] == "rgba":
+            assert input_batch.shape[3] == 4
 
         assert np.min(input_batch) >= config["value_range"][0]
         assert np.max(input_batch) <= config["value_range"][1]
-        assert input_batch.dtype == np.uint8
+        assert input_batch.dtype == np.float32
 
 # ---------------------------------------------------------------------
 

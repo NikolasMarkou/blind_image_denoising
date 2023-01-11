@@ -15,7 +15,7 @@ sys.path.append(os.getcwd() + "/../")
 # ---------------------------------------------------------------------
 
 import bfcnn
-
+from bfcnn.constants import *
 
 # ---------------------------------------------------------------------
 
@@ -24,24 +24,15 @@ import bfcnn
     "model_name", bfcnn.models.keys())
 def test_pretrained_models(model_name):
     model_structure = bfcnn.models[model_name]
-    model = model_structure["load_tf"]()
+    model = model_structure[DENOISER_STR]()
     for img_path in KITTI_IMAGES:
         # load image
-        img = \
-            tf.keras.preprocessing.image.load_img(
+        img_original = \
+            bfcnn.load_image(
                 path=img_path,
-                grayscale=False,
-                color_mode="rgb",
-                target_size=(256, 756),
-                interpolation="bilinear")
-        img_original = \
-            tf.keras.preprocessing.image.img_to_array(
-                img=img)
-        img_original = \
-            tf.expand_dims(img_original, axis=0)
-        img_original = \
-            tf.cast(
-                img_original,
+                num_channels=3,
+                expand_dims=True,
+                normalize=False,
                 dtype=tf.float32)
         # corrupt it
         img_noisy = \
