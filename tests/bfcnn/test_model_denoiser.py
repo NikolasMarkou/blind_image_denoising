@@ -12,6 +12,7 @@ sys.path.append(os.getcwd() + "/../")
 
 import bfcnn
 from bfcnn.module_denoiser import DenoiserModule
+
 # ---------------------------------------------------------------------
 
 
