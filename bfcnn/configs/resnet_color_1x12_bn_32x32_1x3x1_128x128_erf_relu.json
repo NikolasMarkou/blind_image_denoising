@@ -43,6 +43,7 @@
 				}
 			},
 			"uncertainty_buckets": 10,
+			"uncertainty_bias": 0.1,
 			"uncertainty_threshold": 0.001,
 			"uncertainty_activation": "linear",
 			"uncertainty_kernel_initializer": "glorot_normal",

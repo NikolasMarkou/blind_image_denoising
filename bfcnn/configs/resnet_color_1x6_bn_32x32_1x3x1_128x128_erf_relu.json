@@ -42,6 +42,7 @@
 					"l1_coefficient": 0.025
 				}
 			},
+			"uncertainty_bias": 0.001,
 			"uncertainty_buckets": 10,
 			"uncertainty_threshold": 0.001,
 			"uncertainty_activation": "linear",

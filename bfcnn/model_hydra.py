@@ -423,6 +423,7 @@ def model_denoiser_builder(
     lin_start = config.get("lin_start", -0.5)
     lin_stop = config.get("lin_stop", +0.5)
 
+    uncertainty_bias = config.get("uncertainty_bias", 0.0)
     uncertainty_buckets = config.get("uncertainty_buckets", 16)
     uncertainty_threshold = config.get("uncertainty_threshold", 0.0)
     uncertainty_activation = config.get("uncertainty_activation", "linear")
@@ -457,6 +458,7 @@ def model_denoiser_builder(
         expected_sigma_entropy_head(
             input_layer=x,
             conv_parameters=uncertainty_conv_params,
+            presoftmax_bias=uncertainty_bias,
             output_channels=output_channels,
             probability_threshold=uncertainty_threshold,
             linspace_start_stop=(lin_start, lin_stop))
@@ -482,102 +484,6 @@ def model_denoiser_builder(
                 x_entropy
             ],
             name=f"denoiser_head")
-
-    return model_head
-
-
-# ---------------------------------------------------------------------
-
-
-def model_superres_builder(
-        config: Dict,
-        **kwargs) -> tf.keras.Model:
-    """
-    builds the superres model on top of the backbone layer
-
-    :param config: dictionary with the superres configuration
-
-    :return: superres head model
-    """
-    # --- argument checking
-    logger.info(f"building superres model with [{config}]")
-    if kwargs:
-        logger.info(f"unused parameters [{kwargs}]")
-
-    # --- set configuration
-    use_bias = config.get("use_bias", False)
-    lin_start = config.get("lin_start", -0.5)
-    lin_stop = config.get("lin_stop", +0.5)
-    output_channels = config.get("output_channels", 3)
-    input_shape = input_shape_fixer(config.get("input_shape"))
-
-    uncertainty_buckets = config.get("uncertainty_buckets", 16)
-    uncertainty_threshold = config.get("uncertainty_threshold", 0.0)
-    uncertainty_activation = config.get("uncertainty_activation", "linear")
-    uncertainty_kernel_regularizer = config.get("uncertainty_kernel_regularizer", "l2")
-    uncertainty_kernel_initializer = config.get("uncertainty_kernel_initializer", "glorot_normal")
-    uncertainty_kernel_regularizer = regularizer_builder(uncertainty_kernel_regularizer)
-
-    # --- set network parameters
-    uncertainty_conv_params = \
-        dict(
-            kernel_size=1,
-            strides=(1, 1),
-            padding="same",
-            use_bias=use_bias,
-            filters=uncertainty_buckets,
-            activation=uncertainty_activation,
-            kernel_regularizer=uncertainty_kernel_regularizer,
-            kernel_initializer=uncertainty_kernel_initializer)
-
-    # --- define superres network here
-    model_input_layer = \
-        tf.keras.Input(
-            shape=input_shape,
-            name="input_tensor")
-    x = model_input_layer
-
-    # NOTE
-    # nearest -> conv2d (no artifacts)
-    # conv2dTranspose 3x3 (artifacts)
-    # conv2dTranspose 5x5 (artifacts)
-    # conv2d -> conv2dTranspose (artifacts)
-    x = \
-        tf.keras.layers.UpSampling2D(
-            size=(2, 2), interpolation="nearest")(x)
-
-    backbone, _, _ = model_backbone_builder(config)
-    x = backbone(x)
-
-    x_expected, x_sigma, x_entropy = \
-        expected_sigma_entropy_head(
-            input_layer=x,
-            conv_parameters=uncertainty_conv_params,
-            output_channels=output_channels,
-            probability_threshold=uncertainty_threshold,
-            linspace_start_stop=(lin_start, lin_stop))
-
-    x_expected = \
-        tf.keras.layers.Layer(
-            name="output_tensor_expected")(x_expected)
-
-    x_sigma = \
-        tf.keras.layers.Layer(
-            name="output_tensor_sigma")(x_sigma)
-
-    x_entropy = \
-        tf.keras.layers.Layer(
-            name="output_tensor_entropy")(x_entropy)
-
-    model_head = \
-        tf.keras.Model(
-            inputs=model_input_layer,
-            outputs=[
-                x_expected,
-                x_sigma,
-                x_entropy
-            ],
-            name=f"superres_head")
 
     return model_head
 

@@ -408,6 +408,7 @@ def expected_sigma_entropy_head(
         input_layer,
         conv_parameters: Union[Dict, List[Dict]],
         output_channels: int,
+        presoftmax_bias: float = 0.0,
         probability_threshold: float = 0.0,
         linspace_start_stop: Tuple[float, float] = (-0.5, +0.5)) \
             -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
@@ -417,6 +418,9 @@ def expected_sigma_entropy_head(
     :param input_layer:
     :param conv_parameters:
     :param output_channels:
+    :param presoftmax_bias:
+        small value to add before converting to probabilities
+        (helps values from becoming very very small)
     :param probability_threshold:
     :param linspace_start_stop:
 
@@ -457,9 +461,13 @@ def expected_sigma_entropy_head(
                 conv_params=params,
                 channelwise_scaling=False,
                 multiplier_scaling=False)
-        x_i = x_i_k
+
+        # add small value for arithmetic stability
+        if presoftmax_bias > 0.0:
+            x_i_k = tf.add(x_i_k, presoftmax_bias)
+
         # convert to probability
-        x_i_prob = tf.nn.softmax(x_i, axis=3)
+        x_i_prob = tf.nn.softmax(x_i_k, axis=3)
 
         # --- clip low probabilities and re-normalize
         if 0.0 < probability_threshold < 1.0:
