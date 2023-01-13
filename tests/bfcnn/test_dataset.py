@@ -115,8 +115,8 @@ def test_dataset_builder_build(config):
         assert input_batch.shape[2] == config["input_shape"][1]
 
         assert noisy_batch.shape[0] <= config["batch_size"]
-        assert noisy_batch.shape[1] == config["input_shape"][0] / 2
-        assert noisy_batch.shape[2] == config["input_shape"][1] / 2
+        assert noisy_batch.shape[1] == config["input_shape"][0]
+        assert noisy_batch.shape[2] == config["input_shape"][1]
 
         assert downsampled_batch.shape[0] <= config["batch_size"]
         assert downsampled_batch.shape[1] == config["input_shape"][0] / 2

@@ -28,8 +28,6 @@ def test_model_builder(config):
     assert isinstance(models.backbone, keras.Model)
     # denoiser
     assert isinstance(models.denoiser, keras.Model)
-    # superres
-    assert isinstance(models.superres, keras.Model)
     # normalize
     assert isinstance(models.normalizer, keras.Model)
     # denormalize
@@ -45,15 +43,20 @@ def test_model_builder(config):
             dtype=tf.float32)
         # denoiser_output,
         # superres_output
-        d, ds, de, s, ss, se = models.hydra(x)
+        # subsample_output
+        d, ds, de, \
+        sr, srs, sre, \
+        ss, sss, sse = models.hydra(x)
 
         assert d.shape == x.shape
         assert ds.shape == x.shape
         assert de.shape == x.shape
-        assert s.shape[0] == x.shape[0]
-        assert s.shape[1] == x.shape[1] * 2
-        assert s.shape[2] == x.shape[2] * 2
-        assert s.shape[3] == x.shape[3]
+        assert sr.shape[0] == x.shape[0]
+        assert sr.shape[1] == x.shape[1] * 2
+        assert sr.shape[2] == x.shape[2] * 2
+        assert ss.shape[0] == x.shape[0]
+        assert ss.shape[1] == x.shape[1] / 2
+        assert ss.shape[2] == x.shape[2] / 2
 
     # export
     denoiser_module = \

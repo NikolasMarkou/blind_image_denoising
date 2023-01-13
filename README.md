@@ -6,8 +6,8 @@ ___
 [Getting Started](#Pretrained) •
 [License](https://github.com/NikolasMarkou/blind_image_denoising/blob/main/LICENSE)
 
-[![python](https://img.shields.io/badge/python-3.6%2B-green)]()
-[![tensorflow](https://img.shields.io/badge/tensorflow-2.6%2B-green)]()
+[![python](https://img.shields.io/badge/python-3.8%2B-green)]()
+[![tensorflow](https://img.shields.io/badge/tensorflow-2.11%2B-green)]()
 
 </div>
 

@@ -15,7 +15,7 @@ class SuperresModule(tf.Module):
     def __init__(
             self,
             model_backbone: tf.keras.Model,
-            model_superres: tf.keras.Model,
+            model_denoiser: tf.keras.Model,
             model_normalizer: tf.keras.Model,
             model_denormalizer: tf.keras.Model,
             cast_to_uint8: bool = True):
@@ -23,7 +23,7 @@ class SuperresModule(tf.Module):
         Initializes a module for super resolution.
 
         :param model_backbone: backbone model to use for inference
-        :param model_superres: super resolution model to use for inference.
+        :param model_denoiser: denoiser model to use for inference.
         :param model_normalizer: model that normalizes the input
         :param model_denormalizer: model that denormalizes the output
         :param cast_to_uint8: cast output to uint8
@@ -34,8 +34,8 @@ class SuperresModule(tf.Module):
         # --- argument checking
         if model_backbone is None:
             raise ValueError("model_backbone should not be None")
-        if model_superres is None:
-            raise ValueError("model_superres should not be None")
+        if model_denoiser is None:
+            raise ValueError("model_denoiser should not be None")
         if model_normalizer is None:
             raise ValueError("model_normalizer should not be None")
         if model_denormalizer is None:
@@ -44,7 +44,7 @@ class SuperresModule(tf.Module):
         # --- setup instance variables
         self._cast_to_uint8 = cast_to_uint8
         self._model_backbone = model_backbone
-        self._model_superres = model_superres
+        self._model_denoiser = model_denoiser
         self._model_normalizer = model_normalizer
         self._model_denormalizer = model_denormalizer
 
@@ -65,8 +65,13 @@ class SuperresModule(tf.Module):
         # --- run backbone
         x = self._model_backbone(x)
 
-        # --- run superres model
-        x, _, _ = self._model_superres(x)
+        x = \
+            tf.keras.layers.UpSampling2D(
+                size=(2, 2),
+                interpolation="nearest")(x)
+
+        # --- run denoiser model
+        x = self._model_denoiser(x)[0]
 
         # --- denormalize
         x = self._model_denormalizer(x)

@@ -65,7 +65,7 @@ class DenoiserModule(tf.Module):
         x = self._model_backbone(x)
 
         # --- run denoise model
-        x, _, _ = self._model_denoiser(x)
+        x = self._model_denoiser(x)[0]
 
         # --- denormalize
         x = self._model_denormalizer(x)

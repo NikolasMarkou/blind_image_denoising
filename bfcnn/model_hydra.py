@@ -458,7 +458,7 @@ def model_denoiser_builder(
                 kernel_regularizer="l2",
                 kernel_initializer="glorot_normal")
 
-    # --- define superres network here
+    # --- define network here
     model_input_layer = \
         tf.keras.Input(
             shape=input_shape,

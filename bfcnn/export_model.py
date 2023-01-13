@@ -59,7 +59,6 @@ def export_model(
 
     # get each model
     hydra = models.hydra
-    superres = models.superres
     backbone = models.backbone
     denoiser = models.denoiser
     normalizer = models.normalizer
@@ -197,7 +196,7 @@ def export_model(
         SuperresModule(
             cast_to_uint8=True,
             model_backbone=backbone,
-            model_superres=superres,
+            model_denoiser=denoiser,
             model_normalizer=normalizer,
             model_denormalizer=denormalizer)
 
