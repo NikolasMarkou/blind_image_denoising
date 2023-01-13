@@ -406,7 +406,7 @@ def dense_wrapper(
 
 def expected_sigma_entropy_head(
         input_layer,
-        conv_parameters: Union[Dict, List[Dict]],
+        conv_params: Union[Dict, List[Dict]],
         output_channels: int,
         presoftmax_bias: float = 0.0,
         probability_threshold: float = 0.0,
@@ -416,7 +416,7 @@ def expected_sigma_entropy_head(
     computes expected, sigma and entropy per output channel
 
     :param input_layer:
-    :param conv_parameters:
+    :param conv_params:
     :param output_channels:
     :param presoftmax_bias:
         small value to add before converting to probabilities
@@ -429,15 +429,15 @@ def expected_sigma_entropy_head(
     # --- argument checking
     if input_layer is None:
         raise ValueError("input_layer should not be None")
-    if conv_parameters is None:
+    if conv_params is None:
         raise ValueError("conv_parameters cannot be None")
     if output_channels is None or \
             output_channels <= 0:
         raise ValueError("output_channels should be > 0")
-    if isinstance(conv_parameters, Dict):
-        conv_parameters = [conv_parameters]
+    if isinstance(conv_params, Dict):
+        conv_params = [conv_params]
 
-    uncertainty_buckets = conv_parameters[0]["filters"]
+    uncertainty_buckets = conv_params[0]["filters"]
 
     # --- build heads
     kernel = \
@@ -454,7 +454,7 @@ def expected_sigma_entropy_head(
 
     for i in range(output_channels):
         x_i_k = input_layer
-        for params in conv_parameters:
+        for params in conv_params:
             x_i_k = conv2d_wrapper(
                 input_layer=x_i_k,
                 bn_params=None,

@@ -420,28 +420,43 @@ def model_denoiser_builder(
     use_bias = config.get("use_bias", False)
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
-    lin_start = config.get("lin_start", -0.5)
-    lin_stop = config.get("lin_stop", +0.5)
 
-    uncertainty_bias = config.get("uncertainty_bias", 0.0)
-    uncertainty_buckets = config.get("uncertainty_buckets", 16)
-    uncertainty_threshold = config.get("uncertainty_threshold", 0.0)
-    uncertainty_activation = config.get("uncertainty_activation", "linear")
-    uncertainty_kernel_regularizer = config.get("uncertainty_kernel_regularizer", "l2")
-    uncertainty_kernel_initializer = config.get("uncertainty_kernel_initializer", "glorot_normal")
-    uncertainty_kernel_regularizer = regularizer_builder(uncertainty_kernel_regularizer)
+    # --- config uncertainty or point estimation
+    uncertainty_config = config.get("uncertainty", None)
+    use_uncertainty = uncertainty_config is not None
 
-    # --- set network parameters
-    uncertainty_conv_params = \
-        dict(
-            kernel_size=1,
-            strides=(1, 1),
-            padding="same",
-            use_bias=use_bias,
-            filters=uncertainty_buckets,
-            activation=uncertainty_activation,
-            kernel_regularizer=uncertainty_kernel_regularizer,
-            kernel_initializer=uncertainty_kernel_initializer)
+    if use_uncertainty:
+        lin_start = uncertainty_config.get("lin_start", -0.5)
+        lin_stop = uncertainty_config.get("lin_stop", +0.5)
+        uncertainty_bias = uncertainty_config.get("bias", 0.0)
+        uncertainty_buckets = uncertainty_config.get("buckets", 16)
+        uncertainty_threshold = uncertainty_config.get("threshold", 0.0)
+        uncertainty_activation = uncertainty_config.get("activation", "linear")
+        uncertainty_kernel_regularizer = uncertainty_config.get("kernel_regularizer", "l2")
+        uncertainty_kernel_initializer = uncertainty_config.get("kernel_initializer", "glorot_normal")
+        uncertainty_kernel_regularizer = regularizer_builder(uncertainty_kernel_regularizer)
+
+        conv_params = \
+            dict(
+                kernel_size=1,
+                strides=(1, 1),
+                padding="same",
+                use_bias=use_bias,
+                filters=uncertainty_buckets,
+                activation=uncertainty_activation,
+                kernel_regularizer=uncertainty_kernel_regularizer,
+                kernel_initializer=uncertainty_kernel_initializer)
+    else:
+        conv_params = \
+            dict(
+                kernel_size=1,
+                strides=(1, 1),
+                padding="same",
+                use_bias=use_bias,
+                filters=output_channels,
+                activation="linear",
+                kernel_regularizer="l2",
+                kernel_initializer="glorot_normal")
 
     # --- define superres network here
     model_input_layer = \
@@ -454,36 +469,52 @@ def model_denoiser_builder(
     backbone, _, _ = model_backbone_builder(config)
     x = backbone(x)
 
-    x_expected, x_sigma, x_entropy = \
-        expected_sigma_entropy_head(
-            input_layer=x,
-            conv_parameters=uncertainty_conv_params,
-            presoftmax_bias=uncertainty_bias,
-            output_channels=output_channels,
-            probability_threshold=uncertainty_threshold,
-            linspace_start_stop=(lin_start, lin_stop))
+    if use_uncertainty:
+        # regression with uncertainty estimates
+        x_expected, x_sigma, x_entropy = \
+            expected_sigma_entropy_head(
+                input_layer=x,
+                conv_params=conv_params,
+                presoftmax_bias=uncertainty_bias,
+                output_channels=output_channels,
+                probability_threshold=uncertainty_threshold,
+                linspace_start_stop=(lin_start, lin_stop))
 
-    x_expected = \
-        tf.keras.layers.Layer(
-            name="output_tensor_expected")(x_expected)
+        x_expected = \
+            tf.keras.layers.Layer(
+                name="output_tensor_expected")(x_expected)
 
-    x_sigma = \
-        tf.keras.layers.Layer(
-            name="output_tensor_sigma")(x_sigma)
+        x_sigma = \
+            tf.keras.layers.Layer(
+                name="output_tensor_sigma")(x_sigma)
 
-    x_entropy = \
-        tf.keras.layers.Layer(
-            name="output_tensor_entropy")(x_entropy)
+        x_entropy = \
+            tf.keras.layers.Layer(
+                name="output_tensor_entropy")(x_entropy)
 
-    model_head = \
-        tf.keras.Model(
-            inputs=model_input_layer,
-            outputs=[
-                x_expected,
-                x_sigma,
-                x_entropy
-            ],
-            name=f"denoiser_head")
+        model_head = \
+            tf.keras.Model(
+                inputs=model_input_layer,
+                outputs=[
+                    x_expected,
+                    x_sigma,
+                    x_entropy
+                ],
+                name=f"denoiser_head")
+    else:
+        # regression / point sample estimation
+        x_expected = \
+            conv2d_wrapper(x, conv_params=conv_params)
+        x_expected = \
+            tf.keras.layers.Layer(
+                name="output_tensor_expected")(x_expected)
+        model_head = \
+            tf.keras.Model(
+                inputs=model_input_layer,
+                outputs=[
+                    x_expected,
+                ],
+                name=f"denoiser_head")
 
     return model_head
 
