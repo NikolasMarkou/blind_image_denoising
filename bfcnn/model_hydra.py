@@ -34,7 +34,8 @@ BuilderResults = namedtuple(
         "normalizer",
         "denormalizer",
         "denoiser",
-        "hydra"
+        "hydra",
+        "options"
     })
 
 
@@ -48,7 +49,8 @@ def model_builder(
         model_backbone_builder(config=config[BACKBONE_STR])
 
     # --- build denoiser, superres
-    model_denoiser = model_denoiser_builder(config=config[DENOISER_STR])
+    model_denoiser, options = \
+        model_denoiser_builder(config=config[DENOISER_STR])
 
     input_shape = tf.keras.backend.int_shape(model_backbone_low.inputs[0])[1:]
     logger.info("input_shape: [{0}]".format(input_shape))
@@ -71,53 +73,92 @@ def model_builder(
             strides=(2, 2),
             padding="same")(backbone)
 
-    # low level heads
-    de_exp, de_sigma, de_entropy = model_denoiser(backbone)
-    sr_exp, sr_sigma, sr_entropy = model_denoiser(backbone_upsample)
-    ss_exp, ss_sigma, ss_entropy = model_denoiser(backbone_subsample)
+    if options["has_uncertainty"]:
+        options = dict(num_outputs=9, has_uncertainty=True)
+        # low level heads
+        de_exp, de_sigma, de_entropy = model_denoiser(backbone)
+        sr_exp, sr_sigma, sr_entropy = model_denoiser(backbone_upsample)
+        ss_exp, ss_sigma, ss_entropy = model_denoiser(backbone_subsample)
 
-    # denormalize
-    de_exp = model_denormalizer(de_exp, training=False)
-    sr_exp = model_denormalizer(sr_exp, training=False)
-    ss_exp = model_denormalizer(ss_exp, training=False)
+        # denormalize
+        de_exp = model_denormalizer(de_exp, training=False)
+        sr_exp = model_denormalizer(sr_exp, training=False)
+        ss_exp = model_denormalizer(ss_exp, training=False)
 
-    # wrap layers to set names
-    # denoiser
-    de_exp_output = tf.keras.layers.Layer(name=DENOISER_STR)(de_exp)
-    de_sigma_output = tf.keras.layers.Layer(name=DENOISER_SIGMA_STR)(de_sigma)
-    de_entropy_output = tf.keras.layers.Layer(name=DENOISER_ENTROPY_STR)(de_entropy)
+        # wrap layers to set names
+        # denoiser
+        de_exp_output = tf.keras.layers.Layer(name=DENOISER_STR)(de_exp)
+        de_sigma_output = tf.keras.layers.Layer(name=DENOISER_SIGMA_STR)(de_sigma)
+        de_entropy_output = tf.keras.layers.Layer(name=DENOISER_ENTROPY_STR)(de_entropy)
 
-    # superres
-    sr_exp_output = tf.keras.layers.Layer(name=SUPERRES_STR)(sr_exp)
-    sr_sigma_output = tf.keras.layers.Layer(name=SUPERRES_SIGMA_STR)(sr_sigma)
-    sr_entropy_output = tf.keras.layers.Layer(name=SUPERRES_ENTROPY_STR)(sr_entropy)
+        # superres
+        sr_exp_output = tf.keras.layers.Layer(name=SUPERRES_STR)(sr_exp)
+        sr_sigma_output = tf.keras.layers.Layer(name=SUPERRES_SIGMA_STR)(sr_sigma)
+        sr_entropy_output = tf.keras.layers.Layer(name=SUPERRES_ENTROPY_STR)(sr_entropy)
 
-    # subsample
-    ss_exp_output = tf.keras.layers.Layer(name=SUBSAMPLE_STR)(ss_exp)
-    ss_sigma_output = tf.keras.layers.Layer(name=SUBSAMPLE_SIGMA_STR)(ss_sigma)
-    ss_entropy_output = tf.keras.layers.Layer(name=SUBSAMPLE_ENTROPY_STR)(ss_entropy)
+        # subsample
+        ss_exp_output = tf.keras.layers.Layer(name=SUBSAMPLE_STR)(ss_exp)
+        ss_sigma_output = tf.keras.layers.Layer(name=SUBSAMPLE_SIGMA_STR)(ss_sigma)
+        ss_entropy_output = tf.keras.layers.Layer(name=SUBSAMPLE_ENTROPY_STR)(ss_entropy)
 
-    # create model
-    model_hydra = \
-        tf.keras.Model(
-            inputs=[
-                input_layer
-            ],
-            outputs=[
-                # denoiser
-                de_exp_output,
-                de_sigma_output,
-                de_entropy_output,
-                # superres
-                sr_exp_output,
-                sr_sigma_output,
-                sr_entropy_output,
-                # subsample
-                ss_exp_output,
-                ss_sigma_output,
-                ss_entropy_output
-            ],
-            name=f"hydra")
+        # create model
+        model_hydra = \
+            tf.keras.Model(
+                inputs=[
+                    input_layer
+                ],
+                outputs=[
+                    # denoiser
+                    de_exp_output,
+                    de_sigma_output,
+                    de_entropy_output,
+                    # superres
+                    sr_exp_output,
+                    sr_sigma_output,
+                    sr_entropy_output,
+                    # subsample
+                    ss_exp_output,
+                    ss_sigma_output,
+                    ss_entropy_output
+                ],
+                name=f"hydra")
+    else:
+        options = dict(num_outputs=3, has_uncertainty=False)
+        # low level heads
+        de_exp = model_denoiser(backbone)
+        sr_exp = model_denoiser(backbone_upsample)
+        ss_exp = model_denoiser(backbone_subsample)
+
+        # denormalize
+        de_exp = model_denormalizer(de_exp, training=False)
+        sr_exp = model_denormalizer(sr_exp, training=False)
+        ss_exp = model_denormalizer(ss_exp, training=False)
+
+        # wrap layers to set names
+        # denoiser
+        de_exp_output = tf.keras.layers.Layer(name=DENOISER_STR)(de_exp)
+
+        # superres
+        sr_exp_output = tf.keras.layers.Layer(name=SUPERRES_STR)(sr_exp)
+
+        # subsample
+        ss_exp_output = tf.keras.layers.Layer(name=SUBSAMPLE_STR)(ss_exp)
+
+        # create model
+        model_hydra = \
+            tf.keras.Model(
+                inputs=[
+                    input_layer
+                ],
+                outputs=[
+                    # denoiser
+                    de_exp_output,
+                    # superres
+                    sr_exp_output,
+                    # subsample
+                    ss_exp_output,
+                ],
+                name=f"hydra")
 
     # --- pack results
     return \
@@ -126,7 +167,8 @@ def model_builder(
             normalizer=model_normalizer,
             denormalizer=model_denormalizer,
             denoiser=model_denoiser,
-            hydra=model_hydra
+            hydra=model_hydra,
+            options=options
         )
 
 
@@ -396,7 +438,7 @@ def model_backbone_builder(
 
 def model_denoiser_builder(
         config: Dict,
-        **kwargs):
+        **kwargs) -> Tuple[tf.keras.Model, Dict]:
     """
     builds the denoiser model on top of the backbone layer
 
@@ -409,7 +451,7 @@ def model_denoiser_builder(
 
     :param config: dictionary with the denoiser configuration
 
-    :return: denoiser head model
+    :return: denoiser head model, options
     """
     # --- argument checking
     logger.info(f"building denoiser model with [{config}]")
@@ -470,6 +512,10 @@ def model_denoiser_builder(
     x = backbone(x)
 
     if use_uncertainty:
+        options = \
+            dict(num_outputs=3,
+                 has_uncertainty = True)
+
         # regression with uncertainty estimates
         x_expected, x_sigma, x_entropy = \
             expected_sigma_entropy_head(
@@ -503,6 +549,9 @@ def model_denoiser_builder(
                 name=f"denoiser_head")
     else:
         # regression / point sample estimation
+        options = \
+            dict(num_outputs=1,
+                 has_uncertainty=False)
         x_expected = \
             conv2d_wrapper(x, conv_params=conv_params)
         x_expected = \
@@ -516,6 +565,8 @@ def model_denoiser_builder(
                 ],
                 name=f"denoiser_head")
 
-    return model_head
+    return \
+        model_head, \
+        options
 
 # ---------------------------------------------------------------------
