@@ -96,7 +96,6 @@ def export_model(
             model_hydra=hydra,
             model_backbone=backbone,
             model_denoiser=denoiser,
-            model_superres=superres,
             model_normalizer=normalizer,
             model_denormalizer=denormalizer)
     manager = \
