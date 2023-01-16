@@ -370,6 +370,9 @@ def dataset_builder(
     # SHUFFLING ON FIXED SIZE BATCHES USES FIXED AMOUNT OF MEMORY
     # SHUFFLING ON VARIABLE SIZE STRING USES A LOT OF MEMORY
     # AND POSSIBLE LEAKING
+    #
+    # shuffling, mapping and
+    # then re-batching mixes the different noise types in the same batch
     # !!!
     dataset_training = \
         dataset_training \
