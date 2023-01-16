@@ -278,7 +278,7 @@ def improvement(
     """
     original_noisy = mae(original, noisy)
     original_denoised = mae(original, denoised)
-    return original_denoised - original_noisy
+    return original_noisy - original_denoised
 
 
 # ---------------------------------------------------------------------
