@@ -16,7 +16,7 @@ from .constants import \
     DENOISER_STR, SUPERRES_STR, INPAINT_STR
 from .train_loop import train_loop
 from .export_model import export_model
-from .model_hydra import model_builder
+from .model import model_builder
 from .file_operations import load_image
 from .utilities import logger, load_config
 from .pyramid import \

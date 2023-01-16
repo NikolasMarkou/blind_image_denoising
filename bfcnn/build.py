@@ -13,7 +13,7 @@ import argparse
 from .constants import *
 from .custom_logger import logger
 from .utilities import load_config
-from .model_hydra import model_builder
+from .model import model_builder
 
 # ---------------------------------------------------------------------
 

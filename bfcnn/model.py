@@ -13,9 +13,7 @@ from .utilities import \
     clip_normalized_tensor, \
     conv2d_wrapper, \
     input_shape_fixer, \
-    build_normalize_model, \
-    build_denormalize_model, \
-    expected_sigma_entropy_head
+    expected_sigma_entropy_head, layer_normalize, layer_denormalize
 from .backbone_unet import builder as builder_unet
 from .backbone_lunet import builder as builder_lunet
 from .backbone_resnet import builder as builder_resnet
@@ -45,14 +43,14 @@ def model_builder(
     # TODO
 
     # --- build backbone
-    model_backbone_low, model_normalizer, model_denormalizer = \
+    model_backbone, model_normalizer, model_denormalizer = \
         model_backbone_builder(config=config[BACKBONE_STR])
 
     # --- build denoiser, superres
     model_denoiser, options = \
         model_denoiser_builder(config=config[DENOISER_STR])
 
-    input_shape = tf.keras.backend.int_shape(model_backbone_low.inputs[0])[1:]
+    input_shape = tf.keras.backend.int_shape(model_backbone.inputs[0])[1:]
     logger.info("input_shape: [{0}]".format(input_shape))
 
     # --- build hydra combined model
@@ -60,7 +58,7 @@ def model_builder(
     input_normalized_layer = model_normalizer(input_layer, training=False)
 
     # common backbone low level
-    backbone = model_backbone_low(input_normalized_layer)
+    backbone = model_backbone(input_normalized_layer)
 
     backbone_upsample = \
         tf.keras.layers.UpSampling2D(
@@ -163,7 +161,7 @@ def model_builder(
     # --- pack results
     return \
         BuilderResults(
-            backbone=model_backbone_low,
+            backbone=model_backbone,
             normalizer=model_normalizer,
             denormalizer=model_denormalizer,
             denoiser=model_denoiser,
@@ -570,3 +568,75 @@ def model_denoiser_builder(
         options
 
 # ---------------------------------------------------------------------
+
+
+def build_normalize_model(
+        input_dims,
+        min_value: float = 0.0,
+        max_value: float = 255.0,
+        name: str = "normalize") -> tf.keras.Model:
+    """
+    Wrap a normalize layer in a model
+
+    :param input_dims: Models input dimensions
+    :param min_value: Minimum value
+    :param max_value: Maximum value
+    :param name: name of the model
+
+    :return: normalization model
+    """
+    model_input = tf.keras.Input(shape=input_dims)
+
+    # --- normalize input
+    # from [min_value, max_value] to [-0.5, +0.5]
+    model_output = \
+        layer_normalize(
+            input_layer=model_input,
+            v_min=float(min_value),
+            v_max=float(max_value))
+
+    # --- wrap model
+    return tf.keras.Model(
+        name=name,
+        trainable=False,
+        inputs=model_input,
+        outputs=model_output)
+
+# ---------------------------------------------------------------------
+
+
+def build_denormalize_model(
+        input_dims,
+        min_value: float = 0.0,
+        max_value: float = 255.0,
+        name: str = "denormalize") -> tf.keras.Model:
+    """
+    Wrap a denormalize layer in a model
+
+    :param input_dims: Models input dimensions
+    :param min_value: Minimum value
+    :param max_value: Maximum value
+    :param name: name of the model
+
+    :return: denormalization model
+    """
+    model_input = tf.keras.Input(shape=input_dims)
+
+    # --- denormalize input
+    # from [-0.5, +0.5] to [v0, v1] range
+    model_output = \
+        layer_denormalize(
+            input_layer=model_input,
+            v_min=float(min_value),
+            v_max=float(max_value))
+
+    # --- wrap model
+    return \
+        tf.keras.Model(
+            name=name,
+            trainable=False,
+            inputs=model_input,
+            outputs=model_output)
+
+# ---------------------------------------------------------------------
+

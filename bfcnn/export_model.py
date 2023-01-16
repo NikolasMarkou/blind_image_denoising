@@ -11,7 +11,7 @@ from typing import List, Union, Tuple, Dict
 from .constants import *
 from .custom_logger import logger
 from .utilities import load_config
-from .model_hydra import model_builder
+from .model import model_builder
 from .module_denoiser import DenoiserModule
 from .module_superres import SuperresModule
 

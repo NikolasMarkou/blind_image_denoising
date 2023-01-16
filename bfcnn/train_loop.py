@@ -17,7 +17,7 @@ from .loss import loss_function_builder
 from .optimizer import optimizer_builder
 from .file_operations import load_image
 from .pruning import prune_function_builder, get_conv2d_weights
-from .model_hydra import model_builder as model_hydra_builder
+from .model import model_builder as model_hydra_builder
 
 # ---------------------------------------------------------------------
 

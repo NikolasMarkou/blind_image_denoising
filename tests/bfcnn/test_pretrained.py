@@ -26,7 +26,7 @@ from bfcnn.constants import *
     "model_name", bfcnn.models.keys())
 def test_pretrained_models(noise_std, model_name):
     model_structure = bfcnn.models[model_name]
-    model = model_structure[DENOISER_STR]()
+    module_denoiser = model_structure[DENOISER_STR]()
     for img_path in KITTI_IMAGES:
         # load image
         img_original = \
@@ -54,12 +54,12 @@ def test_pretrained_models(noise_std, model_name):
                         clip_value_max=255)),
                 dtype=tf.uint8)
         # denoise it
-        img_denoised = model(img_noisy)
+        img_denoised = module_denoiser(img_noisy)
         # convert
         img_noisy = tf.cast(img_noisy, dtype=tf.float32).numpy()
         img_denoised = tf.cast(img_denoised, dtype=tf.float32).numpy()
         img_original = tf.cast(img_original, dtype=tf.float32).numpy()
-        # mae
+        # mean absolute error
         mae_noisy_original = np.mean(np.abs(img_noisy - img_original), axis=None)
         mae_denoised_original = np.mean(np.abs(img_denoised - img_original), axis=None)
         # assertions

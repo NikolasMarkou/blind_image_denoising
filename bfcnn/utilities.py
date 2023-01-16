@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 from pathlib import Path
 import tensorflow_addons as tfa
-from typing import List, Tuple, Union, Dict, Iterable
+from typing import List, Tuple, Iterable
 
 # ---------------------------------------------------------------------
 # local imports
@@ -751,79 +751,6 @@ def layer_normalize(
             clip_value_min=v_min,
             clip_value_max=v_max)
     return (y_clip - v_min) / (v_max - v_min) - 0.5
-
-
-# ---------------------------------------------------------------------
-
-
-def build_normalize_model(
-        input_dims,
-        min_value: float = 0.0,
-        max_value: float = 255.0,
-        name: str = "normalize") -> keras.Model:
-    """
-    Wrap a normalize layer in a model
-
-    :param input_dims: Models input dimensions
-    :param min_value: Minimum value
-    :param max_value: Maximum value
-    :param name: name of the model
-
-    :return: normalization model
-    """
-    model_input = tf.keras.Input(shape=input_dims)
-
-    # --- normalize input
-    # from [min_value, max_value] to [-0.5, +0.5]
-    model_output = \
-        layer_normalize(
-            input_layer=model_input,
-            v_min=float(min_value),
-            v_max=float(max_value))
-
-    # --- wrap model
-    return tf.keras.Model(
-        name=name,
-        trainable=False,
-        inputs=model_input,
-        outputs=model_output)
-
-
-# ---------------------------------------------------------------------
-
-
-def build_denormalize_model(
-        input_dims,
-        min_value: float = 0.0,
-        max_value: float = 255.0,
-        name: str = "denormalize") -> tf.keras.Model:
-    """
-    Wrap a denormalize layer in a model
-
-    :param input_dims: Models input dimensions
-    :param min_value: Minimum value
-    :param max_value: Maximum value
-    :param name: name of the model
-
-    :return: denormalization model
-    """
-    model_input = tf.keras.Input(shape=input_dims)
-
-    # --- denormalize input
-    # from [-0.5, +0.5] to [v0, v1] range
-    model_output = \
-        layer_denormalize(
-            input_layer=model_input,
-            v_min=float(min_value),
-            v_max=float(max_value))
-
-    # --- wrap model
-    return \
-        tf.keras.Model(
-            name=name,
-            trainable=False,
-            inputs=model_input,
-            outputs=model_output)
 
 # ---------------------------------------------------------------------
 
