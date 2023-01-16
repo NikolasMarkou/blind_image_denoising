@@ -267,31 +267,18 @@ def rmse(
 
 # ---------------------------------------------------------------------
 
-
-def nae(
+def improvement(
         original: tf.Tensor,
-        prediction: tf.Tensor,
-        hinge: float = 0) -> tf.Tensor:
+        noisy: tf.Tensor,
+        denoised: tf.Tensor) -> tf.Tensor:
     """
-    Normalized Absolute Error
-    (sum over width, height, channel and mean over batches)
-
-    :param original: original image batch
-    :param prediction: denoised image batch
-    :param hinge: hinge value
+    starts negative,
+    goes to zero meaning no improvement
+    then goes to positive meaning actual improvement
     """
-    d = tf.keras.activations.relu(
-        x=tf.abs(original - prediction),
-        threshold=hinge)
-
-    # sum over all dims
-    d = tf.reduce_sum(d, axis=[1, 2, 3])
-    d_x = tf.reduce_sum(original, axis=[1, 2, 3])
-
-    # mean over batch
-    return \
-        tf.reduce_mean(d, axis=[0]) / \
-        (tf.reduce_mean(d_x, axis=[0]) + DEFAULT_EPSILON)
+    original_noisy = mae(original, noisy)
+    original_denoised = mae(original, denoised)
+    return original_denoised - original_noisy
 
 
 # ---------------------------------------------------------------------
@@ -356,8 +343,6 @@ def loss_function_builder(
 
     # --- uq
     # forces the uncertainty to have a small variance
-    uq_sigma_min = config.get("uq_min", 0.01)
-    uq_sigma_max = config.get("uq_max", 1.0)
     uq_sigma_multiplier = config.get("uq_sigma_multiplier", 1.0)
     uq_entropy_multiplier = config.get("uq_entropy_multiplier", 1.0)
 

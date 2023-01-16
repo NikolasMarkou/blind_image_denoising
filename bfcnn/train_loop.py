@@ -13,10 +13,10 @@ from .dataset import *
 from .constants import *
 from .custom_logger import logger
 from .utilities import load_config
-from .loss import loss_function_builder
-from .optimizer import optimizer_builder
 from .file_operations import load_image
+from .optimizer import optimizer_builder
 from .pruning import prune_function_builder
+from .loss import loss_function_builder, improvement
 from .model import model_builder as model_hydra_builder
 
 # ---------------------------------------------------------------------
@@ -296,12 +296,12 @@ def train_loop(
                         (de_loss[TOTAL_LOSS_STR] + sr_loss[TOTAL_LOSS_STR] + ss_loss[TOTAL_LOSS_STR]) / 3 + \
                         (de_uq_loss[TOTAL_LOSS_STR] + sr_uq_loss[TOTAL_LOSS_STR] + ss_uq_loss[TOTAL_LOSS_STR]) / 3
 
-                    # --- apply weights
-                    variables = hydra.trainable_variables
-                    optimizer.apply_gradients(
-                        grads_and_vars=zip(
-                            tape.gradient(target=total_loss, sources=variables),
-                            variables))
+                # --- apply weights
+                variables = hydra.trainable_variables
+                optimizer.apply_gradients(
+                    grads_and_vars=zip(
+                        tape.gradient(target=total_loss, sources=variables),
+                        variables))
 
                 # --- add loss summaries for tensorboard
                 for summary in [(DENOISER_STR, de_loss, de_uq_loss),
@@ -331,6 +331,12 @@ def train_loop(
                     tf.summary.scalar(name=f"quality/{title}/entropy",
                                       data=uq_loss_map[ENTROPY_LOSS_STR],
                                       step=global_step)
+                # denoiser specific
+                tf.summary.scalar(name=f"quality/denoiser/improvement",
+                                  data=improvement(original=input_batch,
+                                                   noisy=noisy_batch,
+                                                   denoised=de_exp),
+                                  step=global_step)
 
                 # model
                 tf.summary.scalar(name="loss/regularization",
