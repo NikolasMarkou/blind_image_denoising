@@ -102,19 +102,10 @@ def export_model(
         checkpoint.restore(tf.train.latest_checkpoint(checkpoint_directory))
     status.assert_existing_objects_matched()
     status.assert_consumed()
-
-    # if latest_checkpoint:
-    #     logger.info("!!! Found checkpoint to restore !!!")
-    #     logger.info(f"latest checkpoint [{0}:{1}]".format(
-    #         latest_checkpoint, manager.latest_checkpoint))
-    #     checkpoint \
-    #         .restore(manager.latest_checkpoint) \
-    #         .assert_existing_objects_matched()
-    #     logger.info(f"restored checkpoint "
-    #                 f"at epoch [{int(global_epoch)}] "
-    #                 f"and step [{int(global_step)}]")
-    # else:
-    #     raise ValueError("!!! Did NOT find checkpoint to restore !!!")
+    logger.info("!!! Found checkpoint to restore !!!")
+    logger.info(f"restored checkpoint "
+                f"at epoch [{int(global_epoch)}] "
+                f"and step [{int(global_step)}]")
 
     training_channels = backbone.input_shape[-1]
 
