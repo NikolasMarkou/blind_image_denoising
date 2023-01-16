@@ -20,7 +20,7 @@ from .module_superres import SuperresModule
 
 
 def export_model(
-        pipeline_config: Union[str, Dict, Path],
+        pipeline_config_path: Union[str, Dict, Path],
         checkpoint_directory: Union[str, Path],
         output_directory: Union[str, Path],
         to_tflite: bool = True,
@@ -28,17 +28,13 @@ def export_model(
     """
     build and export a denoising model
 
-    :param pipeline_config: path or dictionary of a configuration
+    :param pipeline_config_path: path or dictionary of a configuration
     :param checkpoint_directory: path to the checkpoint directory
     :param output_directory: path to the output directory
     :param to_tflite: if true convert to tflite
     :param test_model: if true run model in test mode
     :return:
     """
-    # --- argument checking
-    if pipeline_config is None:
-        raise ValueError("Pipeline configuration [{0}] is not valid".format(
-            pipeline_config))
     if checkpoint_directory is None or \
             not os.path.isdir(str(checkpoint_directory)):
         raise ValueError("Checkpoint directory [{0}] is not valid".format(
@@ -50,13 +46,15 @@ def export_model(
             raise ValueError("Output directory [{0}] is not valid".format(
                 output_directory))
 
+    # --- load configuration
+    config = load_config(pipeline_config_path)
+
     # --- setup variables
     output_directory = str(output_directory)
 
     # --- load and export denoiser model
     logger.info("building model")
-    pipeline_config = load_config(pipeline_config)
-    models = model_builder(pipeline_config[MODEL_STR])
+    models = model_builder(config[MODEL_STR])
 
     # get each model
     hydra = models.hydra
@@ -89,7 +87,7 @@ def export_model(
             output_directory,
             "pipeline.json")
     with open(pipeline_config_path, "w") as f:
-        f.write(json.dumps(pipeline_config, indent=4))
+        f.write(json.dumps(config, indent=4))
     logger.info(f"restoring checkpoint weights from [{checkpoint_directory}]")
 
     # checkpoint managing
@@ -130,13 +128,10 @@ def export_model(
 
     modules = []
 
-    for m in [
-        ("denoiser", DenoiserModule),
-        ("superres", SuperresModule)]:
+    for m in [("denoiser", DenoiserModule), ("superres", SuperresModule)]:
         # ---
         output_saved_model = os.path.join(output_directory, m[0])
-        logger.info("building denoiser module")
-        logger.info(f"combining backbone, {m}, normalize and denormalize model")
+        logger.info(f"building {m[0]} module")
 
         module = \
             m[1](
@@ -161,13 +156,14 @@ def export_model(
             obj=module,
             signatures=concrete_function,
             export_dir=output_saved_model,
-            options=tf.saved_model.SaveOptions(save_debug_info=False))
+            options=tf.saved_model.SaveOptions(save_debug_info=True))
 
         # --- export to tflite
         if to_tflite:
             converter = \
                 tf.lite.TFLiteConverter.from_concrete_functions(
-                    [concrete_function])
+                    funcs=[concrete_function],
+                    trackable_obj=module)
             converter.target_spec.supported_ops = [
                 tf.lite.OpsSet.TFLITE_BUILTINS,
                 tf.lite.OpsSet.SELECT_TF_OPS
@@ -184,10 +180,8 @@ def export_model(
             with open(output_tflite_model, "wb") as f:
                 f.write(tflite_model)
 
-        modules.append()
+        modules.append(module)
 
-    return \
-        denoiser_module, \
-        superres_module
+    return modules
 
 # ---------------------------------------------------------------------
