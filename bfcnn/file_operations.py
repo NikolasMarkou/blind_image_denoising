@@ -77,6 +77,11 @@ def load_image(
 
     :return: tensor
     """
+
+    # --- fix arguments
+    if isinstance(path, Path):
+        path = str(path)
+
     # --- read file, decode it
     raw = tf.io.read_file(filename=path)
 

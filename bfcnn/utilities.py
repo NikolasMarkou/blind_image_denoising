@@ -841,25 +841,6 @@ def random_crops(
 
 
 @tf.function
-def downsample(
-        input_batch: tf.Tensor,
-        kernel_size: Tuple[int, int] = (3, 3)) -> tf.Tensor:
-    x = \
-        tfa.image.gaussian_filter2d(
-            sigma=1,
-            image=input_batch,
-            filter_shape=kernel_size)
-    return \
-        tf.nn.max_pool2d(
-            input=x,
-            ksize=(1, 1),
-            strides=(2, 2),
-            padding="SAME")
-
-# ---------------------------------------------------------------------
-
-
-@tf.function
 def subsample(
         input_batch: tf.Tensor) -> tf.Tensor:
     return \
@@ -868,5 +849,19 @@ def subsample(
             ksize=(1, 1),
             strides=(2, 2),
             padding="SAME")
+
+# ---------------------------------------------------------------------
+
+
+@tf.function
+def downsample(
+        input_batch: tf.Tensor,
+        kernel_size: Tuple[int, int] = (3, 3)) -> tf.Tensor:
+    x = \
+        tfa.image.gaussian_filter2d(
+            sigma=1,
+            image=input_batch,
+            filter_shape=kernel_size)
+    return subsample(input_batch=x)
 
 # ---------------------------------------------------------------------
