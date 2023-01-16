@@ -98,26 +98,23 @@ def export_model(
             model_denoiser=denoiser,
             model_normalizer=normalizer,
             model_denormalizer=denormalizer)
-    manager = \
-        tf.train.CheckpointManager(
-            checkpoint=checkpoint,
-            directory=checkpoint_directory,
-            max_to_keep=1)
-    latest_checkpoint = manager.restore_or_initialize()
+    status = \
+        checkpoint.restore(tf.train.latest_checkpoint(checkpoint_directory))
+    status.assert_existing_objects_matched()
+    status.assert_consumed()
 
-    if latest_checkpoint:
-        logger.info("!!! Found checkpoint to restore !!!")
-        logger.info(f"latest checkpoint [{0}:{1}]".format(
-            latest_checkpoint, manager.latest_checkpoint))
-        checkpoint \
-            .restore(manager.latest_checkpoint) \
-            .expect_partial() \
-            .assert_existing_objects_matched()
-        logger.info(f"restored checkpoint "
-                    f"at epoch [{int(global_epoch)}] "
-                    f"and step [{int(global_step)}]")
-    else:
-        raise ValueError("!!! Did NOT find checkpoint to restore !!!")
+    # if latest_checkpoint:
+    #     logger.info("!!! Found checkpoint to restore !!!")
+    #     logger.info(f"latest checkpoint [{0}:{1}]".format(
+    #         latest_checkpoint, manager.latest_checkpoint))
+    #     checkpoint \
+    #         .restore(manager.latest_checkpoint) \
+    #         .assert_existing_objects_matched()
+    #     logger.info(f"restored checkpoint "
+    #                 f"at epoch [{int(global_epoch)}] "
+    #                 f"and step [{int(global_step)}]")
+    # else:
+    #     raise ValueError("!!! Did NOT find checkpoint to restore !!!")
 
     training_channels = backbone.input_shape[-1]
 
@@ -132,110 +129,66 @@ def export_model(
             MODEL_HYDRA_DEFAULT_NAME_STR))
 
     ##################################################################################
-    # combine denoiser, normalize and denormalize
+    # build denoiser and superres modules
     ##################################################################################
 
-    output_saved_model_denoiser = os.path.join(output_directory, "denoiser")
-    logger.info("building denoiser module")
-    logger.info("combining backbone, denoise, normalize and denormalize model")
-    denoiser_module = \
-        DenoiserModule(
-            cast_to_uint8=True,
-            model_backbone=backbone,
-            model_denoiser=denoiser,
-            model_normalizer=normalizer,
-            model_denormalizer=denormalizer)
+    modules = []
 
-    # getting the concrete function traces the graph
-    # and forces variables to
-    # be constructed, only after this can we save the
-    # checkpoint and saved model.
-    denoiser_concrete_function = \
-        denoiser_module.__call__.get_concrete_function(
-            tf.TensorSpec(shape=[1, None, None, training_channels], dtype=tf.uint8)
-        )
+    for m in [
+        ("denoiser", DenoiserModule),
+        ("superres", SuperresModule)]:
+        # ---
+        output_saved_model = os.path.join(output_directory, m[0])
+        logger.info("building denoiser module")
+        logger.info(f"combining backbone, {m}, normalize and denormalize model")
 
-    # export the model as save_model format (default)
-    logger.info(f"saving module: [{output_saved_model_denoiser}]")
-    tf.saved_model.save(
-        obj=denoiser_module,
-        signatures=denoiser_concrete_function,
-        export_dir=output_saved_model_denoiser,
-        options=tf.saved_model.SaveOptions(save_debug_info=False))
+        module = \
+            m[1](
+                cast_to_uint8=True,
+                model_backbone=backbone,
+                model_denoiser=denoiser,
+                model_normalizer=normalizer,
+                model_denormalizer=denormalizer)
 
-    # --- export to tflite
-    if to_tflite:
-        converter = \
-            tf.lite.TFLiteConverter.from_concrete_functions(
-                [denoiser_concrete_function])
-        converter.target_spec.supported_ops = [
-            tf.lite.OpsSet.TFLITE_BUILTINS,
-            tf.lite.OpsSet.SELECT_TF_OPS
-        ]
-        converter.optimizations = [
-            tf.lite.Optimize.DEFAULT
-        ]
-        tflite_model = converter.convert()
-        output_tflite_model = \
-            os.path.join(
-                output_directory,
-                "denoiser_model.tflite")
-        # save the model.
-        with open(output_tflite_model, "wb") as f:
-            f.write(tflite_model)
+        # getting the concrete function traces the graph
+        # and forces variables to
+        # be constructed, only after this can we save the
+        # checkpoint and saved model.
+        concrete_function = \
+            module.__call__.get_concrete_function(
+                tf.TensorSpec(shape=[1, None, None, training_channels], dtype=tf.uint8)
+            )
 
-    ##################################################################################
-    # combine superres, normalize and denormalize
-    ##################################################################################
+        # export the model as save_model format (default)
+        logger.info(f"saving module: [{output_saved_model}]")
+        tf.saved_model.save(
+            obj=module,
+            signatures=concrete_function,
+            export_dir=output_saved_model,
+            options=tf.saved_model.SaveOptions(save_debug_info=False))
 
-    output_saved_model_superres = os.path.join(output_directory, "superres")
-    logger.info("building superres module")
-    logger.info("combining backbone, superres, normalize and denormalize model")
-    superres_module = \
-        SuperresModule(
-            cast_to_uint8=True,
-            model_backbone=backbone,
-            model_denoiser=denoiser,
-            model_normalizer=normalizer,
-            model_denormalizer=denormalizer)
+        # --- export to tflite
+        if to_tflite:
+            converter = \
+                tf.lite.TFLiteConverter.from_concrete_functions(
+                    [concrete_function])
+            converter.target_spec.supported_ops = [
+                tf.lite.OpsSet.TFLITE_BUILTINS,
+                tf.lite.OpsSet.SELECT_TF_OPS
+            ]
+            converter.optimizations = [
+                tf.lite.Optimize.DEFAULT
+            ]
+            tflite_model = converter.convert()
+            output_tflite_model = \
+                os.path.join(
+                    output_directory,
+                    f"{m[0]}_model.tflite")
+            # save the model.
+            with open(output_tflite_model, "wb") as f:
+                f.write(tflite_model)
 
-    # getting the concrete function traces the graph
-    # and forces variables to
-    # be constructed, only after this can we save the
-    # checkpoint and saved model.
-    superres_concrete_function = \
-        superres_module.__call__.get_concrete_function(
-            tf.TensorSpec(shape=[1, None, None, training_channels], dtype=tf.uint8)
-        )
-
-    # export the model as save_model format (default)
-    logger.info(f"saving module: [{output_saved_model_superres}]")
-    tf.saved_model.save(
-        obj=superres_module,
-        signatures=superres_concrete_function,
-        export_dir=output_saved_model_superres,
-        options=tf.saved_model.SaveOptions(save_debug_info=False))
-
-    # --- export to tflite
-    if to_tflite:
-        converter = \
-            tf.lite.TFLiteConverter.from_concrete_functions(
-                [superres_concrete_function])
-        converter.target_spec.supported_ops = [
-            tf.lite.OpsSet.TFLITE_BUILTINS,
-            tf.lite.OpsSet.SELECT_TF_OPS
-        ]
-        converter.optimizations = [
-            tf.lite.Optimize.DEFAULT
-        ]
-        tflite_model = converter.convert()
-        output_tflite_model = \
-            os.path.join(
-                output_directory,
-                "superres_model.tflite")
-        # save the model.
-        with open(output_tflite_model, "wb") as f:
-            f.write(tflite_model)
+        modules.append()
 
     return \
         denoiser_module, \

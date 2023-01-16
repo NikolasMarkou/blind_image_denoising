@@ -232,7 +232,7 @@ def train_loop(
         else:
             logger.info("!!! Did NOT find checkpoint to restore !!!")
 
-        @tf.function(reduce_retracing=True)
+        @tf.function
         def train_forward_step(
                 n: tf.Tensor,
                 d: tf.Tensor,
@@ -258,7 +258,6 @@ def train_loop(
                 logger.info(f"pruning weights at step [{int(global_step)}]")
                 hydra = prune_fn(model=hydra)
 
-            trainable_weights = hydra.trainable_weights
             start_time_epoch = time.time()
 
             # --- iterate over the batches of the dataset
@@ -300,8 +299,8 @@ def train_loop(
                     # --- apply weights
                     optimizer.apply_gradients(
                         grads_and_vars=zip(
-                            tape.gradient(target=total_loss, sources=trainable_weights),
-                            trainable_weights))
+                            tape.gradient(target=total_loss, sources=hydra.trainable_weights),
+                            hydra.trainable_weights))
 
                 # --- add loss summaries for tensorboard
                 for summary in [(DENOISER_STR, de_loss, de_uq_loss),
@@ -406,7 +405,6 @@ def train_loop(
                         (prune_steps > -1) and (global_step % prune_steps == 0):
                     logger.info(f"pruning weights at step [{int(global_step)}]")
                     hydra = prune_fn(model=hydra)
-                    trainable_weights = hydra.trainable_weights
 
                 # --- check if it is time to save a checkpoint
                 if checkpoint_every > 0 and \
