@@ -16,7 +16,7 @@ from .utilities import load_config
 from .loss import loss_function_builder
 from .optimizer import optimizer_builder
 from .file_operations import load_image
-from .pruning import prune_function_builder, get_conv2d_weights
+from .pruning import prune_function_builder
 from .model import model_builder as model_hydra_builder
 
 # ---------------------------------------------------------------------
@@ -297,10 +297,11 @@ def train_loop(
                         (de_uq_loss[TOTAL_LOSS_STR] + sr_uq_loss[TOTAL_LOSS_STR] + ss_uq_loss[TOTAL_LOSS_STR]) / 3
 
                     # --- apply weights
+                    variables = hydra.trainable_variables
                     optimizer.apply_gradients(
                         grads_and_vars=zip(
-                            tape.gradient(target=total_loss, sources=hydra.trainable_weights),
-                            hydra.trainable_weights))
+                            tape.gradient(target=total_loss, sources=variables),
+                            variables))
 
                 # --- add loss summaries for tensorboard
                 for summary in [(DENOISER_STR, de_loss, de_uq_loss),
