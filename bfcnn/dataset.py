@@ -353,17 +353,17 @@ def dataset_builder(
         return crops
 
     # --- compute concrete functions
-    # load_image_concrete_fn = \
-    #     load_image_fn.get_concrete_function(
-    #         tf.TensorSpec(shape=(), dtype=tf.string))
+    load_image_concrete_fn = \
+        load_image_fn.get_concrete_function(
+            tf.TensorSpec(shape=(), dtype=tf.string))
 
-    # prepare_data_concrete_fn = \
-    #     prepare_data_fn.get_concrete_function(
-    #         tf.TensorSpec(shape=[batch_size,
-    #                              input_shape[0],
-    #                              input_shape[1],
-    #                              num_channels],
-    #                       dtype=tf.uint8))
+    prepare_data_concrete_fn = \
+        prepare_data_fn.get_concrete_function(
+            tf.TensorSpec(shape=[no_crops_per_image,
+                                 input_shape[0],
+                                 input_shape[1],
+                                 num_channels],
+                          dtype=tf.uint8))
 
     # --- create the dataset
     # !!!
@@ -374,17 +374,17 @@ def dataset_builder(
     dataset_training = \
         dataset_training \
             .map(
-                map_func=load_image_fn,
+                map_func=load_image_concrete_fn,
                 num_parallel_calls=batch_size) \
             .shuffle(
                 seed=0,
                 buffer_size=1024,
                 reshuffle_each_iteration=False) \
+            .map(map_func=prepare_data_concrete_fn,
+                 num_parallel_calls=tf.data.AUTOTUNE) \
             .rebatch(
                 batch_size=batch_size,
                 drop_remainder=True) \
-            .map(map_func=prepare_data_fn,
-                 num_parallel_calls=tf.data.AUTOTUNE) \
             .prefetch(1)
     options = tf.data.Options()
     options.deterministic = False

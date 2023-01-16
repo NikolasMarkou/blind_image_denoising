@@ -2,7 +2,7 @@ r"""Constructs the loss function of the blind image denoising"""
 
 import tensorflow as tf
 import tensorflow_addons as tfa
-from typing import List, Dict, Callable
+from typing import List, Dict, Callable, Tuple
 
 # ---------------------------------------------------------------------
 # local imports
@@ -39,44 +39,6 @@ def gar_loss(
 # ---------------------------------------------------------------------
 
 
-def delta(
-        x: tf.Tensor,
-        mask: tf.Tensor = tf.constant(1.0, tf.float32),
-        kernel_size: int = 3,
-        alpha: float = 1.0,
-        beta: float = 1.0,
-        eps: float = DEFAULT_EPSILON,
-        axis: List[int] = [1, 2, 3]) -> tf.Tensor:
-    """
-    Computes the delta loss of a layer
-    (alpha * (dI/dx)^2 + beta * (dI/dy)^2) ^ 0.5
-
-    :param x:
-    :param mask: pixels to ignore
-    :param kernel_size: how big the delta kernel should be
-    :param alpha: multiplier of dx
-    :param beta: multiplier of dy
-    :param eps: small value to add for stability
-    :param axis: list of axis to sum against
-    :return: delta loss
-    """
-    dd = \
-        delta_xy_magnitude(
-            input_layer=x,
-            kernel_size=kernel_size,
-            alpha=alpha,
-            beta=beta,
-            eps=eps)
-    if mask is None:
-        return tf.reduce_mean(dd, axis=axis, keepdims=False)
-    dd = dd * mask
-    valid_pixels = tf.reduce_sum(mask, axis=axis, keepdims=False) + 1
-    return tf.reduce_sum(dd, axis=axis, keepdims=False) / valid_pixels
-
-
-# ---------------------------------------------------------------------
-
-
 def psnr(
         original: tf.Tensor,
         prediction: tf.Tensor,
@@ -93,110 +55,35 @@ def psnr(
 
     return tf.reduce_mean(psnr_batch, axis=[0])
 
-
-# ---------------------------------------------------------------------
-
-
-def mae_weighted_delta(
-        original: tf.Tensor,
-        prediction: tf.Tensor,
-        mask: tf.Tensor = tf.constant(1.0, tf.float32),
-        bias: float = 1.0,
-        hinge: float = 0.0,
-        cutoff: float = 255.0) -> tf.Tensor:
-    """
-    Mean Absolute Error (mean over channels and batches) with weights
-
-    :param original: original image batch
-    :param prediction: denoised image batch
-    :param mask: where to focus the loss
-    :param bias: add this to the whole xy magnitude
-    :param hinge: hinge value
-    :param cutoff: max value
-
-    :return: mean absolute error weighted by delta
-    """
-    d_weight = \
-        delta_xy_magnitude(
-            input_layer=original,
-            kernel_size=5,
-            alpha=1.0,
-            beta=1.0,
-            eps=DEFAULT_EPSILON)
-    d_weight = d_weight + bias
-    d_weight = \
-        d_weight / \
-        (tf.reduce_max(
-            input_tensor=d_weight,
-            axis=[1, 2],
-            keepdims=True) + DEFAULT_EPSILON)
-    d_weight = tf.abs(d_weight)
-
-    # --- calculate hinged absolute diff
-    d = \
-        tf.keras.activations.relu(
-            x=tf.abs(original - prediction),
-            alpha=0.0,
-            max_value=cutoff,
-            threshold=hinge)
-
-    # --- multiply diff and weight
-    d = tf.math.multiply(d, d_weight)
-    d = tf.math.multiply(d, mask)
-
-    # --- mean over all dims
-    d = tf.reduce_mean(d, axis=[1, 2, 3])
-
-    # --- mean over batch
-    return tf.reduce_mean(d, axis=[0])
-
-
 # ---------------------------------------------------------------------
 
 
 def mae_diff(
         error: tf.Tensor,
-        mask: tf.Tensor = tf.constant(1.0, tf.float32),
-        count_non_zero_mean: bool = False,
         hinge: float = 0.0,
         cutoff: float = 255.0) -> tf.Tensor:
     """
     Mean Absolute Error (mean over channels and batches)
 
     :param error: diff between prediction and ground truth
-    :param mask:
-    :param count_non_zero_mean: if True, calculate mean on non zero
     :param hinge: hinge value
     :param cutoff: max value
 
     :return: mean absolute error
     """
-    axis = [1, 2, 3]
     d = \
-        tf.multiply(
-            tf.keras.activations.relu(
-                x=tf.abs(error),
-                threshold=hinge,
-                max_value=cutoff),
-            mask)
+        tf.keras.activations.relu(
+            x=tf.abs(error),
+            threshold=hinge,
+            max_value=cutoff),
 
     # --- mean over all dims
-    if count_non_zero_mean:
-        # mean over non zero
-        d = \
-            (tf.reduce_sum(
-                input_tensor=d,
-                axis=axis,
-                keepdims=False)) / \
-            (DEFAULT_EPSILON +
-             tf.math.count_nonzero(
-                 input=d,
-                 axis=axis,
-                 keepdims=False,
-                 dtype=tf.float32))
+    d = tf.reduce_mean(d, axis=[1, 2, 3])
 
     # --- mean over batch
-    return tf.reduce_mean(d)
+    d = tf.reduce_mean(d)
+
+    return d
 
 
 # ---------------------------------------------------------------------
@@ -205,7 +92,7 @@ def mae_diff(
 def mae(
         original: tf.Tensor,
         prediction: tf.Tensor,
-        **kwargs) -> tf.Tensor:
+        **kwargs) -> Tuple[tf.Tensor, tf.Tensor]:
     """
     Mean Absolute Error (mean over channels and batches)
 
@@ -280,38 +167,6 @@ def improvement(
     original_denoised = mae(original, denoised)
     return original_noisy - original_denoised
 
-
-# ---------------------------------------------------------------------
-
-
-def soft_orthogonal(
-        feature_map: tf.Tensor) -> tf.Tensor:
-    """
-
-    :return: soft orthogonal loss
-    """
-    # move channels
-    shape = tf.shape(feature_map)
-    f = tf.transpose(feature_map, perm=(0, 3, 1, 2))
-    ft = tf.reshape(f, shape=(shape[0], shape[3], -1))
-    ft_x_f = \
-        tf.linalg.matmul(
-            ft,
-            tf.transpose(ft, perm=(0, 2, 1)))
-
-    # identity matrix
-    i = tf.eye(
-        num_rows=shape[3],
-        num_columns=shape[3])
-    x = \
-        tf.square(
-            tf.norm(ft_x_f - i,
-                    ord="fro",
-                    axis=(1, 2),
-                    keepdims=False))
-    return tf.reduce_mean(x, axis=[0])
-
-
 # ---------------------------------------------------------------------
 
 
@@ -375,8 +230,7 @@ def loss_function_builder(
     # ---
     def denoiser_loss(
             input_batch: tf.Tensor,
-            predicted_batch: tf.Tensor,
-            mask: tf.Tensor = tf.constant(1.0, tf.float32)) -> Dict[str, tf.Tensor]:
+            predicted_batch: tf.Tensor) -> Dict[str, tf.Tensor]:
         # --- actual mean absolute error (no hinge or cutoff)
         mae_actual = \
             mae(original=input_batch,
@@ -391,7 +245,6 @@ def loss_function_builder(
             mae_prediction_loss += \
                 mae(original=input_batch,
                     prediction=predicted_batch,
-                    mask=mask,
                     hinge=hinge,
                     cutoff=cutoff)
 

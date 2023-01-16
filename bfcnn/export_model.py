@@ -128,7 +128,8 @@ def export_model(
 
     modules = []
 
-    for m in [("denoiser", DenoiserModule), ("superres", SuperresModule)]:
+    for m in [(DENOISER_STR, DenoiserModule),
+              (SUPERRES_STR, SuperresModule)]:
         # ---
         output_saved_model = os.path.join(output_directory, m[0])
         logger.info(f"building {m[0]} module")
