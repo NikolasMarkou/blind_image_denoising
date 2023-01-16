@@ -141,10 +141,7 @@ def export_model(
     denoiser_module = \
         DenoiserModule(
             cast_to_uint8=True,
-            model_backbone=backbone,
-            model_denoiser=denoiser,
-            model_normalizer=normalizer,
-            model_denormalizer=denormalizer)
+            model_hydra=hydra)
 
     # getting the concrete function traces the graph
     # and forces variables to
@@ -194,10 +191,7 @@ def export_model(
     superres_module = \
         SuperresModule(
             cast_to_uint8=True,
-            model_backbone=backbone,
-            model_denoiser=denoiser,
-            model_normalizer=normalizer,
-            model_denormalizer=denormalizer)
+            model_hydra=hydra)
 
     # getting the concrete function traces the graph
     # and forces variables to
