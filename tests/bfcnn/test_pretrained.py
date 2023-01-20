@@ -65,14 +65,17 @@ def test_pretrained_models(noise_std, model_name):
 
         # psnr test
         psnr_original_noisy = tf.reduce_mean(tf.image.psnr(img_original, img_noisy, max_val=255.0))
-        psnr_original_denoised = tf.reduce_mean(tf.image.psnr(img_denoised, img_noisy, max_val=255.0))
+        psnr_original_denoised = tf.reduce_mean(tf.image.psnr(img_original, img_denoised, max_val=255.0))
         assert psnr_original_noisy < psnr_original_denoised
 
-        # mean absolute error
-        mae_noisy_original = np.mean(np.abs(img_noisy - img_original), axis=None)
-        mae_denoised_original = np.mean(np.abs(img_denoised - img_original), axis=None)
-        # assertions
-        assert mae_noisy_original < noise_std
-        assert mae_denoised_original < mae_noisy_original
+        # ssim test
+        ssim_original_noisy = tf.reduce_mean(tf.image.ssim(img_original, img_noisy, max_val=255.0))
+        ssim_original_denoised = tf.reduce_mean(tf.image.ssim(img_original, img_denoised, max_val=255.0))
+        assert ssim_original_noisy < ssim_original_denoised
+
+        # mae test
+        mae_original_noisy = tf.reduce_mean(tf.abs(img_original - img_noisy))
+        mae_original_denoised = tf.reduce_mean(tf.abs(img_original - img_denoised))
+        assert mae_original_denoised < mae_original_noisy
 
 # ---------------------------------------------------------------------

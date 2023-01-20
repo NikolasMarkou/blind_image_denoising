@@ -239,16 +239,11 @@ def train_loop(
                 n: tf.Tensor,
                 d: tf.Tensor,
                 s: tf.Tensor) -> \
-                Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
-            de, de_sigma, de_entropy, x0, x1, x2, x3, x4, x5 = hydra(n, training=True)
-            y0, y1, y2, sr, sr_sigma, sr_entropy, y3, y4, y5 = hydra(d, training=True)
-            z0, z1, z2, z3, z4, z5, ss, ss_sigma, ss_entropy = hydra(s, training=True)
-            del x0, x1, x2, x3, x4, x5,\
-                y0, y1, y2, y3, y4, y5,\
-                z0, z1, z2, z3, z4, z5
-            return de, de_sigma, de_entropy, \
-                   sr, sr_sigma, sr_entropy, \
-                   ss, ss_sigma, ss_entropy, \
+                Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+            de, _, _ = hydra(n, training=True)
+            _, sr, _ = hydra(d, training=True)
+            _, _, ss = hydra(s, training=True)
+            return de, sr, ss
 
         # ---
         finished_training = False
@@ -273,9 +268,7 @@ def train_loop(
                 # to its inputs are going to be recorded
                 # on the GradientTape.
                 with tf.GradientTape() as tape:
-                    de_exp, de_sigma, de_entropy, \
-                    sr_exp, sr_sigma, sr_entropy, \
-                    ss_exp, ss_sigma, ss_entropy = \
+                    de, sr, ss = \
                         train_forward_step(
                             n=noisy_batch,
                             d=downsampled_batch,
@@ -283,14 +276,11 @@ def train_loop(
 
                     # compute the loss value for this mini-batch
                     # denoiser
-                    de_loss = denoiser_loss_fn(input_batch=input_batch, predicted_batch=de_exp)
-                    de_uq_loss = uq_loss_fn(sigma_batch=de_sigma, entropy_batch=de_entropy)
+                    de_loss = denoiser_loss_fn(input_batch=input_batch, predicted_batch=de)
                     # superres
-                    sr_loss = superres_loss_fn(input_batch=input_batch, predicted_batch=sr_exp)
-                    sr_uq_loss = uq_loss_fn(sigma_batch=sr_sigma, entropy_batch=sr_entropy)
+                    sr_loss = superres_loss_fn(input_batch=input_batch, predicted_batch=sr)
                     # subsample
-                    ss_loss = subsample_loss_fn(input_batch=downsampled_batch, predicted_batch=ss_exp)
-                    ss_uq_loss = uq_loss_fn(sigma_batch=ss_sigma, entropy_batch=ss_entropy)
+                    ss_loss = subsample_loss_fn(input_batch=downsampled_batch, predicted_batch=ss)
                     # model
                     model_loss = model_loss_fn(model=hydra)
 
@@ -298,7 +288,6 @@ def train_loop(
                     total_loss = \
                         model_loss[TOTAL_LOSS_STR] + \
                         (de_loss[TOTAL_LOSS_STR] + sr_loss[TOTAL_LOSS_STR] + ss_loss[TOTAL_LOSS_STR]) / 3 + \
-                        (de_uq_loss[TOTAL_LOSS_STR] + sr_uq_loss[TOTAL_LOSS_STR] + ss_uq_loss[TOTAL_LOSS_STR]) / 3
 
                 # --- apply weights
                 variables = hydra.trainable_variables
@@ -308,12 +297,11 @@ def train_loop(
                         variables))
 
                 # --- add loss summaries for tensorboard
-                for summary in [(DENOISER_STR, de_loss, de_uq_loss),
-                                (SUBSAMPLE_STR, ss_loss, ss_uq_loss),
-                                (SUPERRES_STR, sr_loss, sr_uq_loss)]:
+                for summary in [(DENOISER_STR, de_loss),
+                                (SUBSAMPLE_STR, ss_loss),
+                                (SUPERRES_STR, sr_loss)]:
                     title = summary[0]
                     loss_map = summary[1]
-                    uq_loss_map = summary[2]
                     tf.summary.scalar(name=f"quality/{title}/psnr",
                                       data=loss_map[PSNR_STR],
                                       step=global_step)
@@ -326,20 +314,12 @@ def train_loop(
                     tf.summary.scalar(name=f"loss/{title}/total",
                                       data=loss_map[TOTAL_LOSS_STR],
                                       step=global_step)
-                    tf.summary.scalar(name=f"loss/{title}/uncertainty",
-                                      data=uq_loss_map[TOTAL_LOSS_STR],
-                                      step=global_step)
-                    tf.summary.scalar(name=f"quality/{title}/sigma",
-                                      data=uq_loss_map[SIGMA_LOSS_STR],
-                                      step=global_step)
-                    tf.summary.scalar(name=f"quality/{title}/entropy",
-                                      data=uq_loss_map[ENTROPY_LOSS_STR],
-                                      step=global_step)
+
                 # denoiser specific
                 tf.summary.scalar(name=f"quality/denoiser/improvement",
                                   data=improvement(original=input_batch,
                                                    noisy=noisy_batch,
-                                                   denoised=de_exp),
+                                                   denoised=de),
                                   step=global_step)
 
                 # model
@@ -367,30 +347,19 @@ def train_loop(
 
                     # output
                     tf.summary.image(
-                        name="output/denoiser", data=de_exp / 255,
+                        name="output/denoiser", data=de / 255,
                         max_outputs=visualization_number, step=global_step)
                     tf.summary.image(
-                        name="output/superres", data=sr_exp / 255,
+                        name="output/superres", data=sr / 255,
                         max_outputs=visualization_number, step=global_step)
                     tf.summary.image(
-                        name="output/subsample", data=ss_exp / 255,
-                        max_outputs=visualization_number, step=global_step)
-
-                    # uncertainty
-                    tf.summary.image(
-                        name="uncertainty/denoiser/sigma", data=de_sigma,
-                        max_outputs=visualization_number, step=global_step)
-                    tf.summary.image(
-                        name="uncertainty/superres/sigma", data=sr_sigma,
-                        max_outputs=visualization_number, step=global_step)
-                    tf.summary.image(
-                        name="uncertainty/subsample/sigma", data=ss_sigma,
+                        name="output/subsample", data=ss / 255,
                         max_outputs=visualization_number, step=global_step)
 
                     if use_test_images:
-                        test_denoiser_output, test_denoiser_sigma_output, test_denoiser_entropy_output, \
-                        test_superres_output, test_superres_sigma_output, test_superres_entropy_output,\
-                        test_subsample_output, test_subsample_sigma_output, test_subsample_entropy_output = \
+                        test_denoiser_output, \
+                        test_superres_output, \
+                        test_subsample_output = \
                             hydra(test_images, training=False)
                         tf.summary.image(
                             name="test/denoiser", data=test_denoiser_output / 255,
@@ -401,15 +370,10 @@ def train_loop(
                         tf.summary.image(
                             name="test/subsample", data=test_subsample_output / 255,
                             max_outputs=visualization_number, step=global_step)
-                        del test_denoiser_output, test_denoiser_sigma_output, test_denoiser_entropy_output, \
-                            test_superres_output, test_superres_sigma_output, test_superres_entropy_output, \
-                            test_subsample_output, test_subsample_sigma_output, test_subsample_entropy_output
+                        del test_denoiser_output, test_superres_output, test_subsample_output
 
                 # --- free resources
                 del input_batch, noisy_batch, downsampled_batch
-                del de_exp, de_sigma, de_entropy, \
-                    sr_exp, sr_sigma, sr_entropy,\
-                    ss_exp, ss_sigma, ss_entropy
 
                 # --- prune conv2d
                 if use_prune and (global_epoch >= prune_start_epoch) and \

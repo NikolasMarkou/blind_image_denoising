@@ -512,7 +512,7 @@ def model_denoiser_builder(
     if use_uncertainty:
         options = \
             dict(num_outputs=3,
-                 has_uncertainty = True)
+                 has_uncertainty=True)
 
         # regression with uncertainty estimates
         x_expected, x_sigma, x_entropy = \
@@ -552,6 +552,8 @@ def model_denoiser_builder(
                  has_uncertainty=False)
         x_expected = \
             conv2d_wrapper(x, conv_params=conv_params)
+        # squash [-1, +1] and then prevent saturation
+        x_expected = tf.nn.tanh(x_expected) / 1.8
         x_expected = \
             tf.keras.layers.Layer(
                 name="output_tensor_expected")(x_expected)
