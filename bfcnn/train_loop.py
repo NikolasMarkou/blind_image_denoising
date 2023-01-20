@@ -251,7 +251,9 @@ def train_loop(
                    ss, ss_sigma, ss_entropy, \
 
         # ---
-        while global_epoch < global_total_epochs:
+        finished_training = False
+        while not finished_training and \
+                (global_total_epochs == -1 or global_epoch < global_total_epochs):
             logger.info("epoch: {0}, step: {1}".format(
                 int(global_epoch), int(global_step)))
 
@@ -449,7 +451,7 @@ def train_loop(
                     if total_steps <= global_step:
                         logger.info("total_steps reached [{0}]".format(
                             int(total_steps)))
-                        break
+                        finished_training = True
 
             end_time_epoch = time.time()
             epoch_time = end_time_epoch - start_time_epoch
