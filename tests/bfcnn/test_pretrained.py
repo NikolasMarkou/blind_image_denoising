@@ -56,12 +56,18 @@ def test_pretrained_models(noise_std, model_name):
         # denoise it
         img_denoised = module_denoiser(img_noisy)
         # convert
-        img_noisy = tf.cast(img_noisy, dtype=tf.float32).numpy()
-        img_denoised = tf.cast(img_denoised, dtype=tf.float32).numpy()
-        img_original = tf.cast(img_original, dtype=tf.float32).numpy()
+        img_noisy = tf.cast(img_noisy, dtype=tf.float32)
+        img_denoised = tf.cast(img_denoised, dtype=tf.float32)
+        img_original = tf.cast(img_original, dtype=tf.float32)
         # assertions
         assert img_denoised.shape == img_noisy.shape
         assert img_denoised.shape == img_original.shape
+
+        # psnr test
+        psnr_original_noisy = tf.reduce_mean(tf.image.psnr(img_original, img_noisy, max_val=255.0))
+        psnr_original_denoised = tf.reduce_mean(tf.image.psnr(img_denoised, img_noisy, max_val=255.0))
+        assert psnr_original_noisy < psnr_original_denoised
+
         # mean absolute error
         mae_noisy_original = np.mean(np.abs(img_noisy - img_original), axis=None)
         mae_denoised_original = np.mean(np.abs(img_denoised - img_original), axis=None)

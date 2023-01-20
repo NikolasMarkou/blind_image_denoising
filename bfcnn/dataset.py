@@ -163,6 +163,22 @@ def dataset_builder(
         return input_batch
 
     # --- define noise augmentation function
+
+    @tf.function
+    def random_choice(
+            x: tf.Tensor,
+            size=tf.constant(1, dtype=tf.int64),
+            axis=tf.constant(0, dtype=tf.int64)) -> tf.Tensor:
+        """
+        Randomly select size options from x
+        """
+        dim_x = tf.cast(tf.shape(x)[axis], tf.int64)
+        if dim_x == tf.constant(0, tf.int64):
+            return tf.constant(-1, dtype=x.dtype)
+        indices = tf.range(0, dim_x, dtype=tf.int64)
+        sample_index = tf.random.shuffle(indices, seed=0)[:size]
+        return tf.gather(x, sample_index, axis=axis)[0]
+
     @tf.function
     def noise_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
@@ -173,23 +189,10 @@ def dataset_builder(
         noisy_batch = input_batch
         input_shape_inference = tf.shape(noisy_batch)
 
-        @tf.function
-        def random_choice(
-                x: tf.Tensor,
-                size=tf.constant(1, dtype=tf.int64),
-                axis=tf.constant(0, dtype=tf.int64)) -> tf.Tensor:
-            """
-            Randomly select size options from x
-            """
-            dim_x = tf.cast(tf.shape(x)[axis], tf.int64)
-            indices = tf.range(0, dim_x, dtype=tf.int64)
-            sample_index = tf.random.shuffle(indices, seed=0)[:size]
-            return tf.gather(x, sample_index, axis=axis)
-
         # --- random select noise type and options
-        noise_type = random_choice(noise_choices, size=1)[0]
-        additive_noise_std = random_choice(additional_noise, size=1)[0]
-        multiplicative_noise_std = random_choice(multiplicative_noise, size=1)[0]
+        noise_type = random_choice(noise_choices, size=1)
+        additive_noise_std = random_choice(additional_noise, size=1)
+        multiplicative_noise_std = random_choice(multiplicative_noise, size=1)
         random_uniform_option_1 = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
         random_uniform_option_2 = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
 
