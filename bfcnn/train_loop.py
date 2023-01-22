@@ -238,51 +238,12 @@ def train_loop(
         def train_forward_step(
                 n: tf.Tensor,
                 d: tf.Tensor,
-                s: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+                s: tf.Tensor) -> \
+                Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
             de, _, _ = hydra(n, training=True)
             _, sr, _ = hydra(d, training=True)
             _, _, ss = hydra(s, training=True)
             return de, sr, ss
-
-        @tf.function
-        def train_forward_backward_step(
-                n: tf.Tensor,
-                d: tf.Tensor,
-                s: tf.Tensor):
-            # run the forward pass of the layer.
-            # The operations that the layer applies
-            # to its inputs are going to be recorded
-            # on the GradientTape.
-            variables = hydra.trainable_variables
-
-            with tf.GradientTape() as tape:
-                de, _, _ = hydra(n, training=True)
-                _, sr, _ = hydra(d, training=True)
-                _, _, ss = hydra(s, training=True)
-                # compute the loss value for this mini-batch
-                # denoiser
-                de_loss = denoiser_loss_fn(input_batch=s, predicted_batch=de)
-                # superres
-                sr_loss = superres_loss_fn(input_batch=s, predicted_batch=sr)
-                # subsample
-                ss_loss = subsample_loss_fn(input_batch=d, predicted_batch=ss)
-                # model
-                model_loss = model_loss_fn(model=hydra)
-
-                # combine losses
-                total_loss = \
-                    model_loss[TOTAL_LOSS_STR] + \
-                    (de_loss[TOTAL_LOSS_STR] + sr_loss[TOTAL_LOSS_STR] + ss_loss[TOTAL_LOSS_STR]) / 3
-
-            # --- apply weights
-            optimizer.apply_gradients(
-                grads_and_vars=zip(
-                    tape.gradient(target=total_loss, sources=variables),
-                    variables))
-            return de, sr, ss, \
-                   de_loss, sr_loss, ss_loss, \
-                   model_loss, total_loss
-
 
         # ---
         finished_training = False
@@ -297,17 +258,43 @@ def train_loop(
                 hydra = prune_fn(model=hydra)
 
             start_time_epoch = time.time()
-            variables = hydra.trainable_variables
 
             # --- iterate over the batches of the dataset
             for (input_batch, noisy_batch, downsampled_batch) in dataset_training:
                 start_time_forward_backward = time.time()
 
-                de, sr, ss, \
-                de_loss, sr_loss, ss_loss, \
-                model_loss, total_loss = \
-                    train_forward_backward_step(
-                        n=noisy_batch, d=downsampled_batch, s=input_batch)
+                # run the forward pass of the layer.
+                # The operations that the layer applies
+                # to its inputs are going to be recorded
+                # on the GradientTape.
+                with tf.GradientTape() as tape:
+                    de, sr, ss = \
+                        train_forward_step(
+                            n=noisy_batch,
+                            d=downsampled_batch,
+                            s=input_batch)
+
+                    # compute the loss value for this mini-batch
+                    # denoiser
+                    de_loss = denoiser_loss_fn(input_batch=input_batch, predicted_batch=de)
+                    # superres
+                    sr_loss = superres_loss_fn(input_batch=input_batch, predicted_batch=sr)
+                    # subsample
+                    ss_loss = subsample_loss_fn(input_batch=downsampled_batch, predicted_batch=ss)
+                    # model
+                    model_loss = model_loss_fn(model=hydra)
+
+                    # combine losses
+                    total_loss = \
+                        model_loss[TOTAL_LOSS_STR] + \
+                        (de_loss[TOTAL_LOSS_STR] + sr_loss[TOTAL_LOSS_STR] + ss_loss[TOTAL_LOSS_STR]) / 3
+
+                # --- apply weights
+                variables = hydra.trainable_variables
+                optimizer.apply_gradients(
+                    grads_and_vars=zip(
+                        tape.gradient(target=total_loss, sources=variables),
+                        variables))
 
                 # --- add loss summaries for tensorboard
                 for summary in [(DENOISER_STR, de_loss),
@@ -424,10 +411,11 @@ def train_loop(
                 global_step.assign_add(1)
 
                 # --- check if total steps reached
-                if 0 < total_steps <= global_step:
-                    logger.info("total_steps reached [{0}]".format(
-                        int(total_steps)))
-                    finished_training = True
+                if total_steps > 0:
+                    if total_steps <= global_step:
+                        logger.info("total_steps reached [{0}]".format(
+                            int(total_steps)))
+                        finished_training = True
 
             end_time_epoch = time.time()
             epoch_time = end_time_epoch - start_time_epoch
@@ -440,9 +428,7 @@ def train_loop(
             # save model so we can visualize it easier
             hydra.save(
                 os.path.join(model_dir, MODEL_HYDRA_DEFAULT_NAME_STR))
-            # exit
-            if finished_training:
-                break
+
     logger.info("finished training")
 
 # ---------------------------------------------------------------------

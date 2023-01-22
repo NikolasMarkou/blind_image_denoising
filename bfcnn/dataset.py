@@ -314,7 +314,9 @@ def dataset_builder(
                     dtype=tf.float32)
         noisy_batch = noise_augmentation_fn(input_batch)
         downsampled_batch = downsample(input_batch)
-        return input_batch, noisy_batch, downsampled_batch
+        return input_batch, \
+               noisy_batch, \
+               downsampled_batch
 
     # --- define generator function from directory
     if directory:
@@ -385,7 +387,7 @@ def dataset_builder(
                 buffer_size=1024,
                 reshuffle_each_iteration=False) \
             .map(map_func=prepare_data_concrete_fn,
-                 num_parallel_calls=12) \
+                 num_parallel_calls=tf.data.AUTOTUNE) \
             .rebatch(
                 batch_size=batch_size,
                 drop_remainder=True) \
