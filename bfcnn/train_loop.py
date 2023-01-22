@@ -287,7 +287,7 @@ def train_loop(
                     # combine losses
                     total_loss = \
                         model_loss[TOTAL_LOSS_STR] + \
-                        (de_loss[TOTAL_LOSS_STR] + sr_loss[TOTAL_LOSS_STR] + ss_loss[TOTAL_LOSS_STR]) / 3 + \
+                        (de_loss[TOTAL_LOSS_STR] + sr_loss[TOTAL_LOSS_STR] + ss_loss[TOTAL_LOSS_STR]) / 3
 
                 # --- apply weights
                 variables = hydra.trainable_variables
