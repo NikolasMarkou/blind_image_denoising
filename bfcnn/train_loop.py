@@ -261,11 +261,11 @@ def train_loop(
                 _, _, ss = hydra(s, training=True)
                 # compute the loss value for this mini-batch
                 # denoiser
-                de_loss = denoiser_loss_fn(input_batch=input_batch, predicted_batch=de)
+                de_loss = denoiser_loss_fn(input_batch=s, predicted_batch=de)
                 # superres
-                sr_loss = superres_loss_fn(input_batch=input_batch, predicted_batch=sr)
+                sr_loss = superres_loss_fn(input_batch=s, predicted_batch=sr)
                 # subsample
-                ss_loss = subsample_loss_fn(input_batch=downsampled_batch, predicted_batch=ss)
+                ss_loss = subsample_loss_fn(input_batch=d, predicted_batch=ss)
                 # model
                 model_loss = model_loss_fn(model=hydra)
 
