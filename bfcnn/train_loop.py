@@ -68,7 +68,6 @@ def train_loop(
     denoiser_loss_fn = tf.function(func=loss_fn_map[DENOISER_LOSS_FN_STR], reduce_retracing=True)
     superres_loss_fn = tf.function(func=loss_fn_map[SUPERRES_LOSS_FN_STR], reduce_retracing=True)
     subsample_loss_fn = tf.function(func=loss_fn_map[SUBSAMPLE_LOSS_FN_STR], reduce_retracing=True)
-    uq_loss_fn = tf.function(func=loss_fn_map[DENOISER_UQ_LOSS_FN_STR], reduce_retracing=True)
 
     # --- build optimizer
     optimizer, lr_schedule = \
@@ -234,7 +233,7 @@ def train_loop(
         else:
             logger.info("!!! Did NOT find checkpoint to restore !!!")
 
-        @tf.function
+        @tf.function(reduce_retracing=True)
         def train_forward_step(
                 n: tf.Tensor,
                 d: tf.Tensor,
@@ -258,6 +257,7 @@ def train_loop(
                 hydra = prune_fn(model=hydra)
 
             start_time_epoch = time.time()
+            variables = hydra.trainable_variables
 
             # --- iterate over the batches of the dataset
             for (input_batch, noisy_batch, downsampled_batch) in dataset_training:
@@ -275,22 +275,19 @@ def train_loop(
                             s=input_batch)
 
                     # compute the loss value for this mini-batch
-                    # denoiser
                     de_loss = denoiser_loss_fn(input_batch=input_batch, predicted_batch=de)
-                    # superres
                     sr_loss = superres_loss_fn(input_batch=input_batch, predicted_batch=sr)
-                    # subsample
                     ss_loss = subsample_loss_fn(input_batch=downsampled_batch, predicted_batch=ss)
-                    # model
                     model_loss = model_loss_fn(model=hydra)
 
                     # combine losses
                     total_loss = \
                         model_loss[TOTAL_LOSS_STR] + \
-                        (de_loss[TOTAL_LOSS_STR] + sr_loss[TOTAL_LOSS_STR] + ss_loss[TOTAL_LOSS_STR]) / 3
+                        (de_loss[TOTAL_LOSS_STR] +
+                         sr_loss[TOTAL_LOSS_STR] +
+                         ss_loss[TOTAL_LOSS_STR]) / 3
 
                 # --- apply weights
-                variables = hydra.trainable_variables
                 optimizer.apply_gradients(
                     grads_and_vars=zip(
                         tape.gradient(target=total_loss, sources=variables),
@@ -416,6 +413,7 @@ def train_loop(
                         logger.info("total_steps reached [{0}]".format(
                             int(total_steps)))
                         finished_training = True
+                        break
 
             end_time_epoch = time.time()
             epoch_time = end_time_epoch - start_time_epoch
