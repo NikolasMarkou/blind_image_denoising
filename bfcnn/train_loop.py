@@ -244,41 +244,6 @@ def train_loop(
             _, _, ss = hydra(s, training=True)
             return de, sr, ss
 
-        @tf.function(reduce_retracing=True)
-        def train_forward_backward_step(
-                n: tf.Tensor,
-                d: tf.Tensor,
-                s: tf.Tensor):
-            variables = hydra.trainable_variables
-            # run the forward pass of the layer.
-            # The operations that the layer applies
-            # to its inputs are going to be recorded
-            # on the GradientTape.
-            with tf.GradientTape() as tape:
-                de, _, _ = hydra(n, training=True)
-                _, sr, _ = hydra(d, training=True)
-                _, _, ss = hydra(s, training=True)
-
-                # compute the loss value for this mini-batch
-                de_loss = denoiser_loss_fn(input_batch=input_batch, predicted_batch=de)
-                sr_loss = superres_loss_fn(input_batch=input_batch, predicted_batch=sr)
-                ss_loss = subsample_loss_fn(input_batch=downsampled_batch, predicted_batch=ss)
-                model_loss = model_loss_fn(model=hydra)
-
-                # combine losses
-                total_loss = \
-                    model_loss[TOTAL_LOSS_STR] + \
-                    (de_loss[TOTAL_LOSS_STR] +
-                     sr_loss[TOTAL_LOSS_STR] +
-                     ss_loss[TOTAL_LOSS_STR]) / 3
-
-            # --- apply weights
-            optimizer.apply_gradients(
-                grads_and_vars=zip(
-                    tape.gradient(target=total_loss, sources=variables),
-                    variables))
-            return de, sr, ss, de_loss, sr_loss, ss_loss
-
         # ---
         finished_training = False
         while not finished_training and \
@@ -292,16 +257,41 @@ def train_loop(
                 hydra = prune_fn(model=hydra)
 
             start_time_epoch = time.time()
+            variables = hydra.trainable_variables
 
             # --- iterate over the batches of the dataset
             for (input_batch, noisy_batch, downsampled_batch) in dataset_training:
                 start_time_forward_backward = time.time()
 
-                de, sr, ss, de_loss, sr_loss, ss_loss = \
-                    train_forward_backward_step(
-                                n=noisy_batch,
-                                d=downsampled_batch,
-                                s=input_batch)
+                # run the forward pass of the layer.
+                # The operations that the layer applies
+                # to its inputs are going to be recorded
+                # on the GradientTape.
+                with tf.GradientTape() as tape:
+                    de, sr, ss = \
+                        train_forward_step(
+                            n=noisy_batch,
+                            d=downsampled_batch,
+                            s=input_batch)
+
+                    # compute the loss value for this mini-batch
+                    de_loss = denoiser_loss_fn(input_batch=input_batch, predicted_batch=de)
+                    sr_loss = superres_loss_fn(input_batch=input_batch, predicted_batch=sr)
+                    ss_loss = subsample_loss_fn(input_batch=downsampled_batch, predicted_batch=ss)
+                    model_loss = model_loss_fn(model=hydra)
+
+                    # combine losses
+                    total_loss = \
+                        model_loss[TOTAL_LOSS_STR] + \
+                        (de_loss[TOTAL_LOSS_STR] +
+                         sr_loss[TOTAL_LOSS_STR] +
+                         ss_loss[TOTAL_LOSS_STR]) / 3
+
+                # --- apply weights
+                optimizer.apply_gradients(
+                    grads_and_vars=zip(
+                        tape.gradient(target=total_loss, sources=variables),
+                        variables))
 
                 # --- add loss summaries for tensorboard
                 for summary in [(DENOISER_STR, de_loss),
