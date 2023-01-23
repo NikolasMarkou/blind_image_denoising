@@ -277,7 +277,7 @@ def train_loop(
                 grads_and_vars=zip(
                     tape.gradient(target=total_loss, sources=variables),
                     variables))
-            return de, sr, ss, de_loss, sr_loss, ss_loss
+            return de, sr, ss, de_loss, sr_loss, ss_loss, model_loss, total_loss
 
         # ---
         finished_training = False
@@ -297,7 +297,7 @@ def train_loop(
             for (input_batch, noisy_batch, downsampled_batch) in dataset_training:
                 start_time_forward_backward = time.time()
 
-                de, sr, ss, de_loss, sr_loss, ss_loss = \
+                de, sr, ss, de_loss, sr_loss, ss_loss, model_loss, total_loss = \
                     train_forward_backward_step(
                                 n=noisy_batch,
                                 d=downsampled_batch,
