@@ -73,9 +73,7 @@
 		"cutoff": 255.0,
 		"mae_multiplier": 1.0,
 		"ssim_multiplier": 1.0,
-		"regularization": 0.01,
-		"sigma_multiplier": 5.0,
-		"entropy_multiplier": 0.5
+		"regularization": 0.01
 	},
 	"dataset": {
 		"batch_size": 32,
