@@ -95,7 +95,6 @@ def export_model(
         tf.train.Checkpoint(
             step=global_step,
             epoch=global_epoch,
-            optimizer=optimizer,
             model_hydra=hydra,
             model_backbone=backbone,
             model_denoiser=denoiser,

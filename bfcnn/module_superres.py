@@ -71,7 +71,7 @@ class SuperresModule(tf.Module):
                 interpolation="nearest")(x)
 
         # --- run denoiser model
-        x = self._model_denoiser(x)[0]
+        x = self._model_denoiser(x)
 
         # --- denormalize
         x = self._model_denormalizer(x)

@@ -44,7 +44,7 @@ def test_model_builder(config):
         # denoiser_output,
         # superres_output
         # subsample_output
-        d,sr,ss = models.hydra(x)
+        d, sr, ss = models.hydra(x)
 
         assert d.shape == x.shape
         assert sr.shape[0] == x.shape[0]
