@@ -76,9 +76,6 @@ def export_model(
             trainable=False,
             dtype=tf.dtypes.int64,
             name="global_epoch")
-    # --- build optimizer
-    optimizer, lr_schedule = \
-        optimizer_builder(config=config["train"]["optimizer"])
 
     # ---
     logger.info("saving configuration pipeline")
@@ -103,7 +100,7 @@ def export_model(
     status = \
         checkpoint.restore(tf.train.latest_checkpoint(checkpoint_directory))
     status.assert_existing_objects_matched()
-    #status.assert_consumed()
+
     logger.info("!!! Found checkpoint to restore !!!")
     logger.info(f"restored checkpoint "
                 f"at epoch [{int(global_epoch)}] "

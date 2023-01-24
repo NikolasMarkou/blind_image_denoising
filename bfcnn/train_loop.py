@@ -61,9 +61,9 @@ def train_loop(
 
     # --- build dataset
     dataset_config = config["dataset"]
-    dataset_training = dataset_builder(dataset_config)
     batch_size = dataset_config["batch_size"]
     input_shape = dataset_config["input_shape"]
+    dataset_training = dataset_builder(dataset_config)
 
     # --- build loss function
     loss_fn_map = loss_function_builder(config=config["loss"])
@@ -266,8 +266,6 @@ def train_loop(
         else:
             logger.info("!!! Did NOT find checkpoint to restore !!!")
 
-
-
         # ---
         finished_training = False
         while not finished_training and \
@@ -284,9 +282,24 @@ def train_loop(
             variables = hydra.trainable_variables
 
             # --- iterate over the batches of the dataset
-            for (input_batch, noisy_batch, downsampled_batch) in dataset_training:
-                start_time_forward_backward = time.time()
+            dataset_iterator = iter(dataset_training)
+            iterator_has_data = True
 
+            while iterator_has_data:
+                # get
+                start_time_dataset = time.time()
+                try:
+                    (input_batch, noisy_batch, downsampled_batch) = dataset_iterator.get_next()
+                except tf.errors.OutOfRangeError as e:
+                    iterator_has_data = False
+                    break
+                stop_time_dataset = time.time()
+                step_time_dataset = stop_time_dataset - start_time_dataset
+
+                if not iterator_has_data:
+                    break
+
+                start_time_forward_backward = time.time()
                 # run the forward pass of the layer.
                 # The operations that the layer applies
                 # to its inputs are going to be recorded
@@ -407,9 +420,8 @@ def train_loop(
 
                 # --- keep time of steps per second
                 stop_time_forward_backward = time.time()
-                step_time_forward_backward = \
-                    stop_time_forward_backward - \
-                    start_time_forward_backward
+                step_time_forward_backward = stop_time_forward_backward - start_time_forward_backward
+                step_time_all = stop_time_forward_backward - start_time_dataset
 
                 tf.summary.scalar(name="training/epoch",
                                   data=int(global_epoch),
@@ -418,6 +430,12 @@ def train_loop(
                                   data=lr_schedule(int(global_step)),
                                   step=global_step)
                 tf.summary.scalar(name="training/steps_per_second",
+                                  data=1.0 / (step_time_all + 0.00001),
+                                  step=global_step)
+                tf.summary.scalar(name="training/dataset_steps_per_second",
+                                  data=1.0 / (step_time_dataset + 0.00001),
+                                  step=global_step)
+                tf.summary.scalar(name="training/gpu_steps_per_second",
                                   data=1.0 / (step_time_forward_backward + 0.00001),
                                   step=global_step)
 

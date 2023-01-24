@@ -334,8 +334,8 @@ def dataset_builder(
         raise ValueError("don't know how to handle non directory datasets")
 
     # --- save the augmentation functions
-    @tf.function(
-        input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)])
+    # @tf.function(
+    #     input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)])
     def load_image_fn(path: tf.Tensor) -> tf.Tensor:
         img = \
             load_image(
@@ -356,9 +356,9 @@ def dataset_builder(
         return crops
 
     # --- compute concrete functions
-    load_image_concrete_fn = \
-        load_image_fn.get_concrete_function(
-            tf.TensorSpec(shape=(), dtype=tf.string))
+    # load_image_concrete_fn = \
+    #     load_image_fn.get_concrete_function(
+    #         tf.TensorSpec(shape=(), dtype=tf.string))
 
     prepare_data_concrete_fn = \
         prepare_data_fn.get_concrete_function(
@@ -380,14 +380,14 @@ def dataset_builder(
     dataset_training = \
         dataset_training \
             .map(
-                map_func=load_image_concrete_fn,
+                map_func=load_image_fn,
                 num_parallel_calls=batch_size) \
             .shuffle(
                 seed=0,
                 buffer_size=1024,
                 reshuffle_each_iteration=False) \
             .map(map_func=prepare_data_concrete_fn,
-                 num_parallel_calls=tf.data.AUTOTUNE) \
+                 num_parallel_calls=batch_size) \
             .rebatch(
                 batch_size=batch_size,
                 drop_remainder=True) \
