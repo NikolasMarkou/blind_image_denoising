@@ -76,7 +76,7 @@
 		"regularization": 0.01
 	},
 	"dataset": {
-		"batch_size": 32,
+		"batch_size": 24,
 		"color_mode": "rgb",
 		"no_crops_per_image": 1,
 		"value_range": [0, 255],

@@ -222,12 +222,11 @@ def train_loop(
         tf.summary.flush()
         tf.summary.trace_off()
 
-
-
     # summary of model
     hydra.summary(print_fn=logger.info)
     hydra.reset_states()
     hydra.reset_metrics()
+
     # save model so we can visualize it easier
     hydra.save(
         filepath=os.path.join(model_dir, MODEL_HYDRA_DEFAULT_NAME_STR),
