@@ -163,6 +163,8 @@ def dataset_builder(
         return input_batch
 
     # --- define noise augmentation function
+
+    @tf.function
     def random_choice(
             x: tf.Tensor,
             size=tf.constant(1, dtype=tf.int64),
@@ -176,7 +178,7 @@ def dataset_builder(
         indices = tf.range(0, dim_x, dtype=tf.int64)
         sample_index = tf.random.shuffle(indices, seed=0)[:size]
         return tf.gather(x, sample_index, axis=axis)[0]
-    
+
     @tf.function
     def noise_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
