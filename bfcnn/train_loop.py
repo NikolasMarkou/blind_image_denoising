@@ -136,6 +136,7 @@ def train_loop(
                 test_images.append(image)
         test_images = np.concatenate(test_images, axis=0)
         test_images = tf.constant(test_images)
+        test_images = tf.cast(test_images, dtype=tf.float32)
 
     # --- prune strategy
     prune_config = \
@@ -163,14 +164,49 @@ def train_loop(
     prune_fn = prune_function_builder(prune_strategies)
 
     # --- build the hydra model
+    models = model_hydra_builder(config=config[MODEL_STR])
+
+    # get each model
+    hydra = models.hydra
+    backbone = models.backbone
+    denoiser = models.denoiser
+    normalizer = models.normalizer
+    denormalizer = models.denormalizer
+
     tf.summary.trace_on(graph=True, profiler=False)
     with summary_writer.as_default():
-        models = model_hydra_builder(config=config[MODEL_STR])
+        @tf.function(
+            input_signature=[
+                tf.TensorSpec(
+                    shape=[batch_size, input_shape[0], input_shape[1], input_shape[2]],
+                    dtype=tf.float32),
+                tf.TensorSpec(
+                    shape=[batch_size, int(input_shape[0] / 2), int(input_shape[1] / 2), input_shape[2]],
+                    dtype=tf.float32),
+                tf.TensorSpec(
+                    shape=[batch_size, input_shape[0], input_shape[1], input_shape[2]],
+                    dtype=tf.float32)
+            ],
+            reduce_retracing=True)
+        def train_forward_step(
+                n: tf.Tensor,
+                d: tf.Tensor,
+                s: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+            de, _, _ = hydra(n, training=True)
+            _, sr, _ = hydra(d, training=True)
+            _, _, ss = hydra(s, training=True)
+            return de, sr, ss
 
-        # The function to be traced.
-        @tf.function
-        def optimized_model(x_input):
-            return models.hydra(x_input, training=False)
+        @tf.function(
+            input_signature=[
+                tf.TensorSpec(
+                    shape=test_images.shape,
+                    dtype=tf.float32),
+            ],
+            reduce_retracing=True)
+        def test_step(
+                n: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+            return hydra(n, training=False)
 
         x = \
             tf.random.uniform(
@@ -179,19 +215,14 @@ def train_loop(
                 maxval=255.0,
                 dtype=tf.float32,
                 shape=random_batch_size)
-        _ = optimized_model(x)
+        _ = test_step(x)
         tf.summary.trace_export(
             step=0,
             name="hydra")
         tf.summary.flush()
         tf.summary.trace_off()
 
-    # get each model
-    hydra = models.hydra
-    backbone = models.backbone
-    denoiser = models.denoiser
-    normalizer = models.normalizer
-    denormalizer = models.denormalizer
+
 
     # summary of model
     hydra.summary(print_fn=logger.info)
@@ -236,40 +267,7 @@ def train_loop(
         else:
             logger.info("!!! Did NOT find checkpoint to restore !!!")
 
-        @tf.function(
-            input_signature=[
-                tf.TensorSpec(
-                    shape=[batch_size, input_shape[0], input_shape[1], input_shape[2]],
-                    dtype=tf.float32),
-                tf.TensorSpec(
-                    shape=[batch_size, int(input_shape[0] / 2), int(input_shape[1] / 2), input_shape[2]],
-                    dtype=tf.float32),
-                tf.TensorSpec(
-                    shape=[batch_size, input_shape[0], input_shape[1], input_shape[2]],
-                    dtype=tf.float32)
-            ],
-            reduce_retracing=True)
-        def train_forward_step(
-                n: tf.Tensor,
-                d: tf.Tensor,
-                s: tf.Tensor) -> \
-                Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
-            de, _, _ = hydra(n, training=True)
-            _, sr, _ = hydra(d, training=True)
-            _, _, ss = hydra(s, training=True)
-            return de, sr, ss
 
-        @tf.function(
-            input_signature=[
-                tf.TensorSpec(
-                    shape=test_images.shape,
-                    dtype=tf.float32),
-            ],
-            reduce_retracing=True)
-        def test_step(
-                n: tf.Tensor) -> \
-                Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
-            return hydra(n, training=False)
 
         # ---
         finished_training = False
