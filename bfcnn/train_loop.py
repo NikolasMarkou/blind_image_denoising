@@ -60,7 +60,10 @@ def train_loop(
                 model_dir))
 
     # --- build dataset
-    dataset_training = dataset_builder(config["dataset"])
+    dataset_config = config["dataset"]
+    dataset_training = dataset_builder(dataset_config)
+    batch_size = dataset_config["batch_size"]
+    input_shape = dataset_config["input_shape"]
 
     # --- build loss function
     loss_fn_map = loss_function_builder(config=config["loss"])
@@ -110,7 +113,7 @@ def train_loop(
     # size of the random batch
     random_batch_size = \
         [visualization_number] + \
-        train_config.get("random_batch_size", [128, 128, 3])
+        train_config.get("random_batch_size", input_shape)
 
     # test images
     use_test_images = train_config.get("use_test_images", False)
@@ -125,8 +128,8 @@ def train_loop(
                 image = \
                     load_image(
                         path=image_path,
-                        num_channels=3,
-                        image_size=(256, 256),
+                        num_channels=input_shape[-1],
+                        image_size=input_shape[:-1],
                         expand_dims=True,
                         normalize=False,
                         interpolation=tf.image.ResizeMethod.BILINEAR)
@@ -233,7 +236,19 @@ def train_loop(
         else:
             logger.info("!!! Did NOT find checkpoint to restore !!!")
 
-        @tf.function(reduce_retracing=True)
+        @tf.function(
+            input_signature=[
+                tf.TensorSpec(
+                    shape=[batch_size, input_shape[0], input_shape[1], input_shape[2]],
+                    dtype=tf.float32),
+                tf.TensorSpec(
+                    shape=[batch_size, input_shape[0], input_shape[1], input_shape[2]],
+                    dtype=tf.float32),
+                tf.TensorSpec(
+                    shape=[batch_size, input_shape[0] / 2, input_shape[1] / 2, input_shape[2]],
+                    dtype=tf.float32)
+            ],
+            reduce_retracing=True)
         def train_forward_step(
                 n: tf.Tensor,
                 d: tf.Tensor,
@@ -243,6 +258,18 @@ def train_loop(
             _, sr, _ = hydra(d, training=True)
             _, _, ss = hydra(s, training=True)
             return de, sr, ss
+
+        @tf.function(
+            input_signature=[
+                tf.TensorSpec(
+                    shape=test_images.shape,
+                    dtype=tf.float32),
+            ],
+            reduce_retracing=True)
+        def test_step(
+                n: tf.Tensor) -> \
+                Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+            return hydra(n, training=False)
 
         # ---
         finished_training = False
@@ -354,23 +381,16 @@ def train_loop(
                         max_outputs=visualization_number, step=global_step)
 
                     if use_test_images:
-                        test_denoiser_output, \
-                        test_superres_output, \
-                        test_subsample_output = \
-                            hydra(test_images, training=False)
+                        test_de, test_sr, test_ss = test_step(test_images)
                         tf.summary.image(
-                            name="test/denoiser", data=test_denoiser_output / 255,
+                            name="test/denoiser", data=test_de / 255,
                             max_outputs=visualization_number, step=global_step)
                         tf.summary.image(
-                            name="test/superres", data=test_superres_output / 255,
+                            name="test/superres", data=test_sr / 255,
                             max_outputs=visualization_number, step=global_step)
                         tf.summary.image(
-                            name="test/subsample", data=test_subsample_output / 255,
+                            name="test/subsample", data=test_ss / 255,
                             max_outputs=visualization_number, step=global_step)
-                        del test_denoiser_output, test_superres_output, test_subsample_output
-
-                # --- free resources
-                del input_batch, noisy_batch, downsampled_batch
 
                 # --- prune conv2d
                 if use_prune and (global_epoch >= prune_start_epoch) and \
