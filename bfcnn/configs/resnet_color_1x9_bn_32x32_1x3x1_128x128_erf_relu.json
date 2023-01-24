@@ -3,7 +3,7 @@
 		"backbone": {
 			"input_shape": ["?", "?", 3],
 			"filters": 32,
-			"no_layers": 9,
+			"no_layers": 6,
 			"kernel_size": 7,
 			"block_kernels": [1, 3, 1],
 			"block_filters": [32, 64, 32],
@@ -76,7 +76,7 @@
 		"regularization": 0.01
 	},
 	"dataset": {
-		"batch_size": 16,
+		"batch_size": 32,
 		"color_mode": "rgb",
 		"no_crops_per_image": 1,
 		"value_range": [0, 255],
