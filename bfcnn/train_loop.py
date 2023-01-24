@@ -245,7 +245,7 @@ def train_loop(
                     shape=[batch_size, input_shape[0], input_shape[1], input_shape[2]],
                     dtype=tf.float32),
                 tf.TensorSpec(
-                    shape=[batch_size, input_shape[0] / 2, input_shape[1] / 2, input_shape[2]],
+                    shape=[batch_size, int(input_shape[0] / 2), int(input_shape[1] / 2), input_shape[2]],
                     dtype=tf.float32)
             ],
             reduce_retracing=True)
