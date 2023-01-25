@@ -340,7 +340,6 @@ def train_loop(
                             grads_and_vars=zip(
                                 tape.gradient(target=total_loss, sources=trainable_variables),
                                 trainable_variables))
-                        total_loss = tf.constant(0.0, dtype=tf.float32)
 
                 # --- add loss summaries for tensorboard
                 for summary in [(DENOISER_STR, de_loss),
@@ -458,6 +457,7 @@ def train_loop(
 
                 # ---
                 global_step.assign_add(1)
+                total_loss = tf.constant(0.0, dtype=tf.float32)
 
                 # --- check if total steps reached
                 if 0 < total_steps <= global_step:
