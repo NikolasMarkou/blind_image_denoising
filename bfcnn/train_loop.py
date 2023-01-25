@@ -286,7 +286,10 @@ def train_loop(
 
             # --- iterate over the batches of the dataset
             dataset_iterator = iter(dataset_training)
-
+            stop_time_dataset = 0.0
+            start_time_dataset = 0.0
+            step_time_dataset = 0.0
+            
             while True:
                 try:
                     start_time_dataset = time.time()
