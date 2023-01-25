@@ -86,7 +86,10 @@ def train_loop(
     # --- get the train configuration
     train_config = config["train"]
     epochs = train_config["epochs"]
-    no_iterations_per_batch = train_config.get("no_iterations_per_batch", 1)
+    gpu_batches_per_step = train_config.get("gpu_batches_per_step", 1)
+    if gpu_batches_per_step is None or gpu_batches_per_step <= 0:
+        raise ValueError("gpu_batches_per_step must be > 0")
+
     global_total_epochs = tf.Variable(
         epochs, trainable=False, dtype=tf.dtypes.int64, name="global_total_epochs")
     total_steps = \
@@ -286,17 +289,19 @@ def train_loop(
 
             # --- iterate over the batches of the dataset
             dataset_iterator = iter(dataset_training)
+            gpu_batches = 0
             stop_time_dataset = 0.0
             start_time_dataset = 0.0
             step_time_dataset = 0.0
+            total_loss = tf.constant(0.0, dtype=tf.float32)
 
             while True:
                 try:
                     start_time_dataset = time.time()
                     (input_batch, noisy_batch, downsampled_batch) = dataset_iterator.get_next()
                     stop_time_dataset = time.time()
-                except tf.errors.OutOfRangeError:
                     step_time_dataset = stop_time_dataset - start_time_dataset
+                except tf.errors.OutOfRangeError:
                     break
 
                 start_time_forward_backward = time.time()
@@ -313,20 +318,28 @@ def train_loop(
                     de_loss = denoiser_loss_fn(input_batch=input_batch, predicted_batch=de)
                     sr_loss = superres_loss_fn(input_batch=input_batch, predicted_batch=sr)
                     ss_loss = subsample_loss_fn(input_batch=downsampled_batch, predicted_batch=ss)
-                    model_loss = model_loss_fn(model=hydra)
 
                     # combine losses
-                    total_loss = \
-                        model_loss[TOTAL_LOSS_STR] + \
+                    total_loss += \
                         (de_loss[TOTAL_LOSS_STR] +
                          sr_loss[TOTAL_LOSS_STR] +
                          ss_loss[TOTAL_LOSS_STR]) / 3
 
-                # --- apply weights
-                optimizer.apply_gradients(
-                    grads_and_vars=zip(
-                        tape.gradient(target=total_loss, sources=trainable_variables),
-                        trainable_variables))
+                    gpu_batches += 1
+
+                    if gpu_batches < gpu_batches_per_step:
+                        continue
+                    else:
+                        gpu_batches = 0
+                        total_loss += \
+                            total_loss / gpu_batches_per_step + \
+                            model_loss_fn(model=hydra)[TOTAL_LOSS_STR]
+                        # apply weights
+                        optimizer.apply_gradients(
+                            grads_and_vars=zip(
+                                tape.gradient(target=total_loss, sources=trainable_variables),
+                                trainable_variables))
+                        total_loss = tf.constant(0.0, dtype=tf.float32)
 
                 # --- add loss summaries for tensorboard
                 for summary in [(DENOISER_STR, de_loss),
