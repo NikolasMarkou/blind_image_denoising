@@ -289,7 +289,7 @@ def train_loop(
             stop_time_dataset = 0.0
             start_time_dataset = 0.0
             step_time_dataset = 0.0
-            
+
             while True:
                 try:
                     start_time_dataset = time.time()
@@ -423,7 +423,8 @@ def train_loop(
                     stop_time_forward_backward - \
                     start_time_forward_backward
                 step_time_training = \
-                    stop_time_forward_backward - start_time_dataset
+                    stop_time_forward_backward - \
+                    start_time_dataset
 
                 tf.summary.scalar(name="training/epoch",
                                   data=int(global_epoch),
@@ -431,14 +432,14 @@ def train_loop(
                 tf.summary.scalar(name="training/learning_rate",
                                   data=lr_schedule(int(global_step)),
                                   step=global_step)
-                tf.summary.scalar(name="training/training_steps_per_second",
-                                  data=1.0 / (step_time_forward_backward + 0.00001),
+                tf.summary.scalar(name="training/training_step_time",
+                                  data=step_time_training,
                                   step=global_step)
-                tf.summary.scalar(name="training/inference_steps_per_second",
-                                  data=1.0 / (step_time_training + 0.00001),
+                tf.summary.scalar(name="training/inference_step_time",
+                                  data=step_time_forward_backward,
                                   step=global_step)
-                tf.summary.scalar(name="training/dataset_steps_per_second",
-                                  data=1.0 / (step_time_dataset + 0.00001),
+                tf.summary.scalar(name="training/dataset_step_time",
+                                  data=step_time_dataset,
                                   step=global_step)
 
                 # ---
