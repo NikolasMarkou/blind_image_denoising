@@ -181,7 +181,10 @@ def train_loop(
                     shape=[batch_size, input_shape[0], input_shape[1], input_shape[2]],
                     dtype=tf.float32),
                 tf.TensorSpec(
-                    shape=[batch_size, int(input_shape[0] / 2), int(input_shape[1] / 2), input_shape[2]],
+                    shape=[batch_size,
+                           int(input_shape[0] / 2),
+                           int(input_shape[1] / 2),
+                           input_shape[2]],
                     dtype=tf.float32),
                 tf.TensorSpec(
                     shape=[batch_size, input_shape[0], input_shape[1], input_shape[2]],
@@ -239,7 +242,6 @@ def train_loop(
             tf.train.Checkpoint(
                 step=global_step,
                 epoch=global_epoch,
-                optimizer=optimizer,
                 model_hydra=hydra,
                 model_backbone=backbone,
                 model_denoiser=denoiser,
@@ -266,10 +268,9 @@ def train_loop(
         else:
             logger.info("!!! Did NOT find checkpoint to restore !!!")
 
-
-
         # ---
         finished_training = False
+
         while not finished_training and \
                 (global_total_epochs == -1 or global_epoch < global_total_epochs):
             logger.info("epoch: {0}, step: {1}".format(
@@ -281,17 +282,24 @@ def train_loop(
                 hydra = prune_fn(model=hydra)
 
             start_time_epoch = time.time()
-            variables = hydra.trainable_variables
+            trainable_variables = hydra.trainable_variables
 
             # --- iterate over the batches of the dataset
-            for (input_batch, noisy_batch, downsampled_batch) in dataset_training:
+            dataset_iterator = iter(dataset_training)
+
+            while True:
+                try:
+                    start_time_dataset = time.time()
+                    (input_batch, noisy_batch, downsampled_batch) = dataset_iterator.get_next()
+                    stop_time_dataset = time.time()
+                except tf.errors.OutOfRangeError:
+                    step_time_dataset = stop_time_dataset - start_time_dataset
+                    break
+
                 start_time_forward_backward = time.time()
 
-                # run the forward pass of the layer.
-                # The operations that the layer applies
-                # to its inputs are going to be recorded
-                # on the GradientTape.
-                with tf.GradientTape() as tape:
+                with tf.GradientTape(watch_accessed_variables=False) as tape:
+                    tape.watch(trainable_variables)
                     de, sr, ss = \
                         train_forward_step(
                             n=noisy_batch,
@@ -314,8 +322,8 @@ def train_loop(
                 # --- apply weights
                 optimizer.apply_gradients(
                     grads_and_vars=zip(
-                        tape.gradient(target=total_loss, sources=variables),
-                        variables))
+                        tape.gradient(target=total_loss, sources=trainable_variables),
+                        trainable_variables))
 
                 # --- add loss summaries for tensorboard
                 for summary in [(DENOISER_STR, de_loss),
@@ -394,6 +402,7 @@ def train_loop(
                         (prune_steps > -1) and (global_step % prune_steps == 0):
                     logger.info(f"pruning weights at step [{int(global_step)}]")
                     hydra = prune_fn(model=hydra)
+                    trainable_variables = hydra.trainable_variables
 
                 # --- check if it is time to save a checkpoint
                 if checkpoint_every > 0 and \
@@ -410,6 +419,8 @@ def train_loop(
                 step_time_forward_backward = \
                     stop_time_forward_backward - \
                     start_time_forward_backward
+                step_time_training = \
+                    stop_time_forward_backward - start_time_dataset
 
                 tf.summary.scalar(name="training/epoch",
                                   data=int(global_epoch),
@@ -417,20 +428,25 @@ def train_loop(
                 tf.summary.scalar(name="training/learning_rate",
                                   data=lr_schedule(int(global_step)),
                                   step=global_step)
-                tf.summary.scalar(name="training/steps_per_second",
+                tf.summary.scalar(name="training/training_steps_per_second",
                                   data=1.0 / (step_time_forward_backward + 0.00001),
+                                  step=global_step)
+                tf.summary.scalar(name="training/inference_steps_per_second",
+                                  data=1.0 / (step_time_training + 0.00001),
+                                  step=global_step)
+                tf.summary.scalar(name="training/dataset_steps_per_second",
+                                  data=1.0 / (step_time_dataset + 0.00001),
                                   step=global_step)
 
                 # ---
                 global_step.assign_add(1)
 
                 # --- check if total steps reached
-                if total_steps > 0:
-                    if total_steps <= global_step:
-                        logger.info("total_steps reached [{0}]".format(
-                            int(total_steps)))
-                        finished_training = True
-                        break
+                if 0 < total_steps <= global_step:
+                    logger.info("total_steps reached [{0}]".format(
+                        int(total_steps)))
+                    finished_training = True
+                    break
 
             end_time_epoch = time.time()
             epoch_time = end_time_epoch - start_time_epoch
