@@ -331,9 +331,10 @@ def train_loop(
                         continue
                     else:
                         gpu_batches = 0
+                        model_loss = model_loss_fn(model=hydra)
                         total_loss += \
                             total_loss / gpu_batches_per_step + \
-                            model_loss_fn(model=hydra)[TOTAL_LOSS_STR]
+                            model_loss[TOTAL_LOSS_STR]
                         # apply weights
                         optimizer.apply_gradients(
                             grads_and_vars=zip(
