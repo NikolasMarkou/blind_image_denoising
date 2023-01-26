@@ -273,7 +273,8 @@ def conv2d_wrapper(
         input_layer,
         conv_params: Dict,
         bn_params: Dict = None,
-        pre_activation: str = None,
+        pre_activation: Union[str, tf.keras.layers.Layer] = None,
+        post_activation: Union[str, tf.keras.layers.Layer] = None,
         sample_mean_removal: bool = False,
         channel_mean_removal: bool = False,
         channelwise_scaling: bool = False,
@@ -286,6 +287,7 @@ def conv2d_wrapper(
     :param conv_params: conv2d parameters
     :param bn_params: batchnorm parameters, None to disable bn
     :param pre_activation: activation after the batchnorm, None to disable
+    :param post_activation: activation after the convolution, None to disable
     :param sample_mean_removal: if true, remove the whole sample mean after convolution
     :param channel_mean_removal: if true, remove mean per channel after convolution
     :param conv_type: if true use depthwise convolution,
@@ -301,8 +303,6 @@ def conv2d_wrapper(
         raise ValueError("conv_params cannot be None")
 
     # --- prepare arguments
-    use_bn = bn_params is not None
-    use_pre_activation = pre_activation is not None
     # TODO restructure this
     if isinstance(conv_type, str):
         conv_type = ConvType.from_string(conv_type)
@@ -320,9 +320,9 @@ def conv2d_wrapper(
     # --- perform batchnorm and preactivation
     x = input_layer
 
-    if use_bn:
+    if bn_params:
         x = tf.keras.layers.BatchNormalization(**bn_params)(x)
-    if use_pre_activation:
+    if pre_activation:
         x = tf.keras.layers.Activation(pre_activation)(x)
 
     # --- convolution
@@ -334,6 +334,10 @@ def conv2d_wrapper(
         x = tf.keras.layers.Conv2DTranspose(**conv_params)(x)
     else:
         raise ValueError(f"don't know how to handle this [{conv_type}]")
+
+    # --- post activation (custom activation)
+    if post_activation:
+        x = tf.keras.layers.Activation(post_activation)(x)
 
     # --- remove sample mean
     if sample_mean_removal:
