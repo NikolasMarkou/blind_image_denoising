@@ -196,11 +196,6 @@ def loss_function_builder(
     mse_multiplier = config.get("mse_multiplier", 0.0)
     use_mse = mse_multiplier > 0.0
 
-    # --- uq
-    # forces the uncertainty to have a small variance
-    uq_sigma_multiplier = config.get("uq_sigma_multiplier", 1.0)
-    uq_entropy_multiplier = config.get("uq_entropy_multiplier", 1.0)
-
     # --- regularization
     regularization_multiplier = config.get("regularization", 1.0)
 
@@ -213,32 +208,17 @@ def loss_function_builder(
         }
 
     # ---
-    def uq_loss(
-            sigma_batch: tf.Tensor = tf.constant(0.0, dtype=tf.float32),
-            entropy_batch: tf.Tensor = tf.constant(0.0, dtype=tf.float32)) -> tf.Tensor:
-        sigma_loss = tf.reduce_mean(sigma_batch)
-        entropy_loss = tf.reduce_mean(entropy_batch)
-
-        return {
-            TOTAL_LOSS_STR:
-                sigma_loss * uq_sigma_multiplier +
-                entropy_loss * uq_entropy_multiplier,
-            SIGMA_LOSS_STR: sigma_loss,
-            ENTROPY_LOSS_STR: entropy_loss
-        }
-
-    # ---
     def denoiser_loss(
             input_batch: tf.Tensor,
             predicted_batch: tf.Tensor) -> Dict[str, tf.Tensor]:
-        # --- actual mean absolute error (no hinge or cutoff)
+        # actual mean absolute error (no hinge or cutoff)
         mae_actual = \
             mae(original=input_batch,
                 prediction=predicted_batch,
                 hinge=0.0,
                 cutoff=255.0)
 
-        # --- loss prediction on mae
+        # loss prediction on mae
         mae_prediction_loss = \
             tf.constant(0.0, dtype=tf.float32)
         if use_mae:
@@ -248,7 +228,7 @@ def loss_function_builder(
                     hinge=hinge,
                     cutoff=cutoff)
 
-        # --- loss ssim
+        # loss ssim
         ssim_loss = tf.constant(0.0, dtype=tf.float32)
         if use_ssim:
             ssim_loss = \
@@ -256,7 +236,7 @@ def loss_function_builder(
                     tf.image.ssim(input_batch, predicted_batch, 255.0))
             ssim_loss = 1.0 - ssim_loss
 
-        # --- loss prediction on mse
+        # loss prediction on mse
         mse_prediction_loss = \
             tf.constant(0.0, dtype=tf.float32)
         if use_mse:
@@ -266,7 +246,7 @@ def loss_function_builder(
                      hinge=hinge,
                      cutoff=(cutoff * cutoff))
 
-        # --- snr
+        # snr
         peak_signal_to_noise_ratio = \
             psnr(input_batch, predicted_batch)
 
@@ -283,7 +263,6 @@ def loss_function_builder(
     # ----
     return {
         MODEL_LOSS_FN_STR: model_loss,
-        DENOISER_UQ_LOSS_FN_STR: uq_loss,
         DENOISER_LOSS_FN_STR: denoiser_loss,
         SUPERRES_LOSS_FN_STR: denoiser_loss,
         SUBSAMPLE_LOSS_FN_STR: denoiser_loss
