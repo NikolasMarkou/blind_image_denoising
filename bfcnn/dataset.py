@@ -305,16 +305,22 @@ def dataset_builder(
 
         return noisy_batch
 
-    @tf.function
+    @tf.function(
+        input_signature=[
+            tf.TensorSpec(shape=[no_crops_per_image,
+                                 input_shape[0],
+                                 input_shape[1],
+                                 num_channels],
+                          dtype=tf.uint8)
+        ],
+        reduce_retracing=True)
     def prepare_data_fn(input_batch: tf.Tensor) -> \
             Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
         input_batch = geometric_augmentation_fn(input_batch)
         input_batch = tf.cast(input_batch, dtype=tf.float32)
         noisy_batch = noise_augmentation_fn(input_batch)
         downsampled_batch = downsample(input_batch)
-        return input_batch, \
-               noisy_batch, \
-               downsampled_batch
+        return input_batch, noisy_batch, downsampled_batch
 
     # --- define generator function from directory
     if directory:
@@ -332,8 +338,9 @@ def dataset_builder(
         raise ValueError("don't know how to handle non directory datasets")
 
     # --- save the augmentation functions
-    # @tf.function(
-    #     input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)])
+    @tf.function(
+        input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)],
+        reduce_retracing=True)
     def load_image_fn(path: tf.Tensor) -> tf.Tensor:
         img = \
             load_image(
