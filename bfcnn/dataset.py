@@ -113,7 +113,7 @@ def dataset_builder(
     # --- set random seed to get the same result
     tf.random.set_seed(0)
 
-    @tf.function
+    #@tf.function
     def geometric_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -163,8 +163,7 @@ def dataset_builder(
         return input_batch
 
     # --- define noise augmentation function
-
-    @tf.function
+    #@tf.function
     def random_choice(
             x: tf.Tensor,
             size=tf.constant(1, dtype=tf.int64),
@@ -179,7 +178,7 @@ def dataset_builder(
         sample_index = tf.random.shuffle(indices, seed=0)[:size]
         return tf.gather(x, sample_index, axis=axis)[0]
 
-    @tf.function
+    #@tf.function
     def noise_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -307,11 +306,10 @@ def dataset_builder(
         return noisy_batch
 
     @tf.function
-    def prepare_data_fn(iter_batch: tf.Tensor) -> \
+    def prepare_data_fn(input_batch: tf.Tensor) -> \
             Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
-        input_batch = \
-            tf.cast(geometric_augmentation_fn(iter_batch),
-                    dtype=tf.float32)
+        input_batch = geometric_augmentation_fn(input_batch)
+        input_batch = tf.cast(input_batch, dtype=tf.float32)
         noisy_batch = noise_augmentation_fn(input_batch)
         downsampled_batch = downsample(input_batch)
         return input_batch, \
@@ -334,8 +332,8 @@ def dataset_builder(
         raise ValueError("don't know how to handle non directory datasets")
 
     # --- save the augmentation functions
-    @tf.function(
-        input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)])
+    # @tf.function(
+    #     input_signature=[tf.TensorSpec(shape=(), dtype=tf.string)])
     def load_image_fn(path: tf.Tensor) -> tf.Tensor:
         img = \
             load_image(
@@ -356,17 +354,17 @@ def dataset_builder(
         return crops
 
     # --- compute concrete functions
-    load_image_concrete_fn = \
-        load_image_fn.get_concrete_function(
-            tf.TensorSpec(shape=(), dtype=tf.string))
-
-    prepare_data_concrete_fn = \
-        prepare_data_fn.get_concrete_function(
-            tf.TensorSpec(shape=[no_crops_per_image,
-                                 input_shape[0],
-                                 input_shape[1],
-                                 num_channels],
-                          dtype=tf.uint8))
+    # load_image_concrete_fn = \
+    #     load_image_fn.get_concrete_function(
+    #         tf.TensorSpec(shape=(), dtype=tf.string))
+    #
+    # prepare_data_concrete_fn = \
+    #     prepare_data_fn.get_concrete_function(
+    #         tf.TensorSpec(shape=[no_crops_per_image,
+    #                              input_shape[0],
+    #                              input_shape[1],
+    #                              num_channels],
+    #                       dtype=tf.uint8))
 
     # --- create the dataset
     # !!!
@@ -380,13 +378,13 @@ def dataset_builder(
     dataset_training = \
         dataset_training \
             .map(
-                map_func=load_image_concrete_fn,
+                map_func=load_image_fn,
                 num_parallel_calls=batch_size) \
             .shuffle(
                 seed=0,
                 buffer_size=1024,
                 reshuffle_each_iteration=False) \
-            .map(map_func=prepare_data_concrete_fn,
+            .map(map_func=prepare_data_fn,
                  num_parallel_calls=batch_size) \
             .rebatch(
                 batch_size=batch_size,

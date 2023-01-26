@@ -844,7 +844,6 @@ def random_crops(
 # ---------------------------------------------------------------------
 
 
-@tf.function
 def subsample(
         input_batch: tf.Tensor) -> tf.Tensor:
     return \
@@ -857,7 +856,6 @@ def subsample(
 # ---------------------------------------------------------------------
 
 
-@tf.function
 def downsample(
         input_batch: tf.Tensor,
         kernel_size: Tuple[int, int] = (3, 3)) -> tf.Tensor:
