@@ -475,7 +475,6 @@ class Patches(tf.keras.layers.Layer):
 
 # ---------------------------------------------------------------------
 
-
 class Mish(tf.keras.layers.Layer):
     """
     Mish: A Self Regularized Non-Monotonic Neural Activation Function
@@ -505,3 +504,90 @@ class Mish(tf.keras.layers.Layer):
 
 # ---------------------------------------------------------------------
 
+
+class GradientBottleneck(tf.keras.layers.Layer):
+    """
+    limit gradient statically, percentage wise
+    """
+    def __init__(self,
+                 name=None,
+                 pass_through_percentage: float = 1.0,
+                 **kwargs):
+        super(GradientBottleneck, self).__init__(
+            trainable=False,
+            name=name,
+            **kwargs)
+        self._pass_through_percentage = pass_through_percentage
+        if pass_through_percentage > 1.0 or pass_through_percentage < 0.0:
+            raise ValueError("multiplier must be in [0,1] range")
+
+    def build(self, input_shape):
+        super(GradientBottleneck, self).build(input_shape)
+
+    def call(self, inputs, training=None):
+        if training is None:
+            training = tf.keras.backend.learning_phase()
+        if training:
+            return \
+                self._pass_through_percentage * inputs + \
+                (1.0 - self._pass_through_percentage) * tf.stop_gradient(inputs)
+        return inputs
+
+    def compute_output_shape(self, input_shape):
+        return input_shape
+
+    def get_config(self):
+        return {
+            "pass_through_percentage": self._pass_through_percentage
+        }
+
+# ---------------------------------------------------------------------
+
+
+class RandomOnOffGradientBottleneck(tf.keras.layers.Layer):
+    """
+    stop gradient randomly
+    """
+    def __init__(self,
+                 name=None,
+                 probability_off: float = 0.5,
+                 **kwargs):
+        super(RandomOnOffGradientBottleneck, self).__init__(
+            trainable=False,
+            name=name,
+            **kwargs)
+
+        if probability_off > 1.0 or probability_off < 0.0:
+            raise ValueError("probability_off must be in [0,1] range")
+        self._probability_off = probability_off
+
+    def build(self, input_shape):
+        super(RandomOnOffGradientBottleneck, self).build(input_shape)
+
+    def call(self, inputs, training=None):
+        if training is None:
+            training = tf.keras.backend.learning_phase()
+        if training:
+            pass_through_percentage = \
+                tf.random.uniform(
+                    shape=(1,),
+                    seed=0,
+                    minval=0.0,
+                    maxval=1.0,
+                    dtype=tf.float32)
+            return tf.cond(
+                pred=pass_through_percentage < self._probability_off,
+                true_fn=lambda: tf.stop_gradient(inputs),
+                false_fn=lambda: inputs
+            )
+        return inputs
+
+    def compute_output_shape(self, input_shape):
+        return input_shape
+
+    def get_config(self):
+        return {
+            "probability_off": self._probability_off
+        }
+
+# ---------------------------------------------------------------------
