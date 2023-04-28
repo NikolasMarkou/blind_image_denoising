@@ -276,7 +276,7 @@ def train_loop(
             # --- pruning strategy
             if use_prune and (ckpt.epoch >= prune_start_epoch):
                 logger.info(f"pruning weights at step [{int(ckpt.step)}]")
-                hydra = prune_fn(model=hydra)
+                ckpt.model = prune_fn(model=ckpt.model)
 
             start_time_epoch = time.time()
             trainable_variables = ckpt.model.trainable_variables
@@ -329,7 +329,7 @@ def train_loop(
                         continue
                     else:
                         gpu_batches = 0
-                        model_loss = model_loss_fn(model=hydra)
+                        model_loss = model_loss_fn(model=ckpt.model)
                         total_loss += \
                             total_loss / gpu_batches_per_step + \
                             model_loss[TOTAL_LOSS_STR]
@@ -408,8 +408,8 @@ def train_loop(
                 if use_prune and (ckpt.epoch >= prune_start_epoch) and \
                         (prune_steps > -1) and (ckpt.step % prune_steps == 0):
                     logger.info(f"pruning weights at step [{int(ckpt.step)}]")
-                    hydra = prune_fn(model=hydra)
-                    trainable_variables = hydra.trainable_variables
+                    ckpt.model = prune_fn(model=ckpt.model)
+                    trainable_variables = ckpt.model.trainable_variables
 
                 # --- check if it is time to save a checkpoint
                 if checkpoint_every > 0 and \
