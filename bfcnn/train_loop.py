@@ -338,6 +338,7 @@ def train_loop(
                             grads_and_vars=zip(
                                 tape.gradient(target=total_loss, sources=trainable_variables),
                                 trainable_variables))
+                        total_loss = tf.constant(0.0, dtype=tf.float32)
 
                 # --- add loss summaries for tensorboard
                 for summary in [(DENOISER_STR, de_loss),
