@@ -330,7 +330,7 @@ def train_loop(
                     else:
                         gpu_batches = 0
                         model_loss = model_loss_fn(model=ckpt.model)
-                        total_loss += \
+                        total_loss = \
                             total_loss / gpu_batches_per_step + \
                             model_loss[TOTAL_LOSS_STR]
                         # apply weights
