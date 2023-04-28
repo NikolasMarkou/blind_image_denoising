@@ -306,6 +306,7 @@ def train_loop(
                     break
 
                 start_time_forward_backward = time.time()
+                total_loss *= 0.0
 
                 with tf.GradientTape(watch_accessed_variables=False) as tape:
                     tape.watch(trainable_variables)
@@ -338,7 +339,6 @@ def train_loop(
                             grads_and_vars=zip(
                                 tape.gradient(target=total_loss, sources=trainable_variables),
                                 trainable_variables))
-                        total_loss = tf.constant(0.0, dtype=tf.float32)
 
                 # --- add loss summaries for tensorboard
                 for summary in [(DENOISER_STR, de_loss),
