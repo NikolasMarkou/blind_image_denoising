@@ -72,10 +72,9 @@ def train_loop(
     model_loss_fn = tf.function(func=loss_fn_map[MODEL_LOSS_FN_STR], reduce_retracing=True)
     denoiser_loss_fn = tf.function(func=loss_fn_map[DENOISER_LOSS_FN_STR], reduce_retracing=True)
     superres_loss_fn = tf.function(func=loss_fn_map[SUPERRES_LOSS_FN_STR], reduce_retracing=True)
-    subsample_loss_fn = tf.function(func=loss_fn_map[SUBSAMPLE_LOSS_FN_STR], reduce_retracing=True)
 
     # --- build optimizer
-    optimizer, lr_schedule = \
+    optimizer, _ = \
         optimizer_builder(config=config["train"]["optimizer"])
 
     # --- get the train configuration
@@ -247,20 +246,15 @@ def train_loop(
                            int(input_shape[0] / 2),
                            int(input_shape[1] / 2),
                            input_shape[2]],
-                    dtype=tf.float32),
-                tf.TensorSpec(
-                    shape=[batch_size, input_shape[0], input_shape[1], input_shape[2]],
                     dtype=tf.float32)
             ],
             reduce_retracing=True)
         def train_forward_step(
                 n: tf.Tensor,
-                d: tf.Tensor,
-                s: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
-            de, _, _ = ckpt.model(n, training=True)
-            _, sr, _ = ckpt.model(d, training=True)
-            _, _, ss = ckpt.model(s, training=True)
-            return de, sr, ss
+                d: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+            de, _ = ckpt.model(n, training=True)
+            _, sr = ckpt.model(d, training=True)
+            return de, sr
 
         @tf.function(
             input_signature=[
@@ -270,19 +264,15 @@ def train_loop(
             ],
             reduce_retracing=True)
         def test_step(
-                n: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+                n: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
             return ckpt.model(n, training=False)
 
         if ckpt.step == 0:
             tf.summary.trace_on(graph=True, profiler=False)
 
             # run a single step
-            (input_batch, noisy_batch, downsampled_batch) = \
-                iter(dataset_training).get_next()
-            _ = train_forward_step(
-                n=noisy_batch,
-                d=downsampled_batch,
-                s=input_batch
+            _ = test_step(
+                n=iter(dataset_training).get_next()[0]
             )
 
             tf.summary.trace_export(
@@ -335,22 +325,19 @@ def train_loop(
 
                 with tf.GradientTape(watch_accessed_variables=False) as tape:
                     tape.watch(trainable_variables)
-                    de, sr, ss = \
+                    de, sr = \
                         train_forward_step(
                             n=noisy_batch,
-                            d=downsampled_batch,
-                            s=input_batch)
+                            d=downsampled_batch)
 
                     # compute the loss value for this mini-batch
-                    de_loss = denoiser_loss_fn(input_batch=input_batch, predicted_batch=de)
-                    sr_loss = superres_loss_fn(input_batch=input_batch, predicted_batch=sr)
-                    ss_loss = subsample_loss_fn(input_batch=downsampled_batch, predicted_batch=ss)
+                    de_loss = denoiser_loss_fn(gt_batch=input_batch, predicted_batch=de)
+                    sr_loss = superres_loss_fn(gt_batch=input_batch, predicted_batch=sr)
 
                     # combine losses
                     total_loss += \
                         (de_loss[TOTAL_LOSS_STR] +
-                         sr_loss[TOTAL_LOSS_STR] +
-                         ss_loss[TOTAL_LOSS_STR]) / 3
+                         sr_loss[TOTAL_LOSS_STR]) / 2
 
                     gpu_batches += 1
 
@@ -370,7 +357,6 @@ def train_loop(
 
                 # --- add loss summaries for tensorboard
                 for summary in [(DENOISER_STR, de_loss),
-                                (SUBSAMPLE_STR, ss_loss),
                                 (SUPERRES_STR, sr_loss)]:
                     title = summary[0]
                     loss_map = summary[1]
@@ -424,20 +410,14 @@ def train_loop(
                     tf.summary.image(
                         name="output/superres", data=sr / 255,
                         max_outputs=visualization_number, step=ckpt.step)
-                    tf.summary.image(
-                        name="output/subsample", data=ss / 255,
-                        max_outputs=visualization_number, step=ckpt.step)
 
                     if use_test_images:
-                        test_de, test_sr, test_ss = test_step(test_images)
+                        test_de, test_sr = test_step(test_images)
                         tf.summary.image(
                             name="test/denoiser", data=test_de / 255,
                             max_outputs=visualization_number, step=ckpt.step)
                         tf.summary.image(
                             name="test/superres", data=test_sr / 255,
-                            max_outputs=visualization_number, step=ckpt.step)
-                        tf.summary.image(
-                            name="test/subsample", data=test_ss / 255,
                             max_outputs=visualization_number, step=ckpt.step)
 
                 # --- prune conv2d

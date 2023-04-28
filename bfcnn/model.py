@@ -65,22 +65,14 @@ def model_builder(
             size=(2, 2),
             interpolation="nearest")(backbone)
 
-    backbone_subsample = \
-        tf.keras.layers.MaxPooling2D(
-            pool_size=(1, 1),
-            strides=(2, 2),
-            padding="same")(backbone)
-
     options = dict(num_outputs=3, has_uncertainty=False)
     # low level heads
     de_exp = model_denoiser(backbone)
     sr_exp = model_denoiser(backbone_upsample)
-    ss_exp = model_denoiser(backbone_subsample)
 
     # denormalize
     de_exp = model_denormalizer(de_exp, training=False)
     sr_exp = model_denormalizer(sr_exp, training=False)
-    ss_exp = model_denormalizer(ss_exp, training=False)
 
     # wrap layers to set names
     # denoiser
@@ -88,9 +80,6 @@ def model_builder(
 
     # superres
     sr_exp_output = tf.keras.layers.Layer(name=SUPERRES_STR)(sr_exp)
-
-    # subsample
-    ss_exp_output = tf.keras.layers.Layer(name=SUBSAMPLE_STR)(ss_exp)
 
     # create model
     model_hydra = \
@@ -102,9 +91,7 @@ def model_builder(
                 # denoiser
                 de_exp_output,
                 # superres
-                sr_exp_output,
-                # subsample
-                ss_exp_output,
+                sr_exp_output
             ],
             name=f"hydra")
 
