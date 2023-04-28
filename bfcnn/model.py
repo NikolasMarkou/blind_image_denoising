@@ -399,8 +399,6 @@ def model_denoiser_builder(
     input_shape = input_shape_fixer(config.get("input_shape"))
 
     # --- config uncertainty or point estimation
-    uncertainty_config = config.get("uncertainty", None)
-
     conv_params = \
         dict(
             kernel_size=1,
@@ -429,11 +427,11 @@ def model_denoiser_builder(
              has_uncertainty=False)
     x_expected = \
         conv2d_wrapper(x, conv_params=conv_params)
-    # squash [-1, +1] and then prevent saturation
-    x_expected = tf.nn.tanh(x_expected) / 1.8
+    # squash to [-1, +1] and then to [-0.51, +0.51]
+    x_expected = tf.nn.tanh(x_expected) / 1.9
     x_expected = \
         tf.keras.layers.Layer(
-            name="output_tensor_expected")(x_expected)
+            name="output_tensor")(x_expected)
     model_head = \
         tf.keras.Model(
             inputs=model_input_layer,
