@@ -44,15 +44,12 @@ def test_model_builder(config):
         # denoiser_output,
         # superres_output
         # subsample_output
-        d, sr, ss = models.hydra(x)
+        d, sr = models.hydra(x)
 
         assert d.shape == x.shape
         assert sr.shape[0] == x.shape[0]
         assert sr.shape[1] == x.shape[1] * 2
         assert sr.shape[2] == x.shape[2] * 2
-        assert ss.shape[0] == x.shape[0]
-        assert ss.shape[1] == x.shape[1] / 2
-        assert ss.shape[2] == x.shape[2] / 2
 
     # export
     denoiser_module = \
