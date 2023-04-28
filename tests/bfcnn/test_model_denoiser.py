@@ -57,7 +57,7 @@ def test_model_builder(config):
     # export
     denoiser_module = \
         DenoiserModule(
-            model_backbone=models.backbone,
+            model_hydra=models.backbone,
             model_denoiser=models.denoiser,
             model_normalizer=models.normalizer,
             model_denormalizer=models.denormalizer)

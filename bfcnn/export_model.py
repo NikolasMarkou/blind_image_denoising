@@ -13,7 +13,7 @@ from .model import model_builder
 from .custom_logger import logger
 from .optimizer import optimizer_builder
 from .module_denoiser import DenoiserModule
-from .module_superres import SuperresModule
+from .module_superres import SuperResolutionModule
 from .utilities import load_config, create_checkpoint
 
 # ---------------------------------------------------------------------
@@ -128,7 +128,7 @@ def export_model(
     modules = []
 
     for m in [(DENOISER_STR, DenoiserModule),
-              (SUPERRES_STR, SuperresModule)]:
+              (SUPERRES_STR, SuperResolutionModule)]:
         # ---
         output_saved_model = os.path.join(output_directory, m[0])
         logger.info(f"building {m[0]} module")

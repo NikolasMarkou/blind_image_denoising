@@ -13,7 +13,7 @@ from .utilities import \
     clip_normalized_tensor, \
     conv2d_wrapper, \
     input_shape_fixer, \
-    expected_sigma_entropy_head, layer_normalize, layer_denormalize
+    layer_normalize, layer_denormalize
 from .backbone_unet import builder as builder_unet
 from .backbone_lunet import builder as builder_lunet
 from .backbone_resnet import builder as builder_resnet
@@ -67,19 +67,20 @@ def model_builder(
 
     options = dict(num_outputs=3, has_uncertainty=False)
     # low level heads
-    de_exp = model_denoiser(backbone)
-    sr_exp = model_denoiser(backbone_upsample)
+    denoiser_output = model_denoiser(backbone)
+    super_resolution_output = model_denoiser(backbone_upsample)
 
     # denormalize
-    de_exp = model_denormalizer(de_exp, training=False)
-    sr_exp = model_denormalizer(sr_exp, training=False)
+    denoiser_output = \
+        model_denormalizer(denoiser_output, training=False)
+    super_resolution_output = \
+        model_denormalizer(super_resolution_output, training=False)
 
     # wrap layers to set names
-    # denoiser
-    de_exp_output = tf.keras.layers.Layer(name=DENOISER_STR)(de_exp)
-
-    # superres
-    sr_exp_output = tf.keras.layers.Layer(name=SUPERRES_STR)(sr_exp)
+    denoiser_output = \
+        tf.keras.layers.Layer(name=DENOISER_STR)(denoiser_output)
+    super_resolution_output = \
+        tf.keras.layers.Layer(name=SUPERRES_STR)(super_resolution_output)
 
     # create model
     model_hydra = \
@@ -88,10 +89,8 @@ def model_builder(
                 input_layer
             ],
             outputs=[
-                # denoiser
-                de_exp_output,
-                # superres
-                sr_exp_output
+                denoiser_output,
+                super_resolution_output
             ],
             name=f"hydra")
 
