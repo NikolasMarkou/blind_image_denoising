@@ -279,7 +279,7 @@ def train_loop(
                 hydra = prune_fn(model=hydra)
 
             start_time_epoch = time.time()
-            trainable_variables = hydra.trainable_variables
+            trainable_variables = ckpt.model.trainable_variables
 
             # --- iterate over the batches of the dataset
             dataset_iterator = iter(dataset_training)
