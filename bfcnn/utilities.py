@@ -867,3 +867,23 @@ def downsample(
     return subsample(input_batch=x)
 
 # ---------------------------------------------------------------------
+
+
+def create_checkpoint(
+        step: tf.Variable = tf.Variable(0, trainable=False, dtype=tf.dtypes.int64, name="step"),
+        epoch: tf.Variable = tf.Variable(0, trainable=False, dtype=tf.dtypes.int64, name="epoch"),
+        model: tf.keras.Model = None,
+        path: Union[str, Path] = None) -> tf.train.Checkpoint:
+    # define common checkpoint
+    ckpt = \
+        tf.train.Checkpoint(
+            step=step,
+            epoch=epoch,
+            model=model)
+    # if paths exists load latest
+    if path is not None:
+        if os.path.isdir(str(path)):
+            ckpt.restore(tf.train.latest_checkpoint(str(path))).expect_partial()
+    return ckpt
+
+# ---------------------------------------------------------------------
