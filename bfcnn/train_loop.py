@@ -161,7 +161,7 @@ def train_loop(
     prune_fn = prune_function_builder(prune_strategies)
 
     # --- train the model
-    with tf.summary.create_file_writer(model_dir):
+    with tf.summary.create_file_writer(model_dir).as_default():
         # --- checkpoint managing
         ckpt = \
             create_checkpoint(
