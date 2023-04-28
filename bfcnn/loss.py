@@ -209,11 +209,11 @@ def loss_function_builder(
 
     # ---
     def denoiser_loss(
-            input_batch: tf.Tensor,
+            gt_batch: tf.Tensor,
             predicted_batch: tf.Tensor) -> Dict[str, tf.Tensor]:
         # actual mean absolute error (no hinge or cutoff)
         mae_actual = \
-            mae(original=input_batch,
+            mae(original=gt_batch,
                 prediction=predicted_batch,
                 hinge=0.0,
                 cutoff=255.0)
@@ -223,7 +223,7 @@ def loss_function_builder(
             tf.constant(0.0, dtype=tf.float32)
         if use_mae:
             mae_prediction_loss += \
-                mae(original=input_batch,
+                mae(original=gt_batch,
                     prediction=predicted_batch,
                     hinge=hinge,
                     cutoff=cutoff)
@@ -233,7 +233,7 @@ def loss_function_builder(
         if use_ssim:
             ssim_loss = \
                 tf.reduce_mean(
-                    tf.image.ssim(input_batch, predicted_batch, 255.0))
+                    tf.image.ssim(gt_batch, predicted_batch, 255.0))
             ssim_loss = 1.0 - ssim_loss
 
         # loss prediction on mse
@@ -241,14 +241,14 @@ def loss_function_builder(
             tf.constant(0.0, dtype=tf.float32)
         if use_mse:
             mse_prediction_loss += \
-                rmse(original=input_batch,
+                rmse(original=gt_batch,
                      prediction=predicted_batch,
                      hinge=hinge,
                      cutoff=(cutoff * cutoff))
 
         # snr
         peak_signal_to_noise_ratio = \
-            psnr(input_batch, predicted_batch)
+            psnr(gt_batch, predicted_batch)
 
         return {
             TOTAL_LOSS_STR:

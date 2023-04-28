@@ -11,10 +11,10 @@ from typing import List, Union, Tuple, Dict
 from .constants import *
 from .model import model_builder
 from .custom_logger import logger
-from .utilities import load_config
 from .optimizer import optimizer_builder
 from .module_denoiser import DenoiserModule
-from .module_superres import SuperresModule
+from .module_superres import SuperResolutionModule
+from .utilities import load_config, create_checkpoint
 
 # ---------------------------------------------------------------------
 
@@ -76,9 +76,6 @@ def export_model(
             trainable=False,
             dtype=tf.dtypes.int64,
             name="global_epoch")
-    # --- build optimizer
-    optimizer, lr_schedule = \
-        optimizer_builder(config=config["train"]["optimizer"])
 
     # ---
     logger.info("saving configuration pipeline")
@@ -91,6 +88,9 @@ def export_model(
     logger.info(f"restoring checkpoint weights from [{checkpoint_directory}]")
 
     # checkpoint managing
+    ckpt = \
+        create_checkpoint(
+            model=models.hydra, d=checkpoint_directory)
     checkpoint = \
         tf.train.Checkpoint(
             step=global_step,
@@ -128,7 +128,7 @@ def export_model(
     modules = []
 
     for m in [(DENOISER_STR, DenoiserModule),
-              (SUPERRES_STR, SuperresModule)]:
+              (SUPERRES_STR, SuperResolutionModule)]:
         # ---
         output_saved_model = os.path.join(output_directory, m[0])
         logger.info(f"building {m[0]} module")
