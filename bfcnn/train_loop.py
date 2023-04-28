@@ -237,17 +237,6 @@ def train_loop(
             save_checkpoint_model_fn()
 
         @tf.function(
-            input_signature=[
-                tf.TensorSpec(
-                    shape=[batch_size, input_shape[0], input_shape[1], input_shape[2]],
-                    dtype=tf.float32),
-                tf.TensorSpec(
-                    shape=[batch_size,
-                           int(input_shape[0] / 2),
-                           int(input_shape[1] / 2),
-                           input_shape[2]],
-                    dtype=tf.float32)
-            ],
             reduce_retracing=True)
         def train_forward_step(
                 n: tf.Tensor,
@@ -257,11 +246,6 @@ def train_loop(
             return de, sr
 
         @tf.function(
-            input_signature=[
-                tf.TensorSpec(
-                    shape=test_images.shape,
-                    dtype=tf.float32),
-            ],
             reduce_retracing=True)
         def test_step(
                 n: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
