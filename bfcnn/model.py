@@ -71,92 +71,42 @@ def model_builder(
             strides=(2, 2),
             padding="same")(backbone)
 
-    if options["has_uncertainty"]:
-        options = dict(num_outputs=9, has_uncertainty=True)
-        # low level heads
-        de_exp, de_sigma, de_entropy = model_denoiser(backbone)
-        sr_exp, sr_sigma, sr_entropy = model_denoiser(backbone_upsample)
-        ss_exp, ss_sigma, ss_entropy = model_denoiser(backbone_subsample)
+    options = dict(num_outputs=3, has_uncertainty=False)
+    # low level heads
+    de_exp = model_denoiser(backbone)
+    sr_exp = model_denoiser(backbone_upsample)
+    ss_exp = model_denoiser(backbone_subsample)
 
-        # denormalize
-        de_exp = model_denormalizer(de_exp, training=False)
-        sr_exp = model_denormalizer(sr_exp, training=False)
-        ss_exp = model_denormalizer(ss_exp, training=False)
+    # denormalize
+    de_exp = model_denormalizer(de_exp, training=False)
+    sr_exp = model_denormalizer(sr_exp, training=False)
+    ss_exp = model_denormalizer(ss_exp, training=False)
 
-        # wrap layers to set names
-        # denoiser
-        de_exp_output = tf.keras.layers.Layer(name=DENOISER_STR)(de_exp)
-        de_sigma_output = tf.keras.layers.Layer(name=DENOISER_SIGMA_STR)(de_sigma)
-        de_entropy_output = tf.keras.layers.Layer(name=DENOISER_ENTROPY_STR)(de_entropy)
+    # wrap layers to set names
+    # denoiser
+    de_exp_output = tf.keras.layers.Layer(name=DENOISER_STR)(de_exp)
 
-        # superres
-        sr_exp_output = tf.keras.layers.Layer(name=SUPERRES_STR)(sr_exp)
-        sr_sigma_output = tf.keras.layers.Layer(name=SUPERRES_SIGMA_STR)(sr_sigma)
-        sr_entropy_output = tf.keras.layers.Layer(name=SUPERRES_ENTROPY_STR)(sr_entropy)
+    # superres
+    sr_exp_output = tf.keras.layers.Layer(name=SUPERRES_STR)(sr_exp)
 
-        # subsample
-        ss_exp_output = tf.keras.layers.Layer(name=SUBSAMPLE_STR)(ss_exp)
-        ss_sigma_output = tf.keras.layers.Layer(name=SUBSAMPLE_SIGMA_STR)(ss_sigma)
-        ss_entropy_output = tf.keras.layers.Layer(name=SUBSAMPLE_ENTROPY_STR)(ss_entropy)
+    # subsample
+    ss_exp_output = tf.keras.layers.Layer(name=SUBSAMPLE_STR)(ss_exp)
 
-        # create model
-        model_hydra = \
-            tf.keras.Model(
-                inputs=[
-                    input_layer
-                ],
-                outputs=[
-                    # denoiser
-                    de_exp_output,
-                    de_sigma_output,
-                    de_entropy_output,
-                    # superres
-                    sr_exp_output,
-                    sr_sigma_output,
-                    sr_entropy_output,
-                    # subsample
-                    ss_exp_output,
-                    ss_sigma_output,
-                    ss_entropy_output
-                ],
-                name=f"hydra")
-    else:
-        options = dict(num_outputs=3, has_uncertainty=False)
-        # low level heads
-        de_exp = model_denoiser(backbone)
-        sr_exp = model_denoiser(backbone_upsample)
-        ss_exp = model_denoiser(backbone_subsample)
-
-        # denormalize
-        de_exp = model_denormalizer(de_exp, training=False)
-        sr_exp = model_denormalizer(sr_exp, training=False)
-        ss_exp = model_denormalizer(ss_exp, training=False)
-
-        # wrap layers to set names
-        # denoiser
-        de_exp_output = tf.keras.layers.Layer(name=DENOISER_STR)(de_exp)
-
-        # superres
-        sr_exp_output = tf.keras.layers.Layer(name=SUPERRES_STR)(sr_exp)
-
-        # subsample
-        ss_exp_output = tf.keras.layers.Layer(name=SUBSAMPLE_STR)(ss_exp)
-
-        # create model
-        model_hydra = \
-            tf.keras.Model(
-                inputs=[
-                    input_layer
-                ],
-                outputs=[
-                    # denoiser
-                    de_exp_output,
-                    # superres
-                    sr_exp_output,
-                    # subsample
-                    ss_exp_output,
-                ],
-                name=f"hydra")
+    # create model
+    model_hydra = \
+        tf.keras.Model(
+            inputs=[
+                input_layer
+            ],
+            outputs=[
+                # denoiser
+                de_exp_output,
+                # superres
+                sr_exp_output,
+                # subsample
+                ss_exp_output,
+            ],
+            name=f"hydra")
 
     # --- pack results
     return \
@@ -463,40 +413,17 @@ def model_denoiser_builder(
 
     # --- config uncertainty or point estimation
     uncertainty_config = config.get("uncertainty", None)
-    use_uncertainty = uncertainty_config is not None
 
-    if use_uncertainty:
-        lin_start = uncertainty_config.get("lin_start", -0.5)
-        lin_stop = uncertainty_config.get("lin_stop", +0.5)
-        uncertainty_bias = uncertainty_config.get("bias", 0.0)
-        uncertainty_buckets = uncertainty_config.get("buckets", 16)
-        uncertainty_threshold = uncertainty_config.get("threshold", 0.0)
-        uncertainty_activation = uncertainty_config.get("activation", "linear")
-        uncertainty_kernel_regularizer = uncertainty_config.get("kernel_regularizer", "l2")
-        uncertainty_kernel_initializer = uncertainty_config.get("kernel_initializer", "glorot_normal")
-        uncertainty_kernel_regularizer = regularizer_builder(uncertainty_kernel_regularizer)
-
-        conv_params = \
-            dict(
-                kernel_size=1,
-                strides=(1, 1),
-                padding="same",
-                use_bias=use_bias,
-                filters=uncertainty_buckets,
-                activation=uncertainty_activation,
-                kernel_regularizer=uncertainty_kernel_regularizer,
-                kernel_initializer=uncertainty_kernel_initializer)
-    else:
-        conv_params = \
-            dict(
-                kernel_size=1,
-                strides=(1, 1),
-                padding="same",
-                use_bias=use_bias,
-                filters=output_channels,
-                activation="linear",
-                kernel_regularizer="l2",
-                kernel_initializer="glorot_normal")
+    conv_params = \
+        dict(
+            kernel_size=1,
+            strides=(1, 1),
+            padding="same",
+            use_bias=use_bias,
+            filters=output_channels,
+            activation="linear",
+            kernel_regularizer="l2",
+            kernel_initializer="glorot_normal")
 
     # --- define network here
     model_input_layer = \
@@ -509,61 +436,24 @@ def model_denoiser_builder(
     backbone, _, _ = model_backbone_builder(config)
     x = backbone(x)
 
-    if use_uncertainty:
-        options = \
-            dict(num_outputs=3,
-                 has_uncertainty=True)
-
-        # regression with uncertainty estimates
-        x_expected, x_sigma, x_entropy = \
-            expected_sigma_entropy_head(
-                input_layer=x,
-                conv_params=conv_params,
-                presoftmax_bias=uncertainty_bias,
-                output_channels=output_channels,
-                probability_threshold=uncertainty_threshold,
-                linspace_start_stop=(lin_start, lin_stop))
-
-        x_expected = \
-            tf.keras.layers.Layer(
-                name="output_tensor_expected")(x_expected)
-
-        x_sigma = \
-            tf.keras.layers.Layer(
-                name="output_tensor_sigma")(x_sigma)
-
-        x_entropy = \
-            tf.keras.layers.Layer(
-                name="output_tensor_entropy")(x_entropy)
-
-        model_head = \
-            tf.keras.Model(
-                inputs=model_input_layer,
-                outputs=[
-                    x_expected,
-                    x_sigma,
-                    x_entropy
-                ],
-                name=f"denoiser_head")
-    else:
-        # regression / point sample estimation
-        options = \
-            dict(num_outputs=1,
-                 has_uncertainty=False)
-        x_expected = \
-            conv2d_wrapper(x, conv_params=conv_params)
-        # squash [-1, +1] and then prevent saturation
-        x_expected = tf.nn.tanh(x_expected) / 1.8
-        x_expected = \
-            tf.keras.layers.Layer(
-                name="output_tensor_expected")(x_expected)
-        model_head = \
-            tf.keras.Model(
-                inputs=model_input_layer,
-                outputs=[
-                    x_expected,
-                ],
-                name=f"denoiser_head")
+    # regression / point sample estimation
+    options = \
+        dict(num_outputs=1,
+             has_uncertainty=False)
+    x_expected = \
+        conv2d_wrapper(x, conv_params=conv_params)
+    # squash [-1, +1] and then prevent saturation
+    x_expected = tf.nn.tanh(x_expected) / 1.8
+    x_expected = \
+        tf.keras.layers.Layer(
+            name="output_tensor_expected")(x_expected)
+    model_head = \
+        tf.keras.Model(
+            inputs=model_input_layer,
+            outputs=[
+                x_expected,
+            ],
+            name=f"denoiser_head")
 
     return \
         model_head, \
