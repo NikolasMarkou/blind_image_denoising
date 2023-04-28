@@ -265,8 +265,13 @@ def train_loop(
             tf.summary.flush()
             tf.summary.trace_off()
 
-        # ---
+        # --- check if total steps reached
         finished_training = False
+
+        if 0 < total_steps <= ckpt.step:
+            logger.info("total_steps reached [{0}]".format(
+                int(total_steps)))
+            finished_training = True
 
         while not finished_training and \
                 (global_total_epochs == -1 or ckpt.epoch < global_total_epochs):
