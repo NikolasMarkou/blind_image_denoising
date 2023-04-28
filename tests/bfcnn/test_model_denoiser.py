@@ -43,7 +43,6 @@ def test_model_builder(config):
             dtype=tf.float32)
         # denoiser_output,
         # superres_output
-        # subsample_output
         d, sr = models.hydra(x)
 
         assert d.shape == x.shape
@@ -54,10 +53,7 @@ def test_model_builder(config):
     # export
     denoiser_module = \
         DenoiserModule(
-            model_hydra=models.backbone,
-            model_denoiser=models.denoiser,
-            model_normalizer=models.normalizer,
-            model_denormalizer=models.denormalizer)
+            model_hydra=models.hydra)
 
     assert isinstance(denoiser_module, tf.Module)
 
