@@ -288,9 +288,7 @@ def train_loop(
 
             # --- iterate over the batches of the dataset
             dataset_iterator = iter(dataset_training)
-            gpu_batches = 0
             step_time_dataset = 0.0
-            total_loss = tf.constant(0.0, dtype=tf.float32)
 
             # --- check if total steps reached
             if total_steps != -1:
@@ -312,8 +310,7 @@ def train_loop(
 
                 start_time_forward_backward = time.time()
 
-                with tf.GradientTape(watch_accessed_variables=False) as tape:
-                    tape.watch(trainable_variables)
+                with tf.GradientTape() as tape:
                     de, sr = \
                         train_forward_step(
                             n=noisy_batch,
@@ -324,18 +321,13 @@ def train_loop(
                     sr_loss = superres_loss_fn(gt_batch=input_batch, predicted_batch=sr)
 
                     # combine losses
-                    total_loss += \
+                    total_loss = \
                         (de_loss[TOTAL_LOSS_STR] +
                          sr_loss[TOTAL_LOSS_STR]) / 2
 
-                    gpu_batches += 1
-
-                    if gpu_batches < gpu_batches_per_step:
-                        continue
-
                     model_loss = model_loss_fn(model=ckpt.model)
                     total_loss = \
-                        total_loss / gpu_batches_per_step + \
+                        total_loss + \
                         model_loss[TOTAL_LOSS_STR]
                     # apply weights
                     optimizer.apply_gradients(
@@ -448,8 +440,6 @@ def train_loop(
 
                 # ---
                 ckpt.step.assign_add(1)
-                gpu_batches = 0
-                total_loss *= 0.0
 
                 # --- check if total steps reached
                 if 0 < total_steps <= ckpt.step:
