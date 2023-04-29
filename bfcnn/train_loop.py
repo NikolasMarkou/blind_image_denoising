@@ -332,18 +332,18 @@ def train_loop(
 
                     if gpu_batches < gpu_batches_per_step:
                         continue
-                    else:
-                        model_loss = model_loss_fn(model=ckpt.model)
-                        total_loss = \
-                            total_loss / gpu_batches_per_step + \
-                            model_loss[TOTAL_LOSS_STR]
-                        # apply weights
-                        optimizer.apply_gradients(
-                            grads_and_vars=zip(
-                                tape.gradient(target=total_loss,
-                                              sources=trainable_variables),
-                                trainable_variables))
-                        tape.stop_recording()
+
+                    model_loss = model_loss_fn(model=ckpt.model)
+                    total_loss = \
+                        total_loss / gpu_batches_per_step + \
+                        model_loss[TOTAL_LOSS_STR]
+                    # apply weights
+                    optimizer.apply_gradients(
+                        grads_and_vars=zip(
+                            tape.gradient(target=total_loss,
+                                          sources=trainable_variables),
+                            trainable_variables))
+                    tape.stop_recording()
 
                 # --- add loss summaries for tensorboard
                 for summary in [(DENOISER_STR, de_loss),
