@@ -208,28 +208,26 @@ def train_loop(
                     os.path.isdir(weights_dir):
                 # restore weights from a directory
                 loaded_weights = False
-
-                if not loaded_weights:
-                    try:
-                        logger.info(f"loading weights from [{weights_dir}]")
-                        tmp_model = tf.keras.models.clone_model(ckpt.model)
-                        # restore checkpoint
-                        tmp_checkpoint = \
-                            create_checkpoint(
-                                model=tf.keras.models.clone_model(ckpt.model),
-                                path=weights_dir)
-                        tmp_model.set_weights(tmp_checkpoint.model.get_weights())
-                        ckpt.model = tmp_model
-                        ckpt.step.assign(0)
-                        ckpt.epoch.assign(0)
-                        del tmp_model
-                        del tmp_checkpoint
-                        loaded_weights = True
-                        logger.info("successfully loaded weights")
-                    except Exception as e:
-                        logger.info(
-                            f"!!! failed to load weights from [{weights_dir}]] !!!")
-                        logger.error(f"!!! {e}")
+                try:
+                    logger.info(f"loading weights from [{weights_dir}]")
+                    tmp_model = tf.keras.models.clone_model(ckpt.model)
+                    # restore checkpoint
+                    tmp_checkpoint = \
+                        create_checkpoint(
+                            model=tf.keras.models.clone_model(ckpt.model),
+                            path=weights_dir)
+                    tmp_model.set_weights(tmp_checkpoint.model.get_weights())
+                    ckpt.model = tmp_model
+                    ckpt.step.assign(0)
+                    ckpt.epoch.assign(0)
+                    del tmp_model
+                    del tmp_checkpoint
+                    loaded_weights = True
+                    logger.info("successfully loaded weights")
+                except Exception as e:
+                    logger.info(
+                        f"!!! failed to load weights from [{weights_dir}]] !!!")
+                    logger.error(f"!!! {e}")
 
                 if not loaded_weights:
                     logger.info("!!! failed to load weights")
@@ -288,7 +286,6 @@ def train_loop(
 
             # --- iterate over the batches of the dataset
             dataset_iterator = iter(dataset_training)
-            gpu_batches = 0
             step_time_dataset = 0.0
             total_loss = tf.constant(0.0, dtype=tf.float32)
 
