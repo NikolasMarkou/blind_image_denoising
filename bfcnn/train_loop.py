@@ -300,7 +300,9 @@ def train_loop(
                     finished_training = True
 
             # --- iterate over the batches of the dataset
+            tape = tf.GradientTape(watch_accessed_variables=False)
             while not finished_training:
+                tape.stop_recording()
                 try:
                     start_time_dataset = time.time()
                     (input_batch, noisy_batch, downsampled_batch) = \
@@ -311,39 +313,38 @@ def train_loop(
                     break
 
                 start_time_forward_backward = time.time()
-                total_loss *= 0.0
+                tape.watch(trainable_variables)
+                de, sr = \
+                    train_forward_step(
+                        n=noisy_batch,
+                        d=downsampled_batch)
 
-                with tf.GradientTape(watch_accessed_variables=False) as tape:
-                    tape.watch(trainable_variables)
-                    de, sr = \
-                        train_forward_step(
-                            n=noisy_batch,
-                            d=downsampled_batch)
+                # compute the loss value for this mini-batch
+                de_loss = denoiser_loss_fn(gt_batch=input_batch, predicted_batch=de)
+                sr_loss = superres_loss_fn(gt_batch=input_batch, predicted_batch=sr)
 
-                    # compute the loss value for this mini-batch
-                    de_loss = denoiser_loss_fn(gt_batch=input_batch, predicted_batch=de)
-                    sr_loss = superres_loss_fn(gt_batch=input_batch, predicted_batch=sr)
+                # combine losses
+                total_loss += \
+                    (de_loss[TOTAL_LOSS_STR] +
+                     sr_loss[TOTAL_LOSS_STR]) / 2
 
-                    # combine losses
-                    total_loss += \
-                        (de_loss[TOTAL_LOSS_STR] +
-                         sr_loss[TOTAL_LOSS_STR]) / 2
+                gpu_batches += 1
 
-                    gpu_batches += 1
-
-                    if gpu_batches < gpu_batches_per_step:
-                        continue
-                    else:
-                        gpu_batches = 0
-                        model_loss = model_loss_fn(model=ckpt.model)
-                        total_loss = \
-                            total_loss / gpu_batches_per_step + \
-                            model_loss[TOTAL_LOSS_STR]
-                        # apply weights
-                        optimizer.apply_gradients(
-                            grads_and_vars=zip(
-                                tape.gradient(target=total_loss, sources=trainable_variables),
-                                trainable_variables))
+                if gpu_batches < gpu_batches_per_step:
+                    continue
+                else:
+                    gpu_batches = 0
+                    model_loss = model_loss_fn(model=ckpt.model)
+                    total_loss = \
+                        total_loss / gpu_batches_per_step + \
+                        model_loss[TOTAL_LOSS_STR]
+                    # apply weights
+                    optimizer.apply_gradients(
+                        grads_and_vars=zip(
+                            tape.gradient(target=total_loss, sources=trainable_variables),
+                            trainable_variables))
+                    total_loss *= 0.0
+                tape.stop_recording()
 
                 # --- add loss summaries for tensorboard
                 for summary in [(DENOISER_STR, de_loss),

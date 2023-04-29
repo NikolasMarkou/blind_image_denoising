@@ -1,3 +1,4 @@
+import copy
 import tensorflow as tf
 import tensorflow_addons as tfa
 from typing import Dict, Callable, Iterator, Tuple
@@ -326,7 +327,8 @@ def dataset_builder(
         dataset_generator = \
             image_filenames_generator(
                 directory=directory)
-
+        dataset_size = sum(1 for _ in copy.deepcopy(dataset_generator)())
+        logger.info(f"dataset_size: [{dataset_size}]")
         dataset_training = \
             tf.data.Dataset.from_generator(
                 generator=dataset_generator,
