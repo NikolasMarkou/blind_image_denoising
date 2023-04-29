@@ -208,26 +208,28 @@ def train_loop(
                     os.path.isdir(weights_dir):
                 # restore weights from a directory
                 loaded_weights = False
-                try:
-                    logger.info(f"loading weights from [{weights_dir}]")
-                    tmp_model = tf.keras.models.clone_model(ckpt.model)
-                    # restore checkpoint
-                    tmp_checkpoint = \
-                        create_checkpoint(
-                            model=tf.keras.models.clone_model(ckpt.model),
-                            path=weights_dir)
-                    tmp_model.set_weights(tmp_checkpoint.model.get_weights())
-                    ckpt.model = tmp_model
-                    ckpt.step.assign(0)
-                    ckpt.epoch.assign(0)
-                    del tmp_model
-                    del tmp_checkpoint
-                    loaded_weights = True
-                    logger.info("successfully loaded weights")
-                except Exception as e:
-                    logger.info(
-                        f"!!! failed to load weights from [{weights_dir}]] !!!")
-                    logger.error(f"!!! {e}")
+
+                if not loaded_weights:
+                    try:
+                        logger.info(f"loading weights from [{weights_dir}]")
+                        tmp_model = tf.keras.models.clone_model(ckpt.model)
+                        # restore checkpoint
+                        tmp_checkpoint = \
+                            create_checkpoint(
+                                model=tf.keras.models.clone_model(ckpt.model),
+                                path=weights_dir)
+                        tmp_model.set_weights(tmp_checkpoint.model.get_weights())
+                        ckpt.model = tmp_model
+                        ckpt.step.assign(0)
+                        ckpt.epoch.assign(0)
+                        del tmp_model
+                        del tmp_checkpoint
+                        loaded_weights = True
+                        logger.info("successfully loaded weights")
+                    except Exception as e:
+                        logger.info(
+                            f"!!! failed to load weights from [{weights_dir}]] !!!")
+                        logger.error(f"!!! {e}")
 
                 if not loaded_weights:
                     logger.info("!!! failed to load weights")
@@ -286,6 +288,7 @@ def train_loop(
 
             # --- iterate over the batches of the dataset
             dataset_iterator = iter(dataset_training)
+            gpu_batches = 0
             step_time_dataset = 0.0
             total_loss = tf.constant(0.0, dtype=tf.float32)
 
@@ -298,34 +301,37 @@ def train_loop(
 
             # --- iterate over the batches of the dataset
             while not finished_training:
+                try:
+                    start_time_dataset = time.time()
+                    (input_batch, noisy_batch, downsampled_batch) = \
+                        dataset_iterator.get_next()
+                    stop_time_dataset = time.time()
+                    step_time_dataset = stop_time_dataset - start_time_dataset
+                except tf.errors.OutOfRangeError:
+                    break
+
                 start_time_forward_backward = time.time()
 
-                with tf.GradientTape() as tape:
-                    total_loss *= 0.0
-                    for _ in range(gpu_batches_per_step):
-                        with tape.stop_recording():
-                            try:
-                                start_time_dataset = time.time()
-                                (input_batch, noisy_batch, downsampled_batch) = \
-                                    dataset_iterator.get_next()
-                                stop_time_dataset = time.time()
-                                step_time_dataset = stop_time_dataset - start_time_dataset
-                            except tf.errors.OutOfRangeError:
-                                break
+                with tf.GradientTape(watch_accessed_variables=False) as tape:
+                    tape.watch(trainable_variables)
+                    de, sr = \
+                        train_forward_step(
+                            n=noisy_batch,
+                            d=downsampled_batch)
 
-                        de, sr = \
-                            train_forward_step(
-                                n=noisy_batch,
-                                d=downsampled_batch)
+                    # compute the loss value for this mini-batch
+                    de_loss = denoiser_loss_fn(gt_batch=input_batch, predicted_batch=de)
+                    sr_loss = superres_loss_fn(gt_batch=input_batch, predicted_batch=sr)
 
-                        # compute the loss value for this mini-batch
-                        de_loss = denoiser_loss_fn(gt_batch=input_batch, predicted_batch=de)
-                        sr_loss = superres_loss_fn(gt_batch=input_batch, predicted_batch=sr)
+                    # combine losses
+                    total_loss += \
+                        (de_loss[TOTAL_LOSS_STR] +
+                         sr_loss[TOTAL_LOSS_STR]) / 2
 
-                        # combine losses
-                        total_loss += \
-                            (de_loss[TOTAL_LOSS_STR] +
-                             sr_loss[TOTAL_LOSS_STR]) / 2
+                    gpu_batches += 1
+
+                    if gpu_batches < gpu_batches_per_step:
+                        continue
 
                     model_loss = model_loss_fn(model=ckpt.model)
                     total_loss = \
@@ -442,6 +448,8 @@ def train_loop(
 
                 # ---
                 ckpt.step.assign_add(1)
+                gpu_batches = 0
+                total_loss *= 0.0
 
                 # --- check if total steps reached
                 if 0 < total_steps <= ckpt.step:
