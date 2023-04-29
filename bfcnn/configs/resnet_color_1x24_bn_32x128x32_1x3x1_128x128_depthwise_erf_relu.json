@@ -49,7 +49,6 @@
 	"train": {
 		"epochs": 25,
 		"total_steps": -1,
-		"gpu_batches_per_step": 4,
 		"use_test_images": true,
 		"checkpoints_to_keep": 3,
 		"checkpoint_every": 10000,

@@ -80,9 +80,6 @@ def train_loop(
     # --- get the train configuration
     train_config = config["train"]
     epochs = train_config["epochs"]
-    gpu_batches_per_step = train_config.get("gpu_batches_per_step", 1)
-    if gpu_batches_per_step is None or gpu_batches_per_step <= 0:
-        raise ValueError("gpu_batches_per_step must be > 0")
 
     global_total_epochs = tf.Variable(
         epochs, trainable=False, dtype=tf.dtypes.int64, name="global_total_epochs")
