@@ -301,37 +301,34 @@ def train_loop(
 
             # --- iterate over the batches of the dataset
             while not finished_training:
-                try:
-                    start_time_dataset = time.time()
-                    (input_batch, noisy_batch, downsampled_batch) = \
-                        dataset_iterator.get_next()
-                    stop_time_dataset = time.time()
-                    step_time_dataset = stop_time_dataset - start_time_dataset
-                except tf.errors.OutOfRangeError:
-                    break
-
                 start_time_forward_backward = time.time()
 
                 with tf.GradientTape(watch_accessed_variables=False) as tape:
                     tape.watch(trainable_variables)
-                    de, sr = \
-                        train_forward_step(
-                            n=noisy_batch,
-                            d=downsampled_batch)
+                    total_loss *= 0.0
+                    for _ in range(gpu_batches_per_step):
+                        try:
+                            start_time_dataset = time.time()
+                            (input_batch, noisy_batch, downsampled_batch) = \
+                                dataset_iterator.get_next()
+                            stop_time_dataset = time.time()
+                            step_time_dataset = stop_time_dataset - start_time_dataset
+                        except tf.errors.OutOfRangeError:
+                            break
 
-                    # compute the loss value for this mini-batch
-                    de_loss = denoiser_loss_fn(gt_batch=input_batch, predicted_batch=de)
-                    sr_loss = superres_loss_fn(gt_batch=input_batch, predicted_batch=sr)
+                        de, sr = \
+                            train_forward_step(
+                                n=noisy_batch,
+                                d=downsampled_batch)
 
-                    # combine losses
-                    total_loss += \
-                        (de_loss[TOTAL_LOSS_STR] +
-                         sr_loss[TOTAL_LOSS_STR]) / 2
+                        # compute the loss value for this mini-batch
+                        de_loss = denoiser_loss_fn(gt_batch=input_batch, predicted_batch=de)
+                        sr_loss = superres_loss_fn(gt_batch=input_batch, predicted_batch=sr)
 
-                    gpu_batches += 1
-
-                    if gpu_batches < gpu_batches_per_step:
-                        continue
+                        # combine losses
+                        total_loss += \
+                            (de_loss[TOTAL_LOSS_STR] +
+                             sr_loss[TOTAL_LOSS_STR]) / 2
 
                     model_loss = model_loss_fn(model=ckpt.model)
                     total_loss = \
@@ -449,8 +446,6 @@ def train_loop(
 
                 # ---
                 ckpt.step.assign_add(1)
-                gpu_batches = 0
-                total_loss *= 0.0
 
                 # --- check if total steps reached
                 if 0 < total_steps <= ckpt.step:
