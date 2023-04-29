@@ -159,8 +159,6 @@ def dataset_builder(
                     interpolation="bilinear"),
                 false_fn=lambda: input_batch)
 
-        input_batch = tf.round(input_batch)
-
         return input_batch
 
     # --- define noise augmentation function
@@ -284,14 +282,23 @@ def dataset_builder(
                 false_fn=lambda: noisy_batch
             )
 
-        # ---
-        # round values to nearest integer
-        # clip values within boundaries
+        # --- round values to nearest integer
         noisy_batch = \
-            tf.clip_by_value(
-                    tf.round(noisy_batch),
+            tf.cond(
+                pred=round_values,
+                true_fn=lambda: tf.round(noisy_batch),
+                false_fn=lambda: noisy_batch)
+
+        # --- clip values within boundaries
+        noisy_batch = \
+            tf.cond(
+                pred=clip_value,
+                true_fn=lambda:
+                tf.clip_by_value(
+                    noisy_batch,
                     clip_value_min=min_value,
                     clip_value_max=max_value),
+                false_fn=lambda: noisy_batch)
 
         return noisy_batch
 
@@ -307,9 +314,11 @@ def dataset_builder(
     def prepare_data_fn(input_batch: tf.Tensor) -> \
             Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
         input_batch = geometric_augmentation_fn(input_batch)
+        input_batch = tf.round(input_batch)
         input_batch = tf.cast(input_batch, dtype=tf.float32)
         noisy_batch = noise_augmentation_fn(input_batch)
-        downsampled_batch = tf.round(downsample(input_batch))
+        downsampled_batch = downsample(input_batch)
+        downsampled_batch = tf.round(downsampled_batch)
         return input_batch, noisy_batch, downsampled_batch
 
     # --- define generator function from directory
