@@ -107,10 +107,6 @@ def train_loop(
             name="visualization_every")
     # how many visualizations to show
     visualization_number = train_config.get("visualization_number", 5)
-    # size of the random batch
-    random_batch_size = \
-        [visualization_number] + \
-        train_config.get("random_batch_size", input_shape)
 
     # test images
     use_test_images = train_config.get("use_test_images", False)
