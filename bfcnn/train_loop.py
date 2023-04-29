@@ -300,164 +300,163 @@ def train_loop(
                     finished_training = True
 
             # --- iterate over the batches of the dataset
-            tape = tf.GradientTape(watch_accessed_variables=False)
-            while not finished_training:
-                tape.stop_recording()
-                try:
-                    start_time_dataset = time.time()
-                    (input_batch, noisy_batch, downsampled_batch) = \
-                        dataset_iterator.get_next()
-                    stop_time_dataset = time.time()
-                    step_time_dataset = stop_time_dataset - start_time_dataset
-                except tf.errors.OutOfRangeError:
-                    break
+            with tf.GradientTape(watch_accessed_variables=False) as tape:
+                while not finished_training:
+                    try:
+                        start_time_dataset = time.time()
+                        (input_batch, noisy_batch, downsampled_batch) = \
+                            dataset_iterator.get_next()
+                        stop_time_dataset = time.time()
+                        step_time_dataset = stop_time_dataset - start_time_dataset
+                    except tf.errors.OutOfRangeError:
+                        break
 
-                start_time_forward_backward = time.time()
-                tape.watch(trainable_variables)
-                de, sr = \
-                    train_forward_step(
-                        n=noisy_batch,
-                        d=downsampled_batch)
+                    start_time_forward_backward = time.time()
+                    tape.watch(trainable_variables)
+                    de, sr = \
+                        train_forward_step(
+                            n=noisy_batch,
+                            d=downsampled_batch)
 
-                # compute the loss value for this mini-batch
-                de_loss = denoiser_loss_fn(gt_batch=input_batch, predicted_batch=de)
-                sr_loss = superres_loss_fn(gt_batch=input_batch, predicted_batch=sr)
+                    # compute the loss value for this mini-batch
+                    de_loss = denoiser_loss_fn(gt_batch=input_batch, predicted_batch=de)
+                    sr_loss = superres_loss_fn(gt_batch=input_batch, predicted_batch=sr)
 
-                # combine losses
-                total_loss += \
-                    (de_loss[TOTAL_LOSS_STR] +
-                     sr_loss[TOTAL_LOSS_STR]) / 2
+                    # combine losses
+                    total_loss += \
+                        (de_loss[TOTAL_LOSS_STR] +
+                         sr_loss[TOTAL_LOSS_STR]) / 2
 
-                gpu_batches += 1
+                    gpu_batches += 1
 
-                if gpu_batches < gpu_batches_per_step:
-                    continue
-                else:
-                    gpu_batches = 0
-                    model_loss = model_loss_fn(model=ckpt.model)
-                    total_loss = \
-                        total_loss / gpu_batches_per_step + \
-                        model_loss[TOTAL_LOSS_STR]
-                    # apply weights
-                    optimizer.apply_gradients(
-                        grads_and_vars=zip(
-                            tape.gradient(target=total_loss, sources=trainable_variables),
-                            trainable_variables))
-                    total_loss *= 0.0
-                tape.stop_recording()
+                    if gpu_batches < gpu_batches_per_step:
+                        continue
+                    else:
+                        gpu_batches = 0
+                        model_loss = model_loss_fn(model=ckpt.model)
+                        total_loss = \
+                            total_loss / gpu_batches_per_step + \
+                            model_loss[TOTAL_LOSS_STR]
+                        # apply weights
+                        optimizer.apply_gradients(
+                            grads_and_vars=zip(
+                                tape.gradient(target=total_loss, sources=trainable_variables),
+                                trainable_variables))
+                        total_loss *= 0.0
+                    tape.stop_recording()
 
-                # --- add loss summaries for tensorboard
-                for summary in [(DENOISER_STR, de_loss),
-                                (SUPERRES_STR, sr_loss)]:
-                    title = summary[0]
-                    loss_map = summary[1]
-                    tf.summary.scalar(name=f"quality/{title}/psnr",
-                                      data=loss_map[PSNR_STR],
+                    # --- add loss summaries for tensorboard
+                    for summary in [(DENOISER_STR, de_loss),
+                                    (SUPERRES_STR, sr_loss)]:
+                        title = summary[0]
+                        loss_map = summary[1]
+                        tf.summary.scalar(name=f"quality/{title}/psnr",
+                                          data=loss_map[PSNR_STR],
+                                          step=ckpt.step)
+                        tf.summary.scalar(name=f"loss/{title}/mae",
+                                          data=loss_map[MAE_LOSS_STR],
+                                          step=ckpt.step)
+                        tf.summary.scalar(name=f"loss/{title}/ssim",
+                                          data=loss_map[SSIM_LOSS_STR],
+                                          step=ckpt.step)
+                        tf.summary.scalar(name=f"loss/{title}/total",
+                                          data=loss_map[TOTAL_LOSS_STR],
+                                          step=ckpt.step)
+
+                    # denoiser specific
+                    tf.summary.scalar(name=f"quality/denoiser/improvement",
+                                      data=improvement(original=input_batch,
+                                                       noisy=noisy_batch,
+                                                       denoised=de),
                                       step=ckpt.step)
-                    tf.summary.scalar(name=f"loss/{title}/mae",
-                                      data=loss_map[MAE_LOSS_STR],
+
+                    # model
+                    tf.summary.scalar(name="loss/regularization",
+                                      data=model_loss[REGULARIZATION_LOSS_STR],
                                       step=ckpt.step)
-                    tf.summary.scalar(name=f"loss/{title}/ssim",
-                                      data=loss_map[SSIM_LOSS_STR],
-                                      step=ckpt.step)
-                    tf.summary.scalar(name=f"loss/{title}/total",
-                                      data=loss_map[TOTAL_LOSS_STR],
+                    tf.summary.scalar(name="loss/total",
+                                      data=total_loss,
                                       step=ckpt.step)
 
-                # denoiser specific
-                tf.summary.scalar(name=f"quality/denoiser/improvement",
-                                  data=improvement(original=input_batch,
-                                                   noisy=noisy_batch,
-                                                   denoised=de),
-                                  step=ckpt.step)
-
-                # model
-                tf.summary.scalar(name="loss/regularization",
-                                  data=model_loss[REGULARIZATION_LOSS_STR],
-                                  step=ckpt.step)
-                tf.summary.scalar(name="loss/total",
-                                  data=total_loss,
-                                  step=ckpt.step)
-
-                # --- add image prediction for tensorboard
-                if (ckpt.step % visualization_every) == 0:
-                    # original input
-                    tf.summary.image(
-                        name="input", data=input_batch / 255,
-                        max_outputs=visualization_number, step=ckpt.step)
-
-                    # augmented
-                    tf.summary.image(
-                        name="input_augmented/denoiser", data=noisy_batch / 255,
-                        max_outputs=visualization_number, step=ckpt.step)
-                    tf.summary.image(
-                        name="input_augmented/superres", data=downsampled_batch / 255,
-                        max_outputs=visualization_number, step=ckpt.step)
-
-                    # output
-                    tf.summary.image(
-                        name="output/denoiser", data=de / 255,
-                        max_outputs=visualization_number, step=ckpt.step)
-                    tf.summary.image(
-                        name="output/superres", data=sr / 255,
-                        max_outputs=visualization_number, step=ckpt.step)
-
-                    if use_test_images:
-                        test_de, test_sr = test_step(test_images)
+                    # --- add image prediction for tensorboard
+                    if (ckpt.step % visualization_every) == 0:
+                        # original input
                         tf.summary.image(
-                            name="test/denoiser", data=test_de / 255,
-                            max_outputs=visualization_number, step=ckpt.step)
-                        tf.summary.image(
-                            name="test/superres", data=test_sr / 255,
+                            name="input", data=input_batch / 255,
                             max_outputs=visualization_number, step=ckpt.step)
 
-                # --- prune conv2d
-                if use_prune and (ckpt.epoch >= prune_start_epoch) and \
-                        (prune_steps > -1) and (ckpt.step % prune_steps == 0):
-                    logger.info(f"pruning weights at step [{int(ckpt.step)}]")
-                    ckpt.model = prune_fn(model=ckpt.model)
-                    trainable_variables = ckpt.model.trainable_variables
+                        # augmented
+                        tf.summary.image(
+                            name="input_augmented/denoiser", data=noisy_batch / 255,
+                            max_outputs=visualization_number, step=ckpt.step)
+                        tf.summary.image(
+                            name="input_augmented/superres", data=downsampled_batch / 255,
+                            max_outputs=visualization_number, step=ckpt.step)
 
-                # --- check if it is time to save a checkpoint
-                if checkpoint_every > 0 and \
-                        (ckpt.step % checkpoint_every == 0):
-                    save_checkpoint_model_fn()
+                        # output
+                        tf.summary.image(
+                            name="output/denoiser", data=de / 255,
+                            max_outputs=visualization_number, step=ckpt.step)
+                        tf.summary.image(
+                            name="output/superres", data=sr / 255,
+                            max_outputs=visualization_number, step=ckpt.step)
 
-                # --- keep time of steps per second
-                stop_time_forward_backward = time.time()
-                step_time_forward_backward = \
-                    stop_time_forward_backward - \
-                    start_time_forward_backward
-                step_time_training = \
-                    stop_time_forward_backward - \
-                    start_time_dataset
+                        if use_test_images:
+                            test_de, test_sr = test_step(test_images)
+                            tf.summary.image(
+                                name="test/denoiser", data=test_de / 255,
+                                max_outputs=visualization_number, step=ckpt.step)
+                            tf.summary.image(
+                                name="test/superres", data=test_sr / 255,
+                                max_outputs=visualization_number, step=ckpt.step)
 
-                tf.summary.scalar(name="training/epoch",
-                                  data=int(ckpt.epoch),
-                                  step=ckpt.step)
-                tf.summary.scalar(name="training/learning_rate",
-                                  data=optimizer.learning_rate,
-                                  step=ckpt.step)
-                tf.summary.scalar(name="training/training_step_time",
-                                  data=step_time_training,
-                                  step=ckpt.step)
-                tf.summary.scalar(name="training/inference_step_time",
-                                  data=step_time_forward_backward,
-                                  step=ckpt.step)
-                tf.summary.scalar(name="training/dataset_step_time",
-                                  data=step_time_dataset,
-                                  step=ckpt.step)
+                    # --- prune conv2d
+                    if use_prune and (ckpt.epoch >= prune_start_epoch) and \
+                            (prune_steps > -1) and (ckpt.step % prune_steps == 0):
+                        logger.info(f"pruning weights at step [{int(ckpt.step)}]")
+                        ckpt.model = prune_fn(model=ckpt.model)
+                        trainable_variables = ckpt.model.trainable_variables
 
-                # ---
-                ckpt.step.assign_add(1)
-                total_loss = tf.constant(0.0, dtype=tf.float32)
+                    # --- check if it is time to save a checkpoint
+                    if checkpoint_every > 0 and \
+                            (ckpt.step % checkpoint_every == 0):
+                        save_checkpoint_model_fn()
 
-                # --- check if total steps reached
-                if 0 < total_steps <= ckpt.step:
-                    logger.info("total_steps reached [{0}]".format(
-                        int(total_steps)))
-                    finished_training = True
-                    break
+                    # --- keep time of steps per second
+                    stop_time_forward_backward = time.time()
+                    step_time_forward_backward = \
+                        stop_time_forward_backward - \
+                        start_time_forward_backward
+                    step_time_training = \
+                        stop_time_forward_backward - \
+                        start_time_dataset
+
+                    tf.summary.scalar(name="training/epoch",
+                                      data=int(ckpt.epoch),
+                                      step=ckpt.step)
+                    tf.summary.scalar(name="training/learning_rate",
+                                      data=optimizer.learning_rate,
+                                      step=ckpt.step)
+                    tf.summary.scalar(name="training/training_step_time",
+                                      data=step_time_training,
+                                      step=ckpt.step)
+                    tf.summary.scalar(name="training/inference_step_time",
+                                      data=step_time_forward_backward,
+                                      step=ckpt.step)
+                    tf.summary.scalar(name="training/dataset_step_time",
+                                      data=step_time_dataset,
+                                      step=ckpt.step)
+
+                    # ---
+                    ckpt.step.assign_add(1)
+                    total_loss = tf.constant(0.0, dtype=tf.float32)
+
+                    # --- check if total steps reached
+                    if 0 < total_steps <= ckpt.step:
+                        logger.info("total_steps reached [{0}]".format(
+                            int(total_steps)))
+                        finished_training = True
+                        break
 
             end_time_epoch = time.time()
             epoch_time = end_time_epoch - start_time_epoch
