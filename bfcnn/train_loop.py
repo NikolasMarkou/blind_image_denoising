@@ -287,7 +287,6 @@ def train_loop(
             # --- iterate over the batches of the dataset
             dataset_iterator = iter(dataset_training)
             step_time_dataset = 0.0
-            total_loss = tf.constant(0.0, dtype=tf.float32)
 
             # --- check if total steps reached
             if total_steps != -1:
@@ -301,7 +300,7 @@ def train_loop(
                 start_time_forward_backward = time.time()
 
                 with tf.GradientTape(watch_accessed_variables=False) as tape:
-                    total_loss *= 0.0
+                    total_loss = 0.0
                     for _ in range(gpu_batches_per_step):
                         tape.stop_recording()
                         try:
