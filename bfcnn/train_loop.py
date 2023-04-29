@@ -300,9 +300,7 @@ def train_loop(
                     finished_training = True
 
             # --- iterate over the batches of the dataset
-            tape = tf.GradientTape(watch_accessed_variables=False)
             while not finished_training:
-                tape.stop_recording()
                 try:
                     start_time_dataset = time.time()
                     (input_batch, noisy_batch, downsampled_batch) = \
@@ -335,7 +333,6 @@ def train_loop(
                     if gpu_batches < gpu_batches_per_step:
                         continue
                     else:
-                        gpu_batches = 0
                         model_loss = model_loss_fn(model=ckpt.model)
                         total_loss = \
                             total_loss / gpu_batches_per_step + \
@@ -343,9 +340,9 @@ def train_loop(
                         # apply weights
                         optimizer.apply_gradients(
                             grads_and_vars=zip(
-                                tape.gradient(target=total_loss, sources=trainable_variables),
+                                tape.gradient(target=total_loss,
+                                              sources=trainable_variables),
                                 trainable_variables))
-                        total_loss *= 0.0
                         tape.stop_recording()
 
                 # --- add loss summaries for tensorboard
@@ -452,7 +449,8 @@ def train_loop(
 
                 # ---
                 ckpt.step.assign_add(1)
-                total_loss = tf.constant(0.0, dtype=tf.float32)
+                gpu_batches = 0
+                total_loss *= 0.0
 
                 # --- check if total steps reached
                 if 0 < total_steps <= ckpt.step:
