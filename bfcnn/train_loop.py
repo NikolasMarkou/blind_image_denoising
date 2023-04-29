@@ -287,6 +287,7 @@ def train_loop(
             # --- iterate over the batches of the dataset
             dataset_iterator = iter(dataset_training)
             step_time_dataset = 0.0
+            total_loss = tf.constant(0.0, dtype=tf.float32)
 
             # --- check if total steps reached
             if total_steps != -1:
@@ -299,20 +300,19 @@ def train_loop(
             while not finished_training:
                 start_time_forward_backward = time.time()
 
-                with tf.GradientTape(watch_accessed_variables=False) as tape:
-                    total_loss = 0.0
+                with tf.GradientTape() as tape:
+                    total_loss *= 0.0
                     for _ in range(gpu_batches_per_step):
-                        tape.stop_recording()
-                        try:
-                            start_time_dataset = time.time()
-                            (input_batch, noisy_batch, downsampled_batch) = \
-                                dataset_iterator.get_next()
-                            stop_time_dataset = time.time()
-                            step_time_dataset = stop_time_dataset - start_time_dataset
-                        except tf.errors.OutOfRangeError:
-                            break
+                        with tape.stop_recording():
+                            try:
+                                start_time_dataset = time.time()
+                                (input_batch, noisy_batch, downsampled_batch) = \
+                                    dataset_iterator.get_next()
+                                stop_time_dataset = time.time()
+                                step_time_dataset = stop_time_dataset - start_time_dataset
+                            except tf.errors.OutOfRangeError:
+                                break
 
-                        tape.watch(trainable_variables)
                         de, sr = \
                             train_forward_step(
                                 n=noisy_batch,
@@ -337,7 +337,6 @@ def train_loop(
                             tape.gradient(target=total_loss,
                                           sources=trainable_variables),
                             trainable_variables))
-                    tape.stop_recording()
 
                 # --- add loss summaries for tensorboard
                 for summary in [(DENOISER_STR, de_loss),
