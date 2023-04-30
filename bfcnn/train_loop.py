@@ -340,15 +340,17 @@ def train_loop(
                         for i in range(len(gradient)):
                             gradients[i] += gradient[i]
 
-                for i in range(len(gradients)):
-                    gradients[i] /= float(gpu_batches_per_step)
+                if gradients is not None:
+                    # average out gradients
+                    for i in range(len(gradients)):
+                        gradients[i] /= float(gpu_batches_per_step)
 
-                # apply gradient to change weights
-                optimizer.apply_gradients(
-                    grads_and_vars=zip(
-                        gradients,
-                        trainable_variables))
-                del gradients
+                    # apply gradient to change weights
+                    optimizer.apply_gradients(
+                        grads_and_vars=zip(
+                            gradients,
+                            trainable_variables))
+                    del gradients
 
                 start_time_forward_backward = time.time()
 
