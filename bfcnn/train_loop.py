@@ -327,7 +327,7 @@ def train_loop(
                         total_loss = \
                             (de_loss[TOTAL_LOSS_STR] +
                              sr_loss[TOTAL_LOSS_STR]) / 2 + \
-                            model_loss
+                            model_loss[TOTAL_LOSS_STR]
 
                         gradient = \
                             tape.gradient(
