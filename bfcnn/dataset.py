@@ -327,13 +327,14 @@ def dataset_builder(
         dataset_generator = \
             image_filenames_generator(
                 directory=directory)
-
+        dataset_size = sum(1 for _ in copy.deepcopy(dataset_generator)())
         dataset_training = \
             tf.data.Dataset.from_generator(
                 generator=dataset_generator,
                 output_signature=(
                     tf.TensorSpec(shape=(), dtype=tf.string)
                 ))
+        logger.info(f"dataset_size: [{dataset_size}]")
     else:
         raise ValueError("don't know how to handle non directory datasets")
 

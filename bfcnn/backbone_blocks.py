@@ -114,7 +114,6 @@ def resnet_blocks_full(
     use_dropout = dropout_params is not None
     use_sparsity = sparse_params is not None
     use_selector = selector_params is not None
-    use_mean_sigma = mean_sigma_params is not None
     use_multiplier = multiplier_params is not None
     use_channelwise = channelwise_params is not None
     use_post_addition_activation = post_addition_activation is not None
@@ -157,6 +156,7 @@ def resnet_blocks_full(
             selector_no_filters = first_conv_params["filters"]
         else:
             raise ValueError("don't know what to do here")
+        filters_compress = max(2, int(round(selector_no_filters / 4)))
 
     # --- setup resnet along with its variants
     x = input_layer
@@ -278,7 +278,6 @@ def resnet_blocks_full(
 
         # skip connector or selector mixer
         if use_selector:
-            x_selector = None
             if (x_1st_conv is not None) and \
                     (x_2nd_conv is not None) and \
                     (x_3rd_conv is None):
@@ -288,9 +287,7 @@ def resnet_blocks_full(
                     (x_3rd_conv is not None):
                 x_selector = x_2nd_conv
             else:
-                raise ValueError("don't what selector layer to use")
-
-            filters_compress = max(2, int(round(selector_no_filters / 4)))
+                raise ValueError("don't know what selector layer to use")
 
             x = \
                 selector_block(
@@ -299,7 +296,7 @@ def resnet_blocks_full(
                     selector_layer=x_selector,
                     filters_compress=filters_compress,
                     filters_target=selector_no_filters,
-                    kernel_regularizer="l1",
+                    kernel_regularizer="l2",
                     kernel_initializer="glorot_normal",
                     selector_type=SelectorType.CHANNEL,
                     activation_type=ActivationType.HARD)

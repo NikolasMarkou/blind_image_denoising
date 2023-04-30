@@ -80,6 +80,9 @@ def train_loop(
     # --- get the train configuration
     train_config = config["train"]
     epochs = train_config["epochs"]
+    gpu_batches_per_step = int(train_config.get("gpu_batches_per_step", 1))
+    if gpu_batches_per_step <= 0:
+        raise ValueError("gpu_batches_per_step must be > 0")
 
     global_total_epochs = tf.Variable(
         epochs, trainable=False, dtype=tf.dtypes.int64, name="global_total_epochs")
@@ -291,43 +294,62 @@ def train_loop(
                     finished_training = True
 
             # --- iterate over the batches of the dataset
-            while not finished_training:
-                try:
-                    start_time_dataset = time.time()
-                    (input_batch, noisy_batch, downsampled_batch) = \
-                        dataset_iterator.get_next()
-                    stop_time_dataset = time.time()
-                    step_time_dataset = stop_time_dataset - start_time_dataset
-                except tf.errors.OutOfRangeError:
-                    break
+            epoch_finished_training = False
 
-                start_time_forward_backward = time.time()
+            while not finished_training and \
+                    not epoch_finished_training:
+                gradients = None
 
-                with tf.GradientTape() as tape:
-                    de, sr = \
-                        train_forward_step(
-                            n=noisy_batch,
-                            d=downsampled_batch)
+                for _ in range(gpu_batches_per_step):
+                    try:
+                        start_time_dataset = time.time()
+                        (input_batch, noisy_batch, downsampled_batch) = \
+                            dataset_iterator.get_next()
+                        stop_time_dataset = time.time()
+                        step_time_dataset = stop_time_dataset - start_time_dataset
+                    except tf.errors.OutOfRangeError:
+                        epoch_finished_training = True
+                        break
 
-                    # compute the loss value for this mini-batch
-                    de_loss = denoiser_loss_fn(gt_batch=input_batch, predicted_batch=de)
-                    sr_loss = superres_loss_fn(gt_batch=input_batch, predicted_batch=sr)
+                    with tf.GradientTape() as tape:
+                        de, sr = \
+                            train_forward_step(
+                                n=noisy_batch,
+                                d=downsampled_batch)
 
-                    # combine losses
-                    total_loss = \
-                        (de_loss[TOTAL_LOSS_STR] +
-                         sr_loss[TOTAL_LOSS_STR]) / 2
+                        # compute the loss value for this mini-batch
+                        de_loss = denoiser_loss_fn(gt_batch=input_batch, predicted_batch=de)
+                        sr_loss = superres_loss_fn(gt_batch=input_batch, predicted_batch=sr)
 
-                    model_loss = model_loss_fn(model=ckpt.model)
-                    total_loss = \
-                        total_loss + \
-                        model_loss[TOTAL_LOSS_STR]
-                    # apply weights
+                        # combine losses
+                        model_loss = \
+                            model_loss_fn(model=ckpt.model)
+                        total_loss = \
+                            (de_loss[TOTAL_LOSS_STR] +
+                             sr_loss[TOTAL_LOSS_STR]) / 2 + \
+                            model_loss
+
+                        gradient = \
+                            tape.gradient(
+                                target=total_loss,
+                                sources=trainable_variables)
+
+                    if gradients is None:
+                        gradients = gradient
+                    else:
+                        for i in range(len(gradient)):
+                            gradients[i] += gradient[i]
+
+                    for i in range(len(gradients)):
+                        gradients[i] /= float(gpu_batches_per_step)
+
+                    # apply gradient to change weights
                     optimizer.apply_gradients(
                         grads_and_vars=zip(
-                            tape.gradient(target=total_loss,
-                                          sources=trainable_variables),
+                            gradients,
                             trainable_variables))
+
+                start_time_forward_backward = time.time()
 
                 # --- add loss summaries for tensorboard
                 for summary in [(DENOISER_STR, de_loss),
