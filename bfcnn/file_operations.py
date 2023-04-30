@@ -1,16 +1,36 @@
 import os
 import glob
+import itertools
 import tensorflow as tf
 from pathlib import Path
 from typing import Tuple, Union, Any, Generator, List
 
 # ---------------------------------------------------------------------
 
-from .utilities import logger, layer_normalize, merge_iterators
+from .utilities import logger, layer_normalize
 
 # ---------------------------------------------------------------------
 
 SUPPORTED_IMAGE_LIST_FORMATS = (".bmp", ".gif", ".jpeg", ".jpg", ".png")
+
+
+# ---------------------------------------------------------------------
+
+
+def merge_iterators(
+        *iterators):
+    """
+    Merge different iterators together
+
+    :param iterators:
+    """
+    empty = {}
+    for values in itertools.zip_longest(*iterators, fillvalue=empty):
+        for value in values:
+            if value is not empty:
+                yield value
+
+# ---------------------------------------------------------------------
 
 
 def image_filenames_generator(
