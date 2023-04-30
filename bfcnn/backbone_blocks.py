@@ -114,6 +114,7 @@ def resnet_blocks_full(
     use_dropout = dropout_params is not None
     use_sparsity = sparse_params is not None
     use_selector = selector_params is not None
+    use_mean_sigma = mean_sigma_params is not None
     use_multiplier = multiplier_params is not None
     use_channelwise = channelwise_params is not None
     use_post_addition_activation = post_addition_activation is not None
