@@ -37,6 +37,10 @@ def main(args):
     config_basename = os.path.basename(config).split(".")[0]
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
 
+    run_name = args.run_name
+    if run_name is None or len(run_name) <= 0:
+        run_name = config_basename
+
     if args.tf_flags:
         os.environ["CUDA_CACHE_DISABLE"] = "0"
         os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
@@ -53,7 +57,7 @@ def main(args):
             "--model-directory",
             os.path.join(
                 CHECKPOINT_DIRECTORY,
-                config_basename),
+                run_name),
             "--pipeline-config",
             config
         ])
@@ -70,6 +74,18 @@ if __name__ == "__main__":
         default="",
         dest="model",
         help="model to train, options: {0}".format(list(CONFIGS.keys())))
+
+    parser.add_argument(
+        "--run-name",
+        default="",
+        dest="run_name",
+        help="how to call this specific run")
+
+    parser.add_argument(
+        "--weights-directory",
+        default="",
+        dest="weights_directory",
+        help="where to load weights from")
 
     parser.add_argument(
         "--gpu",
