@@ -49,15 +49,12 @@
 	"train": {
 		"epochs": 25,
 		"total_steps": -1,
-		"gpu_batches_per_step": 4,
+		"gpu_batches_per_step": 8,
 		"use_test_images": true,
 		"checkpoints_to_keep": 3,
 		"checkpoint_every": 10000,
 		"visualization_number": 4,
 		"visualization_every": 1000,
-		"random_batch_iterations": 5,
-		"random_batch_size": [128, 128, 3],
-		"random_batch_min_difference": 0.1,
 		"optimizer": {
 			"type": "ADAM",
 			"gradient_clipping_by_norm": 1.0,
@@ -79,7 +76,7 @@
 		"regularization": 0.01
 	},
 	"dataset": {
-		"batch_size": 8,
+		"batch_size": 4,
 		"color_mode": "rgb",
 		"no_crops_per_image": 1,
 		"value_range": [0, 255],
