@@ -347,35 +347,7 @@ def dataset_builder(
 
         return crops
 
-    # # --- compute concrete functions
-    # load_image_concrete_fn = \
-    #     load_image_fn.get_concrete_function(
-    #         tf.TensorSpec(shape=(), dtype=tf.string))
-    #
-    # prepare_data_concrete_fn = \
-    #     prepare_data_fn.get_concrete_function(
-    #         tf.TensorSpec(shape=[no_crops_per_image,
-    #                              input_shape[0],
-    #                              input_shape[1],
-    #                              num_channels],
-    #                       dtype=tf.uint8))
-
     # --- create the dataset
-    # !!!
-    # SHUFFLING ON FIXED SIZE BATCHES USES FIXED AMOUNT OF MEMORY
-    # SHUFFLING ON VARIABLE SIZE STRING USES A LOT OF MEMORY
-    # AND POSSIBLE LEAKING
-    #
-    # shuffling, mapping and
-    # then re-batching mixes the different noise types in the same batch
-    # !!!
-    #
-    #             .shuffle(
-    #                 seed=0,
-    #                 buffer_size=2048,
-    #                 reshuffle_each_iteration=True) \
-    #
-    #
     dataset_training = \
         dataset_training \
             .map(
