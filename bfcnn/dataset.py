@@ -373,9 +373,9 @@ def dataset_builder(
         dataset_training \
             .map(
                 map_func=load_image_fn,
-                num_parallel_calls=batch_size/2) \
+                num_parallel_calls=tf.data.AUTOTUNE) \
             .map(map_func=prepare_data_fn,
-                 num_parallel_calls=batch_size/2) \
+                 num_parallel_calls=tf.data.AUTOTUNE) \
             .rebatch(
                 batch_size=batch_size,
                 drop_remainder=True) \
