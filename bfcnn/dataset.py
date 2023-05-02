@@ -344,19 +344,20 @@ def dataset_builder(
         img = \
             load_image(
                 path=path,
-                image_size=None,
+                image_size=(input_shape[0], input_shape[1]),
                 num_channels=num_channels,
                 expand_dims=True,
                 normalize=False)
-        crops = \
-            random_crops(
-                input_batch=img,
-                crop_size=(input_shape[0], input_shape[1]),
-                x_range=None,
-                y_range=None,
-                no_crops_per_image=no_crops_per_image)
-
-        return crops
+        return img
+        # crops = \
+        #     random_crops(
+        #         input_batch=img,
+        #         crop_size=(input_shape[0], input_shape[1]),
+        #         x_range=None,
+        #         y_range=None,
+        #         no_crops_per_image=no_crops_per_image)
+        #
+        # return crops
 
     # --- compute concrete functions
     # load_image_concrete_fn = \

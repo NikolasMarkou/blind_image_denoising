@@ -300,13 +300,13 @@ def train_loop(
                 for _ in range(gpu_batches_per_step):
                     try:
                         start_time_dataset = time.time()
-                        (input_batch, noisy_batch) = \
-                            dataset_iterator.get_next()
+                        (input_batch, noisy_batch) = dataset_iterator.get_next()
                         stop_time_dataset = time.time()
                         step_time_dataset = stop_time_dataset - start_time_dataset
                     except tf.errors.OutOfRangeError:
                         epoch_finished_training = True
                         break
+
                     # with tf.GradientTape() as tape:
                     #     de = train_forward_step(n=noisy_batch)
                     #
