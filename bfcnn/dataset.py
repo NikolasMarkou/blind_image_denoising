@@ -369,6 +369,13 @@ def dataset_builder(
     # shuffling, mapping and
     # then re-batching mixes the different noise types in the same batch
     # !!!
+    #
+    #             .shuffle(
+    #                 seed=0,
+    #                 buffer_size=2048,
+    #                 reshuffle_each_iteration=True) \
+    #
+    #
     dataset_training = \
         dataset_training \
             .map(
