@@ -383,10 +383,6 @@ def dataset_builder(
     # !!!
     dataset_training = \
         dataset_training \
-            .shuffle(
-                seed=0,
-                buffer_size=1024,
-                reshuffle_each_iteration=True) \
             .map(
                 map_func=load_image_concrete_fn,
                 num_parallel_calls=batch_size) \

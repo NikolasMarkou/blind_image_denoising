@@ -821,6 +821,11 @@ def random_crops(
             method=interpolation_method,
             extrapolation_value=extrapolation_value)
 
+    del boxes
+    del box_indices
+    del x1, y1, x2, y2
+    del y_range, x_range
+
     # --- cast to original img dtype (no surprises principle)
     return tf.cast(result, dtype=original_dtype)
 
