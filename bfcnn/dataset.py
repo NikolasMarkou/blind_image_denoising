@@ -344,33 +344,33 @@ def dataset_builder(
         img = \
             load_image(
                 path=path,
-                image_size=(input_shape[0], input_shape[1]),
+                image_size=None,
                 num_channels=num_channels,
                 expand_dims=True,
                 normalize=False)
-        return img
-        # crops = \
-        #     random_crops(
-        #         input_batch=img,
-        #         crop_size=(input_shape[0], input_shape[1]),
-        #         x_range=None,
-        #         y_range=None,
-        #         no_crops_per_image=no_crops_per_image)
-        #
-        # return crops
+        crops = \
+            random_crops(
+                input_batch=img,
+                crop_size=(input_shape[0], input_shape[1]),
+                x_range=None,
+                y_range=None,
+                no_crops_per_image=no_crops_per_image)
+        del img
+
+        return crops
 
     # --- compute concrete functions
-    # load_image_concrete_fn = \
-    #     load_image_fn.get_concrete_function(
-    #         tf.TensorSpec(shape=(), dtype=tf.string))
-    #
-    # prepare_data_concrete_fn = \
-    #     prepare_data_fn.get_concrete_function(
-    #         tf.TensorSpec(shape=[no_crops_per_image,
-    #                              input_shape[0],
-    #                              input_shape[1],
-    #                              num_channels],
-    #                       dtype=tf.uint8))
+    load_image_concrete_fn = \
+        load_image_fn.get_concrete_function(
+            tf.TensorSpec(shape=(), dtype=tf.string))
+
+    prepare_data_concrete_fn = \
+        prepare_data_fn.get_concrete_function(
+            tf.TensorSpec(shape=[no_crops_per_image,
+                                 input_shape[0],
+                                 input_shape[1],
+                                 num_channels],
+                          dtype=tf.uint8))
 
     # --- create the dataset
     # !!!
@@ -388,9 +388,9 @@ def dataset_builder(
                 buffer_size=1024,
                 reshuffle_each_iteration=True) \
             .map(
-                map_func=load_image_fn,
+                map_func=load_image_concrete_fn,
                 num_parallel_calls=batch_size) \
-            .map(map_func=prepare_data_fn,
+            .map(map_func=prepare_data_concrete_fn,
                  num_parallel_calls=batch_size) \
             .rebatch(
                 batch_size=batch_size,

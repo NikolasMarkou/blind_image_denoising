@@ -115,13 +115,15 @@ def load_image(
 
     # --- resize it
     if image_size is not None:
-        img = \
+        img_pad = \
             tf.image.resize_with_pad(
                 image=img,
                 target_height=image_size[0],
                 target_width=image_size[1],
                 method=interpolation,
                 antialias=False)
+        del img
+        img = img_pad
 
     if expand_dims:
         img = tf.expand_dims(img, axis=0)
