@@ -54,7 +54,7 @@
 	"dataset": {
 		"batch_size": 16,
 		"color_mode": "rgb",
-		"no_crops_per_image": 4,
+		"no_crops_per_image": 1,
 		"value_range": [0, 255],
 		"clip_value": true,
 		"random_blur": true,
