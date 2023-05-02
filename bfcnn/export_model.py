@@ -13,7 +13,6 @@ from .model import model_builder
 from .custom_logger import logger
 from .optimizer import optimizer_builder
 from .module_denoiser import DenoiserModule
-from .module_superres import SuperResolutionModule
 from .utilities import load_config, create_checkpoint
 
 # ---------------------------------------------------------------------
@@ -90,18 +89,10 @@ def export_model(
     # checkpoint managing
     ckpt = \
         create_checkpoint(
-            model=models.hydra, d=checkpoint_directory)
-    checkpoint = \
-        tf.train.Checkpoint(
-            step=global_step,
-            epoch=global_epoch,
-            model_hydra=hydra,
-            model_backbone=backbone,
-            model_denoiser=denoiser,
-            model_normalizer=normalizer,
-            model_denormalizer=denormalizer)
+            model=models.hydra,
+            d=checkpoint_directory)
     status = \
-        checkpoint.restore(tf.train.latest_checkpoint(checkpoint_directory))
+        ckpt.restore(tf.train.latest_checkpoint(checkpoint_directory))
     status.assert_existing_objects_matched()
     #status.assert_consumed()
     logger.info("!!! Found checkpoint to restore !!!")
@@ -125,63 +116,54 @@ def export_model(
     # build denoiser and superres modules
     ##################################################################################
 
-    modules = []
+    # ---
+    output_saved_model = os.path.join(output_directory, "denoiser")
+    logger.info(f"building denoiser module")
 
-    for m in [(DENOISER_STR, DenoiserModule),
-              (SUPERRES_STR, SuperResolutionModule)]:
-        # ---
-        output_saved_model = os.path.join(output_directory, m[0])
-        logger.info(f"building {m[0]} module")
+    module = \
+        DenoiserModule(
+            cast_to_uint8=True,
+            model_hydra=ckpt.model)
 
-        module = \
-            m[1](
-                cast_to_uint8=True,
-                model_backbone=backbone,
-                model_denoiser=denoiser,
-                model_normalizer=normalizer,
-                model_denormalizer=denormalizer)
+    # getting the concrete function traces the graph
+    # and forces variables to
+    # be constructed, only after this can we save the
+    # checkpoint and saved model.
+    concrete_function = \
+        module.__call__.get_concrete_function(
+            tf.TensorSpec(shape=[1, None, None, training_channels], dtype=tf.uint8)
+        )
 
-        # getting the concrete function traces the graph
-        # and forces variables to
-        # be constructed, only after this can we save the
-        # checkpoint and saved model.
-        concrete_function = \
-            module.__call__.get_concrete_function(
-                tf.TensorSpec(shape=[1, None, None, training_channels], dtype=tf.uint8)
-            )
+    # export the model as save_model format (default)
+    logger.info(f"saving module: [{output_saved_model}]")
+    tf.saved_model.save(
+        obj=module,
+        signatures=concrete_function,
+        export_dir=output_saved_model,
+        options=tf.saved_model.SaveOptions(save_debug_info=True))
 
-        # export the model as save_model format (default)
-        logger.info(f"saving module: [{output_saved_model}]")
-        tf.saved_model.save(
-            obj=module,
-            signatures=concrete_function,
-            export_dir=output_saved_model,
-            options=tf.saved_model.SaveOptions(save_debug_info=True))
+    # --- export to tflite
+    if to_tflite:
+        converter = \
+            tf.lite.TFLiteConverter.from_concrete_functions(
+                funcs=[concrete_function],
+                trackable_obj=module)
+        converter.target_spec.supported_ops = [
+            tf.lite.OpsSet.TFLITE_BUILTINS,
+            tf.lite.OpsSet.SELECT_TF_OPS
+        ]
+        converter.optimizations = [
+            tf.lite.Optimize.DEFAULT
+        ]
+        tflite_model = converter.convert()
+        output_tflite_model = \
+            os.path.join(
+                output_directory,
+                f"denoiser_model.tflite")
+        # save the model.
+        with open(output_tflite_model, "wb") as f:
+            f.write(tflite_model)
 
-        # --- export to tflite
-        if to_tflite:
-            converter = \
-                tf.lite.TFLiteConverter.from_concrete_functions(
-                    funcs=[concrete_function],
-                    trackable_obj=module)
-            converter.target_spec.supported_ops = [
-                tf.lite.OpsSet.TFLITE_BUILTINS,
-                tf.lite.OpsSet.SELECT_TF_OPS
-            ]
-            converter.optimizations = [
-                tf.lite.Optimize.DEFAULT
-            ]
-            tflite_model = converter.convert()
-            output_tflite_model = \
-                os.path.join(
-                    output_directory,
-                    f"{m[0]}_model.tflite")
-            # save the model.
-            with open(output_tflite_model, "wb") as f:
-                f.write(tflite_model)
-
-        modules.append(module)
-
-    return modules
+    return module
 
 # ---------------------------------------------------------------------
