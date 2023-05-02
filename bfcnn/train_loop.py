@@ -396,7 +396,7 @@ def train_loop(
                         max_outputs=visualization_number, step=ckpt.step)
 
                     if use_test_images:
-                        test_de, test_sr = test_step(test_images)
+                        test_de = test_step(test_images)
                         tf.summary.image(
                             name="test/denoiser", data=test_de / 255,
                             max_outputs=visualization_number, step=ckpt.step)
