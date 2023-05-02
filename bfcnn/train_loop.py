@@ -71,7 +71,6 @@ def train_loop(
     loss_fn_map = loss_function_builder(config=config["loss"])
     model_loss_fn = tf.function(func=loss_fn_map[MODEL_LOSS_FN_STR], reduce_retracing=True)
     denoiser_loss_fn = tf.function(func=loss_fn_map[DENOISER_LOSS_FN_STR], reduce_retracing=True)
-    superres_loss_fn = tf.function(func=loss_fn_map[SUPERRES_LOSS_FN_STR], reduce_retracing=True)
 
     # --- build optimizer
     optimizer, _ = \
@@ -235,16 +234,14 @@ def train_loop(
         @tf.function(
             reduce_retracing=True)
         def train_forward_step(
-                n: tf.Tensor,
-                d: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
-            de, _ = ckpt.model(n, training=True)
-            _, sr = ckpt.model(d, training=True)
-            return de, sr
+                n: tf.Tensor) -> tf.Tensor:
+            de = ckpt.model(n, training=True)
+            return de
 
         @tf.function(
             reduce_retracing=True)
         def test_step(
-                n: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+                n: tf.Tensor) -> tf.Tensor:
             return ckpt.model(n, training=False)
 
         if ckpt.step == 0:
@@ -303,7 +300,7 @@ def train_loop(
                 for _ in range(gpu_batches_per_step):
                     try:
                         start_time_dataset = time.time()
-                        (input_batch, noisy_batch, downsampled_batch) = \
+                        (input_batch, noisy_batch) = \
                             dataset_iterator.get_next()
                         stop_time_dataset = time.time()
                         step_time_dataset = stop_time_dataset - start_time_dataset
@@ -312,21 +309,16 @@ def train_loop(
                         break
 
                     with tf.GradientTape() as tape:
-                        de, sr = \
-                            train_forward_step(
-                                n=noisy_batch,
-                                d=downsampled_batch)
+                        de = train_forward_step(n=noisy_batch)
 
                         # compute the loss value for this mini-batch
                         de_loss = denoiser_loss_fn(gt_batch=input_batch, predicted_batch=de)
-                        sr_loss = superres_loss_fn(gt_batch=input_batch, predicted_batch=sr)
 
                         # combine losses
                         model_loss = \
                             model_loss_fn(model=ckpt.model)
                         total_loss = \
-                            (de_loss[TOTAL_LOSS_STR] +
-                             sr_loss[TOTAL_LOSS_STR]) / 2 + \
+                            de_loss[TOTAL_LOSS_STR] + \
                             model_loss[TOTAL_LOSS_STR]
 
                         gradient = \
@@ -355,8 +347,7 @@ def train_loop(
                 start_time_forward_backward = time.time()
 
                 # --- add loss summaries for tensorboard
-                for summary in [(DENOISER_STR, de_loss),
-                                (SUPERRES_STR, sr_loss)]:
+                for summary in [(DENOISER_STR, de_loss)]:
                     title = summary[0]
                     loss_map = summary[1]
                     tf.summary.scalar(name=f"quality/{title}/psnr",
@@ -398,25 +389,16 @@ def train_loop(
                     tf.summary.image(
                         name="input_augmented/denoiser", data=noisy_batch / 255,
                         max_outputs=visualization_number, step=ckpt.step)
-                    tf.summary.image(
-                        name="input_augmented/superres", data=downsampled_batch / 255,
-                        max_outputs=visualization_number, step=ckpt.step)
 
                     # output
                     tf.summary.image(
                         name="output/denoiser", data=de / 255,
-                        max_outputs=visualization_number, step=ckpt.step)
-                    tf.summary.image(
-                        name="output/superres", data=sr / 255,
                         max_outputs=visualization_number, step=ckpt.step)
 
                     if use_test_images:
                         test_de, test_sr = test_step(test_images)
                         tf.summary.image(
                             name="test/denoiser", data=test_de / 255,
-                            max_outputs=visualization_number, step=ckpt.step)
-                        tf.summary.image(
-                            name="test/superres", data=test_sr / 255,
                             max_outputs=visualization_number, step=ckpt.step)
 
                 # --- prune conv2d

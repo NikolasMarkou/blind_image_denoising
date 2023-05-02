@@ -313,14 +313,12 @@ def dataset_builder(
         ],
         reduce_retracing=True)
     def prepare_data_fn(input_batch: tf.Tensor) -> \
-            Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
+            Tuple[tf.Tensor, tf.Tensor]:
         input_batch = geometric_augmentation_fn(input_batch)
         input_batch = tf.round(input_batch)
         input_batch = tf.cast(input_batch, dtype=tf.float32)
         noisy_batch = noise_augmentation_fn(input_batch)
-        downsampled_batch = downsample(input_batch)
-        downsampled_batch = tf.round(downsampled_batch)
-        return input_batch, noisy_batch, downsampled_batch
+        return input_batch, noisy_batch
 
     # --- define generator function from directory
     if directory:

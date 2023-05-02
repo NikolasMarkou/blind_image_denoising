@@ -60,46 +60,16 @@ def model_builder(
     # common backbone low level
     backbone = model_backbone(input_normalized_layer)
 
-    backbone_upsample = \
-        tf.keras.layers.UpSampling2D(
-            size=(2, 2),
-            interpolation="nearest")(backbone)
-    backbone_channels = \
-        tf.keras.backend.int_shape(model_backbone.outputs[0])[-1]
-    upsample_conv_params = dict(
-            kernel_size=3,
-            filters=backbone_channels,
-            strides=(1, 1),
-            padding="same",
-            use_bias=False,
-            kernel_regularizer="l2",
-            kernel_initializer="glorot_normal",
-            activation=config[BACKBONE_STR]["activation"],
-        )
-
-    backbone_upsample = \
-        conv2d_wrapper(
-            input_layer=backbone_upsample,
-            conv_params=upsample_conv_params,
-            channelwise_scaling=False,
-            multiplier_scaling=False)
-
     options = dict(num_outputs=3, has_uncertainty=False)
-    # low level heads
     denoiser_output = model_denoiser(backbone)
-    super_resolution_output = model_denoiser(backbone_upsample)
 
     # denormalize
     denoiser_output = \
         model_denormalizer(denoiser_output, training=False)
-    super_resolution_output = \
-        model_denormalizer(super_resolution_output, training=False)
 
     # wrap layers to set names
     denoiser_output = \
         tf.keras.layers.Layer(name=DENOISER_STR)(denoiser_output)
-    super_resolution_output = \
-        tf.keras.layers.Layer(name=SUPERRES_STR)(super_resolution_output)
 
     # create model
     model_hydra = \
@@ -109,7 +79,6 @@ def model_builder(
             ],
             outputs=[
                 denoiser_output,
-                super_resolution_output
             ],
             name=f"hydra")
 
