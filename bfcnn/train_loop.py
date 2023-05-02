@@ -307,43 +307,54 @@ def train_loop(
                     except tf.errors.OutOfRangeError:
                         epoch_finished_training = True
                         break
+                    # with tf.GradientTape() as tape:
+                    #     de = train_forward_step(n=noisy_batch)
+                    #
+                    #     # compute the loss value for this mini-batch
+                    #     de_loss = denoiser_loss_fn(gt_batch=input_batch, predicted_batch=de)
+                    #
+                    #     # combine losses
+                    #     model_loss = \
+                    #         model_loss_fn(model=ckpt.model)
+                    #     total_loss = \
+                    #         de_loss[TOTAL_LOSS_STR] + \
+                    #         model_loss[TOTAL_LOSS_STR]
+                    #
+                    #     gradient = \
+                    #         tape.gradient(
+                    #             target=total_loss,
+                    #             sources=trainable_variables)
+                    #
+                    # if gradients is None:
+                    #     gradients = gradient
+                    # else:
+                    #     for i in range(len(gradient)):
+                    #         gradients[i] += gradient[i]
+                    #     del gradient
 
-                    with tf.GradientTape() as tape:
-                        de = train_forward_step(n=noisy_batch)
+                # if gradients is not None:
+                #     # average out gradients
+                #     for i in range(len(gradients)):
+                #         gradients[i] /= float(gpu_batches_per_step)
+                #
+                #     # apply gradient to change weights
+                #     optimizer.apply_gradients(
+                #         grads_and_vars=zip(
+                #             gradients,
+                #             trainable_variables))
+                #     del gradients
 
-                        # compute the loss value for this mini-batch
-                        de_loss = denoiser_loss_fn(gt_batch=input_batch, predicted_batch=de)
-
-                        # combine losses
-                        model_loss = \
-                            model_loss_fn(model=ckpt.model)
-                        total_loss = \
-                            de_loss[TOTAL_LOSS_STR] + \
-                            model_loss[TOTAL_LOSS_STR]
-
-                        gradient = \
-                            tape.gradient(
-                                target=total_loss,
-                                sources=trainable_variables)
-
-                    if gradients is None:
-                        gradients = gradient
-                    else:
-                        for i in range(len(gradient)):
-                            gradients[i] += gradient[i]
-
-                if gradients is not None:
-                    # average out gradients
-                    for i in range(len(gradients)):
-                        gradients[i] /= float(gpu_batches_per_step)
-
-                    # apply gradient to change weights
-                    optimizer.apply_gradients(
-                        grads_and_vars=zip(
-                            gradients,
-                            trainable_variables))
-                    del gradients
-
+                total_loss = 0.0
+                de = noisy_batch
+                de_loss = {
+                    PSNR_STR: 0.0,
+                    MAE_LOSS_STR: 0.0,
+                    SSIM_LOSS_STR: 0.0,
+                    TOTAL_LOSS_STR: 0.0
+                }
+                model_loss = {
+                    REGULARIZATION_LOSS_STR: 0.0
+                }
                 start_time_forward_backward = time.time()
 
                 # --- add loss summaries for tensorboard
