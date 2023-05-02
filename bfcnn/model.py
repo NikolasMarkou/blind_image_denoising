@@ -40,7 +40,8 @@ BuilderResults = namedtuple(
 def model_builder(
         config: Dict) -> BuilderResults:
     # --- argument checking
-    # TODO
+    if config is None:
+        raise ValueError("config cannot be None")
 
     # --- build backbone
     model_backbone, model_normalizer, model_denormalizer = \
