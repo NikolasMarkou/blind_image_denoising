@@ -328,8 +328,8 @@ def train_loop(
                     if gradients is None:
                         gradients = gradient
                     else:
-                        for i in range(len(gradient)):
-                            gradients[i] += gradient[i]
+                        gradients = \
+                            tf.math.add(gradients, gradient)
                         del gradient
 
                 if gradients is not None:
