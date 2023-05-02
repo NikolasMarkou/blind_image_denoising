@@ -3,15 +3,16 @@
 		"backbone": {
 			"input_shape": ["?", "?", 3],
 			"filters": 32,
-			"no_layers": 6,
+			"no_layers": 9,
 			"kernel_size": 7,
 			"block_kernels": [1, 3, 1],
 			"block_filters": [32, 64, 32],
-			"block_groups": [1, 2, 4],
+			"block_depthwise": [-1, 4, -1],
+			"block_groups": [1, 1, 2],
 			"value_range": [0, 255],
 			"type": "resnet",
 			"batchnorm": true,
-			"activation": "relu6",
+			"activation": "relu",
 			"add_final_bn": false,
 			"kernel_initializer": "glorot_normal",
 			"kernel_regularizer": {
@@ -23,25 +24,8 @@
 			}
 		},
 		"denoiser": {
-			"input_shape": ["?", "?", 32],
-			"output_channels": 3,
-			"filters": 32,
-			"no_layers": 3,
-			"kernel_size": 3,
-			"block_kernels": [1, 3, 1],
-			"block_filters": [32, 64, 32],
-			"block_groups": [1, 2, 4],
-			"type": "resnet",
-			"batchnorm": true,
-			"activation": "relu6",
-			"kernel_initializer": "glorot_normal",
-			"kernel_regularizer": {
-				"type": "erf",
-				"config": {
-					"l2_coefficient": 0.0,
-					"l1_coefficient": 0.025
-				}
-			}
+			"use_bias": false,
+			"output_channels": 3
 		}
 	},
 	"train": {

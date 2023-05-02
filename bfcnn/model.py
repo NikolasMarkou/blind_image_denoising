@@ -46,10 +46,6 @@ def model_builder(
     model_backbone, model_normalizer, model_denormalizer = \
         model_backbone_builder(config=config[BACKBONE_STR])
 
-    # --- build denoiser, superres
-    model_denoiser, options = \
-        model_denoiser_builder(config=config[DENOISER_STR])
-
     input_shape = tf.keras.backend.int_shape(model_backbone.inputs[0])[1:]
     logger.info("input_shape: [{0}]".format(input_shape))
 
@@ -59,6 +55,17 @@ def model_builder(
 
     # common backbone low level
     backbone = model_backbone(input_normalized_layer)
+
+    denoiser_input_channels = \
+        tf.keras.backend.int_shape(
+            model_backbone.outputs[0])[-1]
+    denoiser_shape = copy.deepcopy(config[BACKBONE_STR][INPUT_SHAPE_STR])
+    denoiser_shape[-1] = denoiser_input_channels
+    config[DENOISER_STR][INPUT_SHAPE_STR] = denoiser_shape
+
+    # --- build denoiser
+    model_denoiser, options = \
+        model_denoiser_builder(config=config[DENOISER_STR])
 
     options = dict(num_outputs=3, has_uncertainty=False)
     denoiser_output = model_denoiser(backbone)
@@ -404,9 +411,6 @@ def model_denoiser_builder(
             name="input_tensor")
 
     x = model_input_layer
-
-    backbone, _, _ = model_backbone_builder(config)
-    x = backbone(x)
 
     # regression / point sample estimation
     options = \
