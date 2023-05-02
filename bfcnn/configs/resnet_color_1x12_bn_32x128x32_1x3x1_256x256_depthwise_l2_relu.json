@@ -31,7 +31,7 @@
 	"train": {
 		"epochs": 25,
 		"total_steps": -1,
-		"gpu_batches_per_step": 2,
+		"gpu_batches_per_step": 4,
 		"use_test_images": true,
 		"checkpoints_to_keep": 3,
 		"checkpoint_every": 10000,
@@ -58,7 +58,7 @@
 		"regularization": 0.01
 	},
 	"dataset": {
-		"batch_size": 16,
+		"batch_size": 8,
 		"color_mode": "rgb",
 		"no_crops_per_image": 4,
 		"value_range": [0, 255],
