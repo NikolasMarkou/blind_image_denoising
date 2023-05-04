@@ -38,11 +38,9 @@ def builder(
         add_gelu: bool = False,
         add_gates: bool = False,
         add_selector: bool = False,
-        add_sparsity: bool = False,
         add_final_bn: bool = False,
         add_initial_bn: bool = False,
         add_concat_input: bool = False,
-        add_sparse_features: bool = False,
         add_channelwise_scaling: bool = False,
         add_learnable_multiplier: bool = False,
         add_mean_sigma_normalization: bool = False,
@@ -73,7 +71,6 @@ def builder(
     :param add_channelwise_scaling: if True for each full convolutional kernel add a scaling depthwise
     :param add_learnable_multiplier: if True add a learnable multiplier
     :param stop_gradient: if True stop gradients in each resnet block
-    :param add_sparsity: if true add sparsity layer
     :param add_gates: if true add gate layer
     :param add_gelu: if true add gelu layers
     :param add_mean_sigma_normalization: if true add variance for each block
@@ -82,7 +79,6 @@ def builder(
     :param add_concat_input: if true concat input to intermediate before projecting
     :param add_selector: if true add a selector block in skip connections
     :param add_squash: if True squash results with a tanh activation
-    :param add_sparse_features: if true set feature map to be sparse
     :param output_layer_name: the output layer name
     :param name: name of the model
 
@@ -198,13 +194,6 @@ def builder(
     if use_bn:
         resnet_params["bn_params"] = bn_params
 
-    # make it linear so it gets sparse afterwards
-    if add_sparsity:
-        resnet_params["sparse_params"] = \
-            dict(
-                threshold_sigma=1.0,
-            )
-
     if add_gelu:
         resnet_params["gelu_params"] = dict()
 
@@ -277,15 +266,6 @@ def builder(
     # optional concat and mix with input
     if add_concat_input:
         x = tf.keras.layers.Concatenate()([x, y])
-
-    # optional sparsity, 80% per layer becomes zero
-    if add_sparse_features:
-        x = \
-            sparse_block(
-                input_layer=x,
-                symmetrical=True,
-                bn_params=None,
-                threshold_sigma=1.0)
 
     # optional final channelwise multiplier
     if add_channelwise_scaling:

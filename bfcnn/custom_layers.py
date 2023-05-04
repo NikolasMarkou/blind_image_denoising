@@ -518,9 +518,9 @@ class GradientBottleneck(tf.keras.layers.Layer):
             trainable=False,
             name=name,
             **kwargs)
-        self._pass_through_percentage = pass_through_percentage
         if pass_through_percentage > 1.0 or pass_through_percentage < 0.0:
             raise ValueError("multiplier must be in [0,1] range")
+        self._pass_through_percentage = pass_through_percentage
 
     def build(self, input_shape):
         super(GradientBottleneck, self).build(input_shape)
@@ -545,7 +545,7 @@ class GradientBottleneck(tf.keras.layers.Layer):
 # ---------------------------------------------------------------------
 
 
-class RandomOnOffGradientBottleneck(tf.keras.layers.Layer):
+class GradientDropout(tf.keras.layers.Layer):
     """
     stop gradient randomly
     """
@@ -553,7 +553,7 @@ class RandomOnOffGradientBottleneck(tf.keras.layers.Layer):
                  name=None,
                  probability_off: float = 0.5,
                  **kwargs):
-        super(RandomOnOffGradientBottleneck, self).__init__(
+        super(GradientDropout, self).__init__(
             trainable=False,
             name=name,
             **kwargs)
@@ -563,7 +563,7 @@ class RandomOnOffGradientBottleneck(tf.keras.layers.Layer):
         self._probability_off = probability_off
 
     def build(self, input_shape):
-        super(RandomOnOffGradientBottleneck, self).build(input_shape)
+        super(GradientDropout, self).build(input_shape)
 
     def call(self, inputs, training=None):
         if training is None:
@@ -590,45 +590,5 @@ class RandomOnOffGradientBottleneck(tf.keras.layers.Layer):
         return {
             "probability_off": self._probability_off
         }
-
-# ---------------------------------------------------------------------
-
-
-class TrapdoorReluLayer(tf.keras.layers.Layer):
-    def __init__(self,
-                 trainable: bool = True,
-                 regularizer: Any = None,
-                 name=None,
-                 **kwargs):
-        """
-        Creates a PRelu layer that is forced through regularization to become ReLU
-
-        :param regularizer: regularizer
-        :result: activation layer
-        """
-        super(TrapdoorReluLayer, self).__init__(
-            trainable=trainable,
-            name=name,
-            **kwargs)
-        self._regularizer = keras.regularizers.get(regularizer)
-
-    def build(self, input_shape):
-        super(TrapdoorReluLayer, self).build(input_shape)
-
-    def call(self, inputs, training: bool = None):
-        x = inputs
-        if training is None:
-            training = tf.keras.backend.learning_phase()
-        if training:
-            pass
-        return x
-
-    def get_config(self):
-        return {
-
-        }
-
-    def compute_output_shape(self, input_shape):
-        return input_shape
 
 # ---------------------------------------------------------------------

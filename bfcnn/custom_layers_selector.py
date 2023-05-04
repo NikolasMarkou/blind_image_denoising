@@ -53,8 +53,6 @@ class ActivationType(Enum):
 
     HARD = 1
 
-    ADAPTIVE = 2
-
     @staticmethod
     def from_string(type_str: str) -> "ActivationType":
         # --- argument checking
@@ -83,8 +81,6 @@ def selector_block(
         selector_type: SelectorType,
         activation_type: ActivationType,
         filters_compress: int,
-        filters_target: int,
-        bn_params: Dict = None,
         kernel_regularizer: str = "l1",
         kernel_initializer: str = "glorot_normal",
         **kwargs):
@@ -97,11 +93,10 @@ def selector_block(
     # --- argument checking
     # TODO
 
-    # --- setup variables
-    use_stats = kwargs.get("use_stats", False)
-
     # --- setup network
     x = selector_layer
+    filters_target = \
+        tf.keras.backend.int_shape(input_1_layer)[-1]
 
     if selector_type == SelectorType.PIXEL:
         # ---
@@ -121,11 +116,11 @@ def selector_block(
             kernel_regularizer=kernel_regularizer,
             kernel_initializer=kernel_initializer)
 
-        if filters_compress is not None:
-            x = conv2d_wrapper(
-                input_layer=x,
-                conv_params=selector_conv_0_params,
-                bn_params=None)
+        x = conv2d_wrapper(
+            input_layer=x,
+            conv_params=selector_conv_0_params,
+            bn_params=None)
+
         x = conv2d_wrapper(
             input_layer=x,
             conv_params=selector_conv_1_params,
@@ -151,16 +146,12 @@ def selector_block(
             kernel_initializer=kernel_initializer)
 
         # transformation
-        if use_stats:
-            x = min_max_mean_sigma_block(x, axis=[1, 2])
-        else:
-            x = tf.reduce_mean(x, axis=[1, 2], keepdims=False)
+        x = tf.reduce_mean(x, axis=[1, 2], keepdims=False)
 
-        if filters_compress is not None:
-            x = dense_wrapper(
-                input_layer=x,
-                dense_params=selector_dense_0_params,
-                bn_params=None)
+        x = dense_wrapper(
+            input_layer=x,
+            dense_params=selector_dense_0_params,
+            bn_params=None)
 
         x = dense_wrapper(
             input_layer=x,
@@ -177,13 +168,6 @@ def selector_block(
         x = tf.keras.layers.Activation("sigmoid")(2.5 - x)
     elif activation_type == ActivationType.HARD:
         x = tf.keras.layers.Activation("hard_sigmoid")(2.5 - x)
-    elif activation_type == ActivationType.ADAPTIVE:
-        x = \
-            DifferentiableGateLayer(
-                trainable=True,
-                multiplier=1.0,
-                min_value=0.001,
-                regularizer="l1")(x)
     else:
         raise ValueError(f"dont know how to handle this [{activation_type}]")
 

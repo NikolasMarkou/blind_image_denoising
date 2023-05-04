@@ -1,4 +1,5 @@
 import copy
+import math
 from enum import Enum
 
 import tensorflow as tf
@@ -14,6 +15,7 @@ from .constants import *
 from .custom_layers import \
     Multiplier, \
     RandomOnOff, \
+    GradientDropout, \
     ChannelwiseMultiplier, \
     DifferentiableGateLayer
 from .custom_layers_selector import \
@@ -64,16 +66,14 @@ def resnet_blocks_full(
         third_conv_params: Dict,
         bn_params: Dict = None,
         gate_params: Dict = None,
-        gelu_params: Dict = None,
-        sparse_params: Dict = None,
         dropout_params: Dict = None,
         selector_params: Dict = None,
         multiplier_params: Dict = None,
         mean_sigma_params: Dict = None,
         channelwise_params: Dict = None,
+        gradient_dropout_params: Dict = None,
         post_addition_activation: str = None,
         expand_type: ExpandType = ExpandType.SAME,
-        stop_gradient: bool = False,
         bn_first_conv_params: bool = False,
         **kwargs):
     """
@@ -85,19 +85,17 @@ def resnet_blocks_full(
     :param second_conv_params: the parameters of the middle conv
     :param third_conv_params: the parameters of the third conv
     :param bn_params: batch normalization parameters
-    :param sparse_params: sparse parameters
     :param gate_params: gate optional parameters
-    :param gelu_params: gelu optional parameters
     :param dropout_params: dropout optional parameters
     :param selector_params: selector mixer optional parameters
     :param multiplier_params: learnable multiplier optional parameters
     :param mean_sigma_params: mean sigma normalization parameters
     :param channelwise_params:
         if True add a learnable channelwise learnable multiplier
+    :param gradient_dropout_params:
     :param post_addition_activation:
         activation after the residual addition, None to disable
     :param expand_type: whether to keep same size, compress or expand
-    :param stop_gradient: if True, stop gradient before the branch
     :param bn_first_conv_params:
         if True, add a BN before the first conv in residual block
     :return: filtered input_layer
@@ -110,13 +108,12 @@ def resnet_blocks_full(
 
     # --- set variables
     use_gate = gate_params is not None
-    use_gelu = gelu_params is not None
     use_dropout = dropout_params is not None
-    use_sparsity = sparse_params is not None
     use_selector = selector_params is not None
     use_mean_sigma = mean_sigma_params is not None
     use_multiplier = multiplier_params is not None
     use_channelwise = channelwise_params is not None
+    use_gradient_dropout = gradient_dropout_params is not None
     use_post_addition_activation = post_addition_activation is not None
 
     # out squeeze and excite gating does not use global avg
@@ -169,9 +166,6 @@ def resnet_blocks_full(
         x_3rd_conv = None
         gate_layer = None
         previous_layer = x
-
-        if stop_gradient:
-            x = tf.stop_gradient(x)
 
         if use_mean_sigma:
             x_mean_global, x_sigma_global = \
@@ -253,14 +247,6 @@ def resnet_blocks_full(
         else:
             raise ValueError(f"dont know how to handle [{expand_type}]")
 
-        # optional sparsity
-        if use_sparsity:
-            x = sparse_block(x, **sparse_params)
-
-        # optional gelu
-        if use_gelu:
-            x = DifferentiableGateLayer(**gelu_params)(x)
-
         # optional channelwise multiplier
         if use_channelwise:
             x = ChannelwiseMultiplier(**channelwise_params)(x)
@@ -276,6 +262,14 @@ def resnet_blocks_full(
         # optional dropout on/off
         if use_dropout:
             x = RandomOnOff(**dropout_params)(x)
+
+        # optional gradient dropout
+        if use_gradient_dropout:
+            if gradient_dropout_params.get("progressive", True):
+                depth_percentage = math.max(0.1, math.min(0.9, float(i) / float(no_layers)))
+                x = GradientDropout(probability_off=depth_percentage)(x)
+            else:
+                x = GradientDropout(probability_off=0.5)(x)
 
         # skip connector or selector mixer
         if use_selector:
