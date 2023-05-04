@@ -228,7 +228,7 @@ def train_loop(
         finished_training = False
         trainable_variables = ckpt.model.trainable_variables
         gradients = [
-            tf.Variable(0.0, trainable=False, dtype=tf.float32)
+            tf.constant(0.0, dtype=tf.float32)
             for _ in range(len(trainable_variables))
         ]
 
