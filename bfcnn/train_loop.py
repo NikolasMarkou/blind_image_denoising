@@ -14,7 +14,6 @@ from .constants import *
 from .custom_logger import logger
 from .file_operations import load_image
 from .optimizer import optimizer_builder
-from .pruning import prune_function_builder
 from .loss import loss_function_builder, improvement
 from .utilities import load_config, create_checkpoint
 from .model import model_builder as model_hydra_builder
@@ -130,31 +129,6 @@ def train_loop(
         test_images = tf.constant(test_images)
         test_images = tf.cast(test_images, dtype=tf.float32)
 
-    # --- prune strategy
-    prune_config = \
-        train_config.get("prune", {"strategies": []})
-    prune_start_epoch = \
-        tf.constant(
-            prune_config.get("start_epoch", 0),
-            dtype=tf.dtypes.int64,
-            name="prune_start_epoch")
-    prune_steps = \
-        tf.constant(
-            prune_config.get("steps", -1),
-            dtype=tf.dtypes.int64,
-            name="prune_steps")
-    prune_strategies = prune_config.get("strategies", None)
-    if prune_strategies is None:
-        use_prune = False
-    elif isinstance(prune_strategies, list):
-        use_prune = len(prune_strategies) > 0
-    elif isinstance(prune_strategies, dict):
-        use_prune = True
-    else:
-        use_prune = False
-    use_prune = tf.constant(use_prune)
-    prune_fn = prune_function_builder(prune_strategies)
-
     # --- train the model
     with tf.summary.create_file_writer(model_dir).as_default():
         # --- checkpoint managing
@@ -235,8 +209,7 @@ def train_loop(
             reduce_retracing=True)
         def train_forward_step(
                 n: tf.Tensor) -> tf.Tensor:
-            de = ckpt.model(n, training=True)
-            return de
+            return ckpt.model(n, training=True)
 
         @tf.function(
             reduce_retracing=True)
@@ -260,6 +233,7 @@ def train_loop(
 
         # --- check if total steps reached
         finished_training = False
+        trainable_variables = ckpt.model.trainable_variables
 
         if 0 < total_steps <= ckpt.step:
             logger.info("total_steps reached [{0}]".format(
@@ -271,13 +245,7 @@ def train_loop(
             logger.info("epoch [{0}], step [{1}]".format(
                 int(ckpt.epoch), int(ckpt.step)))
 
-            # --- pruning strategy
-            if use_prune and (ckpt.epoch >= prune_start_epoch):
-                logger.info(f"pruning weights at step [{int(ckpt.step)}]")
-                ckpt.model = prune_fn(model=ckpt.model)
-
             start_time_epoch = time.time()
-            trainable_variables = ckpt.model.trainable_variables
 
             # --- iterate over the batches of the dataset
             dataset_iterator = iter(dataset_training)
@@ -291,11 +259,11 @@ def train_loop(
                     finished_training = True
 
             # --- iterate over the batches of the dataset
+            gradients = None
             epoch_finished_training = False
 
             while not finished_training and \
                     not epoch_finished_training:
-                gradients = None
 
                 for _ in range(gpu_batches_per_step):
                     try:
@@ -325,46 +293,41 @@ def train_loop(
                                 target=total_loss,
                                 sources=trainable_variables)
 
-                    if gradients is None:
-                        gradients = gradient
-                    else:
-                        for i in range(len(gradient)):
-                            gradients[i] += gradient[i]
-                        del gradient
+                        if gradients is None:
+                            gradients = gradient
+                        else:
+                            for i in range(len(gradient)):
+                                gradients[i] += (gradient[i] / float(gpu_batches_per_step))
+                            del gradient
 
-                if gradients is not None:
-                    # average out gradients
-                    for i in range(len(gradients)):
-                        gradients[i] /= float(gpu_batches_per_step)
+                # apply gradient to change weights
+                optimizer.apply_gradients(
+                    grads_and_vars=zip(
+                        gradients,
+                        trainable_variables))
 
-                    # apply gradient to change weights
-                    optimizer.apply_gradients(
-                        grads_and_vars=zip(
-                            gradients,
-                            trainable_variables))
-                    del gradients
+                # zero gradients to reuse it in next round
+                for i in range(len(gradients)):
+                    gradients[i] *= 0.0
 
                 start_time_forward_backward = time.time()
 
                 # --- add loss summaries for tensorboard
-                for summary in [(DENOISER_STR, de_loss)]:
-                    title = summary[0]
-                    loss_map = summary[1]
-                    tf.summary.scalar(name=f"quality/{title}/psnr",
-                                      data=loss_map[PSNR_STR],
-                                      step=ckpt.step)
-                    tf.summary.scalar(name=f"loss/{title}/mae",
-                                      data=loss_map[MAE_LOSS_STR],
-                                      step=ckpt.step)
-                    tf.summary.scalar(name=f"loss/{title}/ssim",
-                                      data=loss_map[SSIM_LOSS_STR],
-                                      step=ckpt.step)
-                    tf.summary.scalar(name=f"loss/{title}/total",
-                                      data=loss_map[TOTAL_LOSS_STR],
-                                      step=ckpt.step)
+                tf.summary.scalar(name=f"quality/{DENOISER_STR}/psnr",
+                                  data=de_loss[PSNR_STR],
+                                  step=ckpt.step)
+                tf.summary.scalar(name=f"loss/{DENOISER_STR}/mae",
+                                  data=de_loss[MAE_LOSS_STR],
+                                  step=ckpt.step)
+                tf.summary.scalar(name=f"loss/{DENOISER_STR}/ssim",
+                                  data=de_loss[SSIM_LOSS_STR],
+                                  step=ckpt.step)
+                tf.summary.scalar(name=f"loss/{DENOISER_STR}/total",
+                                  data=de_loss[TOTAL_LOSS_STR],
+                                  step=ckpt.step)
 
                 # denoiser specific
-                tf.summary.scalar(name=f"quality/denoiser/improvement",
+                tf.summary.scalar(name=f"quality//{DENOISER_STR}/improvement",
                                   data=improvement(original=input_batch,
                                                    noisy=noisy_batch,
                                                    denoised=de),
@@ -400,13 +363,6 @@ def train_loop(
                         tf.summary.image(
                             name="test/denoiser", data=test_de / 255,
                             max_outputs=visualization_number, step=ckpt.step)
-
-                # --- prune conv2d
-                if use_prune and (ckpt.epoch >= prune_start_epoch) and \
-                        (prune_steps > -1) and (ckpt.step % prune_steps == 0):
-                    logger.info(f"pruning weights at step [{int(ckpt.step)}]")
-                    ckpt.model = prune_fn(model=ckpt.model)
-                    trainable_variables = ckpt.model.trainable_variables
 
                 # --- check if it is time to save a checkpoint
                 if checkpoint_every > 0 and \
@@ -446,7 +402,6 @@ def train_loop(
                     logger.info("total_steps reached [{0}]".format(
                         int(total_steps)))
                     finished_training = True
-                    break
 
             end_time_epoch = time.time()
             epoch_time = end_time_epoch - start_time_epoch
@@ -458,5 +413,6 @@ def train_loop(
             save_checkpoint_model_fn()
 
     logger.info("finished training")
+    return 0
 
 # ---------------------------------------------------------------------
