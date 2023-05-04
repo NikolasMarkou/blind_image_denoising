@@ -15,7 +15,6 @@ from .utilities import \
     input_shape_fixer, \
     layer_normalize, layer_denormalize
 from .backbone_unet import builder as builder_unet
-from .backbone_lunet import builder as builder_lunet
 from .backbone_resnet import builder as builder_resnet
 from .pyramid import \
     build_pyramid_model, \
@@ -226,10 +225,14 @@ def model_backbone_builder(
 
     if model_type == "unet":
         backbone_builder = builder_unet
-    elif model_type == "lunet":
-        backbone_builder = builder_lunet
     elif model_type == "resnet":
         backbone_builder = builder_resnet
+    elif model_type == "unet_pp":
+        raise ValueError("not implemented")
+    elif model_type == "convnext":
+        raise ValueError("not implemented")
+    elif model_type == "segnet":
+        raise ValueError("not implemented")
     else:
         raise ValueError(
             "don't know how to build model [{0}]".format(model_type))
