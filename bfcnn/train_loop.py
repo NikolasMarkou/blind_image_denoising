@@ -264,6 +264,8 @@ def train_loop(
 
             while not finished_training and \
                     not epoch_finished_training:
+                # start of training iteration
+                start_time_forward_backward = time.time()
 
                 for _ in range(gpu_batches_per_step):
                     try:
@@ -310,7 +312,8 @@ def train_loop(
                 for i in range(len(gradients)):
                     gradients[i] *= 0.0
 
-                start_time_forward_backward = time.time()
+                # end of training iteration
+                stop_time_forward_backward = time.time()
 
                 # --- add loss summaries for tensorboard
                 tf.summary.scalar(name=f"quality/{DENOISER_STR}/psnr",
@@ -370,7 +373,6 @@ def train_loop(
                     save_checkpoint_model_fn()
 
                 # --- keep time of steps per second
-                stop_time_forward_backward = time.time()
                 step_time_forward_backward = \
                     stop_time_forward_backward - \
                     start_time_forward_backward
