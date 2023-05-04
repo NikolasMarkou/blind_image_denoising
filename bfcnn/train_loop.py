@@ -292,7 +292,7 @@ def train_loop(
                                 sources=trainable_variables)
 
                         for i in range(len(gradient)):
-                            gradients[i].assign_add((gradient[i] / float(gpu_batches_per_step)))
+                            gradients[i] += (gradient[i] / float(gpu_batches_per_step))
                         del gradient
 
                 # apply gradient to change weights
