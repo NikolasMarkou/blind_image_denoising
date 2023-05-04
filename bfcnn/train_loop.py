@@ -225,9 +225,12 @@ def train_loop(
             tf.summary.trace_off()
 
         # --- check if total steps reached
-        gradients = None
         finished_training = False
         trainable_variables = ckpt.model.trainable_variables
+        gradients = [
+            tf.Variable(0.0, trainable=False, dtype=tf.float32)
+            for _ in range(len(trainable_variables))
+        ]
 
         if 0 < total_steps <= ckpt.step:
             logger.info("total_steps reached [{0}]".format(
@@ -288,12 +291,9 @@ def train_loop(
                                 target=total_loss,
                                 sources=trainable_variables)
 
-                        if gradients is None:
-                            gradients = gradient
-                        else:
-                            for i in range(len(gradient)):
-                                gradients[i] += (gradient[i] / float(gpu_batches_per_step))
-                            del gradient
+                        for i in range(len(gradient)):
+                            gradients[i].assign_add((gradient[i] / float(gpu_batches_per_step)))
+                        del gradient
 
                 # apply gradient to change weights
                 optimizer.apply_gradients(
