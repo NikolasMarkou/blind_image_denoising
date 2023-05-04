@@ -155,10 +155,8 @@ def train_loop(
 
         def save_checkpoint_model_fn():
             # save model and weights
-            logger.info("saving checkpoint at step: [{0}]".format(
-                int(ckpt.step)))
             save_path = manager.save()
-            logger.info(f"saved checkpoint to [{save_path}]")
+            logger.info(f"saved checkpoint at step [{int(ckpt.step)}] to [{save_path}]")
 
         if manager.restore_or_initialize():
             logger.info("!!! Found checkpoint to restore !!!")
@@ -176,42 +174,37 @@ def train_loop(
                     len(weights_dir) > 0 and \
                     os.path.isdir(weights_dir):
                 # restore weights from a directory
-                loaded_weights = False
-
-                if not loaded_weights:
-                    try:
-                        logger.info(f"loading weights from [{weights_dir}]")
-                        tmp_model = tf.keras.models.clone_model(ckpt.model)
-                        # restore checkpoint
-                        tmp_checkpoint = \
-                            create_checkpoint(
-                                model=tf.keras.models.clone_model(ckpt.model),
-                                path=weights_dir)
-                        tmp_model.set_weights(tmp_checkpoint.model.get_weights())
-                        ckpt.model = tmp_model
-                        ckpt.step.assign(0)
-                        ckpt.epoch.assign(0)
-                        del tmp_model
-                        del tmp_checkpoint
-                        loaded_weights = True
-                        logger.info("successfully loaded weights")
-                    except Exception as e:
-                        logger.info(
-                            f"!!! failed to load weights from [{weights_dir}]] !!!")
-                        logger.error(f"!!! {e}")
-
-                if not loaded_weights:
-                    logger.info("!!! failed to load weights")
+                try:
+                    logger.info(f"loading weights from [{weights_dir}]")
+                    tmp_model = tf.keras.models.clone_model(ckpt.model)
+                    # restore checkpoint
+                    tmp_checkpoint = \
+                        create_checkpoint(
+                            model=tf.keras.models.clone_model(ckpt.model),
+                            path=weights_dir)
+                    tmp_model.set_weights(tmp_checkpoint.model.get_weights())
+                    ckpt.model = tmp_model
+                    ckpt.step.assign(0)
+                    ckpt.epoch.assign(0)
+                    del tmp_model
+                    del tmp_checkpoint
+                    logger.info("successfully loaded weights")
+                except Exception as e:
+                    logger.info(
+                        f"!!! failed to load weights from [{weights_dir}]] !!!")
+                    logger.error(f"!!! {e}")
 
             save_checkpoint_model_fn()
 
         @tf.function(
+            autograph=True,
             reduce_retracing=True)
         def train_forward_step(
                 n: tf.Tensor) -> tf.Tensor:
             return ckpt.model(n, training=True)
 
         @tf.function(
+            autograph=False,
             reduce_retracing=True)
         def test_step(
                 n: tf.Tensor) -> tf.Tensor:
@@ -232,6 +225,7 @@ def train_loop(
             tf.summary.trace_off()
 
         # --- check if total steps reached
+        gradients = None
         finished_training = False
         trainable_variables = ckpt.model.trainable_variables
 
@@ -259,7 +253,6 @@ def train_loop(
                     finished_training = True
 
             # --- iterate over the batches of the dataset
-            gradients = None
             epoch_finished_training = False
 
             while not finished_training and \
@@ -308,7 +301,7 @@ def train_loop(
                         gradients,
                         trainable_variables))
 
-                # zero gradients to reuse it in next round
+                # zero gradients to reuse it in the next iteration
                 for i in range(len(gradients)):
                     gradients[i] *= 0.0
 
@@ -329,14 +322,14 @@ def train_loop(
                                   data=de_loss[TOTAL_LOSS_STR],
                                   step=ckpt.step)
 
-                # denoiser specific
+                # denoiser improvement
                 tf.summary.scalar(name=f"quality//{DENOISER_STR}/improvement",
                                   data=improvement(original=input_batch,
                                                    noisy=noisy_batch,
                                                    denoised=de),
                                   step=ckpt.step)
 
-                # model
+                # model loss
                 tf.summary.scalar(name="loss/regularization",
                                   data=model_loss[REGULARIZATION_LOSS_STR],
                                   step=ckpt.step)
@@ -368,8 +361,7 @@ def train_loop(
                             max_outputs=visualization_number, step=ckpt.step)
 
                 # --- check if it is time to save a checkpoint
-                if checkpoint_every > 0 and \
-                        (ckpt.step % checkpoint_every == 0):
+                if checkpoint_every > 0 and (ckpt.step % checkpoint_every) == 0:
                     save_checkpoint_model_fn()
 
                 # --- keep time of steps per second
