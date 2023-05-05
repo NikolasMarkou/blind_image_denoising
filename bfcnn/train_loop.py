@@ -323,7 +323,7 @@ def train_loop(
                                   step=ckpt.step)
 
                 # denoiser improvement
-                tf.summary.scalar(name=f"quality//{DENOISER_STR}/improvement",
+                tf.summary.scalar(name=f"quality/{DENOISER_STR}/improvement",
                                   data=improvement(original=input_batch,
                                                    noisy=noisy_batch,
                                                    denoised=de),
@@ -346,18 +346,18 @@ def train_loop(
 
                     # augmented
                     tf.summary.image(
-                        name="input_augmented/denoiser", data=noisy_batch / 255,
+                        name=f"input_augmented/{DENOISER_STR}", data=noisy_batch / 255,
                         max_outputs=visualization_number, step=ckpt.step)
 
                     # output
                     tf.summary.image(
-                        name="output/denoiser", data=de / 255,
+                        name=f"output/{DENOISER_STR}", data=de / 255,
                         max_outputs=visualization_number, step=ckpt.step)
 
                     if use_test_images:
                         test_de = test_step(test_images)
                         tf.summary.image(
-                            name="test/denoiser", data=test_de / 255,
+                            name=f"test/{DENOISER_STR}", data=test_de / 255,
                             max_outputs=visualization_number, step=ckpt.step)
 
                 # --- check if it is time to save a checkpoint

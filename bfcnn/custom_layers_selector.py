@@ -1,4 +1,5 @@
 import copy
+import math
 from enum import Enum
 import tensorflow as tf
 from tensorflow import keras
@@ -10,12 +11,9 @@ from typing import List, Tuple, Union, Dict, Iterable
 
 from .custom_logger import logger
 from .constants import *
-from .custom_layers import \
-    DifferentiableGateLayer
 from .utilities import \
     dense_wrapper, \
-    conv2d_wrapper, \
-    min_max_mean_sigma_block
+    conv2d_wrapper
 
 
 # ---------------------------------------------------------------------
@@ -80,7 +78,7 @@ def selector_block(
         selector_layer,
         selector_type: SelectorType,
         activation_type: ActivationType,
-        filters_compress: int,
+        filters_compress_ratio: float = 0.25,
         kernel_regularizer: str = "l1",
         kernel_initializer: str = "glorot_normal",
         **kwargs):
@@ -91,12 +89,13 @@ def selector_block(
     :return: filtered input_layer
     """
     # --- argument checking
-    # TODO
+    filters_target = \
+        tf.keras.backend.int_shape(input_1_layer)[-1]
+    filters_compress = \
+        math.max(1, int(round(filters_target * filters_compress_ratio)))
 
     # --- setup network
     x = selector_layer
-    filters_target = \
-        tf.keras.backend.int_shape(input_1_layer)[-1]
 
     if selector_type == SelectorType.PIXEL:
         # ---

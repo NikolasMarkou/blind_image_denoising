@@ -33,8 +33,6 @@ def builder(
         kernel_regularizer="l1",
         kernel_initializer="glorot_normal",
         dropout_rate: float = -1,
-        stop_gradient: bool = False,
-        add_squash: bool = False,
         add_gelu: bool = False,
         add_gates: bool = False,
         add_selector: bool = False,
@@ -78,7 +76,6 @@ def builder(
     :param add_final_bn: add a batch norm after the resnet blocks
     :param add_concat_input: if true concat input to intermediate before projecting
     :param add_selector: if true add a selector block in skip connections
-    :param add_squash: if True squash results with a tanh activation
     :param output_layer_name: the output layer name
     :param name: name of the model
 
@@ -171,7 +168,6 @@ def builder(
         selector_params=None,
         multiplier_params=None,
         channelwise_params=None,
-        stop_gradient=stop_gradient,
         first_conv_params=convs_params[0],
         second_conv_params=convs_params[1],
         third_conv_params=convs_params[2],
@@ -274,10 +270,6 @@ def builder(
     # optional final multiplier
     if add_learnable_multiplier:
         x = Multiplier(**multiplier_params)(x)
-
-    # optional clipping to [-1, +1]
-    if add_squash:
-        x = tf.tanh(x)
 
     # --- output layer branches here,
     output_layer = \

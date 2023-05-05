@@ -144,18 +144,6 @@ def resnet_blocks_full(
             kernel_initializer="glorot_normal"
         )
 
-    if use_selector:
-        selector_no_filters = 0
-        if third_conv_params is not None:
-            selector_no_filters = third_conv_params["filters"]
-        elif second_conv_params is not None:
-            selector_no_filters = second_conv_params["filters"]
-        elif first_conv_params is not None:
-            selector_no_filters = first_conv_params["filters"]
-        else:
-            raise ValueError("don't know what to do here")
-        filters_compress = max(2, int(round(selector_no_filters / 4)))
-
     # --- setup resnet along with its variants
     x = input_layer
 
@@ -289,8 +277,7 @@ def resnet_blocks_full(
                     input_1_layer=previous_layer,
                     input_2_layer=x,
                     selector_layer=x_selector,
-                    filters_compress=filters_compress,
-                    filters_target=selector_no_filters,
+                    filters_compress_ratio=0.25,
                     kernel_regularizer="l2",
                     kernel_initializer="glorot_normal",
                     selector_type=SelectorType.CHANNEL,
