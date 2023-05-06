@@ -33,31 +33,6 @@ from .utilities import \
 # ---------------------------------------------------------------------
 
 
-class ExpandType(Enum):
-    SAME = 0
-
-    COMPRESS = 1
-
-    EXPAND = 2
-
-    @staticmethod
-    def from_string(type_str: str) -> "ExpandType":
-        # --- argument checking
-        if type_str is None:
-            raise ValueError("type_str must not be null")
-        if not isinstance(type_str, str):
-            raise ValueError("type_str must be string")
-        type_str = type_str.strip().upper()
-        if len(type_str) <= 0:
-            raise ValueError("stripped type_str must not be empty")
-
-        # --- clean string and get
-        return ExpandType[type_str]
-
-    def to_string(self) -> str:
-        return self.name
-
-
 def resnet_blocks_full(
         input_layer,
         no_layers: int,
@@ -73,7 +48,6 @@ def resnet_blocks_full(
         channelwise_params: Dict = None,
         gradient_dropout_params: Dict = None,
         post_addition_activation: str = None,
-        expand_type: ExpandType = ExpandType.SAME,
         bn_first_conv_params: bool = False,
         **kwargs):
     """
@@ -95,7 +69,6 @@ def resnet_blocks_full(
     :param gradient_dropout_params:
     :param post_addition_activation:
         activation after the residual addition, None to disable
-    :param expand_type: whether to keep same size, compress or expand
     :param bn_first_conv_params:
         if True, add a BN before the first conv in residual block
     :return: filtered input_layer
@@ -124,7 +97,9 @@ def resnet_blocks_full(
         if "filters" in second_conv_params:
             gate_no_filters = second_conv_params["filters"]
         elif "depth_multiplier" in second_conv_params:
-            gate_no_filters = first_conv_params["filters"] * second_conv_params["depth_multiplier"]
+            gate_no_filters = \
+                first_conv_params["filters"] * \
+                second_conv_params["depth_multiplier"]
         else:
             raise ValueError("don't know what to do here")
 
@@ -132,7 +107,7 @@ def resnet_blocks_full(
             units=max(int(gate_no_filters / 8), 2),
             use_bias=False,
             activation="relu",
-            kernel_regularizer="l1",
+            kernel_regularizer="l2",
             kernel_initializer="glorot_normal"
         )
 
@@ -140,7 +115,7 @@ def resnet_blocks_full(
             units=gate_no_filters,
             use_bias=False,
             activation="hard_sigmoid",
-            kernel_regularizer="l1",
+            kernel_regularizer="l2",
             kernel_initializer="glorot_normal"
         )
 
@@ -203,38 +178,6 @@ def resnet_blocks_full(
                                bn_params=bn_params,
                                channelwise_scaling=False)
 
-        # fix x dimensions and previous layers
-        if expand_type == ExpandType.COMPRESS:
-            expand_conv_params = copy.deepcopy(third_conv_params)
-            expand_conv_params["strides"] = (2, 2)
-            x = conv2d_wrapper(input_layer=x,
-                               conv_params=copy.deepcopy(third_conv_params),
-                               bn_params=bn_params,
-                               conv_type=ConvType.CONV2D,
-                               channelwise_scaling=False)
-            previous_layer = \
-                tf.keras.layers.MaxPooling2D(
-                    pool_size=(3, 3),
-                    strides=(2, 2),
-                    padding="valid")
-        elif expand_type == ExpandType.EXPAND:
-            expand_conv_params = copy.deepcopy(third_conv_params)
-            expand_conv_params["dilation_rate"] = (2, 2)
-            x = conv2d_wrapper(input_layer=x,
-                               conv_params=copy.deepcopy(third_conv_params),
-                               bn_params=bn_params,
-                               conv_type=ConvType.CONV2D_TRANSPOSE,
-                               channelwise_scaling=False)
-            previous_layer = \
-                tf.keras.layers.UpSampling2D(
-                    size=(2, 2),
-                    interpolation="nearest")
-        elif expand_type == ExpandType.SAME:
-            # do nothing
-            pass
-        else:
-            raise ValueError(f"dont know how to handle [{expand_type}]")
-
         # optional channelwise multiplier
         if use_channelwise:
             x = ChannelwiseMultiplier(**channelwise_params)(x)
@@ -289,112 +232,6 @@ def resnet_blocks_full(
         if use_post_addition_activation:
             x = tf.keras.layers.Activation(post_addition_activation)(x)
     return x
-
-
-# ---------------------------------------------------------------------
-
-def resnet_compress_expand_full(
-        input_layer,
-        no_layers: int,
-        **kwargs):
-    """
-    Create a series of residual network blocks
-
-    :param input_layer: the input layer to perform on
-    :param no_layers: how many residual network blocks to add
-
-    :return: filtered input_layer
-    """
-    # --- argument check
-    if input_layer is None:
-        raise ValueError("input_layer must be none")
-    if no_layers <= 0:
-        raise ValueError("no_layers must be > 0")
-
-    # --- setup resnet along with its variants
-    x = input_layer
-
-    # compress
-    for i in range(no_layers):
-        if i+1 % 3 == 0:
-            expand_type = ExpandType.COMPRESS
-        else:
-            expand_type = ExpandType.SAME
-        x = \
-            resnet_blocks_full(
-                input_layer=x,
-                no_layers=1,
-                expand_type=expand_type,
-                **kwargs)
-
-    # expand
-    for i in range(no_layers):
-        if i+1 % 3 == 0:
-            expand_type = ExpandType.EXPAND
-        else:
-            expand_type = ExpandType.SAME
-        x = \
-            resnet_blocks_full(
-                input_layer=x,
-                no_layers=1,
-                expand_type=expand_type,
-                **kwargs)
-    return x
-
-# ---------------------------------------------------------------------
-
-
-def resnet(
-        input_layer,
-        no_layers: int,
-        first_conv_params: Dict,
-        second_conv_params: Dict,
-        bn_params: Dict = None,
-        post_addition_activation: str = "relu",
-        **kwargs):
-    """
-    Create a series of residual network blocks,
-    this is the original resnet block implementation
-    Deep Residual Learning for Image Recognition [2015]
-
-    :param input_layer: the input layer to perform on
-    :param no_layers: how many residual network blocks to add
-    :param first_conv_params: the parameters of the first conv
-    :param second_conv_params: the parameters of the middle conv
-    :param bn_params: batch normalization parameters
-    :param post_addition_activation: activation after the addition, None to disable
-
-    :return: filtered input_layer
-    """
-    # --- argument check
-    if input_layer is None:
-        raise ValueError("input_layer must be none")
-    if no_layers < 0:
-        raise ValueError("no_layers must be >= 0")
-    use_bn_params = bn_params is not None
-
-    # --- setup resnet
-    x = input_layer
-
-    # --- create several number of residual blocks
-    for i in range(no_layers):
-        previous_layer = x
-        x = conv2d_wrapper(input_layer=x,
-                           conv_params=first_conv_params,
-                           bn_params=None,
-                           channelwise_scaling=False)
-        x = conv2d_wrapper(input_layer=x,
-                           conv_params=second_conv_params,
-                           bn_params=bn_params,
-                           channelwise_scaling=False)
-        if use_bn_params:
-            x = keras.layers.BatchNormalization(**bn_params)(x)
-        # skip connection
-        x = keras.layers.Add()([x, previous_layer])
-        # post addition activation
-        x = keras.layers.Activation(post_addition_activation)(x)
-    return x
-
 
 # ---------------------------------------------------------------------
 
@@ -499,8 +336,8 @@ def unet_blocks(
             )
         levels_x.append(x)
         x = \
-            keras.layers.AveragePooling2D(
-                pool_size=(3, 3),
+            keras.layers.MaxPooling2D(
+                pool_size=(2, 2),
                 strides=(2, 2),
                 padding="same")(x)
 
@@ -513,7 +350,7 @@ def unet_blocks(
             x = \
                 tf.keras.layers.UpSampling2D(
                     size=(2, 2),
-                    interpolation="bilinear")(x)
+                    interpolation="nearest")(x)
             x = \
                 tf.keras.layers.Concatenate()([x, level_x])
         x = \
@@ -535,161 +372,5 @@ def unet_blocks(
             )
 
     return x
-
-# ---------------------------------------------------------------------
-
-
-def lunet_blocks(
-        input_layer,
-        no_levels: int,
-        no_layers: int,
-        base_conv_params: Dict,
-        first_conv_params: Dict,
-        second_conv_params: Dict,
-        third_conv_params: Dict,
-        bn_params: Dict = None,
-        gate_params: Dict = None,
-        dropout_params: Dict = None,
-        multiplier_params: Dict = None,
-        add_laplacian: bool = True,
-        **kwargs):
-    """
-    Create a lunet block
-
-    :return: filtered input_layer
-    """
-    # --- argument check
-    if input_layer is None:
-        raise ValueError("input_layer must be none")
-    if no_layers < 0:
-        raise ValueError("no_layers_per_level must be >= 0")
-
-    level_x = input_layer
-    levels_x = []
-    strides = (2, 2)
-    kernel_size = (3, 3)
-    interpolation = "bilinear"
-    if add_laplacian:
-        for level in range(0, no_levels - 1):
-            level_x_down = \
-                keras.layers.AveragePooling2D(
-                    pool_size=kernel_size,
-                    strides=strides,
-                    padding="same")(level_x)
-            level_x_smoothed = \
-                keras.layers.UpSampling2D(
-                    size=strides,
-                    interpolation=interpolation)(level_x_down)
-            level_x_diff = level_x - level_x_smoothed
-            level_x = level_x_down
-            levels_x.append(level_x_diff)
-        levels_x.append(level_x)
-    else:
-        levels_x.append(level_x)
-        for level in range(0, no_levels - 1):
-            level_x = \
-                keras.layers.AveragePooling2D(
-                    pool_size=kernel_size,
-                    strides=strides,
-                    padding="same")(level_x)
-            levels_x.append(level_x)
-
-    # --- upside
-    x = None
-    for level_x in reversed(levels_x):
-        level_x = \
-            conv2d_wrapper(
-                level_x,
-                conv_params=base_conv_params,
-                bn_params=None)
-        if x is None:
-            x = level_x
-        else:
-            level_x = \
-                resnet_blocks_full(
-                    input_layer=level_x,
-                    no_layers=no_layers,
-                    first_conv_params=first_conv_params,
-                    second_conv_params=second_conv_params,
-                    third_conv_params=third_conv_params,
-                    bn_params=bn_params,
-                    gate_params=gate_params,
-                    dropout_params=dropout_params,
-                    multiplier_params=multiplier_params
-                )
-            x = \
-                tf.keras.layers.UpSampling2D(
-                    size=strides,
-                    interpolation=interpolation)(x)
-            x = \
-                tf.keras.layers.Add()([x, level_x])
-        x = \
-            resnet_blocks_full(
-                input_layer=x,
-                no_layers=no_layers,
-                first_conv_params=first_conv_params,
-                second_conv_params=second_conv_params,
-                third_conv_params=third_conv_params,
-                bn_params=bn_params,
-                gate_params=gate_params,
-                dropout_params=dropout_params,
-                multiplier_params=multiplier_params
-            )
-
-    return x
-
-# ---------------------------------------------------------------------
-
-
-def renderer(
-        signals: List[tf.Tensor],
-        masks: List[tf.Tensor]):
-    # accumulated mask and signal
-    acc_signal = None
-
-    for i in range(len(signals)):
-        signal = signals[i]
-        mask = masks[i]
-
-        if acc_signal is None:
-            acc_signal = tf.multiply(signal, mask)
-        else:
-            acc_signal = \
-                tf.multiply(signal, mask) + \
-                tf.multiply(acc_signal, 1.0 - mask)
-
-    return acc_signal
-
-# ---------------------------------------------------------------------
-
-
-def builder(input_layer, config: Dict):
-    # --- argument checking
-    if config is None:
-        raise ValueError("config cannot be None")
-
-    # --- get type and params
-    block_type = config.get(TYPE_STR, None).lower()
-    block_params = config.get(CONFIG_STR, {})
-
-    # --- select block
-    fn = None
-    if block_type == "resnet":
-        fn = resnet
-    elif block_type == "resnet_full_preactivation":
-        fn = resnet_full_preactivation
-    elif block_type == "resnext":
-        raise NotImplementedError("not implemented yet")
-    elif block_type == "convnext":
-        raise NotImplementedError("not implemented yet")
-    elif block_type == "mobilenet_v1":
-        raise NotImplementedError("not implemented yet")
-    elif block_type == "mobilenet_v2":
-        raise NotImplementedError("not implemented yet")
-    elif block_type == "mobilenet_v3":
-        raise NotImplementedError("not implemented yet")
-
-    # --- build it
-    return fn(input_layer=input_layer, **block_params)
 
 # ---------------------------------------------------------------------
