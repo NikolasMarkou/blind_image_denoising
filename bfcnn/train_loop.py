@@ -63,7 +63,6 @@ def train_loop(
     # --- build dataset
     dataset_config = config["dataset"]
     dataset_training = dataset_builder(dataset_config)
-    batch_size = dataset_config["batch_size"]
     input_shape = dataset_config["input_shape"]
 
     # --- build loss function
@@ -77,13 +76,15 @@ def train_loop(
 
     # --- get the train configuration
     train_config = config["train"]
-    epochs = train_config["epochs"]
     gpu_batches_per_step = int(train_config.get("gpu_batches_per_step", 1))
     if gpu_batches_per_step <= 0:
         raise ValueError("gpu_batches_per_step must be > 0")
 
-    global_total_epochs = tf.Variable(
-        epochs, trainable=False, dtype=tf.dtypes.int64, name="global_total_epochs")
+    global_total_epochs = \
+        tf.constant(
+            train_config["epochs"],
+            dtype=tf.dtypes.int64,
+            name="global_total_epochs")
     total_steps = \
         tf.constant(
             train_config.get("total_steps", -1),
@@ -227,6 +228,9 @@ def train_loop(
         # --- check if total steps reached
         finished_training = False
         trainable_variables = ckpt.model.trainable_variables
+        # init gradients with zero,
+        # this has no effect when added with filled matrices later
+        # but acts as a placeholder
         gradients = [
             tf.constant(0.0, dtype=tf.float32)
             for _ in range(len(trainable_variables))
@@ -277,11 +281,15 @@ def train_loop(
                         de = train_forward_step(n=noisy_batch)
 
                         # compute the loss value for this mini-batch
-                        de_loss = denoiser_loss_fn(gt_batch=input_batch, predicted_batch=de)
+                        de_loss = \
+                            denoiser_loss_fn(
+                                gt_batch=input_batch,
+                                predicted_batch=de)
 
                         # combine losses
                         model_loss = \
-                            model_loss_fn(model=ckpt.model)
+                            model_loss_fn(
+                                model=ckpt.model)
                         total_loss = \
                             de_loss[TOTAL_LOSS_STR] + \
                             model_loss[TOTAL_LOSS_STR]
@@ -291,9 +299,9 @@ def train_loop(
                                 target=total_loss,
                                 sources=trainable_variables)
 
-                        for i in range(len(gradient)):
-                            gradients[i] += (gradient[i] / float(gpu_batches_per_step))
-                        del gradient
+                    for i, gradient_i in enumerate(gradient):
+                        gradients[i] += gradient_i / float(gpu_batches_per_step)
+                    del gradient
 
                 # apply gradient to change weights
                 optimizer.apply_gradients(
@@ -388,7 +396,7 @@ def train_loop(
                                   data=step_time_dataset,
                                   step=ckpt.step)
 
-                # ---
+                # --- increase step
                 ckpt.step.assign_add(1)
 
                 # --- check if total steps reached
@@ -403,10 +411,13 @@ def train_loop(
             # --- end of the epoch
             logger.info("end of epoch [{0}], took [{1}] seconds".format(
                 int(ckpt.epoch), int(round(epoch_time))))
+
+            # --- increase epoch
             ckpt.epoch.assign_add(1)
+
             save_checkpoint_model_fn()
 
     logger.info("finished training")
-    return 0
+    return
 
 # ---------------------------------------------------------------------
