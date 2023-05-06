@@ -277,7 +277,8 @@ def train_loop(
                         epoch_finished_training = True
                         break
 
-                    with tf.GradientTape() as tape:
+                    with tf.GradientTape(watch_accessed_variables=False) as tape:
+                        tape.watch(trainable_variables)
                         de = train_forward_step(n=noisy_batch)
 
                         # compute the loss value for this mini-batch
