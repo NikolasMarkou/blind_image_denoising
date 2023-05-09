@@ -266,13 +266,14 @@ def train_loop(
                     not epoch_finished_training:
                 # start of training iteration
                 start_time_forward_backward = time.time()
+                step_time_dataset = 0.0
 
                 for _ in range(gpu_batches_per_step):
                     try:
                         start_time_dataset = time.time()
                         (input_batch, noisy_batch) = dataset_iterator.get_next()
                         stop_time_dataset = time.time()
-                        step_time_dataset = stop_time_dataset - start_time_dataset
+                        step_time_dataset += (stop_time_dataset - start_time_dataset)
                     except tf.errors.OutOfRangeError:
                         epoch_finished_training = True
                         break
