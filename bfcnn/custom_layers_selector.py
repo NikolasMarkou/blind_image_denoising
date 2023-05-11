@@ -133,7 +133,7 @@ def selector_block(
         selector_dense_0_params = dict(
             units=filters_compress,
             use_bias=False,
-            activation="relu",
+            activation="leaky_relu",
             kernel_regularizer=kernel_regularizer,
             kernel_initializer=kernel_initializer)
 
