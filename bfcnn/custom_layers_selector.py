@@ -92,7 +92,7 @@ def selector_block(
     filters_target = \
         tf.keras.backend.int_shape(input_1_layer)[-1]
     filters_compress = \
-        math.max(1, int(round(filters_target * filters_compress_ratio)))
+        max(1, int(round(filters_target * filters_compress_ratio)))
 
     # --- setup network
     x = selector_layer
