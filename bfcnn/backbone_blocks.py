@@ -197,7 +197,7 @@ def resnet_blocks_full(
         # optional gradient dropout
         if use_gradient_dropout:
             if gradient_dropout_params.get("progressive", True):
-                depth_percentage = math.max(0.1, math.min(0.9, float(i) / float(no_layers)))
+                depth_percentage = max(0.1, min(0.9, float(i) / float(no_layers)))
                 x = GradientDropout(probability_off=depth_percentage)(x)
             else:
                 x = GradientDropout(probability_off=0.5)(x)
