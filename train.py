@@ -50,17 +50,21 @@ def main(args):
         os.environ["TF_ENABLE_CUDNN_TENSOR_OP_MATH_FP32"] = "1"
         os.environ["TF_ENABLE_CUBLAS_TENSOR_OP_MATH_FP32"] = "1"
 
+    process_args = [
+        sys.executable,
+        "-m", "bfcnn.train",
+        "--model-directory",
+        os.path.join(
+            CHECKPOINT_DIRECTORY,
+            run_name),
+        "--pipeline-config",
+        config
+    ]
+
     return \
-        subprocess.check_call([
-            sys.executable,
-            "-m", "bfcnn.train",
-            "--model-directory",
-            os.path.join(
-                CHECKPOINT_DIRECTORY,
-                run_name),
-            "--pipeline-config",
-            config
-        ])
+        subprocess.check_call(
+            args=process_args,
+            env=os.environ)
 
 # ---------------------------------------------------------------------
 
