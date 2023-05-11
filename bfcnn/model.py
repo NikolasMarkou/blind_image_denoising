@@ -153,6 +153,7 @@ def model_backbone_builder(
     kernel_regularizer = config.get("kernel_regularizer", "l1")
     backbone_activation = config.get("backbone_activation", None)
     add_sparse_features = config.get("add_sparse_features", False)
+    add_gradient_dropout = config.get("add_gradient_dropout", False)
     add_channelwise_scaling = config.get("add_channelwise_scaling", False)
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
     add_learnable_multiplier = config.get("add_learnable_multiplier", False)
@@ -218,6 +219,7 @@ def model_backbone_builder(
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer,
         add_sparse_features=add_sparse_features,
+        add_gradient_dropout=add_gradient_dropout,
         add_channelwise_scaling=add_channelwise_scaling,
         add_learnable_multiplier=add_learnable_multiplier,
         add_mean_sigma_normalization=add_mean_sigma_normalization,
