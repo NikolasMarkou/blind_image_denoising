@@ -204,14 +204,8 @@ def resnet_blocks_full(
 
         # skip connector or selector mixer
         if use_selector:
-            if (x_1st_conv is not None) and \
-                    (x_2nd_conv is not None) and \
-                    (x_3rd_conv is None):
+            if x_1st_conv is not None:
                 x_selector = x_1st_conv
-            elif (x_1st_conv is not None) and \
-                    (x_2nd_conv is not None) and \
-                    (x_3rd_conv is not None):
-                x_selector = x_2nd_conv
             else:
                 raise ValueError("don't know what selector layer to use")
 
@@ -221,7 +215,7 @@ def resnet_blocks_full(
                     input_2_layer=x,
                     selector_layer=x_selector,
                     filters_compress_ratio=0.25,
-                    kernel_regularizer="l2",
+                    kernel_regularizer="l1",
                     kernel_initializer="glorot_normal",
                     selector_type=SelectorType.CHANNEL,
                     activation_type=ActivationType.HARD)

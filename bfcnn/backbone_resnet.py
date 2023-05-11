@@ -39,6 +39,7 @@ def builder(
         add_final_bn: bool = False,
         add_initial_bn: bool = False,
         add_concat_input: bool = False,
+        add_gradient_dropout: bool = False,
         add_channelwise_scaling: bool = False,
         add_learnable_multiplier: bool = False,
         add_mean_sigma_normalization: bool = False,
@@ -68,13 +69,13 @@ def builder(
     :param kernel_initializer: Kernel weight initializer
     :param add_channelwise_scaling: if True for each full convolutional kernel add a scaling depthwise
     :param add_learnable_multiplier: if True add a learnable multiplier
-    :param stop_gradient: if True stop gradients in each resnet block
     :param add_gates: if true add gate layer
     :param add_gelu: if true add gelu layers
     :param add_mean_sigma_normalization: if true add variance for each block
     :param add_initial_bn: add a batch norm before the resnet blocks
     :param add_final_bn: add a batch norm after the resnet blocks
     :param add_concat_input: if true concat input to intermediate before projecting
+    :param add_gradient_dropout: if True add a gradient dropout layer
     :param add_selector: if true add a selector block in skip connections
     :param output_layer_name: the output layer name
     :param name: name of the model
@@ -195,6 +196,9 @@ def builder(
 
     if add_selector:
         resnet_params["selector_params"] = dict()
+
+    if add_gradient_dropout:
+        resnet_params["gradient_dropout_params"] = dict()
 
     if add_gates:
         resnet_params["gate_params"] = \
