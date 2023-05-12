@@ -20,13 +20,14 @@ from .utilities import \
 
 
 class SelectorType(Enum):
-    PIXEL = 0
+    LOCAL = 0
 
-    CHANNEL = 1
+    GLOBAL = 1
+
+    MIXED = 2
 
     @staticmethod
     def from_string(type_str: str) -> "SelectorType":
-        # --- argument checking
         if type_str is None:
             raise ValueError("type_str must not be null")
         if not isinstance(type_str, str):
@@ -51,7 +52,6 @@ class ActivationType(Enum):
 
     @staticmethod
     def from_string(type_str: str) -> "ActivationType":
-        # --- argument checking
         if type_str is None:
             raise ValueError("type_str must not be null")
         if not isinstance(type_str, str):
@@ -84,6 +84,12 @@ def selector_block(
     from 2 input layers,
     select a combination of the 2 with bias on the first one
 
+    :param input_1_layer: signal_layer 1
+    :param input_2_layer: signal layer 2
+    :param selector_layer: signal to use for signal selection
+    :param selector_type:
+        if if training size != inference size use PIXEL with a descent pool size (32,32) or (64,64)
+        if if training size == inference size use CHANNEL
     :return: filtered input_layer
     """
     # --- argument checking
@@ -96,8 +102,8 @@ def selector_block(
     # --- setup network
     x = selector_layer
 
-    if selector_type == SelectorType.PIXEL:
-        # ---
+    if selector_type == SelectorType.LOCAL:
+        # if training size != inference size you should use this
         selector_conv_0_params = dict(
             filters=filters_compress,
             kernel_size=1,
@@ -130,8 +136,8 @@ def selector_block(
             input_layer=x,
             conv_params=selector_conv_1_params,
             bn_params=None)
-    elif selector_type == SelectorType.CHANNEL:
-        # ---
+    elif selector_type == SelectorType.GLOBAL:
+        # if training and inference are the same size you should use this
         # out squeeze and excite gating does not use global avg
         # followed by dense layer, because we are using this on large images
         # global averaging looses too much information
@@ -164,6 +170,45 @@ def selector_block(
 
         x = tf.expand_dims(x, axis=1)
         x = tf.expand_dims(x, axis=2)
+    elif selector_type == SelectorType.MIXED:
+        # mixed type uses both global and
+        # local information to mix the signal layers
+        selector_conv_0_params = dict(
+            filters=filters_compress,
+            kernel_size=1,
+            use_bias=False,
+            activation="leaky_relu",
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer)
+
+        selector_conv_1_params = dict(
+            filters=filters_target,
+            kernel_size=1,
+            use_bias=False,
+            activation="relu",
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer)
+
+        x_global_mean = \
+            (x * 0.0 + tf.reduce_mean(x, axis=[1, 2], keepdims=True))
+        x_local_mean = \
+            tf.keras.layers.AveragePooling2D(
+                strides=(1, 1),
+                pool_size=pool_size,
+                padding="same")(x)
+        x = \
+            tf.keras.layers.Concatenate()([
+                x_local_mean, x_global_mean])
+
+        x = conv2d_wrapper(
+            input_layer=x,
+            conv_params=selector_conv_0_params,
+            bn_params=None)
+
+        x = conv2d_wrapper(
+            input_layer=x,
+            conv_params=selector_conv_1_params,
+            bn_params=None)
     else:
         raise ValueError(f"don't know how to handle this [{selector_type}]")
 
