@@ -98,32 +98,46 @@ def selector_block(
     filters_compress = \
         max(1, int(round(filters_target * filters_compress_ratio)))
     pool_size = kwargs.get("pool_size", (32, 32))
+    strides_size = kwargs.get("strides_size", (pool_size[0]/4, pool_size[1]/4))
+    selector_conv_0_params = dict(
+        filters=filters_compress,
+        kernel_size=1,
+        use_bias=False,
+        activation="leaky_relu",
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer)
+
+    selector_conv_1_params = dict(
+        filters=filters_target,
+        kernel_size=1,
+        use_bias=False,
+        activation="relu",
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer)
+
+    selector_dense_0_params = dict(
+        units=filters_compress,
+        use_bias=False,
+        activation="leaky_relu",
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer)
+
+    selector_dense_1_params = dict(
+        units=filters_target,
+        use_bias=False,
+        activation="relu",
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer)
 
     # --- setup network
     x = selector_layer
 
     if selector_type == SelectorType.LOCAL:
         # if training size != inference size you should use this
-        selector_conv_0_params = dict(
-            filters=filters_compress,
-            kernel_size=1,
-            use_bias=False,
-            activation="leaky_relu",
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer)
-
-        selector_conv_1_params = dict(
-            filters=filters_target,
-            kernel_size=1,
-            use_bias=False,
-            activation="relu",
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer)
-
         # larger images better use big averaging filter
         x = \
             tf.keras.layers.AveragePooling2D(
-                strides=(1, 1),
+                strides=strides_size,
                 pool_size=pool_size,
                 padding="same")(x)
 
@@ -136,26 +150,15 @@ def selector_block(
             input_layer=x,
             conv_params=selector_conv_1_params,
             bn_params=None)
+
+        x = \
+            tf.keras.layers.UpSampling2D(
+                size=strides_size, interpolation="nearest")(x)
     elif selector_type == SelectorType.GLOBAL:
         # if training and inference are the same size you should use this
         # out squeeze and excite gating does not use global avg
         # followed by dense layer, because we are using this on large images
         # global averaging looses too much information
-        selector_dense_0_params = dict(
-            units=filters_compress,
-            use_bias=False,
-            activation="leaky_relu",
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer)
-
-        selector_dense_1_params = dict(
-            units=filters_target,
-            use_bias=False,
-            activation="relu",
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer)
-
-        # transformation
         x = tf.reduce_mean(x, axis=[1, 2], keepdims=False)
 
         x = dense_wrapper(
@@ -173,30 +176,16 @@ def selector_block(
     elif selector_type == SelectorType.MIXED:
         # mixed type uses both global and
         # local information to mix the signal layers
-        selector_conv_0_params = dict(
-            filters=filters_compress,
-            kernel_size=1,
-            use_bias=False,
-            activation="leaky_relu",
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer)
-
-        selector_conv_1_params = dict(
-            filters=filters_target,
-            kernel_size=1,
-            use_bias=False,
-            activation="relu",
-            kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer)
 
         # zero input and add the mean of it
-        x_global_mean = \
-            (x * 0.0 + tf.reduce_mean(x, axis=[1, 2], keepdims=True))
         x_local_mean = \
             tf.keras.layers.AveragePooling2D(
-                strides=(1, 1),
+                strides=strides_size,
                 pool_size=pool_size,
                 padding="same")(x)
+        x_global_mean = \
+            (x_local_mean * 0.0 + tf.reduce_mean(x, axis=[1, 2], keepdims=True))
+
         x = \
             tf.keras.layers.Concatenate()([
                 x_local_mean, x_global_mean])
@@ -210,6 +199,10 @@ def selector_block(
             input_layer=x,
             conv_params=selector_conv_1_params,
             bn_params=None)
+
+        x = \
+            tf.keras.layers.UpSampling2D(
+                size=strides_size, interpolation="nearest")(x)
     else:
         raise ValueError(f"don't know how to handle this [{selector_type}]")
 
