@@ -24,8 +24,6 @@ class SelectorType(Enum):
 
     CHANNEL = 1
 
-    BATCH = 2
-
     @staticmethod
     def from_string(type_str: str) -> "SelectorType":
         # --- argument checking
@@ -93,6 +91,7 @@ def selector_block(
         tf.keras.backend.int_shape(input_1_layer)[-1]
     filters_compress = \
         max(1, int(round(filters_target * filters_compress_ratio)))
+    pool_size = kwargs.get("pool_size", (32, 32))
 
     # --- setup network
     x = selector_layer
@@ -103,7 +102,7 @@ def selector_block(
             filters=filters_compress,
             kernel_size=1,
             use_bias=False,
-            activation="relu",
+            activation="leaky_relu",
             kernel_regularizer=kernel_regularizer,
             kernel_initializer=kernel_initializer)
 
@@ -115,6 +114,13 @@ def selector_block(
             kernel_regularizer=kernel_regularizer,
             kernel_initializer=kernel_initializer)
 
+        # larger images better use big averaging filter
+        x = \
+            tf.keras.layers.AveragePooling2D(
+                strides=(1, 1),
+                pool_size=pool_size,
+                padding="same")(x)
+
         x = conv2d_wrapper(
             input_layer=x,
             conv_params=selector_conv_0_params,
@@ -124,8 +130,7 @@ def selector_block(
             input_layer=x,
             conv_params=selector_conv_1_params,
             bn_params=None)
-    elif selector_type == SelectorType.CHANNEL or \
-            selector_type == SelectorType.BATCH:
+    elif selector_type == SelectorType.CHANNEL:
         # ---
         # out squeeze and excite gating does not use global avg
         # followed by dense layer, because we are using this on large images
@@ -162,7 +167,7 @@ def selector_block(
     else:
         raise ValueError(f"don't know how to handle this [{selector_type}]")
 
-    # --- attach activation head
+    # --- activation
     if activation_type == ActivationType.SOFT:
         x = tf.keras.layers.Activation("sigmoid")(2.5 - x)
     elif activation_type == ActivationType.HARD:

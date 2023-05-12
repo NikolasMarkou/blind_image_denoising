@@ -246,12 +246,6 @@ def train_loop(
             logger.info("epoch [{0}], step [{1}]".format(
                 int(ckpt.epoch), int(ckpt.step)))
 
-            start_time_epoch = time.time()
-
-            # --- iterate over the batches of the dataset
-            dataset_iterator = iter(dataset_training)
-            step_time_dataset = 0.0
-
             # --- check if total steps reached
             if total_steps != -1:
                 if total_steps <= ckpt.step:
@@ -259,7 +253,10 @@ def train_loop(
                         int(total_steps)))
                     finished_training = True
 
+            start_time_epoch = time.time()
+
             # --- iterate over the batches of the dataset
+            dataset_iterator = iter(dataset_training)
             epoch_finished_training = False
 
             while not finished_training and \
