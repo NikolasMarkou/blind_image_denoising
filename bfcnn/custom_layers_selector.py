@@ -184,7 +184,9 @@ def selector_block(
                 pool_size=pool_size,
                 padding="same")(x)
         x_global_mean = \
-            (x_local_mean * 0.0 + tf.reduce_mean(x, axis=[1, 2], keepdims=True))
+            tf.math.add(
+                x=x_local_mean * 0.0,
+                y=tf.reduce_mean(x, axis=[1, 2], keepdims=True))
 
         x = \
             tf.keras.layers.Concatenate()([
