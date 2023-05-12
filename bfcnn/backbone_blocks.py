@@ -217,7 +217,7 @@ def resnet_blocks_full(
                     filters_compress_ratio=0.25,
                     kernel_regularizer="l1",
                     kernel_initializer="glorot_normal",
-                    selector_type=SelectorType.GLOBAL,
+                    selector_type=SelectorType.LOCAL,
                     activation_type=ActivationType.HARD)
         else:
             # skip connection

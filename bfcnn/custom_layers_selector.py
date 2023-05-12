@@ -189,6 +189,7 @@ def selector_block(
             kernel_regularizer=kernel_regularizer,
             kernel_initializer=kernel_initializer)
 
+        # zero input and add the mean of it
         x_global_mean = \
             (x * 0.0 + tf.reduce_mean(x, axis=[1, 2], keepdims=True))
         x_local_mean = \
