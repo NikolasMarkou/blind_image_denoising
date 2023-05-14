@@ -153,7 +153,7 @@ def selector_block(
 
         x = \
             tf.keras.layers.UpSampling2D(
-                size=strides_size, interpolation="nearest")(x)
+                size=strides_size, interpolation="bilinear")(x)
     elif selector_type == SelectorType.GLOBAL:
         # if training and inference are the same size you should use this
         # out squeeze and excite gating does not use global avg
@@ -204,7 +204,7 @@ def selector_block(
 
         x = \
             tf.keras.layers.UpSampling2D(
-                size=strides_size, interpolation="nearest")(x)
+                size=strides_size, interpolation="bilinear")(x)
     else:
         raise ValueError(f"don't know how to handle this [{selector_type}]")
 
