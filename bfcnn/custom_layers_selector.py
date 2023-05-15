@@ -81,16 +81,21 @@ def selector_block(
         kernel_initializer: str = "glorot_normal",
         **kwargs):
     """
-    from 2 input layers,
-    select a combination of the 2 with bias on the first one
+    from 2 input layers, select a combination of the 2 with bias on the first one
 
     :param input_1_layer: signal_layer 1
     :param input_2_layer: signal layer 2
     :param selector_layer: signal to use for signal selection
     :param selector_type:
-        if if training size != inference size use PIXEL with a descent pool size (32,32) or (64,64)
-        if if training size == inference size use CHANNEL
-    :return: filtered input_layer
+        if training size != inference size use PIXEL with a descent pool size (32,32) or (64,64)
+        if training size == inference size use CHANNEL
+        slower but possible better MIXED
+    :param activation_type: soft or hard
+    :param filters_compress_ratio: percentage over the output filters
+    :param kernel_regularizer: kernel regularizer
+    :param kernel_initializer: kernel initializer
+
+    :return: mixed input_1 and input_2
     """
     # --- argument checking
     filters_target = \
