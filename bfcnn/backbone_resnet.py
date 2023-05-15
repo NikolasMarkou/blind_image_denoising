@@ -35,7 +35,6 @@ def builder(
         dropout_rate: float = -1,
         add_gelu: bool = False,
         add_gates: bool = False,
-        add_selector: bool = False,
         add_final_bn: bool = False,
         add_initial_bn: bool = False,
         add_concat_input: bool = False,
@@ -43,6 +42,7 @@ def builder(
         add_channelwise_scaling: bool = False,
         add_learnable_multiplier: bool = False,
         add_mean_sigma_normalization: bool = False,
+        selector_params: Dict = None,
         output_layer_name: str = "intermediate_output",
         name="resnet",
         **kwargs) -> keras.Model:
@@ -166,7 +166,7 @@ def builder(
         bn_params=None,
         sparse_params=None,
         no_layers=no_layers,
-        selector_params=None,
+        selector_params=selector_params,
         multiplier_params=None,
         channelwise_params=None,
         first_conv_params=convs_params[0],
@@ -193,9 +193,6 @@ def builder(
 
     if add_gelu:
         resnet_params["gelu_params"] = dict()
-
-    if add_selector or kwargs.get("selector_params", None) is not None:
-        resnet_params["selector_params"] = kwargs.get("selector_params", dict())
 
     if add_gradient_dropout:
         resnet_params["gradient_dropout_params"] = dict()
