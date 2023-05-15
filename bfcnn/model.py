@@ -139,13 +139,12 @@ def model_backbone_builder(
     add_sparsity = config.get("add_sparsity", False)
     value_range = config.get("value_range", (0, 255))
     add_laplacian = config.get("add_laplacian", True)
-    stop_gradient = config.get("stop_gradient", False)
-
     block_groups = config.get("block_groups", None)
     block_kernels = config.get("block_kernels", (3, 3))
     block_filters = config.get("block_filters", (32, 32))
     block_depthwise = config.get("block_depthwise", None)
     add_initial_bn = config.get("add_initial_bn", False)
+    selector_params = config.get("selector_params", None)
     base_conv_params = config.get("base_conv_params", None)
     add_concat_input = config.get("add_concat_input", False)
     input_shape = config.get("input_shape", (None, None, 3))
@@ -212,8 +211,8 @@ def model_backbone_builder(
         block_filters=block_filters,
         block_depthwise=block_depthwise,
         add_laplacian=add_laplacian,
-        stop_gradient=stop_gradient,
         add_initial_bn=add_initial_bn,
+        selector_params=selector_params,
         add_concat_input=add_concat_input,
         base_conv_params=base_conv_params,
         kernel_regularizer=kernel_regularizer,

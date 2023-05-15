@@ -194,8 +194,8 @@ def builder(
     if add_gelu:
         resnet_params["gelu_params"] = dict()
 
-    if add_selector:
-        resnet_params["selector_params"] = dict()
+    if add_selector or kwargs.get("selector_params", None) is not None:
+        resnet_params["selector_params"] = kwargs.get("selector_params", dict())
 
     if add_gradient_dropout:
         resnet_params["gradient_dropout_params"] = dict()

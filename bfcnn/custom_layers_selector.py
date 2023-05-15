@@ -19,17 +19,21 @@ from .utilities import \
 # ---------------------------------------------------------------------
 
 
-class SelectorType(Enum):
+class ScaleType(Enum):
     LOCAL = 0
 
     GLOBAL = 1
 
     MIXED = 2
 
+    MULTISCALE = 3
+
     @staticmethod
-    def from_string(type_str: str) -> "SelectorType":
+    def from_string(type_str: Union[str, "ScaleType"]) -> "ScaleType":
         if type_str is None:
             raise ValueError("type_str must not be null")
+        if type_str is ScaleType:
+            return type_str
         if not isinstance(type_str, str):
             raise ValueError("type_str must be string")
         type_str = type_str.strip().upper()
@@ -37,7 +41,7 @@ class SelectorType(Enum):
             raise ValueError("stripped type_str must not be empty")
 
         # --- clean string and get
-        return SelectorType[type_str]
+        return ScaleType[type_str]
 
     def to_string(self) -> str:
         return self.name
@@ -51,9 +55,11 @@ class ActivationType(Enum):
     HARD = 1
 
     @staticmethod
-    def from_string(type_str: str) -> "ActivationType":
+    def from_string(type_str: Union[str, "ActivationType"]) -> "ActivationType":
         if type_str is None:
             raise ValueError("type_str must not be null")
+        if type_str is ActivationType:
+            return type_str
         if not isinstance(type_str, str):
             raise ValueError("type_str must be string")
         type_str = type_str.strip().upper()
@@ -74,8 +80,8 @@ def selector_block(
         input_1_layer,
         input_2_layer,
         selector_layer,
-        selector_type: SelectorType,
-        activation_type: ActivationType,
+        scale_type: Union[str, ActivationType] = ScaleType.LOCAL,
+        activation_type: Union[str, ActivationType] = ActivationType.HARD,
         filters_compress_ratio: float = 0.25,
         kernel_regularizer: str = "l1",
         kernel_initializer: str = "glorot_normal",
@@ -86,7 +92,7 @@ def selector_block(
     :param input_1_layer: signal_layer 1
     :param input_2_layer: signal layer 2
     :param selector_layer: signal to use for signal selection
-    :param selector_type:
+    :param scale_type:
         if training size != inference size use PIXEL with a descent pool size (32,32) or (64,64)
         if training size == inference size use CHANNEL
         slower but possible better MIXED
@@ -98,12 +104,21 @@ def selector_block(
     :return: mixed input_1 and input_2
     """
     # --- argument checking
+    if input_1_layer is None or \
+            input_2_layer is None or \
+            selector_layer is None:
+        raise ValueError("input_1_layer, input_2_layer and selector_layer must not be None")
+
+    # --- set parameters
+    scale_type = ScaleType.from_string(scale_type)
+    activation_type = ActivationType.from_string(activation_type)
     filters_target = \
         tf.keras.backend.int_shape(input_1_layer)[-1]
     filters_compress = \
         max(1, int(round(filters_target * filters_compress_ratio)))
     pool_size = kwargs.get("pool_size", (32, 32))
     strides_size = kwargs.get("strides_size", (pool_size[0]/4, pool_size[1]/4))
+
     selector_conv_0_params = dict(
         filters=filters_compress,
         kernel_size=1,
@@ -137,7 +152,7 @@ def selector_block(
     # --- setup network
     x = selector_layer
 
-    if selector_type == SelectorType.LOCAL:
+    if scale_type == ScaleType.LOCAL:
         # if training size != inference size you should use this
         # larger images better use big averaging filter
         x = \
@@ -159,7 +174,42 @@ def selector_block(
         x = \
             tf.keras.layers.UpSampling2D(
                 size=strides_size, interpolation="bilinear")(x)
-    elif selector_type == SelectorType.GLOBAL:
+    elif scale_type == ScaleType.MULTISCALE:
+        # if training size != inference size you should use this
+        # larger images better use big averaging filter
+        x_local_0 = \
+            tf.keras.layers.AveragePooling2D(
+                strides=strides_size,
+                pool_size=(pool_size[0] / 2, pool_size[1] / 2),
+                padding="same")(x)
+        x_local_1 = \
+            tf.keras.layers.AveragePooling2D(
+                strides=strides_size,
+                pool_size=(pool_size[0], pool_size[1]),
+                padding="same")(x)
+        x_local_2 = \
+            tf.keras.layers.AveragePooling2D(
+                strides=strides_size,
+                pool_size=(pool_size[0] * 2, pool_size[1] * 2),
+                padding="same")(x)
+        x = \
+            tf.keras.layers.Concatenate()([
+                x_local_0, x_local_1, x_local_2])
+
+        x = conv2d_wrapper(
+            input_layer=x,
+            conv_params=selector_conv_0_params,
+            bn_params=None)
+
+        x = conv2d_wrapper(
+            input_layer=x,
+            conv_params=selector_conv_1_params,
+            bn_params=None)
+
+        x = \
+            tf.keras.layers.UpSampling2D(
+                size=strides_size, interpolation="bilinear")(x)
+    elif scale_type == ScaleType.GLOBAL:
         # if training and inference are the same size you should use this
         # out squeeze and excite gating does not use global avg
         # followed by dense layer, because we are using this on large images
@@ -178,7 +228,7 @@ def selector_block(
 
         x = tf.expand_dims(x, axis=1)
         x = tf.expand_dims(x, axis=2)
-    elif selector_type == SelectorType.MIXED:
+    elif scale_type == ScaleType.MIXED:
         # mixed type uses both global and
         # local information to mix the signal layers
 
@@ -211,13 +261,18 @@ def selector_block(
             tf.keras.layers.UpSampling2D(
                 size=strides_size, interpolation="bilinear")(x)
     else:
-        raise ValueError(f"don't know how to handle this [{selector_type}]")
+        raise ValueError(f"don't know how to handle this [{scale_type}]")
+
+    # --- setup bias
+    # x is always >= 0
+    # bias towards layer 1
+    x = 2.5 - x
 
     # --- activation
     if activation_type == ActivationType.SOFT:
-        x = tf.keras.layers.Activation("sigmoid")(2.5 - x)
+        x = tf.keras.layers.Activation("sigmoid")(x)
     elif activation_type == ActivationType.HARD:
-        x = tf.keras.layers.Activation("hard_sigmoid")(2.5 - x)
+        x = tf.keras.layers.Activation("hard_sigmoid")(x)
     else:
         raise ValueError(f"dont know how to handle this [{activation_type}]")
 

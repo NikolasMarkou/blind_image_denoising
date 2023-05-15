@@ -19,7 +19,7 @@ from .custom_layers import \
     ChannelwiseMultiplier, \
     DifferentiableGateLayer
 from .custom_layers_selector import \
-    SelectorType, \
+    ScaleType, \
     ActivationType, \
     selector_block
 from .utilities import \
@@ -214,11 +214,7 @@ def resnet_blocks_full(
                     input_1_layer=previous_layer,
                     input_2_layer=x,
                     selector_layer=x_selector,
-                    filters_compress_ratio=0.25,
-                    kernel_regularizer="l1",
-                    kernel_initializer="glorot_normal",
-                    selector_type=SelectorType.LOCAL,
-                    activation_type=ActivationType.HARD)
+                    **selector_params)
         else:
             # skip connection
             x = tf.keras.layers.Add()([x, previous_layer])
