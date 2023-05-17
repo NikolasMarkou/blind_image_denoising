@@ -17,6 +17,7 @@ from .custom_logger import logger
 from .custom_layers import \
     Multiplier, \
     ChannelwiseMultiplier
+from .regularizer import builder as regularizer_builder
 
 # ---------------------------------------------------------------------
 
@@ -299,6 +300,9 @@ def conv2d_wrapper(
             logger.info("Changing conv_type to CONV2D_TRANSPOSE because it contains dilation argument "
                         f"[conv_params[\'dilation_rate\']={conv_params['dilation_rate']}]")
         conv_type = ConvType.CONV2D_TRANSPOSE
+
+    conv_params[KERNEL_REGULARIZER] = \
+        regularizer_builder(conv_params[KERNEL_REGULARIZER])
 
     # --- perform batchnorm and preactivation
     x = input_layer

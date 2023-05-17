@@ -396,6 +396,8 @@ def model_denoiser_builder(
     use_bias = config.get("use_bias", False)
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
+    kernel_regularizer = config.get("kernel_regularizer", "l2")
+    kernel_initializer = config.get("kernel_initializer", "glorot_normal")
 
     # --- config uncertainty or point estimation
     conv_params = \
@@ -404,10 +406,10 @@ def model_denoiser_builder(
             strides=(1, 1),
             padding="same",
             use_bias=use_bias,
-            filters=output_channels,
             activation="linear",
-            kernel_regularizer="l2",
-            kernel_initializer="glorot_normal")
+            filters=output_channels,
+            kernel_regularizer=kernel_regularizer,
+            kernel_initializer=kernel_initializer)
 
     # --- define network here
     model_input_layer = \

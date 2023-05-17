@@ -41,6 +41,7 @@ NSIG_COEFFICIENT_STR = "nsig"
 REGULARIZERS_STR = "regularizers"
 L1_COEFFICIENT_STR = "l1_coefficient"
 L2_COEFFICIENT_STR = "l2_coefficient"
+KERNEL_REGULARIZER = "kernel_regularizer"
 DIAG_COEFFICIENT_STR = "diag_coefficient"
 LAMBDA_COEFFICIENT_STR = "lambda_coefficient"
 REGULARIZER_ALLOWED_TYPES = Union[str, Dict, keras.regularizers.Regularizer]
