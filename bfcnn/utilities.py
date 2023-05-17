@@ -269,8 +269,12 @@ def conv2d_wrapper(
                         f"[conv_params[\'dilation_rate\']={conv_params['dilation_rate']}]")
         conv_type = ConvType.CONV2D_TRANSPOSE
 
-    conv_params[KERNEL_REGULARIZER] = \
-        regularizer_builder(conv_params[KERNEL_REGULARIZER])
+    if KERNEL_REGULARIZER in conv_params:
+        conv_params[KERNEL_REGULARIZER] = \
+            regularizer_builder(conv_params[KERNEL_REGULARIZER])
+    if DEPTHWISE_REGULARIZER in conv_params:
+        conv_params[DEPTHWISE_REGULARIZER] = \
+            regularizer_builder(conv_params[DEPTHWISE_REGULARIZER])
 
     # --- perform batchnorm and preactivation
     x = input_layer
