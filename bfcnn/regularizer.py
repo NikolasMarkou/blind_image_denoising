@@ -14,8 +14,6 @@ from typing import Dict, Tuple, Union, List, Any
 
 from .constants import *
 from .custom_logger import logger
-from .utilities import gaussian_kernel
-
 
 # ---------------------------------------------------------------------
 
@@ -48,6 +46,27 @@ def gaussian_kernel(
     sigma, mu = 1.0, 0.0
     g = np.exp(-((d - mu) ** 2 / (2.0 * (sigma ** 2))))
     return g / g.sum()
+
+
+def gaussian_kernel_tf(
+        size: Tuple[int, int] = (3, 3),
+        nsig: Tuple[float, float] = (1.0, 1.0),
+        sigma: float = 1.0,
+        mu: float = 0.0,
+        dtype: tf.dtypes = tf.float64) -> tf.constant:
+    kern1d = [
+        tf.linspace(
+            start=-np.abs(nsig[i]),
+            stop=np.abs(nsig[i]),
+            num=size[i],
+            endpoint=True,
+            dtype=dtype)
+        for i in range(2)
+    ]
+    x, y = tf.meshgrid(kern1d[0], kern1d[1])
+    d = tf.sqrt(x * x + y * y)
+    g = tf.exp(-(tf.pow(d - mu, 2.0) / (2.0 * (tf.pow(sigma, 2.0)))))
+    return g / tf.reduce_sum(g)
 
 # ---------------------------------------------------------------------
 
