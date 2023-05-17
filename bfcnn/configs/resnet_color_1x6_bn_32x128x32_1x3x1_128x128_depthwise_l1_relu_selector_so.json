@@ -3,11 +3,12 @@
 		"backbone": {
 			"input_shape": ["?", "?", 3],
 			"filters": 32,
-			"no_layers": 18,
+			"no_layers": 6,
 			"kernel_size": 7,
 			"block_kernels": [1, 3, 1],
 			"block_filters": [32, 128, 32],
 			"block_depthwise": [-1, 4, -1],
+			"block_regularizer": ["soft_orthonormal", "l1", "l1"],
 			"block_groups": [1, 1, 2],
 			"value_range": [0, 255],
 			"type": "resnet",
@@ -26,7 +27,7 @@
 	"train": {
 		"epochs": 25,
 		"total_steps": -1,
-		"gpu_batches_per_step": 4,
+		"gpu_batches_per_step": 1,
 		"use_test_images": true,
 		"checkpoints_to_keep": 3,
 		"checkpoint_every": 10000,
@@ -53,7 +54,7 @@
 		"regularization": 0.01
 	},
 	"dataset": {
-		"batch_size": 8,
+		"batch_size": 32,
 		"color_mode": "rgb",
 		"no_crops_per_image": 1,
 		"value_range": [0, 255],

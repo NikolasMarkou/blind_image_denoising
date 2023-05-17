@@ -142,6 +142,7 @@ def model_backbone_builder(
     block_kernels = config.get("block_kernels", (3, 3))
     block_filters = config.get("block_filters", (32, 32))
     block_depthwise = config.get("block_depthwise", None)
+    block_regularizer = config.get("block_regularizer", None)
     add_initial_bn = config.get("add_initial_bn", False)
     selector_params = config.get("selector_params", None)
     base_conv_params = config.get("base_conv_params", None)
@@ -208,6 +209,7 @@ def model_backbone_builder(
         block_kernels=block_kernels,
         block_filters=block_filters,
         block_depthwise=block_depthwise,
+        block_regularizer=block_regularizer,
         add_laplacian=add_laplacian,
         add_initial_bn=add_initial_bn,
         selector_params=selector_params,
