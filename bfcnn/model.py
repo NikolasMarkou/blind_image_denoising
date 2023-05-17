@@ -398,7 +398,7 @@ def model_denoiser_builder(
     use_bias = config.get("use_bias", False)
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
-    kernel_regularizer = config.get("kernel_regularizer", "l2")
+    kernel_regularizer = config.get(KERNEL_REGULARIZER, "l2")
     kernel_initializer = config.get("kernel_initializer", "glorot_normal")
 
     # --- config uncertainty or point estimation
