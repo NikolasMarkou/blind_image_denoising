@@ -9,7 +9,7 @@
 			"block_filters": [32, 128, 32],
 			"block_depthwise": [-1, 4, -1],
 			"block_regularizer": ["soft_orthonormal", "l1", "l1"],
-			"block_activation": ["relu", "relu", "relu"],
+			"block_activation": ["relu", "relu", "linear"],
 			"block_groups": [1, 1, 2],
 			"value_range": [0, 255],
 			"type": "resnet",
