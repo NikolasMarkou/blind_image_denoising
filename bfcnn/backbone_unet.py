@@ -30,7 +30,6 @@ def builder(
         kernel_regularizer="l1",
         kernel_initializer="glorot_normal",
         dropout_rate: float = -1,
-        stop_gradient: bool = False,
         add_clip: bool = False,
         add_gates: bool = False,
         add_selector: bool = False,
@@ -63,7 +62,6 @@ def builder(
     :param kernel_initializer: Kernel weight initializer
     :param add_channelwise_scaling: if True for each full convolutional kernel add a scaling depthwise
     :param add_learnable_multiplier: if True add a learnable multiplier
-    :param stop_gradient: if True stop gradients in each resnet block
     :param add_sparsity: if true add sparsity layer
     :param add_gates: if true add gate layer
     :param add_mean_sigma_normalization: if true add variance for each block
@@ -135,7 +133,6 @@ def builder(
         selector_params=None,
         multiplier_params=None,
         channelwise_params=None,
-        stop_gradient=stop_gradient,
         first_conv_params=convs_params[0],
         second_conv_params=convs_params[1],
         third_conv_params=convs_params[2],

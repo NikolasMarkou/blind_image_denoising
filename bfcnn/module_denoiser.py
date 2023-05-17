@@ -1,3 +1,4 @@
+from abc import ABC
 import tensorflow as tf
 
 # ---------------------------------------------------------------------
@@ -9,7 +10,7 @@ from .constants import *
 # ---------------------------------------------------------------------
 
 
-class DenoiserModule(tf.Module):
+class DenoiserModule(tf.Module, ABC):
     """denoising inference module."""
 
     def __init__(
