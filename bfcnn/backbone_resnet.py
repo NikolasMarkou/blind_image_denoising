@@ -26,6 +26,7 @@ def builder(
         block_groups: List[int] = None,
         block_depthwise: List[int] = None,
         block_regularizer: List[str] = None,
+        block_activation: List[str] = None,
         activation: str = "relu",
         base_activation: str = "linear",
         base_conv_params: Dict = None,
@@ -60,6 +61,7 @@ def builder(
     :param block_depthwise:
         depthwise multipliers per block, leave empty or full of -1 to disable
     :param block_regularizer: regularizer for each block
+    :param block_activation: activation for each block
     :param activation: activation of the convolutional layers
     :param base_activation: activation of the base layer,
         residual blocks outputs must conform to this
@@ -101,6 +103,9 @@ def builder(
             len(block_regularizer) == 0:
         block_regularizer = [kernel_regularizer] * len(block_kernels)
 
+    if block_activation is None or len(block_activation) == 0:
+        block_activation = [activation] * len(block_kernels)
+
     # --- argument checking
     if len(block_kernels) <= 0:
         raise ValueError("len(block_kernels) must be >= 0 ")
@@ -114,6 +119,8 @@ def builder(
         raise ValueError("len(block_filters) must == len(block_groups)")
     if len(block_regularizer) != len(block_groups):
         raise ValueError("len(block_regularizer) must == len(block_groups)")
+    if len(block_activation) != len(block_groups):
+        raise ValueError("len(block_activation) must == len(block_groups)")
     if block_depthwise is not None and \
             (len(block_depthwise) != len(block_kernels)):
         raise ValueError("len(block_depthwise) must == len(block_kernels)")
@@ -150,7 +157,7 @@ def builder(
                 strides=(1, 1),
                 padding="same",
                 use_bias=use_bias,
-                activation=activation,
+                activation=block_activation[i],
                 groups=block_groups[i],
                 kernel_regularizer=block_regularizer[i],
                 kernel_initializer=kernel_initializer,
@@ -163,7 +170,7 @@ def builder(
                 strides=(1, 1),
                 padding="same",
                 use_bias=use_bias,
-                activation=activation,
+                activation=block_activation[i],
                 depthwise_regularizer=block_regularizer[i],
                 depthwise_initializer=kernel_initializer,
             )
