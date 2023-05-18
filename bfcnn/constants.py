@@ -44,6 +44,8 @@ L2_COEFFICIENT_STR = "l2_coefficient"
 DIAG_COEFFICIENT_STR = "diag_coefficient"
 LAMBDA_COEFFICIENT_STR = "lambda_coefficient"
 
+USE_BIAS = "use_bias"
+KERNEL_INITIALIZER = "kernel_initializer"
 KERNEL_REGULARIZER = "kernel_regularizer"
 DEPTHWISE_REGULARIZER = "depthwise_regularizer"
 REGULARIZER_ALLOWED_TYPES = Union[str, Dict, keras.regularizers.Regularizer]

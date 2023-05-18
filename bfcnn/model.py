@@ -123,7 +123,7 @@ def model_backbone_builder(
     add_var = config.get("add_var", False)
     no_layers = config.get("no_layers", 5)
     add_gelu = config.get("add_gelu", False)
-    use_bias = config.get("use_bias", False)
+    use_bias = config.get(USE_BIAS, False)
     batchnorm = config.get("batchnorm", True)
     kernel_size = config.get("kernel_size", 3)
     add_gates = config.get("add_gates", False)
@@ -395,11 +395,11 @@ def model_denoiser_builder(
         logger.info(f"unused parameters [{kwargs}]")
 
     # --- set configuration
-    use_bias = config.get("use_bias", False)
+    use_bias = config.get(USE_BIAS, False)
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
     kernel_regularizer = config.get(KERNEL_REGULARIZER, "l2")
-    kernel_initializer = config.get("kernel_initializer", "glorot_normal")
+    kernel_initializer = config.get(KERNEL_INITIALIZER, "glorot_normal")
 
     # --- config uncertainty or point estimation
     conv_params = \
