@@ -28,7 +28,9 @@
 		},
 		"denoiser": {
 			"use_bias": false,
-			"output_channels": 3
+			"output_channels": 3,
+			"kernel_regularizer": "l2",
+			"kernel_initializer": "glorot_normal"
 		}
 	},
 	"train": {
