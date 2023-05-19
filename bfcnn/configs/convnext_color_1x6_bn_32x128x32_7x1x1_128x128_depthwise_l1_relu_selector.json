@@ -17,7 +17,14 @@
 			"add_final_bn": false,
 			"add_initial_bn": true,
 			"kernel_initializer": "glorot_normal",
-			"kernel_regularizer": "l1"
+			"kernel_regularizer": "l1",
+			"selector_params": {
+				"scale_type":  "local",
+				"activation_type": "hard",
+				"kernel_regularizer": "l1",
+				"kernel_initializer": "glorot_normal",
+				"filters_compress_ratio": 0.25
+			}
 		},
 		"denoiser": {
 			"use_bias": false,
