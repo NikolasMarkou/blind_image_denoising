@@ -24,7 +24,8 @@ My target is to create a series of:
 * interpretable
 * high performance
 * low memory footprint
- 
+* fixed budget (feed forward convolutional neural network)
+
 models that performs denoising on an input (grayscale or colored) image. 
 
 The bias-free nature of the model allows for easy interpretation and use as prior
@@ -56,7 +57,8 @@ several types of noise and then try to recover the original image
 
 ## Pretrained models
 
-Currently we have 3 pretrained models:
+Currently, we have 3 pretrained models:
+
 * [resnet_color_1x6_bn_16x3x3_256x256_l1_relu](bfcnn/pretrained/resnet_color_1x6_bn_16x3x3_256x256_l1_relu)
 * [resnet_color_1x12_bn_16x3x3_256x256_l1_relu](bfcnn/pretrained/resnet_color_1x12_bn_16x3x3_256x256_l1_relu)
 * [resnet_color_1x18_bn_16x3x3_256x256_l1_relu](bfcnn/pretrained/resnet_color_1x18_bn_16x3x3_256x256_l1_relu)
@@ -150,7 +152,7 @@ denoised_tensor = denoiser_model(input_tensor)
 
 ## Designing the best possible denoiser
 1. Add a small hinge at the MAE loss. 2 (from 255) seems to work very good
-2. Multiscale models work better, 3-4 scales is ideal. LUnet seems to perform very well.
+2. Multiscale models work better, 3-4 scales is ideal.
 3. Soft-Orthogonal regularization provides better generalization, but it's slower to train.
 4. Effective Receptive Field regularization provides better generalization, but it's slower to train.
 5. Squeeze-and-Excite provides a small boost without many additional parameters.
@@ -158,6 +160,7 @@ denoised_tensor = denoiser_model(input_tensor)
 7. Residual learning (learning the noise) trains faster and gives better metrics 
    but may give out artifacts, so better avoid it.
 8. Every sample in each batch uses independent forms of noise.
+9. Selectors block boosts conversion speed and accuracy
 
 All these options are supported in the configuration.
 

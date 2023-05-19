@@ -116,6 +116,7 @@ def selector_block(
         tf.keras.backend.int_shape(input_1_layer)[-1]
     filters_compress = \
         max(1, int(round(filters_target * filters_compress_ratio)))
+    use_bn = kwargs.get("use_bn", False)
     pool_size = kwargs.get("pool_size", (32, 32))
     strides_size = kwargs.get("strides_size", (pool_size[0]/4, pool_size[1]/4))
 
@@ -151,6 +152,9 @@ def selector_block(
 
     # --- setup network
     x = selector_layer
+
+    if use_bn:
+        x = tf.keras.layers.BatchNormalization(center=False)(x)
 
     if scale_type == ScaleType.LOCAL:
         # if training size != inference size you should use this
