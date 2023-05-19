@@ -9,8 +9,8 @@ from typing import List
 from .constants import *
 from .custom_logger import logger
 from .utilities import conv2d_wrapper
-from .backbone_blocks import resnet_blocks_full, sparse_block
-from .custom_layers import ChannelwiseMultiplier, Multiplier, DifferentiableGateLayer
+from .backbone_blocks import resnet_blocks_full
+from .custom_layers import ChannelwiseMultiplier, Multiplier
 
 
 # ---------------------------------------------------------------------
@@ -80,7 +80,7 @@ def builder(
     :param add_final_bn: add a batch norm after the resnet blocks
     :param add_concat_input: if true concat input to intermediate before projecting
     :param add_gradient_dropout: if True add a gradient dropout layer
-    :param add_selector: if true add a selector block in skip connections
+    :param selector_params:
     :param output_layer_name: the output layer name
     :param name: name of the model
 

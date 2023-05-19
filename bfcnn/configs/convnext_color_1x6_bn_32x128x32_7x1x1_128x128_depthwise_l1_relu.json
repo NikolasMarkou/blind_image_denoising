@@ -3,30 +3,21 @@
 		"backbone": {
 			"input_shape": ["?", "?", 3],
 			"filters": 32,
-			"no_layers": 18,
+			"no_layers": 6,
 			"kernel_size": 7,
-			"block_kernels": [1, 3, 1],
+			"block_kernels": [7, 1, 1],
 			"block_filters": [32, 128, 32],
-			"block_depthwise": [-1, 4, -1],
+			"block_depthwise": [1, -1, -1],
 			"block_regularizer": ["l1", "l1", "l1"],
-			"block_activation": ["relu", "relu", "linear"],
-			"block_groups": [1, 1, 2],
+			"block_activation": ["linear", "gelu", "linear"],
+			"block_groups": [1, 1, 1],
 			"value_range": [0, 255],
-			"type": "resnet",
-			"batchnorm": true,
-			"activation": "relu",
+			"type": "convnext",
+			"activation": "linear",
 			"add_final_bn": false,
+			"add_initial_bn": true,
 			"kernel_initializer": "glorot_normal",
-			"kernel_regularizer": "l1",
-			"selector_params": {
-				"scale_type":  "multiscale",
-				"activation_type": "hard",
-				"kernel_regularizer": "l1",
-				"kernel_initializer": "glorot_normal",
-				"filters_compress_ratio": 0.25,
-				"pool_size": [16, 16],
-				"strides_size": [8, 8]
-			}
+			"kernel_regularizer": "l1"
 		},
 		"denoiser": {
 			"use_bias": false,
@@ -38,7 +29,7 @@
 	"train": {
 		"epochs": 25,
 		"total_steps": -1,
-		"gpu_batches_per_step": 4,
+		"gpu_batches_per_step": 2,
 		"use_test_images": true,
 		"checkpoints_to_keep": 3,
 		"checkpoint_every": 10000,
@@ -65,7 +56,7 @@
 		"regularization": 0.01
 	},
 	"dataset": {
-		"batch_size": 8,
+		"batch_size": 16,
 		"color_mode": "rgb",
 		"no_crops_per_image": 1,
 		"value_range": [0, 255],

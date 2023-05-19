@@ -30,6 +30,29 @@ from .utilities import \
     mean_sigma_local, \
     mean_sigma_global
 
+
+# ---------------------------------------------------------------------
+
+
+def convnext_blocks_full(
+        input_layer,
+        **kwargs):
+    """
+    Create a series of convnext residual blocks
+
+    :param input_layer: the input layer to perform on
+    :return: filtered input_layer
+    """
+    # --- argument check
+    if input_layer is None:
+        raise ValueError("input_layer must be none")
+
+    kwargs["bn_params"] = None
+    kwargs["bn_first_conv_params"] = False
+    kwargs["ln_after_first_conv_params"] = True
+
+    return resnet_blocks_full(input_layer=input_layer, **kwargs)
+
 # ---------------------------------------------------------------------
 
 
@@ -49,6 +72,7 @@ def resnet_blocks_full(
         gradient_dropout_params: Dict = None,
         post_addition_activation: str = None,
         bn_first_conv_params: bool = False,
+        ln_after_first_conv_params: bool = False,
         **kwargs):
     """
     Create a series of residual network blocks
@@ -71,6 +95,8 @@ def resnet_blocks_full(
         activation after the residual addition, None to disable
     :param bn_first_conv_params:
         if True, add a BN before the first conv in residual block
+    :param ln_after_first_conv_params:
+        if True, add a LN after the first conv in residual block
     :return: filtered input_layer
     """
     # --- argument check
@@ -152,6 +178,10 @@ def resnet_blocks_full(
             x_1st_conv = x
             gate_layer = x_1st_conv
 
+        if ln_after_first_conv_params:
+            x = tf.keras.layers.LayerNormalization(center=False, scale=True)(x)
+            x_1st_conv = x
+
         if second_conv_params is not None:
             x = conv2d_wrapper(input_layer=x,
                                conv_params=copy.deepcopy(second_conv_params),
@@ -223,56 +253,6 @@ def resnet_blocks_full(
             x = tf.keras.layers.Activation(post_addition_activation)(x)
     return x
 
-# ---------------------------------------------------------------------
-
-
-def resnet_full_preactivation(
-        input_layer,
-        no_layers: int,
-        first_conv_params: Dict,
-        second_conv_params: Dict,
-        bn_params: Dict = None,
-        pre_activation: str = "relu",
-        **kwargs):
-    """
-    Create a series of residual network blocks,
-    this is the modified residual network
-    Identity Mappings in Deep Residual Networks [2016]
-
-    :param input_layer: the input layer to perform on
-    :param no_layers: how many residual network blocks to add
-    :param first_conv_params: the parameters of the first conv
-    :param second_conv_params: the parameters of the middle conv
-    :param bn_params: batch normalization parameters
-    :param pre_activation: pre_activation parameter, default to "relu", None to disable
-
-    :return: filtered input_layer
-    """
-    # --- argument check
-    if input_layer is None:
-        raise ValueError("input_layer must be none")
-    if no_layers < 0:
-        raise ValueError("no_layers must be >= 0")
-
-    # --- setup resnet
-    x = input_layer
-
-    # --- create several number of residual blocks
-    for i in range(no_layers):
-        previous_layer = x
-        x = conv2d_wrapper(input_layer=x,
-                           conv_params=first_conv_params,
-                           bn_params=bn_params,
-                           pre_activation=pre_activation,
-                           channelwise_scaling=False)
-        x = conv2d_wrapper(input_layer=x,
-                           conv_params=second_conv_params,
-                           bn_params=bn_params,
-                           pre_activation=pre_activation,
-                           channelwise_scaling=False)
-        # skip connection
-        x = tf.keras.layers.Add()([x, previous_layer])
-    return x
 
 # ---------------------------------------------------------------------
 
