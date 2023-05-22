@@ -45,8 +45,8 @@ def schedule_builder(
         decay_steps = params["decay_steps"]
         learning_rate = params["learning_rate"]
         t_mul = params.get("t_mul", 2.0)
-        m_mul = params.get("m_mul", 1.0)
-        alpha = params.get("alpha", 0.0)
+        m_mul = params.get("m_mul", 0.9)
+        alpha = params.get("alpha", 0.001)
         schedule = \
             keras.optimizers.schedules.CosineDecayRestarts(
                 initial_learning_rate=learning_rate,

@@ -58,9 +58,6 @@ def export_model(
     # get each model
     hydra = models.hydra
     backbone = models.backbone
-    denoiser = models.denoiser
-    normalizer = models.normalizer
-    denormalizer = models.denormalizer
 
     # --- create the help variables
     global_step = \
@@ -94,7 +91,7 @@ def export_model(
     status = \
         ckpt.restore(tf.train.latest_checkpoint(checkpoint_directory))
     status.assert_existing_objects_matched()
-    #status.assert_consumed()
+
     logger.info("!!! Found checkpoint to restore !!!")
     logger.info(f"restored checkpoint "
                 f"at epoch [{int(global_epoch)}] "
