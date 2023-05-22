@@ -23,7 +23,9 @@
 				"activation_type": "hard",
 				"kernel_regularizer": "l1",
 				"kernel_initializer": "glorot_normal",
-				"filters_compress_ratio": 0.25
+				"filters_compress_ratio": 0.25,
+				"pool_size": [16, 16],
+				"strides_size": [8, 8]
 			}
 		},
 		"denoiser": {
