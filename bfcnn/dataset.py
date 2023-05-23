@@ -305,10 +305,11 @@ def dataset_builder(
 
     def prepare_data_fn(input_batch: tf.Tensor) -> \
             Tuple[tf.Tensor, tf.Tensor]:
-        input_batch = geometric_augmentation_fn(input_batch)
-        input_batch = tf.round(input_batch)
-        input_batch = tf.cast(input_batch, dtype=tf.float32)
-        noisy_batch = noise_augmentation_fn(input_batch)
+        with tf.device("CPU"):
+            input_batch = geometric_augmentation_fn(input_batch)
+            input_batch = tf.round(input_batch)
+            input_batch = tf.cast(input_batch, dtype=tf.float32)
+            noisy_batch = noise_augmentation_fn(input_batch)
         return input_batch, noisy_batch
 
     # --- define generator function from directory
@@ -329,20 +330,21 @@ def dataset_builder(
 
     # --- save the augmentation functions
     def load_image_fn(path: tf.Tensor) -> tf.Tensor:
-        img = \
-            load_image(
-                path=path,
-                image_size=None,
-                num_channels=num_channels,
-                expand_dims=True,
-                normalize=False)
-        crops = \
-            random_crops(
-                input_batch=img,
-                crop_size=(input_shape[0], input_shape[1]),
-                x_range=None,
-                y_range=None,
-                no_crops_per_image=no_crops_per_image)
+        with tf.device("CPU"):
+            img = \
+                load_image(
+                    path=path,
+                    image_size=None,
+                    num_channels=num_channels,
+                    expand_dims=True,
+                    normalize=False)
+            crops = \
+                random_crops(
+                    input_batch=img,
+                    crop_size=(input_shape[0], input_shape[1]),
+                    x_range=None,
+                    y_range=None,
+                    no_crops_per_image=no_crops_per_image)
         del img
 
         return crops
@@ -356,13 +358,15 @@ def dataset_builder(
                 reshuffle_each_iteration=True) \
             .map(
                 map_func=load_image_fn,
-                num_parallel_calls=tf.data.AUTOTUNE) \
+                num_parallel_calls=batch_size,
+                deterministic=False) \
             .map(map_func=prepare_data_fn,
-                 num_parallel_calls=tf.data.AUTOTUNE) \
+                 num_parallel_calls=tf.data.AUTOTUNE,
+                 deterministic=False) \
             .rebatch(
                 batch_size=batch_size,
                 drop_remainder=True) \
-            .prefetch(1)
+            .prefetch(buffer_size=tf.data.AUTOTUNE)
 
     return dataset_training
 

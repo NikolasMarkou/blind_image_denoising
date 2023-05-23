@@ -275,32 +275,33 @@ def train_loop(
                         epoch_finished_training = True
                         break
 
-                    with tf.GradientTape(watch_accessed_variables=False) as tape:
-                        tape.watch(trainable_variables)
-                        de = train_forward_step(n=noisy_batch)
+                    with tf.device("GPU"):
+                        with tf.GradientTape(watch_accessed_variables=False) as tape:
+                            tape.watch(trainable_variables)
+                            de = train_forward_step(n=noisy_batch)
 
-                        # compute the loss value for this mini-batch
-                        de_loss = \
-                            denoiser_loss_fn(
-                                gt_batch=input_batch,
-                                predicted_batch=de)
+                            # compute the loss value for this mini-batch
+                            de_loss = \
+                                denoiser_loss_fn(
+                                    gt_batch=input_batch,
+                                    predicted_batch=de)
 
-                        # combine losses
-                        model_loss = \
-                            model_loss_fn(
-                                model=ckpt.model)
-                        total_loss = \
-                            de_loss[TOTAL_LOSS_STR] + \
-                            model_loss[TOTAL_LOSS_STR]
+                            # combine losses
+                            model_loss = \
+                                model_loss_fn(
+                                    model=ckpt.model)
+                            total_loss = \
+                                de_loss[TOTAL_LOSS_STR] + \
+                                model_loss[TOTAL_LOSS_STR]
 
-                        gradient = \
-                            tape.gradient(
-                                target=total_loss,
-                                sources=trainable_variables)
+                            gradient = \
+                                tape.gradient(
+                                    target=total_loss,
+                                    sources=trainable_variables)
 
-                    for i, gradient_i in enumerate(gradient):
-                        gradients[i] += gradient_i / float(gpu_batches_per_step)
-                    del gradient
+                        for i, gradient_i in enumerate(gradient):
+                            gradients[i] += gradient_i / float(gpu_batches_per_step)
+                        del gradient
 
                 # apply gradient to change weights
                 optimizer.apply_gradients(
