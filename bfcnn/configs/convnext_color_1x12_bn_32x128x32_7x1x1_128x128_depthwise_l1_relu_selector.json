@@ -45,13 +45,16 @@
 		"visualization_number": 4,
 		"visualization_every": 1000,
 		"optimizer": {
-			"type": "cosine_decay_restarts",
-			"config": {
-				"t_mul": 1.1,
-				"m_mul": 0.9,
-				"alpha": 0.000001,
-				"decay_steps": 15000,
-				"learning_rate": 0.001
+			"type": "ADAM",
+			"schedule": {
+				"type": "cosine_decay_restarts",
+				"config": {
+					"t_mul": 2.0,
+					"m_mul": 0.9,
+					"alpha": 0.000001,
+					"decay_steps": 15000,
+					"learning_rate": 0.001
+				}
 			}
 		}
 	},
