@@ -366,7 +366,7 @@ def dataset_builder(
             .rebatch(
                 batch_size=batch_size,
                 drop_remainder=True) \
-            .prefetch(buffer_size=tf.data.AUTOTUNE)
+            .prefetch(buffer_size=1)
 
     return dataset_training
 

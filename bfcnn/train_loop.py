@@ -231,10 +231,11 @@ def train_loop(
         # init gradients with zero,
         # this has no effect when added with filled matrices later
         # but acts as a placeholder
-        gradients = [
-            tf.constant(0.0, dtype=tf.float32)
-            for _ in range(len(trainable_variables))
-        ]
+        with tf.device("GPU"):
+            gradients = [
+                tf.constant(0.0, dtype=tf.float32)
+                for _ in range(len(trainable_variables))
+            ]
 
         if 0 < total_steps <= ckpt.step:
             logger.info("total_steps reached [{0}]".format(
@@ -265,17 +266,17 @@ def train_loop(
                 start_time_forward_backward = time.time()
                 step_time_dataset = 0.0
 
-                for _ in range(gpu_batches_per_step):
-                    try:
-                        start_time_dataset = time.time()
-                        (input_batch, noisy_batch) = dataset_iterator.get_next()
-                        stop_time_dataset = time.time()
-                        step_time_dataset += (stop_time_dataset - start_time_dataset)
-                    except tf.errors.OutOfRangeError:
-                        epoch_finished_training = True
-                        break
+                with tf.device("GPU"):
+                    for _ in range(gpu_batches_per_step):
+                        try:
+                            start_time_dataset = time.time()
+                            (input_batch, noisy_batch) = dataset_iterator.get_next()
+                            stop_time_dataset = time.time()
+                            step_time_dataset += (stop_time_dataset - start_time_dataset)
+                        except tf.errors.OutOfRangeError:
+                            epoch_finished_training = True
+                            break
 
-                    with tf.device("GPU"):
                         with tf.GradientTape(watch_accessed_variables=False) as tape:
                             tape.watch(trainable_variables)
                             de = train_forward_step(n=noisy_batch)
@@ -299,9 +300,9 @@ def train_loop(
                                     target=total_loss,
                                     sources=trainable_variables)
 
-                        for i, gradient_i in enumerate(gradient):
-                            gradients[i] += gradient_i / float(gpu_batches_per_step)
-                        del gradient
+                            for i, gradient_i in enumerate(gradient):
+                                gradients[i] += gradient_i / float(gpu_batches_per_step)
+                            del gradient
 
                 # apply gradient to change weights
                 optimizer.apply_gradients(
