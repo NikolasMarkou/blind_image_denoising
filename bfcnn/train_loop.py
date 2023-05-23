@@ -228,11 +228,12 @@ def train_loop(
 
         # --- check if total steps reached
         finished_training = False
-        trainable_variables = ckpt.model.trainable_variables
         # init gradients with zero,
         # this has no effect when added with filled matrices later
         # but acts as a placeholder
         with tf.device("GPU"):
+            trainable_variables = ckpt.model.trainable_variables
+
             gradients = [
                 tf.constant(0.0, dtype=tf.float32)
                 for _ in range(len(trainable_variables))
