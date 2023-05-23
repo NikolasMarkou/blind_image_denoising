@@ -79,6 +79,7 @@ def train_loop(
     gpu_batches_per_step = int(train_config.get("gpu_batches_per_step", 1))
     if gpu_batches_per_step <= 0:
         raise ValueError("gpu_batches_per_step must be > 0")
+    gpu_batches_per_step_inv = tf.constant(1.0 / float(gpu_batches_per_step), dtype=tf.float32)
 
     global_total_epochs = \
         tf.constant(
@@ -301,7 +302,7 @@ def train_loop(
                                     sources=trainable_variables)
 
                             for i, gradient_i in enumerate(gradient):
-                                gradients[i] += gradient_i / float(gpu_batches_per_step)
+                                gradients[i] += (gradient_i * gpu_batches_per_step_inv)
                             del gradient
 
                     # apply gradient to change weights
