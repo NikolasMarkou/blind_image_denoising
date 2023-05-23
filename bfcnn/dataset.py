@@ -330,30 +330,25 @@ def dataset_builder(
 
     # --- save the augmentation functions
     def load_image_fn(path: tf.Tensor) -> tf.Tensor:
-        with tf.device("CPU"):
-            img = \
-                load_image(
-                    path=path,
-                    image_size=None,
-                    num_channels=num_channels,
-                    expand_dims=True,
-                    normalize=False)
-            crops = \
-                random_crops(
-                    input_batch=img,
-                    crop_size=(input_shape[0], input_shape[1]),
-                    x_range=None,
-                    y_range=None,
-                    no_crops_per_image=no_crops_per_image)
+        img = \
+            load_image(
+                path=path,
+                image_size=None,
+                num_channels=num_channels,
+                expand_dims=True,
+                normalize=False)
+        crops = \
+            random_crops(
+                input_batch=img,
+                crop_size=(input_shape[0], input_shape[1]),
+                x_range=None,
+                y_range=None,
+                no_crops_per_image=no_crops_per_image)
         del img
 
         return crops
 
     # --- create the dataset
-    options = tf.data.Options()
-    options.deterministic = False
-    options.threading.private_threadpool_size = 48
-
     dataset_training = \
         dataset_training \
             .shuffle(
@@ -370,8 +365,7 @@ def dataset_builder(
             .rebatch(
                 batch_size=batch_size,
                 drop_remainder=True) \
-            .prefetch(buffer_size=1) \
-            .with_options(options)
+            .prefetch(buffer_size=1)
 
     return dataset_training
 
