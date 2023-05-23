@@ -350,6 +350,10 @@ def dataset_builder(
         return crops
 
     # --- create the dataset
+    options = tf.data.Options()
+    options.deterministic = False
+    options.threading.private_threadpool_size = 48
+
     dataset_training = \
         dataset_training \
             .shuffle(
@@ -358,7 +362,7 @@ def dataset_builder(
                 reshuffle_each_iteration=True) \
             .map(
                 map_func=load_image_fn,
-                num_parallel_calls=batch_size,
+                num_parallel_calls=tf.data.AUTOTUNE,
                 deterministic=False) \
             .map(map_func=prepare_data_fn,
                  num_parallel_calls=tf.data.AUTOTUNE,
@@ -366,7 +370,8 @@ def dataset_builder(
             .rebatch(
                 batch_size=batch_size,
                 drop_remainder=True) \
-            .prefetch(buffer_size=1)
+            .prefetch(buffer_size=1) \
+            .with_options(options)
 
     return dataset_training
 
