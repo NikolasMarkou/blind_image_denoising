@@ -16,6 +16,7 @@ from .utilities import \
     layer_normalize, layer_denormalize
 from .backbone_unet import builder as builder_unet
 from .backbone_resnet import builder as builder_resnet
+from .backbone_convnext import builder as builder_convnext
 from .pyramid import \
     build_pyramid_model, \
     build_inverse_pyramid_model
@@ -233,7 +234,7 @@ def model_backbone_builder(
     elif model_type == "unet_pp":
         raise ValueError("not implemented")
     elif model_type == "convnext":
-        raise ValueError("not implemented")
+        backbone_builder = builder_convnext
     elif model_type == "segnet":
         raise ValueError("not implemented")
     else:
