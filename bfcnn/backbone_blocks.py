@@ -344,3 +344,18 @@ def unet_blocks(
     return x
 
 # ---------------------------------------------------------------------
+
+
+def details(input_layer):
+    x = input_layer
+    x_mean = tf.reduce_mean(x, axis=[1, 2], keepdims=True)
+    x_variance = \
+        tf.reduce_mean(
+            tf.square(x - x_mean), axis=[1, 2], keepdims=True)
+    x_sigma = tf.sqrt(x_variance + DEFAULT_EPSILON)
+    x = (x - x_mean) / x_sigma
+    x = tf.math.pow(tf.nn.tanh(8.0 * x), 4.0) * x
+    return x
+
+# ---------------------------------------------------------------------
+

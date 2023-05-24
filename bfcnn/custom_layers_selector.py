@@ -18,6 +18,20 @@ from .utilities import \
 
 # ---------------------------------------------------------------------
 
+def normalize_and_enhance(
+        input_layer,
+        a: float = 8.0,
+        b: float = 4.0):
+    x = input_layer
+    x_mean = tf.reduce_mean(x, axis=[1, 2], keepdims=True)
+    x_variance = \
+        tf.reduce_mean(
+            tf.square(x - x_mean), axis=[1, 2], keepdims=True)
+    x_sigma = tf.sqrt(x_variance + DEFAULT_EPSILON)
+    x = (x - x_mean) / x_sigma
+    return tf.math.pow(tf.nn.tanh(a * x), b) * x
+
+# ---------------------------------------------------------------------
 
 class ScaleType(Enum):
     LOCAL = 0
@@ -116,8 +130,8 @@ def selector_block(
         tf.keras.backend.int_shape(input_1_layer)[-1]
     filters_compress = \
         max(1, int(round(filters_target * filters_compress_ratio)))
-    use_bn = kwargs.get("use_bn", False)
     pool_size = kwargs.get("pool_size", (32, 32))
+    use_normalization = kwargs.get("use_normalization", False)
     strides_size = kwargs.get("strides_size", (pool_size[0]/4, pool_size[1]/4))
 
     selector_conv_0_params = dict(
@@ -153,8 +167,8 @@ def selector_block(
     # --- setup network
     x = selector_layer
 
-    if use_bn:
-        x = tf.keras.layers.BatchNormalization(center=False)(x)
+    if use_normalization:
+        x = normalize_and_enhance(x)
 
     if scale_type == ScaleType.LOCAL:
         # if training size != inference size you should use this
