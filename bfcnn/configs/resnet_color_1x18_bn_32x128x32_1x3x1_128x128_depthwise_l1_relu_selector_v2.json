@@ -9,7 +9,7 @@
 			"block_filters": [32, 128, 32],
 			"block_depthwise": [-1, 4, -1],
 			"block_regularizer": ["l1", "l1", "l1"],
-			"block_activation": ["leaky_relu", "leaky_relu", "linear"],
+			"block_activation": ["leaky_relu", "relu", "linear"],
 			"block_groups": [1, 1, 2],
 			"value_range": [0, 255],
 			"type": "resnet",
@@ -50,7 +50,7 @@
 				"type": "exponential_decay",
 				"config": {
 					"decay_rate": 0.9,
-					"decay_steps": 40000,
+					"decay_steps": 15000,
 					"learning_rate": 0.001
 				}
 			}
