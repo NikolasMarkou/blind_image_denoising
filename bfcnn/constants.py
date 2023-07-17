@@ -77,3 +77,10 @@ SUBSAMPLE_LOSS_FN_STR = "subsample"
 DENOISER_UQ_LOSS_FN_STR = "denoiser_uq"
 
 # ---------------------------------------------------------------------
+# plotting constants
+
+DEFAULT_DPI = 100
+DEFAULT_SYMMETRIC_FIGSIZE = (8, 8)
+DEFAULT_NON_SYMMETRIC_FIGSIZE = (18, 6)
+
+# ---------------------------------------------------------------------
