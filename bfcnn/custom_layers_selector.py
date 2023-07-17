@@ -13,23 +13,12 @@ from .custom_logger import logger
 from .constants import *
 from .utilities import \
     dense_wrapper, \
-    conv2d_wrapper
+    conv2d_wrapper, \
+    lowpass_filter, \
+    highpass_filter, \
+    local_normalization, \
+    global_normalization
 
-
-# ---------------------------------------------------------------------
-
-def normalize_and_enhance(
-        input_layer,
-        a: float = 8.0,
-        b: float = 4.0):
-    x = input_layer
-    x_mean = tf.reduce_mean(x, axis=[1, 2], keepdims=True)
-    x_variance = \
-        tf.reduce_mean(
-            tf.square(x - x_mean), axis=[1, 2], keepdims=True)
-    x_sigma = tf.sqrt(x_variance + DEFAULT_EPSILON)
-    x = (x - x_mean) / x_sigma
-    return tf.math.pow(tf.nn.tanh(a * x), b) * x
 
 # ---------------------------------------------------------------------
 
@@ -86,7 +75,6 @@ class ActivationType(Enum):
     def to_string(self) -> str:
         return self.name
 
-
 # ---------------------------------------------------------------------
 
 
@@ -131,7 +119,11 @@ def selector_block(
     filters_compress = \
         max(1, int(round(filters_target * filters_compress_ratio)))
     pool_size = kwargs.get("pool_size", (32, 32))
-    use_normalization = kwargs.get("use_normalization", False)
+    use_lowpass = kwargs.get("use_lowpass", False)
+    use_highpass = kwargs.get("use_highpass", False)
+    use_conv1x1_selector = kwargs.get("use_conv1x1_selector", False)
+    use_local_normalization = kwargs.get("use_local_normalization", False)
+    use_global_normalization = kwargs.get("use_global_normalization", False)
     strides_size = kwargs.get("strides_size", (pool_size[0]/4, pool_size[1]/4))
 
     selector_conv_0_params = dict(
@@ -167,8 +159,27 @@ def selector_block(
     # --- setup network
     x = selector_layer
 
-    if use_normalization:
-        x = normalize_and_enhance(x)
+    if use_conv1x1_selector:
+        x = \
+            tf.keras.layers.Conv2D(
+                kernel_size=1,
+                use_bias=False,
+                activation="linear",
+                filters=filters_target,
+                kernel_regularizer=kernel_regularizer,
+                kernel_initializer=kernel_initializer)(x)
+
+    if use_global_normalization:
+        x = global_normalization(x)
+
+    if use_local_normalization:
+        x = local_normalization(x, pool_size=pool_size)
+
+    if use_lowpass:
+        x = lowpass_filter(x, a=4.0, b=4.0)
+
+    if use_highpass:
+        x = highpass_filter(x, a=4.0, b=4.0)
 
     if scale_type == ScaleType.LOCAL:
         # if training size != inference size you should use this
