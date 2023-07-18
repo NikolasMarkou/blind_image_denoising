@@ -44,7 +44,7 @@ class DenoiserModule(tf.Module, ABC):
         """
         x = tf.cast(image, dtype=tf.float32)
 
-        x = self._model_hydra(x)[0]
+        x = self._model_hydra(x)
 
         # --- cast to uint8
         if self._cast_to_uint8:

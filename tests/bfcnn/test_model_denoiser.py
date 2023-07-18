@@ -43,12 +43,9 @@ def test_model_builder(config):
             dtype=tf.float32)
         # denoiser_output,
         # superres_output
-        d, sr = models.hydra(x)
+        d = models.hydra(x)
 
         assert d.shape == x.shape
-        assert sr.shape[0] == x.shape[0]
-        assert sr.shape[1] == x.shape[1] * 2
-        assert sr.shape[2] == x.shape[2] * 2
 
     # export
     denoiser_module = \
