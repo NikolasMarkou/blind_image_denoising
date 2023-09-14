@@ -1,6 +1,7 @@
 import copy
 import tensorflow as tf
 import tensorflow_addons as tfa
+from collections import namedtuple
 from typing import Dict, Callable, Iterator, Tuple
 
 # ---------------------------------------------------------------------
@@ -18,10 +19,21 @@ DATASET_TESTING_FN_STR = "dataset_testing"
 DATASET_TRAINING_FN_STR = "dataset_training"
 DATASET_VALIDATION_FN_STR = "dataset_validation"
 NOISE_AUGMENTATION_FN_STR = "noise_augmentation"
-INPAINT_AUGMENTATION_FN_STR = "inpaint_augmentation"
-SUPERRES_AUGMENTATION_FN_STR = "superres_augmentation"
 GEOMETRIC_AUGMENTATION_FN_STR = "geometric_augmentation"
 
+
+# ---------------------------------------------------------------------
+
+
+DatasetResults = namedtuple(
+    "DatasetResults",
+    {
+        "config",
+        "batch_size",
+        "input_shape",
+        "training",
+        "testing"
+    })
 
 # ---------------------------------------------------------------------
 
@@ -199,7 +211,7 @@ def dataset_builder(
                     tf.expand_dims(
                         tf.image.adjust_jpeg_quality(
                             image=tf.squeeze(tf.cast(noisy_batch, dtype=tf.float32) / 255, axis=0),
-                            jpeg_quality=50
+                            jpeg_quality=25
                         ), axis=0) * 255,
                     false_fn=lambda: noisy_batch
                 )
@@ -292,7 +304,7 @@ def dataset_builder(
                     true_fn=lambda:
                     tfa.image.gaussian_filter2d(
                         image=noisy_batch,
-                        sigma=1,
+                        sigma=0.5,
                         filter_shape=(5, 5)),
                     false_fn=lambda: noisy_batch
                 )
@@ -374,6 +386,12 @@ def dataset_builder(
                 drop_remainder=True) \
             .prefetch(buffer_size=1)
 
-    return dataset_training
+    return (
+        DatasetResults(
+            batch_size=batch_size,
+            input_shape=input_shape,
+            training=dataset_training,
+            testing=None,
+            config=config))
 
 # ---------------------------------------------------------------------

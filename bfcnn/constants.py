@@ -4,6 +4,7 @@ from typing import Union, Dict
 # ---------------------------------------------------------------------
 
 DEFAULT_EPSILON = 1e-3
+DEFAULT_RELU_BIAS = 0.1
 DEFAULT_BN_EPSILON = 1e-3
 DEFAULT_LN_EPSILON = 1e-3
 DEFAULT_BN_MOMENTUM = 0.995
@@ -13,6 +14,7 @@ DEFAULT_CHANNELWISE_MULTIPLIER_L1 = 0.1
 TYPE_STR = "type"
 MODEL_STR = "model"
 CONFIG_STR = "config"
+DATASET_STR = "dataset"
 PARAMETERS_STR = "parameters"
 BATCH_SIZE_STR = "batch_size"
 INPUT_SHAPE_STR = "input_shape"
@@ -89,3 +91,5 @@ DEFAULT_SYMMETRIC_FIGSIZE = (8, 8)
 DEFAULT_NON_SYMMETRIC_FIGSIZE = (18, 6)
 
 # ---------------------------------------------------------------------
+
+CONFIG_PATH_STR = "config.json"

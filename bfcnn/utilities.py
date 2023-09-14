@@ -1,5 +1,6 @@
 import os
 import json
+import copy
 from enum import Enum
 
 import numpy as np
@@ -15,6 +16,7 @@ from typing import List, Tuple, Iterable
 from .constants import *
 from .custom_logger import logger
 from .custom_layers import \
+    Mish, \
     Multiplier, \
     ChannelwiseMultiplier
 from .regularizers import builder as regularizer_builder
@@ -1010,5 +1012,30 @@ def create_checkpoint(
         if os.path.isdir(str(path)):
             ckpt.restore(tf.train.latest_checkpoint(str(path))).expect_partial()
     return ckpt
+
+# ---------------------------------------------------------------------
+
+
+def save_config(
+        config: Union[str, Dict, Path],
+        filename: Union[str, Path]) -> None:
+    """
+    save configuration to target filename
+
+    :param config: dict configuration or path to json configuration
+    :param filename: output filename
+    :return: nothing if success, exception if failed
+    """
+    # --- argument checking
+    config = load_config(config)
+    if not filename:
+        raise ValueError("filename cannot be null or empty")
+
+    # --- log
+    logger.info(f"saving configuration pipeline to [{str(filename)}]")
+
+    # --- dump config to filename
+    with open(filename, "w") as f:
+        return json.dump(obj=config, fp=f, indent=4)
 
 # ---------------------------------------------------------------------
