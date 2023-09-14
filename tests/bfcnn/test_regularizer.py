@@ -13,7 +13,7 @@ sys.path.append(os.getcwd() + "/../")
 # ---------------------------------------------------------------------
 
 import bfcnn
-from bfcnn.regularizer import SoftOrthonormalConstraintRegularizer
+from bfcnn.regularizers import SoftOrthonormalConstraintRegularizer
 
 # ---------------------------------------------------------------------
 
