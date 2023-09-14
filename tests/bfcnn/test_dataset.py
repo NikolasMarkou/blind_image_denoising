@@ -107,7 +107,8 @@ import bfcnn
         }]
     }])
 def test_dataset_builder_build(config):
-    dataset_training = bfcnn.dataset.dataset_builder(config=config)
+    d = bfcnn.dataset.dataset_builder(config=config)
+    dataset_training = d.training
 
     for (input_batch, noisy_batch) in dataset_training:
         assert input_batch.shape[0] <= config["batch_size"]

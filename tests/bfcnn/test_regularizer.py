@@ -33,7 +33,7 @@ def test_4d_reshape_to_2d(shape):
             minval=-1,
             maxval=+1,
             shape=shape)
-    x_reshaped = bfcnn.regularizer.reshape_to_2d(x_random)
+    x_reshaped = bfcnn.regularizers.reshape_to_2d(x_random)
     assert x_reshaped.shape[0] == shape[3]
     assert x_reshaped.shape[1] == (shape[0] * shape[1] * shape[2])
 
@@ -55,7 +55,7 @@ def test_4d_reshape_to_2d(shape):
             minval=-1,
             maxval=+1,
             shape=shape)
-    x_reshaped = bfcnn.regularizer.reshape_to_2d(x_random)
+    x_reshaped = bfcnn.regularizers.reshape_to_2d(x_random)
     assert x_reshaped.shape[0] == shape[1]
     assert x_reshaped.shape[1] == shape[0]
 
@@ -77,7 +77,7 @@ def test_4d_wt_x_w(shape):
             minval=-1,
             maxval=+1,
             shape=shape)
-    wt_w = bfcnn.regularizer.wt_x_w(x_random)
+    wt_w = bfcnn.regularizers.wt_x_w(x_random)
     assert wt_w.shape[0] == shape[3]
     assert wt_w.shape[1] == shape[3]
 
@@ -99,7 +99,7 @@ def test_2d_wt_x_w(shape):
             minval=-1,
             maxval=+1,
             shape=shape)
-    wt_w = bfcnn.regularizer.wt_x_w(x_random)
+    wt_w = bfcnn.regularizers.wt_x_w(x_random)
     assert wt_w.shape[0] == shape[1]
     assert wt_w.shape[1] == shape[1]
 
@@ -122,7 +122,7 @@ def test_create_4d_soft_orthogonal_constraint(shape):
             maxval=+1,
             shape=shape)
     regularizer = \
-        bfcnn.regularizer.SoftOrthonormalConstraintRegularizer(1.0)
+        bfcnn.regularizers.SoftOrthonormalConstraintRegularizer(1.0)
     result = regularizer(x_random)
     assert result >= 0
 
@@ -145,7 +145,7 @@ def test_create_4d_erf_regularizer(shape):
             maxval=+1,
             shape=shape)
     regularizer = \
-        bfcnn.regularizer.ErfRegularizer(
+        bfcnn.regularizers.ErfRegularizer(
             l1_coefficient=1.0,
             l2_coefficient=1.0)
     result = regularizer(x_random)
@@ -170,7 +170,7 @@ def test_create_2d_soft_orthogonal_constraint(shape):
             maxval=+1,
             shape=shape)
     regularizer = \
-        bfcnn.regularizer.SoftOrthonormalConstraintRegularizer(1.0)
+        bfcnn.regularizers.SoftOrthonormalConstraintRegularizer(1.0)
     result = regularizer(x_random)
     assert result >= 0
 
@@ -186,7 +186,7 @@ def test_create_2d_soft_orthogonal_constraint(shape):
         ["soft_orthogonal", "l1"]
     ])
 def test_builder(config):
-    prune_fns = bfcnn.regularizer.builder(config=config)
+    prune_fns = bfcnn.regularizers.builder(config=config)
     assert prune_fns is not None
 
 # ---------------------------------------------------------------------
