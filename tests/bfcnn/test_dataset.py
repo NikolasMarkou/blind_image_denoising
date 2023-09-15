@@ -107,9 +107,10 @@ import bfcnn
         }]
     }])
 def test_dataset_builder_build(config):
-    dataset_training = bfcnn.dataset.dataset_builder(config=config)
+    d = bfcnn.dataset.dataset_builder(config=config)
+    dataset_training = d.training
 
-    for (input_batch, noisy_batch, downsampled_batch) in dataset_training:
+    for (input_batch, noisy_batch) in dataset_training:
         assert input_batch.shape[0] <= config["batch_size"]
         assert input_batch.shape[1] == config["input_shape"][0]
         assert input_batch.shape[2] == config["input_shape"][1]
@@ -117,10 +118,6 @@ def test_dataset_builder_build(config):
         assert noisy_batch.shape[0] <= config["batch_size"]
         assert noisy_batch.shape[1] == config["input_shape"][0]
         assert noisy_batch.shape[2] == config["input_shape"][1]
-
-        assert downsampled_batch.shape[0] <= config["batch_size"]
-        assert downsampled_batch.shape[1] == config["input_shape"][0] / 2
-        assert downsampled_batch.shape[2] == config["input_shape"][1] / 2
 
         if config["color_mode"] == "grayscale":
             assert input_batch.shape[3] == 1

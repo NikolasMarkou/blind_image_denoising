@@ -47,6 +47,7 @@ def builder(
     builds a u-net model
 
     :param input_dims: Models input dimensions
+    :param no_levels: Number of levels (depth) in the u-net
     :param no_layers: Number of resnet layers
     :param kernel_size: kernel size of base convolutional layer
     :param filters: filters of base convolutional layer
@@ -218,7 +219,7 @@ def builder(
     if add_initial_bn:
         x = tf.keras.layers.BatchNormalization(**bn_params)(x)
 
-    # add resnet blocks
+    # add unet blocks
     x = \
         unet_blocks(
             input_layer=x,

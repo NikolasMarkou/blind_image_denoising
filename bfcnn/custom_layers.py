@@ -3,6 +3,37 @@ import tensorflow as tf
 from typing import Any, List
 from tensorflow import keras
 
+
+# ---------------------------------------------------------------------
+
+
+class Mish(tf.keras.layers.Layer):
+    """
+    Mish: A Self Regularized Non-Monotonic Neural Activation Function
+    https://arxiv.org/abs/1908.08681v1
+
+    x = x * tanh(softplus(x))
+    """
+    def __init__(self,
+                 name=None,
+                 **kwargs):
+        super(Mish, self).__init__(
+            trainable=False,
+            name=name,
+            **kwargs)
+
+    def build(self, input_shape):
+        super(Mish, self).build(input_shape)
+
+    def call(self, inputs):
+        return inputs * tf.math.tanh(tf.math.softplus(inputs))
+
+    def compute_output_shape(self, input_shape):
+        return input_shape
+
+    def get_config(self):
+        return {}
+
 # ---------------------------------------------------------------------
 
 

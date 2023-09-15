@@ -10,7 +10,7 @@ from typing import Dict, Tuple, Union, List
 # ---------------------------------------------------------------------
 
 from .custom_logger import logger
-from .regularizer import gaussian_kernel
+from .regularizers import gaussian_kernel
 from .constants import CONFIG_STR, TYPE_STR
 
 # ---------------------------------------------------------------------

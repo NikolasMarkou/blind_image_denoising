@@ -15,6 +15,90 @@ from .custom_layers import ChannelwiseMultiplier, Multiplier
 
 # ---------------------------------------------------------------------
 
+def convnext_block(
+        input_layer,
+        filters: int = -1,
+        kernel_size: int = 5,
+        use_bias: bool = False,
+        activation: str = "relu",
+        bn_params: Dict = None,
+        ln_params: Dict = None,
+        upsample: bool = False,
+        downsample: bool = False,
+        kernel_regularizer: str = "l2",
+        kernel_initializer: str = "glorot_normal"):
+    # ----
+    conv_params_res_1 = dict(
+        kernel_size=kernel_size,
+        depth_multiplier=1,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation="linear",
+        depthwise_regularizer=kernel_regularizer,
+        depthwise_initializer=kernel_initializer
+    )
+
+    if downsample:
+        conv_params_res_1["strides"] = (2, 2)
+        conv_params_res_1["kernel_size"] = (7, 7)
+
+    if upsample:
+        conv_params_res_1["kernel_size"] = (7, 7)
+
+    conv_params_res_2 = dict(
+        kernel_size=1,
+        filters=filters * 4,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation=activation,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
+    conv_params_res_3 = dict(
+        kernel_size=1,
+        filters=filters,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation="linear",
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
+    x = input_layer
+
+    if upsample:
+        x = (
+            tf.keras.layers.UpSampling2D(
+                size=(2, 2),
+                interpolation="nearest")(x))
+
+    x = \
+        conv2d_wrapper(
+            input_layer=x,
+            bn_post_params=bn_params,
+            ln_post_params=ln_params,
+            conv_params=conv_params_res_1)
+    x = \
+        conv2d_wrapper(
+            input_layer=x,
+            bn_post_params=bn_params,
+            ln_post_params=ln_params,
+            conv_params=conv_params_res_2)
+    x = \
+        conv2d_wrapper(
+            input_layer=x,
+            bn_post_params=None,
+            ln_post_params=None,
+            conv_params=conv_params_res_3)
+
+    return x
+
+# ---------------------------------------------------------------------
+
 
 def builder(
         input_dims,

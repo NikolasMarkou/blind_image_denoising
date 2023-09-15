@@ -217,14 +217,14 @@ after the DepthWise operations. This is to enforce sparsity with the differentia
 Our addition (not in the paper) is a differentiable relu for specific operations.
 ![](images/readme/differentiable_relu.png "Differentiable RELU")
 
-#### [Soft Orthonormal Regularization](bfcnn/regularizer.py)
+#### [Soft Orthonormal Regularization](bfcnn/regularizers.py)
 Added optional orthogonality regularization constraint as found in paper [Can We Gain More from Orthogonality Regularizations in Training Deep CNNs?](https://arxiv.org/abs/1810.09102).
 This forces a soft ortho-normal constraint on the kernels.
 
-#### [Soft Orthogonal Regularization](bfcnn/regularizer.py)
+#### [Soft Orthogonal Regularization](bfcnn/regularizers.py)
 Custom regularization that forces a soft orthogonal constraint on the kernels while still allowing the kernels to grow independently or shrink to almost zero.
 
-#### [Effective Receptive Field Regularization](bfcnn/regularizer.py)
+#### [Effective Receptive Field Regularization](bfcnn/regularizers.py)
 Custom regularization that gives incentive to convolutional kernels to have higher weights away from the center
 
 ## References
