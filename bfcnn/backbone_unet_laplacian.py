@@ -342,8 +342,6 @@ def builder(
         x = \
             conv2d_wrapper(
                 input_layer=x,
-                ln_post_params=None,
-                bn_post_params=None,
                 conv_params=params)
 
     # --- build backbone
