@@ -246,20 +246,14 @@ def model_backbone_builder(
 
 def model_denoiser_builder(
         config: Dict,
+        name: str = "denoiser_head",
         **kwargs) -> DenoiserBuilderResults:
     """
     builds the denoiser model on top of the backbone layer
 
     :param config: dictionary with the denoiser configuration
-
+    :param name: name of the model, should be unique
     :return: denoiser head model
-    """
-    """
-    builds the denoiser model on top of the backbone layer
-
-    :param config: dictionary with the denoiser configuration
-
-    :return: denoiser head model, options
     """
     # --- argument checking
     logger.info(f"building denoiser model with [{config}]")
@@ -310,7 +304,7 @@ def model_denoiser_builder(
             outputs=[
                 x_expected,
             ],
-            name=f"denoiser_head")
+            name=name)
 
     return \
         DenoiserBuilderResults(
