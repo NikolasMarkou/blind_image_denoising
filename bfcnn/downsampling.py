@@ -46,7 +46,7 @@ def downsample(
             tf.keras.layers.MaxPooling2D(
                 pool_size=(2, 2), padding="same", strides=(2, 2))(x)
     elif downsample_type in ["strides"]:
-        x = x[:, :, :, ::2]
+        x = x[:, ::2, ::2, :]
     else:
         raise ValueError(
             f"don't know how to handle [{downsample_type}]")
