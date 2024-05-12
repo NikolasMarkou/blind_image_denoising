@@ -68,7 +68,6 @@ def builder(
         depth_drop_rate: float = 0.0,
         spatial_dropout_rate: float = -1,
         multiple_scale_outputs: bool = False,
-        attention_block_passes: List[Tuple[int, int]] = [],
         r_ratio: float = 0.25,
         output_layer_name: str = "intermediate_output",
         name="unet_laplacian",
@@ -115,8 +114,6 @@ def builder(
     :param use_soft_orthonormal_regularization: if true use soft orthonormal regularization on the 1x1 middle kernels
     :param kernel_regularizer: Kernel weight regularizer
     :param kernel_initializer: Kernel weight initializer
-    :param attention_block_passes: List of tuples (depth, passes),
-        which depth of the encoder to add the attention block and how many passes, example [(3,1),(4,2)]
     :param dropout_rate: probability of dropout, negative to turn off
     :param spatial_dropout_rate: probability of spatial dropout, negative to turn off
     :param depth_drop_rate: probability of residual block dropout, negative or zero to turn off
@@ -163,10 +160,6 @@ def builder(
         raise ValueError(
             "only one use_soft_orthonormal_regularization or "
             "use_soft_orthogonal_regularization must be turned on")
-
-    if attention_block_passes is None or \
-            not isinstance(attention_block_passes, List):
-        attention_block_passes = []
 
     kernel_initializer = kernel_initializer.strip().lower()
 
