@@ -1073,7 +1073,7 @@ def multiscales_generator_fn(
         clip_values: bool = False,
         round_values: bool = False,
         normalize_values: bool = False,
-        concrete_functions: bool = True,
+        concrete_functions: bool = False,
         jit_compile: bool = False):
     kernel = (
         tf.constant(
@@ -1082,12 +1082,11 @@ def multiscales_generator_fn(
                 kernel_size=kernel_size,
                 nsig=nsig).astype("float32")))
 
-    def multiscales(n: tf.Tensor) -> List[tf.Tensor]:
-        scales = []
+    def multiscale_fn(n: tf.Tensor) -> List[tf.Tensor]:
         n_scale = n
+        scales = [n_scale]
 
         for _ in range(no_scales):
-            scales.append(n_scale)
             # downsample, clip and round
             n_scale = tf.nn.depthwise_conv2d(
                 input=n_scale,
@@ -1110,11 +1109,12 @@ def multiscales_generator_fn(
                 n_scale = \
                     n_scale / \
                     tf.reduce_sum(n_scale, axis=-1, keepdims=True)
+            scales.append(n_scale)
 
         return scales
 
     result = tf.function(
-        func=multiscales,
+        func=multiscale_fn,
         input_signature=[
             tf.TensorSpec(shape=shape, dtype=tf.float32),
         ],

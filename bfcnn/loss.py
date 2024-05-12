@@ -213,7 +213,10 @@ def loss_function_builder(
         if use_ssim:
             ssim_loss = \
                 tf.reduce_mean(
-                    tf.image.ssim(gt_batch, predicted_batch, 255.0))
+                    tf.image.ssim(
+                        img1=gt_batch,
+                        img2=predicted_batch,
+                        max_val=255.0))
             ssim_loss = 1.0 - ssim_loss
 
         # loss prediction on mse

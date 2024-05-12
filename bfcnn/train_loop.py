@@ -226,13 +226,17 @@ def train_loop(
         denoiser_index = [
             i for i in range(0, int(model_no_outputs))
         ]
+        sizes = [
+            (int(input_shape[0] / (2 ** i)), int(input_shape[1] / (2 ** i)))
+            for i in range(len(denoiser_index))
+        ]
         logger.info(f"model denoiser_index: {denoiser_index}")
         denoiser_loss_fn_list = [
             tf.function(
                 func=loss_fn_map[DENOISER_LOSS_FN_STR],
                 input_signature=[
-                    tf.TensorSpec(shape=[batch_size, None, None, no_color_channels], dtype=tf.float32),
-                    tf.TensorSpec(shape=[batch_size, None, None, no_color_channels], dtype=tf.float32),
+                    tf.TensorSpec(shape=[batch_size, sizes[i][0], sizes[i][1], no_color_channels], dtype=tf.float32),
+                    tf.TensorSpec(shape=[batch_size, sizes[i][0], sizes[i][1], no_color_channels], dtype=tf.float32),
                 ],
                 reduce_retracing=True)
             for i in range(len(denoiser_index))
@@ -246,7 +250,6 @@ def train_loop(
                 round_values=True,
                 jit_compile=False,
                 normalize_values=False,
-                concrete_functions=True
             )
 
         @tf.function(reduce_retracing=True, jit_compile=False)
@@ -276,7 +279,7 @@ def train_loop(
                 multiscales_fn(p_input_image_batch)
 
             with tf.GradientTape() as tape:
-                p_predictions = train_step(p_noisy_image_batch)
+                p_predictions = train_step(n=p_noisy_image_batch)
 
                 # get denoise loss for each depth,
                 for i in range(len(denoiser_index)):
