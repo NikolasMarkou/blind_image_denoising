@@ -259,11 +259,11 @@ def train_loop(
             return results[denoiser_index[0]]
 
         @tf.function(reduce_retracing=True)
-        def apply_grads(internal_optimizer,
-                        internal_grads,
-                        internal_trainable_variables):
-            internal_optimizer.apply_gradients(
-                zip(internal_grads, internal_trainable_variables))
+        def apply_grads(_optimizer,
+                        _grads,
+                        _trainable_variables):
+            _optimizer.apply_gradients(
+                zip(_grads, _trainable_variables))
 
         @tf.function(
             autograph=True,
@@ -276,41 +276,40 @@ def train_loop(
                 _percentage_done: tf.Tensor,
                 _trainable_variables: List):
 
-            internal_all_denoiser_loss = [None] * len(denoiser_index)
-            internal_total_denoiser_loss = tf.constant(0.0, dtype=tf.float32)
+            _all_denoiser_loss = [None] * len(denoiser_index)
+            _total_denoiser_loss = tf.constant(0.0, dtype=tf.float32)
 
-            internal_scale_gt_image_batch = \
+            _scale_gt_image_batch = \
                 multiscales_fn(_input_image_batch)
 
             with tf.GradientTape() as tape:
-                internal_predictions = train_step(_noisy_image_batch)
-                internal_prediction_denoiser = [internal_predictions[idx] for idx in denoiser_index]
+                _predictions = train_step(_noisy_image_batch)
 
                 # get denoise loss for each depth,
                 for i in range(len(denoiser_index)):
-                    internal_loss = denoiser_loss_fn_list[i](
-                        input_batch=internal_scale_gt_image_batch[i],
-                        predicted_batch=internal_prediction_denoiser[i])
-                    internal_total_denoiser_loss += \
-                        internal_loss[TOTAL_LOSS_STR] * _depth_weight[i]
-                    internal_all_denoiser_loss[i] = internal_loss
+                    _loss = denoiser_loss_fn_list[i](
+                        input_batch=_scale_gt_image_batch[i],
+                        predicted_batch=_predictions[i])
+                    _total_denoiser_loss += \
+                        _loss[TOTAL_LOSS_STR] * _depth_weight[i]
+                    _all_denoiser_loss[i] = _loss
 
                 # combine losses
-                internal_model_loss = \
+                _model_loss = \
                     model_loss_fn(model=ckpt.model)
-                internal_total_loss = \
-                    internal_total_denoiser_loss * (1.0 - _percentage_done) + \
-                    internal_model_loss[TOTAL_LOSS_STR]
-                internal_grads = \
-                    tape.gradient(target=internal_total_loss,
+                _total_loss = \
+                    _total_denoiser_loss * (1.0 - _percentage_done) + \
+                    _model_loss[TOTAL_LOSS_STR]
+                _grads = \
+                    tape.gradient(target=_total_loss,
                                   sources=_trainable_variables)
 
             return (
-                internal_total_loss,
-                internal_model_loss,
-                internal_all_denoiser_loss,
-                internal_predictions,
-                internal_grads
+                _total_loss,
+                _model_loss,
+                _all_denoiser_loss,
+                _predictions,
+                _grads
             )
 
         if ckpt.step == 0:
@@ -403,12 +402,12 @@ def train_loop(
 
                 for input_image_batch, noisy_image_batch in dataset_train:
                     if counter == 0:
+                        start_time_forward_backward = time.time()
                         # zero out gradients
                         for i in range(len(gradients)):
                             gradients[i].assign(gradients[i] * 0.0)
-                        start_time_forward_backward = time.time()
 
-                    total_loss, model_loss, all_denoiser_loss, predictions, tmp_grads = \
+                    total_loss, model_loss, all_denoiser_loss, predictions, grads = \
                         train_step_single_gpu(
                             _input_image_batch=input_image_batch,
                             _noisy_image_batch=noisy_image_batch,
@@ -416,7 +415,7 @@ def train_loop(
                             _percentage_done=percentage_done,
                             _trainable_variables=trainable_variables)
 
-                    for i, grad in enumerate(tmp_grads):
+                    for i, grad in enumerate(grads):
                         gradients[i].assign_add(grad)
 
                     if counter >= gpu_batches_per_step:
@@ -429,9 +428,9 @@ def train_loop(
                         # apply gradient to change weights
                         # this is a hack to stop retracing the update function
                         # https://stackoverflow.com/questions/77028664/tf-keras-optimizers-adam-apply-gradients-triggers-tf-function-retracing
-                        apply_grads(internal_optimizer=optimizer,
-                                    internal_grads=gradients,
-                                    internal_trainable_variables=trainable_variables)
+                        apply_grads(_optimizer=optimizer,
+                                    _grads=gradients,
+                                    _trainable_variables=trainable_variables)
 
                     else:
                         counter.assign_add(delta=1)
