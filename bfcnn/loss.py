@@ -38,25 +38,6 @@ def gar_loss(
 # ---------------------------------------------------------------------
 
 
-def psnr(
-        original: tf.Tensor,
-        prediction: tf.Tensor,
-        max_val: float = 255.0) -> tf.Tensor:
-    """
-    Peak signal-to-noise ratio expressed in dB
-
-    :param original: original image batch
-    :param prediction: denoised image batch
-    :param max_val:
-    """
-    # psnr of prediction per image pair
-    psnr_batch = tf.image.psnr(original, prediction, max_val=max_val)
-
-    return tf.reduce_mean(psnr_batch, axis=None)
-
-# ---------------------------------------------------------------------
-
-
 def mae_diff(
         error: tf.Tensor,
         hinge: float = 0.0,
@@ -247,7 +228,11 @@ def loss_function_builder(
 
         # snr
         peak_signal_to_noise_ratio = \
-            psnr(gt_batch, predicted_batch)
+            tf.reduce_mean(
+                tf.image.psnr(
+                    a=gt_batch,
+                    b=predicted_batch,
+                    max_val=255.0))
 
         return {
             TOTAL_LOSS_STR:
