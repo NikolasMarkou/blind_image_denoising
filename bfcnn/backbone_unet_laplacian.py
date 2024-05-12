@@ -389,8 +389,6 @@ def builder(
             x = (
                 downsample(x,
                            downsample_type=downsample_type,
-                           ln_post_params=None,
-                           bn_post_params=None,
                            conv_params=conv_params_down[d]))
 
     # --- VERY IMPORTANT
