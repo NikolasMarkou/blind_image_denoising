@@ -373,6 +373,7 @@ def conv2d_wrapper(
         input_layer,
         conv_params: Dict,
         bn_params: Dict = None,
+        ln_params: Dict = None,
         pre_activation: Union[str, tf.keras.layers.Layer] = None,
         post_activation: Union[str, tf.keras.layers.Layer] = None,
         sample_mean_removal: bool = False,
@@ -386,6 +387,7 @@ def conv2d_wrapper(
     :param input_layer: the layer to operate on
     :param conv_params: conv2d parameters
     :param bn_params: batchnorm parameters, None to disable bn
+    :param ln_params: layernorm parameters, None to disable bn
     :param pre_activation: activation after the batchnorm, None to disable
     :param post_activation: activation after the convolution, None to disable
     :param sample_mean_removal: if true, remove the whole sample mean after convolution
@@ -429,6 +431,8 @@ def conv2d_wrapper(
 
     if bn_params:
         x = tf.keras.layers.BatchNormalization(**bn_params)(x)
+    if ln_params:
+        x = tf.keras.layers.LayerNormalization(**ln_params)(x)
     if pre_activation:
         x = activation_wrapper(pre_activation)(x)
 

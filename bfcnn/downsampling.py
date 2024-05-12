@@ -21,9 +21,7 @@ def downsample(
         downsample_type: str,
         conv_params: Dict = None,
         bn_params: Dict = None,
-        ln_params: Dict = None,
-        bn_post_params: Dict = None,
-        ln_post_params: Dict = None):
+        ln_params: Dict = None):
     """
 
     """
@@ -42,8 +40,6 @@ def downsample(
                 input_layer=x,
                 bn_params=bn_params,
                 ln_params=ln_params,
-                bn_post_params=bn_post_params,
-                ln_post_params=ln_post_params,
                 conv_params=params)
     elif downsample_type in ["maxpool"]:
         x = \

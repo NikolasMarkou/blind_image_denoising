@@ -42,8 +42,6 @@ def upsample(
             input_layer=x,
             bn_params=bn_params,
             ln_params=ln_params,
-            bn_post_params=bn_post_params,
-            ln_post_params=ln_post_params,
             conv_params=params,
             conv_type=ConvType.CONV2D_TRANSPOSE)
     elif upsample_type in ["upsample_bilinear_conv2d"]:
@@ -58,8 +56,6 @@ def upsample(
             input_layer=x,
             bn_params=bn_params,
             ln_params=ln_params,
-            bn_post_params=bn_post_params,
-            ln_post_params=ln_post_params,
             conv_params=params,
             conv_type=ConvType.CONV2D)
     elif upsample_type in ["upsample_nearest_conv2d"]:
@@ -74,8 +70,6 @@ def upsample(
             input_layer=x,
             bn_params=bn_params,
             ln_params=ln_params,
-            bn_post_params=bn_post_params,
-            ln_post_params=ln_post_params,
             conv_params=params,
             conv_type=ConvType.CONV2D)
     elif upsample_type in ["nn", "nearest"]:
