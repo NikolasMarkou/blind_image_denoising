@@ -14,9 +14,9 @@ from typing import List, Tuple, Iterable
 # ---------------------------------------------------------------------
 
 from .constants import *
-from .custom_layers import Mish
 from .custom_logger import logger
 from .regularizers import builder as regularizer_builder
+from .custom_layers import Mish, ChannelwiseMultiplier, GlobalLearnableMultiplier
 
 # ---------------------------------------------------------------------
 
@@ -342,7 +342,7 @@ def conv2d_wrapper(
     if conv_activation.lower() in ["mish"]:
         # Mish: A Self Regularized Non-Monotonic Activation Function (2020)
         x = Mish()(x)
-    elif conv_activation.lower() in ["leaky_relu", "leakyrelu"]:
+    elif conv_activation.lower() in ["leaky_relu", "leakyrelu", "leaky_relu_01"]:
         # leaky relu, practically same us Relu
         # with very small negative slope to allow gradient flow
         x = tf.keras.layers.LeakyReLU(alpha=0.1)(x)
@@ -466,11 +466,7 @@ def conv2d_wrapper(
                 activation="relu")(x)
     if multiplier_scaling:
         x = \
-            Multiplier(
-                multiplier=1.0,
-                regularizer=keras.regularizers.L1(DEFAULT_MULTIPLIER_L1),
-                trainable=True,
-                activation="relu")(x)
+            GlobalLearnableMultiplier()(x)
     return x
 
 # ---------------------------------------------------------------------
