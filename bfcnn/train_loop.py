@@ -364,7 +364,6 @@ def train_loop(
 
                     for i, grad in enumerate(gradient):
                         gradients[i] += grad
-                    del gradient
 
                 # average out gradients
                 for i in range(len(gradients)):

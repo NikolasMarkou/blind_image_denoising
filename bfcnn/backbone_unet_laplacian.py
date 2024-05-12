@@ -34,7 +34,7 @@ def builder(
         input_dims,
         depth: int = 5,
         width: int = 1,
-        backbone_kernel_size: int = 5,
+        encoder_kernel_size: int = 5,
         kernel_size: int = -1,
         filters: int = 32,
         max_filters: int = -1,
@@ -45,8 +45,8 @@ def builder(
         downsample_type: str = "strides",
         downsample_activation: str = None,
         upsample_activation: str = None,
-        use_bn: bool = True,
-        use_ln: bool = False,
+        use_bn: bool = False,
+        use_ln: bool = True,
         use_gamma: bool = True,
         use_soft_gamma: bool = False,
         use_stem2: bool = False,
@@ -54,7 +54,7 @@ def builder(
         use_bias: bool = False,
         use_concat: bool = True,
         use_laplacian: bool = True,
-        use_mix_project: bool = False,
+        use_mix_project: bool = True,
         use_attention_focus: bool = False,
         use_attention_gates: bool = False,
         use_final_depth_block: bool = False,
@@ -87,7 +87,7 @@ def builder(
     :param depth: number of levels to go down
     :param width: number of horizontals nodes, if -1 it gets set to depth
     :param kernel_size: kernel size of the rest of convolutional layers
-    :param backbone_kernel_size: kernel size of backbone convolutional layer
+    :param encoder_kernel_size: kernel size of backbone convolutional layer
     :param filters_level_multiplier: every down level increase the number of filters by a factor of
     :param filters: filters of base convolutional layer
     :param max_filters: max number of filters
@@ -139,12 +139,12 @@ def builder(
         raise ValueError("depth and width must be > 0")
 
     if kernel_size is None or kernel_size <= 0:
-        kernel_size = backbone_kernel_size
+        kernel_size = encoder_kernel_size
 
-    if kernel_size <= 0 or backbone_kernel_size <= 0:
+    if kernel_size <= 0 or encoder_kernel_size <= 0:
         raise ValueError(
             f"kernel_size: [{kernel_size}] and "
-            f"backbone_kernel_size: [{backbone_kernel_size}] must be > 0")
+            f"backbone_kernel_size: [{encoder_kernel_size}] must be > 0")
 
     def activation_str_fix_fn(activation_str: str = None) -> str:
         if activation_str is None:
@@ -208,7 +208,7 @@ def builder(
         list(np.linspace(0.0, max(0.0, depth_drop_rate), width)))
 
     base_conv_params = dict(
-        kernel_size=backbone_kernel_size,
+        kernel_size=encoder_kernel_size,
         filters=filters,
         strides=(1, 1),
         padding="same",
@@ -244,7 +244,7 @@ def builder(
 
         # 1st residual conv
         conv_params_res_1.append(dict(
-            kernel_size=backbone_kernel_size,
+            kernel_size=encoder_kernel_size,
             depth_multiplier=1,
             strides=(1, 1),
             padding="same",
@@ -310,7 +310,7 @@ def builder(
         params = copy.deepcopy(base_conv_params)
         params["filters"] = filters
         params["kernel_size"] = \
-            (backbone_kernel_size, backbone_kernel_size)
+            (encoder_kernel_size, encoder_kernel_size)
         params["strides"] = (2, 2)
 
         x = \
