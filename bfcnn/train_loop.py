@@ -240,6 +240,13 @@ def train_loop(
             results = ckpt.model(n, training=False)
             return results[denoiser_index[0]]
 
+        @tf.function(reduce_retracing=True)
+        def apply_grads(internal_optimizer,
+                        internal_grads,
+                        internal_trainable_variables):
+            internal_optimizer.apply_gradients(
+                zip(internal_grads, internal_trainable_variables))
+
         if ckpt.step == 0:
             tf.summary.trace_on(graph=True, profiler=False)
 
@@ -371,11 +378,13 @@ def train_loop(
                 for i in range(len(gradients)):
                     gradients[i] /= float(gpu_batches_per_step)
 
+                # !!! IMPORTANT !!!!
                 # apply gradient to change weights
-                optimizer.apply_gradients(
-                    grads_and_vars=zip(
-                        gradients,
-                        trainable_variables))
+                # this is a hack to stop retracing the update function
+                # https://stackoverflow.com/questions/77028664/tf-keras-optimizers-adam-apply-gradients-triggers-tf-function-retracing
+                apply_grads(internal_optimizer=optimizer,
+                            internal_grads=grads,
+                            internal_trainable_variables=trainable_variables)
 
                 # --- zero gradients to reuse it in the next iteration
                 # moved at the end, so we can use it for visualization
