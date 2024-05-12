@@ -27,6 +27,7 @@ from .visualize import \
 
 CURRENT_DIRECTORY = os.path.realpath(os.path.dirname(__file__))
 
+tf.random.set_seed(0)
 
 # ---------------------------------------------------------------------
 
@@ -223,11 +224,11 @@ def train_loop(
         # find indices of denoiser, materials segmentation, bg lumen wall segmentation
         # first third is denoiser, second third is materials, last third is bg_lumen_wall
         model_no_outputs = len(ckpt.model.outputs)
+        logger.info(f"model number of outputs: [{model_no_outputs}]")
+
         denoiser_index = [
             i for i in range(0, int(model_no_outputs))
         ]
-
-        logger.info(f"model number of outputs: [{model_no_outputs}]")
         logger.info(f"model denoiser_index: {denoiser_index}")
 
         @tf.function(reduce_retracing=True, jit_compile=False)
