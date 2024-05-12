@@ -120,14 +120,6 @@ def builder(
     if depth <= 0 or width <= 0:
         raise ValueError("depth and width must be > 0")
 
-    if kernel_size is None or kernel_size <= 0:
-        kernel_size = encoder_kernel_size
-
-    if kernel_size <= 0 or encoder_kernel_size <= 0:
-        raise ValueError(
-            f"kernel_size: [{kernel_size}] and "
-            f"backbone_kernel_size: [{encoder_kernel_size}] must be > 0")
-
     def activation_str_fix_fn(activation_str: str = None) -> str:
         if activation_str is None:
             activation_str = ""
