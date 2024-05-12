@@ -409,8 +409,19 @@ def train_loop(
                             gradients[i].assign(gradients[i] * 0.0)
 
                     total_loss = tf.constant(0.0, dtype=tf.float32)
-                    model_loss = tf.constant(0.0, dtype=tf.float32)
-                    all_denoiser_loss = []
+                    model_loss = {
+                        REGULARIZATION_LOSS_STR: tf.constant(0.0, dtype=tf.float32),
+                        TOTAL_LOSS_STR: tf.constant(0.0, dtype=tf.float32)
+                    }
+
+                    all_denoiser_loss = [
+                        {
+                            MAE_LOSS_STR: tf.constant(0.0, dtype=tf.float32),
+                            SSIM_LOSS_STR: tf.constant(0.0, dtype=tf.float32),
+                            TOTAL_LOSS_STR: tf.constant(0.0, dtype=tf.float32)
+                        }
+                        for i in range(len(denoiser_index))
+                    ]
                     predictions = input_image_batch
                     grads = gradients
 
@@ -442,7 +453,6 @@ def train_loop(
                     #     apply_grads(_optimizer=optimizer,
                     #                 _grads=gradients,
                     #                 _trainable_variables=trainable_variables)
-
 
 
                     # --- add loss summaries for tensorboard
