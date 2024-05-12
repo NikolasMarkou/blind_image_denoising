@@ -108,7 +108,7 @@ def train_loop(
     # [1.0, 0.5, 0.25, 0.125, 0.0625]
     # [1.0, 0.353, 0.125, 0.0441, 0.015625]
     # [1.0, 0.25, 0.0625, 0.015625, 0.00390625]
-    output_discount_factor = train_config.get("output_discount_factor", 1.0)
+    output_discount_factor = train_config.get("output_discount_factor", 2.0)
     if output_discount_factor > 1.0 or output_discount_factor < 0.0:
         raise ValueError(f"output_discount_factor [{output_discount_factor}] "
                          f"must be between 0.0 and 1.0")
@@ -358,7 +358,11 @@ def train_loop(
 
 
             logger.info("percentage done [{:.2f}]".format(float(percentage_done)))
-            depth_weight = [output_discount_factor ** (float(i) * percentage_done) for i in range(len(denoiser_index))]
+            depth_weight = [
+                1.0 / (float(i) * 2.0 + 1)
+                for i in range(len(denoiser_index))
+            ]
+            depth_weight = tf.constant(tf.nn.softmax(depth_weight), dtype=tf.float32)
             depth_weight_str = [
                 "{0:.2f}".format(d)
                 for d in depth_weight
@@ -409,23 +413,6 @@ def train_loop(
                         # zero out gradients
                         for i in range(len(gradients)):
                             gradients[i] *= 0.0
-
-                    # total_loss = tf.constant(0.0, dtype=tf.float32)
-                    # model_loss = {
-                    #     REGULARIZATION_LOSS_STR: tf.constant(0.0, dtype=tf.float32),
-                    #     TOTAL_LOSS_STR: tf.constant(0.0, dtype=tf.float32)
-                    # }
-                    #
-                    # all_denoiser_loss = [
-                    #     {
-                    #         MAE_LOSS_STR: tf.constant(0.0, dtype=tf.float32),
-                    #         SSIM_LOSS_STR: tf.constant(0.0, dtype=tf.float32),
-                    #         TOTAL_LOSS_STR: tf.constant(0.0, dtype=tf.float32)
-                    #     }
-                    #     for i in range(len(denoiser_index))
-                    # ]
-                    # predictions = input_image_batch
-                    # grads = gradients
 
                     total_loss, model_loss, all_denoiser_loss, predictions, grads = \
                         train_step_single_gpu(
@@ -495,15 +482,15 @@ def train_loop(
                                              max_outputs=visualization_number, step=ckpt.step)
 
                         # --- add gradient activity
-                        # gradient_activity = \
-                        #     visualize_gradient_boxplot(
-                        #         gradients=gradients_moving_average,
-                        #         trainable_variables=trainable_variables) / 255
-                        # tf.summary.image(name="weights/gradients",
-                        #                  data=gradient_activity,
-                        #                  max_outputs=visualization_number,
-                        #                  step=ckpt.step,
-                        #                  description="gradient activity")
+                        gradient_activity = \
+                            visualize_gradient_boxplot(
+                                gradients=gradients,
+                                trainable_variables=trainable_variables) / 255
+                        tf.summary.image(name="weights/gradients",
+                                         data=gradient_activity,
+                                         max_outputs=visualization_number,
+                                         step=ckpt.step,
+                                         description="gradient activity")
 
                         # --- add weights distribution
                         weights_boxplot = \

@@ -6,6 +6,7 @@
 			"width": 2,
 			"filters": 16,
 			"kernel_size": 5,
+			"use_bias": false,
 			"encoder_kernel_size": 5,
 			"multiple_scale_outputs": true,
 			"kernel_initializer": "glorot_normal",
@@ -44,7 +45,7 @@
 		}
 	},
 	"loss": {
-		"hinge": 0.5,
+		"hinge": 2.5,
 		"cutoff": 255.0,
 		"mae_multiplier": 1.0,
 		"ssim_multiplier": 1.0,
