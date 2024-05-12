@@ -1,12 +1,10 @@
 import os
 import json
 import copy
-from enum import Enum
-
 import numpy as np
+from enum import Enum
 import tensorflow as tf
 from pathlib import Path
-import tensorflow_addons as tfa
 from typing import List, Tuple, Iterable
 
 # ---------------------------------------------------------------------
@@ -1000,31 +998,6 @@ def random_crops(
 
     # --- cast to original img dtype (no surprises principle)
     return tf.cast(result, dtype=original_dtype)
-
-# ---------------------------------------------------------------------
-
-
-def subsample(
-        input_batch: tf.Tensor) -> tf.Tensor:
-    return \
-        tf.nn.max_pool2d(
-            input=input_batch,
-            ksize=(1, 1),
-            strides=(2, 2),
-            padding="SAME")
-
-# ---------------------------------------------------------------------
-
-
-def downsample(
-        input_batch: tf.Tensor,
-        kernel_size: Tuple[int, int] = (3, 3)) -> tf.Tensor:
-    x = \
-        tfa.image.gaussian_filter2d(
-            sigma=1,
-            image=input_batch,
-            filter_shape=kernel_size)
-    return subsample(input_batch=x)
 
 # ---------------------------------------------------------------------
 

@@ -9,7 +9,7 @@ from typing import Dict, Callable, Iterator, Tuple
 
 from .file_operations import *
 from .custom_logger import logger
-from .utilities import random_crops, downsample, subsample
+from .utilities import random_crops
 
 # ---------------------------------------------------------------------
 
