@@ -7,6 +7,8 @@
 			"filters": 16,
 			"kernel_size": 5,
 			"use_bias": false,
+			"use_concat": false,
+			"use_mix_project": false,
 			"encoder_kernel_size": 5,
 			"decoder_kernel_size": 3,
 			"multiple_scale_outputs": true,
