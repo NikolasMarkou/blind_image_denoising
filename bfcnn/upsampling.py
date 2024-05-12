@@ -21,9 +21,7 @@ def upsample(
         upsample_type: str,
         conv_params: Dict = None,
         bn_params: Dict = None,
-        ln_params: Dict = None,
-        bn_post_params: Dict = None,
-        ln_post_params: Dict = None):
+        ln_params: Dict = None):
     """
 
     """

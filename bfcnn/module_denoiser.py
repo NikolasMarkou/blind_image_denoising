@@ -46,6 +46,11 @@ class DenoiserModule(tf.Module, ABC):
 
         x = self._model_hydra(x)
 
+        if len(self._model_hydra.outputs) > 1:
+            x = x[0]
+        else:
+            pass
+
         # --- cast to uint8
         if self._cast_to_uint8:
             x = tf.round(x)

@@ -39,7 +39,7 @@ def builder(
         filters_level_multiplier: float = 2.0,
         activation: str = "leaky_relu_01",
         second_activation: str = "linear",
-        upsample_type: str = "conv2d_transpose",
+        upsample_type: str = "bilinear",
         downsample_type: str = "strides",
         downsample_activation: str = None,
         upsample_activation: str = None,
@@ -51,7 +51,6 @@ def builder(
         use_concat: bool = True,
         use_laplacian: bool = True,
         use_mix_project: bool = True,
-        use_final_depth_block: bool = False,
         use_decoder_normalization: bool = False,
         use_soft_orthogonal_regularization: bool = False,
         use_soft_orthonormal_regularization: bool = False,
@@ -267,10 +266,7 @@ def builder(
 
     nodes_output = {}
     nodes_to_visit = list(nodes_dependencies.keys())
-    if use_final_depth_block:
-        nodes_visited = set([(depth - 1, 0)])
-    else:
-        nodes_visited = set([(depth - 1, 0), (depth - 1, 1)])
+    nodes_visited = set([(depth - 1, 0), (depth - 1, 1)])
 
     # --- build model
     # set input
@@ -347,8 +343,8 @@ def builder(
         node = nodes_to_visit.pop(0)
         logger.info(f"node: [{node}, "
                     f"nodes_visited: {nodes_visited}, "
-                    f"nodes_to_visit: {nodes_to_visit}")
-        logger.info(f"dependencies: {nodes_dependencies[node]}")
+                    f"nodes_to_visit: {nodes_to_visit}, "
+                    f"dependencies: {nodes_dependencies[node]}")
         # make sure a node is not visited twice
         if node in nodes_visited:
             logger.info(f"node: [{node}] already processed")
@@ -361,7 +357,7 @@ def builder(
                 for d in dependencies
             ])
         if not dependencies_matched:
-            logger.info(f"node: [{node}] dependencies not matches, continuing")
+            logger.info(f"node: [{node}] dependencies not matched, continuing")
             nodes_to_visit.append(node)
             continue
 
@@ -387,12 +383,13 @@ def builder(
             elif dependency[0] > node[0]:
                 # based on normalization before upsample
                 # SKOOTS: Skeleton oriented object segmentation for mitochondria, 2023
+                logger.info("upsampling here")
                 x = \
                     upsample(
                         input_layer=x,
                         upsample_type=upsample_type,
-                        ln_post_params=ln_params,
-                        bn_post_params=bn_params,
+                        ln_params=ln_params,
+                        bn_params=bn_params,
                         conv_params=conv_params_up[node[0]])
             else:
                 raise ValueError(f"node: {node}, dependencies: {dependencies}, "
