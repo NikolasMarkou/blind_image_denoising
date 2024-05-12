@@ -277,7 +277,6 @@ def train_loop(
                 _trainable_variables: List):
 
             internal_all_denoiser_loss = [None] * len(denoiser_index)
-            internal_total_loss = tf.constant(0.0, dtype=tf.float32)
             internal_total_denoiser_loss = tf.constant(0.0, dtype=tf.float32)
 
             internal_scale_gt_image_batch = \
