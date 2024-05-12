@@ -585,13 +585,6 @@ class ConvNextBlock(tf.keras.layers.Layer):
                     lambda_coefficient=0.01, l1_coefficient=0.0, l2_coefficient=1e-4)
         self.conv_3 = tf.keras.layers.Conv2D(**params)
 
-        self.transforms = [
-            lambda z: z,
-            lambda z: tf.image.flip_up_down(z),
-            lambda z: tf.image.flip_left_right(z),
-            lambda z: tf.image.flip_up_down(tf.image.flip_left_right(z)),
-        ]
-
         # gamma
         if self.use_gamma:
             self.gamma = ChannelLearnableMultiplier()
@@ -603,13 +596,6 @@ class ConvNextBlock(tf.keras.layers.Layer):
         x = inputs
 
         # --- 1st part
-        if self.use_rotational_invariance:
-            x = tf.keras.layers.Maximum()([
-                transform(self.conv_1(transform(x)))
-                for transform in self.transforms
-            ])
-        else:
-            x = self.conv_1(x)
         if self.use_bn:
             x = self.bn(x, training=training)
         if self.use_ln:

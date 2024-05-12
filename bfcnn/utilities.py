@@ -342,11 +342,11 @@ def conv2d_wrapper(
     if conv_activation.lower() in ["mish"]:
         # Mish: A Self Regularized Non-Monotonic Activation Function (2020)
         x = Mish()(x)
-    elif conv_activation.lower() in ["leaky_relu", "leakyrelu", "leaky_relu_01"]:
+    elif conv_activation.lower() in ["leaky_relu", "leaky_relu_01"]:
         # leaky relu, practically same us Relu
         # with very small negative slope to allow gradient flow
         x = tf.keras.layers.LeakyReLU(alpha=0.1)(x)
-    elif conv_activation.lower() in ["leaky_relu_001", "leakyrelu_001"]:
+    elif conv_activation.lower() in ["leaky_relu_001"]:
         # leaky relu, practically same us Relu
         # with very small negative slope to allow gradient flow
         x = tf.keras.layers.LeakyReLU(alpha=0.01)(x)
@@ -430,9 +430,10 @@ def conv2d_wrapper(
     if bn_params:
         x = tf.keras.layers.BatchNormalization(**bn_params)(x)
     if pre_activation:
-        x = tf.keras.layers.Activation(pre_activation)(x)
+        x = activation_wrapper(pre_activation)(x)
 
     # --- convolution
+    conv_params["activation"] = activation_wrapper(conv_params.get("activation", "linear)"))
     if conv_type == ConvType.CONV2D:
         x = tf.keras.layers.Conv2D(**conv_params)(x)
     elif conv_type == ConvType.CONV2D_DEPTHWISE:
@@ -444,7 +445,7 @@ def conv2d_wrapper(
 
     # --- post activation (custom activation)
     if post_activation:
-        x = tf.keras.layers.Activation(post_activation)(x)
+        x = activation_wrapper(post_activation)(x)
 
     # --- remove sample mean
     if sample_mean_removal:
