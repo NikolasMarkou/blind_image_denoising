@@ -90,7 +90,6 @@ def train_loop(
             func=loss_fn_map[MODEL_LOSS_FN_STR],
             reduce_retracing=True)
 
-
     # --- build optimizer
     optimizer, lr_schedule = \
         optimizer_builder(config=config["train"]["optimizer"])

@@ -2,7 +2,7 @@
 	"model": {
 		"backbone": {
 			"input_shape": ["?", "?", 3],
-			"depth": 3,
+			"depth": 4,
 			"width": 2,
 			"filters": 16,
 			"kernel_size": 5,

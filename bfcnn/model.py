@@ -128,12 +128,12 @@ def model_builder(
         model_denoisers = [
             model_denoiser_builder(
                 config=config_denoisers[i],
-                name=f"denoiser_head_{i}")
+                name=f"denoiser_head_{i}").denoiser
             for i in range(backbone_no_outputs)
         ]
         denoisers_mid = [
             model_denormalizer(
-                model_denoisers[i].denoiser(backbone[i]), training=False)
+                model_denoisers[i](backbone[i]), training=False)
             for i in range(backbone_no_outputs)
         ]
         output_layers = \
