@@ -85,14 +85,7 @@ def train_loop(
         tf.function(
             func=loss_fn_map[MODEL_LOSS_FN_STR],
             reduce_retracing=True)
-    denoiser_loss_fn = \
-        tf.function(
-            func=loss_fn_map[DENOISER_LOSS_FN_STR],
-            input_signature=[
-                tf.TensorSpec(shape=[batch_size, None, None, no_color_channels], dtype=tf.float32),
-                tf.TensorSpec(shape=[batch_size, None, None, no_color_channels], dtype=tf.float32),
-            ],
-            reduce_retracing=True)
+
 
     # --- build optimizer
     optimizer, lr_schedule = \
@@ -230,6 +223,16 @@ def train_loop(
             i for i in range(0, int(model_no_outputs))
         ]
         logger.info(f"model denoiser_index: {denoiser_index}")
+        denoiser_loss_fn_list = [
+            tf.function(
+                func=loss_fn_map[DENOISER_LOSS_FN_STR],
+                input_signature=[
+                    tf.TensorSpec(shape=[batch_size, None, None, no_color_channels], dtype=tf.float32),
+                    tf.TensorSpec(shape=[batch_size, None, None, no_color_channels], dtype=tf.float32),
+                ],
+                reduce_retracing=True)
+            for i in range(len(denoiser_index))
+        ]
 
         @tf.function(reduce_retracing=True, jit_compile=False)
         def train_step(n: tf.Tensor) -> List[tf.Tensor]:
@@ -349,7 +352,7 @@ def train_loop(
 
                         # compute the loss value for this mini-batch
                         all_denoiser_loss = [
-                            denoiser_loss_fn(
+                            denoiser_loss_fn_list[i](
                                 gt_batch=scale_gt_image_batch[i],
                                 predicted_batch=prediction_denoiser[i])
                             for i in range(len(prediction_denoiser))
@@ -383,7 +386,7 @@ def train_loop(
                 # this is a hack to stop retracing the update function
                 # https://stackoverflow.com/questions/77028664/tf-keras-optimizers-adam-apply-gradients-triggers-tf-function-retracing
                 apply_grads(internal_optimizer=optimizer,
-                            internal_grads=grads,
+                            internal_grads=gradients,
                             internal_trainable_variables=trainable_variables)
 
                 # --- zero gradients to reuse it in the next iteration
