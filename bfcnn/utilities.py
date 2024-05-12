@@ -1065,6 +1065,69 @@ def lowpass_filter(
 
 # ---------------------------------------------------------------------
 
+def multiscales_generator_fn(
+        shape: List[int],
+        no_scales: int,
+        kernel_size: Tuple[int, int] = (3, 3),
+        nsig: Tuple[float, float] = (1, 1),
+        clip_values: bool = False,
+        round_values: bool = False,
+        normalize_values: bool = False,
+        concrete_functions: bool = True,
+        jit_compile: bool = False):
+    kernel = (
+        tf.constant(
+            depthwise_gaussian_kernel(
+                channels=shape[-1],
+                kernel_size=kernel_size,
+                nsig=nsig).astype("float32")))
+
+    def multiscales(n: tf.Tensor) -> List[tf.Tensor]:
+        scales = []
+        n_scale = n
+
+        for _ in range(no_scales):
+            scales.append(n_scale)
+            # downsample, clip and round
+            n_scale = tf.nn.depthwise_conv2d(
+                input=n_scale,
+                filter=kernel,
+                strides=(1, 2, 2, 1),
+                data_format=None,
+                dilations=None,
+                padding="SAME")
+            # clip values
+            if clip_values:
+                n_scale = tf.clip_by_value(n_scale,
+                                           clip_value_min=0.0,
+                                           clip_value_max=255.0)
+            # round values
+            if round_values:
+                n_scale = tf.round(n_scale)
+            # normalize (sum of channel dim equals 1)
+            if normalize_values:
+                n_scale += DEFAULT_EPSILON
+                n_scale = \
+                    n_scale / \
+                    tf.reduce_sum(n_scale, axis=-1, keepdims=True)
+
+        return scales
+
+    result = tf.function(
+        func=multiscales,
+        input_signature=[
+            tf.TensorSpec(shape=shape, dtype=tf.float32),
+        ],
+        jit_compile=jit_compile,
+        reduce_retracing=True)
+
+    if concrete_functions:
+        return result.get_concrete_function()
+
+    return  result
+
+# ---------------------------------------------------------------------
+
 
 def create_checkpoint(
         step: tf.Variable = tf.Variable(0, trainable=False, dtype=tf.dtypes.int64, name="step"),

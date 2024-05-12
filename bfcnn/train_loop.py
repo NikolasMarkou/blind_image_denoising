@@ -17,7 +17,11 @@ from .custom_logger import logger
 from .file_operations import load_image
 from .optimizer import optimizer_builder
 from .loss import loss_function_builder
-from .utilities import load_config, create_checkpoint, save_config
+from .utilities import \
+    load_config, \
+    create_checkpoint, \
+    save_config, \
+    multiscales_generator_fn
 from .visualize import \
     visualize_weights_boxplot, \
     visualize_weights_heatmap, \
@@ -234,6 +238,17 @@ def train_loop(
             for i in range(len(denoiser_index))
         ]
 
+        multiscales_fn = \
+            multiscales_generator_fn(
+                shape=[batch_size, None, None, no_color_channels],
+                no_scales=len(denoiser_index),
+                clip_values=True,
+                round_values=True,
+                jit_compile=False,
+                normalize_values=False,
+                concrete_functions=True
+            )
+
         @tf.function(reduce_retracing=True, jit_compile=False)
         def train_step(n: tf.Tensor) -> List[tf.Tensor]:
             return ckpt.model(n, training=True)
@@ -249,6 +264,55 @@ def train_loop(
                         internal_trainable_variables):
             internal_optimizer.apply_gradients(
                 zip(internal_grads, internal_trainable_variables))
+
+        @tf.function(
+            autograph=True,
+            jit_compile=False,
+            reduce_retracing=True)
+        def train_step_single_gpu(
+                _input_image_batch: tf.Tensor,
+                _noisy_image_batch: tf.Tensor,
+                _depth_weight: tf.Tensor,
+                _percentage_done: tf.Tensor,
+                _trainable_variables: List):
+
+            internal_all_denoiser_loss = [None] * len(denoiser_index)
+            internal_total_loss = tf.constant(0.0, dtype=tf.float32)
+            internal_total_denoiser_loss = tf.constant(0.0, dtype=tf.float32)
+
+            internal_scale_gt_image_batch = \
+                multiscales_fn(_input_image_batch)
+
+            with tf.GradientTape() as tape:
+                internal_predictions = train_step(_noisy_image_batch)
+                internal_prediction_denoiser = [internal_predictions[idx] for idx in denoiser_index]
+
+                # get denoise loss for each depth,
+                for i in range(len(denoiser_index)):
+                    internal_loss = denoiser_loss_fn_list[i](
+                        input_batch=internal_scale_gt_image_batch[i],
+                        predicted_batch=internal_prediction_denoiser[i])
+                    internal_total_denoiser_loss += \
+                        internal_loss[TOTAL_LOSS_STR] * _depth_weight[i]
+                    internal_all_denoiser_loss[i] = internal_loss
+
+                # combine losses
+                internal_model_loss = \
+                    model_loss_fn(model=ckpt.model)
+                internal_total_loss = \
+                    internal_total_denoiser_loss * (1.0 - _percentage_done) + \
+                    internal_model_loss[TOTAL_LOSS_STR]
+                internal_grads = \
+                    tape.gradient(target=internal_total_loss,
+                                  sources=_trainable_variables)
+
+            return (
+                internal_total_loss,
+                internal_model_loss,
+                internal_all_denoiser_loss,
+                internal_predictions,
+                internal_grads
+            )
 
         if ckpt.step == 0:
             tf.summary.trace_on(graph=True, profiler=False)
@@ -270,6 +334,11 @@ def train_loop(
         # ---
         finished_training = False
         trainable_variables = ckpt.model.trainable_variables
+        counter = tf.Variable(0, dtype=tf.uint32, trainable=False)
+        gradients = [
+            tf.Variable(tf.zeros_like(v), trainable=False)
+            for v in trainable_variables
+        ]
 
         while not finished_training and \
                 (total_epochs == -1 or ckpt.epoch < total_epochs):
@@ -286,26 +355,21 @@ def train_loop(
             else:
                 percentage_done = 0.0
 
-            depth_weight_str = [
-                "{0:.2f}".format(output_discount_factor ** (float(i) * percentage_done))
-                for i in range(len(denoiser_index))
-            ]
 
             logger.info("percentage done [{:.2f}]".format(float(percentage_done)))
+            depth_weight = [output_discount_factor ** (float(i) * percentage_done) for i in range(len(denoiser_index))]
+            depth_weight_str = [
+                "{0:.2f}".format(d)
+                for d in depth_weight
+            ]
+            depth_weight = tf.constant(depth_weight, dtype=tf.float32)
             logger.info(f"weight per output index: {depth_weight_str}")
+            percentage_done = tf.constant(percentage_done, dtype=tf.float32)
 
             # --- initialize iterators
             epoch_finished_training = False
             dataset_train = iter(dataset_training)
             total_loss = tf.constant(0.0, dtype=tf.float32)
-            gradients = [
-                tf.constant(0.0, dtype=tf.float32)
-                for _ in range(len(trainable_variables))
-            ]
-            gradients_moving_average = [
-                tf.constant(0.0, dtype=tf.float32)
-                for _ in range(len(trainable_variables))
-            ]
 
             # --- check if total steps reached
             if total_steps != -1:
@@ -314,88 +378,68 @@ def train_loop(
                         int(total_steps)))
                     finished_training = True
 
-            total_denoiser_loss = tf.constant(0.0, dtype=tf.float32)
-            total_denoiser_multiplier = tf.constant(0.0, dtype=tf.float32)
-
             # --- iterate over the batches of the dataset
             while not finished_training and \
                     not epoch_finished_training:
 
                 start_time_forward_backward = time.time()
 
-                for _ in range(gpu_batches_per_step):
-                    try:
-                        (input_image_batch, noisy_image_batch) = dataset_train.get_next()
-                    except tf.errors.OutOfRangeError:
-                        epoch_finished_training = True
-                        break
+                logger.info("epoch [{0}], step [{1}]".format(
+                    int(ckpt.epoch), int(ckpt.step)))
 
-                    scale_gt_image_batch = [input_image_batch]
-                    tmp_gt_image = input_image_batch
+                # --- training percentage
+                if total_epochs > 0:
+                    percentage_done = float(ckpt.epoch) / float(total_epochs)
+                elif total_steps > 0:
+                    percentage_done = float(ckpt.step) / float(total_steps)
+                else:
+                    percentage_done = 0.0
 
-                    for i in range(len(denoiser_index)-1):
-                        tmp_gt_image = \
-                            tf.nn.avg_pool2d(
-                                input=tmp_gt_image,
-                                ksize=(3, 3),
-                                strides=(2, 2),
-                                padding="SAME")
-                        scale_gt_image_batch.append(tmp_gt_image)
+                # --- check if total steps reached
+                if total_steps != -1:
+                    if total_steps <= ckpt.step:
+                        logger.info("total_steps reached [{0}]".format(
+                            int(total_steps)))
+                        finished_training = True
 
-                    with tf.GradientTape() as tape:
-                        predictions = \
-                            train_step(noisy_image_batch)
+                for inputs in dataset_train:
+                    if counter == 0:
+                        # zero out gradients
+                        for i in range(len(gradients)):
+                            gradients[i].assign(gradients[i] * 0.0)
+                        start_time_forward_backward = time.time()
 
-                        prediction_denoiser = [
-                            predictions[i] for i in denoiser_index
-                        ]
+                    total_loss, model_loss, all_denoiser_loss, all_segmentation_loss, \
+                        predictions, tmp_grads = \
+                        train_step_single_gpu(
+                            *inputs,
+                            _depth_weight=depth_weight,
+                            _percentage_done=percentage_done,
+                            _trainable_variables=trainable_variables)
 
-                        # compute the loss value for this mini-batch
-                        all_denoiser_loss = [
-                            denoiser_loss_fn_list[i](
-                                gt_batch=scale_gt_image_batch[i],
-                                predicted_batch=prediction_denoiser[i])
-                            for i in range(len(prediction_denoiser))
-                        ]
+                    for i, grad in enumerate(tmp_grads):
+                        gradients[i].assign_add(grad)
 
-                        total_denoiser_loss *= 0.0
-                        total_denoiser_multiplier *= 0.0
-                        for i, s in enumerate(all_denoiser_loss):
-                            depth_weight = float(output_discount_factor ** (float(i) * percentage_done))
-                            total_denoiser_loss += s[TOTAL_LOSS_STR] * depth_weight
-                            total_denoiser_multiplier += depth_weight
+                    if counter >= gpu_batches_per_step:
+                        counter.assign(value=0)
+                        # sanitize and average gradients
+                        for i in range(len(gradients)):
+                            gradients[i].assign(gradients[i]) / float(gpu_batches_per_step)
 
-                        # combine losses
-                        model_loss = model_loss_fn(model=ckpt.model)
-                        total_loss = total_denoiser_loss + model_loss[TOTAL_LOSS_STR]
+                        # !!! IMPORTANT !!!!
+                        # apply gradient to change weights
+                        # this is a hack to stop retracing the update function
+                        # https://stackoverflow.com/questions/77028664/tf-keras-optimizers-adam-apply-gradients-triggers-tf-function-retracing
+                        apply_grads(internal_optimizer=optimizer,
+                                    internal_grads=gradients,
+                                    internal_trainable_variables=trainable_variables)
 
-                        gradient = \
-                            tape.gradient(
-                                target=total_loss,
-                                sources=trainable_variables)
-
-                    for i, grad in enumerate(gradient):
-                        gradients[i] += grad
-
-                # average out gradients
-                for i in range(len(gradients)):
-                    gradients[i] /= float(gpu_batches_per_step)
-
-                # !!! IMPORTANT !!!!
-                # apply gradient to change weights
-                # this is a hack to stop retracing the update function
-                # https://stackoverflow.com/questions/77028664/tf-keras-optimizers-adam-apply-gradients-triggers-tf-function-retracing
-                apply_grads(internal_optimizer=optimizer,
-                            internal_grads=gradients,
-                            internal_trainable_variables=trainable_variables)
-
-                # --- zero gradients to reuse it in the next iteration
-                # moved at the end, so we can use it for visualization
-                for i in range(len(gradients)):
-                    gradients_moving_average[i] = \
-                        gradients_moving_average[i] * 0.99 + \
-                        gradients[i] * 0.01
-                    gradients[i] *= 0.0
+                        # break up inputs to show up on board
+                        input_image_batch, noisy_image_batch, gt_all_one_hot_batch, \
+                            _, _, _ = inputs
+                    else:
+                        counter.assign_add(delta=1)
+                        continue
 
                 # --- add loss summaries for tensorboard
                 # denoiser
@@ -427,20 +471,20 @@ def train_loop(
                     tf.summary.image(name="denoiser/noisy", data=noisy_image_batch / 255,
                                      max_outputs=visualization_number, step=ckpt.step)
                     # denoised batch
-                    for i, d in enumerate(prediction_denoiser):
+                    for i, d in enumerate(predictions):
                         tf.summary.image(name=f"denoiser/scale_{i}/output", data=d / 255,
                                          max_outputs=visualization_number, step=ckpt.step)
 
                     # --- add gradient activity
-                    gradient_activity = \
-                        visualize_gradient_boxplot(
-                            gradients=gradients_moving_average,
-                            trainable_variables=trainable_variables) / 255
-                    tf.summary.image(name="weights/gradients",
-                                     data=gradient_activity,
-                                     max_outputs=visualization_number,
-                                     step=ckpt.step,
-                                     description="gradient activity")
+                    # gradient_activity = \
+                    #     visualize_gradient_boxplot(
+                    #         gradients=gradients_moving_average,
+                    #         trainable_variables=trainable_variables) / 255
+                    # tf.summary.image(name="weights/gradients",
+                    #                  data=gradient_activity,
+                    #                  max_outputs=visualization_number,
+                    #                  step=ckpt.step,
+                    #                  description="gradient activity")
 
                     # --- add weights distribution
                     weights_boxplot = \
