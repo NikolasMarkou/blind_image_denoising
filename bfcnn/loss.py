@@ -151,7 +151,7 @@ def improvement(
 
 
 def loss_function_builder(
-        config: Dict) -> Callable:
+        config: Dict) -> Dict[str, Callable]:
     """
     Constructs the loss function of the depth prediction model
 

@@ -16,7 +16,7 @@ from .model import model_builder
 from .custom_logger import logger
 from .file_operations import load_image
 from .optimizer import optimizer_builder
-from .loss import loss_function_builder, improvement
+from .loss import loss_function_builder
 from .utilities import load_config, create_checkpoint, save_config
 from .visualize import \
     visualize_weights_boxplot, \
