@@ -15,9 +15,7 @@ from .constants import *
 from .custom_layers import \
     Multiplier, \
     RandomOnOff, \
-    GradientDropout, \
-    ChannelwiseMultiplier, \
-    DifferentiableGateLayer
+    ChannelwiseMultiplier
 from .custom_layers_selector import \
     ScaleType, \
     ActivationType, \
@@ -242,14 +240,6 @@ def resnet_blocks_full(
         # optional dropout on/off
         if use_dropout:
             x = RandomOnOff(**dropout_params)(x)
-
-        # optional gradient dropout
-        if use_gradient_dropout:
-            if gradient_dropout_params.get("progressive", True):
-                depth_percentage = max(0.1, min(0.9, float(i) / float(no_layers)))
-                x = GradientDropout(probability_off=depth_percentage)(x)
-            else:
-                x = GradientDropout(probability_off=0.5)(x)
 
         # skip connector or selector mixer
         if use_selector:

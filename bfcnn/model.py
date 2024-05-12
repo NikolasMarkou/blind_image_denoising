@@ -15,7 +15,7 @@ from .utilities import \
     layer_normalize, layer_denormalize
 from .backbone_unet import builder as builder_unet
 from .backbone_resnet import builder as builder_resnet
-from .backbone_unet_ppp import builder as builder_unet_ppp
+from .backbone_unet_laplacian import builder as builder_unet_ppp
 from .backbone_convnext import builder as builder_convnext
 from .regularizers import \
     builder as regularizer_builder
@@ -41,6 +41,15 @@ BackboneBuilderResults = namedtuple(
         "backbone",
         "normalizer",
         "denormalizer"
+    })
+
+# ---------------------------------------------------------------------
+
+DenoiserBuilderResults = namedtuple(
+    "DenoiserBuilderResults",
+    {
+        "denoiser",
+        "options"
     })
 
 # ---------------------------------------------------------------------
@@ -72,15 +81,16 @@ def model_builder(
     config_denoiser[INPUT_SHAPE_STR] = denoiser_shape
 
     # --- build denoiser and segmentation networks
-    model_denoiser = model_denoiser_builder(config=config_denoiser)
+    denoiser_builder_results = model_denoiser_builder(config=config_denoiser)
+    model_denoiser = denoiser_builder_results.denoiser
 
-    input_shape = tf.keras.backend.int_shape(model_backbone.inputs[0])[1:]
-    logger.info("input_shape: [{0}]".format(input_shape))
+    input_image_shape = tf.keras.backend.int_shape(model_backbone.inputs[0])[1:]
+    logger.info("input_shape: [{0}]".format(input_image_shape))
 
     # --- build hydra combined model
     input_layer = \
         tf.keras.Input(
-            shape=input_shape,
+            shape=input_image_shape,
             dtype="float32",
             sparse=False,
             ragged=False,
@@ -123,7 +133,7 @@ def model_builder(
         ]
         denoisers_mid = [
             model_denormalizer(
-                model_denoisers[i](backbone[i]), training=False)
+                model_denoisers[i].denoiser(backbone[i]), training=False)
             for i in range(backbone_no_outputs)
         ]
         output_layers = \
@@ -145,7 +155,8 @@ def model_builder(
             normalizer=model_normalizer,
             denormalizer=model_denormalizer,
             denoiser=model_denoiser,
-            hydra=model_hydra
+            hydra=model_hydra,
+            options={}
         )
 
 
@@ -202,11 +213,9 @@ def model_backbone_builder(
         raise ValueError(
             "don't know how to build model [{0}]".format(model_type))
 
-    model_params = config[PARAMETERS_STR]
-
     backbone_model = \
         backbone_builder(
-            input_dims=input_shape, **model_params)
+            input_dims=input_shape, **config)
 
     # --- connect the parts of the model
     # setup input
@@ -237,7 +246,7 @@ def model_backbone_builder(
 
 def model_denoiser_builder(
         config: Dict,
-        **kwargs) -> Tuple[tf.keras.Model, Dict]:
+        **kwargs) -> DenoiserBuilderResults:
     """
     builds the denoiser model on top of the backbone layer
 
@@ -304,8 +313,9 @@ def model_denoiser_builder(
             name=f"denoiser_head")
 
     return \
-        model_head, \
-        options
+        DenoiserBuilderResults(
+            denoiser=model_head,
+            options=options)
 
 # ---------------------------------------------------------------------
 

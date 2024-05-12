@@ -14,11 +14,8 @@ from typing import List, Tuple, Iterable
 # ---------------------------------------------------------------------
 
 from .constants import *
+from .custom_layers import Mish
 from .custom_logger import logger
-from .custom_layers import \
-    Mish, \
-    Multiplier, \
-    ChannelwiseMultiplier
 from .regularizers import builder as regularizer_builder
 
 # ---------------------------------------------------------------------
@@ -476,6 +473,96 @@ def conv2d_wrapper(
                 activation="relu")(x)
     return x
 
+# ---------------------------------------------------------------------
+
+def activation_wrapper(
+        activation: str = "linear") -> tf.keras.layers.Layer:
+    activation = activation.lower().strip()
+
+    if activation in ["mish"]:
+        # Mish: A Self Regularized Non-Monotonic Activation Function (2020)
+        from .custom_layers import Mish
+        x = Mish()
+    elif activation in ["leakyrelu", "leaky_relu"]:
+        # leaky relu, practically same us Relu
+        # with very small negative slope to allow gradient flow
+        x = tf.keras.layers.LeakyReLU(alpha=0.3)
+    elif activation in ["leakyrelu_01", "leaky_relu_01"]:
+        # leaky relu, practically same us Relu
+        # with very small negative slope to allow gradient flow
+        x = tf.keras.layers.LeakyReLU(alpha=0.1)
+    elif activation in ["leaky_relu_001", "leakyrelu_001"]:
+        # leaky relu, practically same us Relu
+        # with very small negative slope to allow gradient flow
+        x = tf.keras.layers.LeakyReLU(alpha=0.01)
+    elif activation in ["prelu"]:
+        # parametric Rectified Linear Unit
+        constraint = \
+            tf.keras.constraints.MinMaxNorm(
+                min_value=0.0, max_value=1.0, rate=1.0, axis=0)
+        x = tf.keras.layers.PReLU(
+            alpha_initializer=0.1,
+            # very small l1
+            alpha_regularizer=tf.keras.regularizers.l1(1e-3),
+            alpha_constraint=constraint,
+            shared_axes=[1, 2])
+    else:
+        x = tf.keras.layers.Activation(activation)
+
+    return x
+
+# ---------------------------------------------------------------------
+
+def depthwise_gaussian_kernel(
+        channels: int = 3,
+        kernel_size: Tuple[int, int] = (5, 5),
+        nsig: Tuple[float, float] = (2.0, 2.0),
+        dtype: np.dtype = np.float64):
+    def gaussian_kernel(
+            _kernel_size: Tuple[int, int],
+            _nsig: Tuple[float, float]) -> np.ndarray:
+        """
+        builds a 2D Gaussian kernel array
+
+        :param _kernel_size: size of the grid
+        :param _nsig: max value out of the gaussian on the xy axis
+        :return: 2d gaussian grid
+        """
+        assert len(_nsig) == 2
+        assert len(_kernel_size) == 2
+        kern1d = [
+            np.linspace(
+                start=-np.abs(_nsig[i]),
+                stop=np.abs(_nsig[i]),
+                num=_kernel_size[i],
+                endpoint=True,
+                dtype=np.float64)
+            for i in range(2)
+        ]
+        x, y = np.meshgrid(kern1d[0], kern1d[1])
+        d = np.sqrt(x * x + y * y)
+        sigma, mu = 1.0, 0.0
+        g = np.exp(-((d - mu) ** 2 / (2.0 * (sigma ** 2))))
+        return g / g.sum()
+
+    def kernel_init(shape):
+        logger.info(f"building gaussian kernel with size: {shape}")
+        kernel = np.zeros(shape)
+        kernel_channel = \
+            gaussian_kernel(
+                _kernel_size=(shape[0], shape[1]),
+                _nsig=nsig)
+        logger.info(f"gaussian kernel: \n{kernel_channel}")
+
+        for i in range(shape[2]):
+            kernel[:, :, i, 0] = kernel_channel
+        return kernel
+
+    # [filter_height, filter_width, in_channels, channel_multiplier]
+    result = kernel_init(
+        shape=(kernel_size[0], kernel_size[1], channels, 1))
+
+    return result.astype(dtype=dtype)
 
 # ---------------------------------------------------------------------
 
