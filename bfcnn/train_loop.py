@@ -76,6 +76,7 @@ def train_loop(
     batch_size = dataset.batch_size
     input_shape = dataset.input_shape
     dataset_training = dataset.training
+    no_color_channels = dataset_training[INPUT_SHAPE_STR][-1]
 
     # --- build loss function
     loss_fn_map = loss_function_builder(config=config["loss"])
@@ -87,8 +88,8 @@ def train_loop(
         tf.function(
             func=loss_fn_map[DENOISER_LOSS_FN_STR],
             input_signature=[
-                tf.TensorSpec(shape=[batch_size, None, None, 1], dtype=tf.float32),
-                tf.TensorSpec(shape=[batch_size, None, None, 1], dtype=tf.float32),
+                tf.TensorSpec(shape=[batch_size, None, None, no_color_channels], dtype=tf.float32),
+                tf.TensorSpec(shape=[batch_size, None, None, no_color_channels], dtype=tf.float32),
             ],
             reduce_retracing=True)
 
