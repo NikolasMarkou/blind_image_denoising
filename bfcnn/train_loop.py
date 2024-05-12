@@ -259,14 +259,6 @@ def train_loop(
             return results[denoiser_index[0]]
 
         @tf.function(
-            reduce_retracing=True)
-        def apply_grads(_optimizer,
-                        _grads,
-                        _trainable_variables):
-            _optimizer.apply_gradients(
-                zip(_grads, _trainable_variables))
-
-        @tf.function(
             autograph=True,
             jit_compile=False,
             reduce_retracing=True)
@@ -337,6 +329,13 @@ def train_loop(
             tf.constant(tf.zeros_like(v))
             for v in ckpt.model.trainable_variables
         ]
+
+        @tf.function(
+            reduce_retracing=True)
+        def apply_grads(_optimizer,
+                        _grads):
+            _optimizer.apply_gradients(
+                zip(_grads, ckpt.model.trainable_variables))
 
         while not finished_training and \
                 (total_epochs == -1 or ckpt.epoch < total_epochs):
@@ -445,11 +444,10 @@ def train_loop(
                         # apply gradient to change weights
                         # this is a hack to stop retracing the update function
                         # https://stackoverflow.com/questions/77028664/tf-keras-optimizers-adam-apply-gradients-triggers-tf-function-retracing
-                        # apply_grads(_optimizer=optimizer,
-                        #             _grads=gradients,
-                        #             _trainable_variables=ckpt.model.trainable_variables)
-                        optimizer.apply_gradients(
-                            zip(gradients, ckpt.model.trainable_variables))
+                        apply_grads(_optimizer=optimizer,
+                                    _grads=gradients)
+                        # optimizer.apply_gradients(
+                        #     zip(gradients, ckpt.model.trainable_variables))
                     else:
                         counter.assign_add(delta=1)
                         continue
