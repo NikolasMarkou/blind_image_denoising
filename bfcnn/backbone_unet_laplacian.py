@@ -20,11 +20,9 @@ from .utilities import (
 from .upsampling import upsample
 from .downsampling import downsample
 from .custom_layers import (
-    AttentionGate,
     ConvNextBlock,
     GaussianFilter,
-    StochasticDepth,
-    SqueezeExcitation)
+    StochasticDepth)
 
 
 # ---------------------------------------------------------------------
@@ -49,16 +47,11 @@ def builder(
         use_ln: bool = True,
         use_gamma: bool = True,
         use_soft_gamma: bool = False,
-        use_stem2: bool = False,
-        use_stem4: bool = False,
         use_bias: bool = False,
         use_concat: bool = True,
         use_laplacian: bool = True,
         use_mix_project: bool = True,
-        use_attention_focus: bool = False,
-        use_attention_gates: bool = False,
         use_final_depth_block: bool = False,
-        use_squeeze_excitation: bool = False,
         use_decoder_normalization: bool = False,
         use_soft_orthogonal_regularization: bool = False,
         use_soft_orthonormal_regularization: bool = False,
@@ -67,8 +60,7 @@ def builder(
         dropout_rate: float = -1,
         depth_drop_rate: float = 0.0,
         spatial_dropout_rate: float = -1,
-        multiple_scale_outputs: bool = False,
-        r_ratio: float = 0.25,
+        multiple_scale_outputs: bool = True,
         output_layer_name: str = "intermediate_output",
         name="unet_laplacian",
         **kwargs) -> tf.keras.Model:
@@ -98,17 +90,11 @@ def builder(
     :param use_ln: use layer normalization
     :param use_gamma: if True (True by default) use gamma learning in convnenxt
     :param use_soft_gamma: if True (False by default) use soft gamma learning in convnenxt
-    :param use_stem2: if true use conv2d 4x4 x filters and 2x2 strides
-    :param use_stem4: if true use conv2d 4x4 x filters and 4x4 strides
     :param use_bias: use bias (bias free means this should be off)
     :param use_mix_project: if True mix different depths with a 1x1 projection (SKOOTS: Skeleton oriented object segmentation for mitochondria)
     :param use_concat: if True concatenate otherwise add skip layers (True by default)
     :param use_laplacian: if True use laplacian estimation between depths
-    :param use_attention_focus: if True add attention focus as described in
-        (Focus U-Net: A novel dual attention-gated CNN for polyp segmentation during colonoscopy)
-    :param use_attention_gates: if True add attention gates between depths
     :param use_final_depth_block: if True in the deepest layer add an extra decoder step
-    :param use_squeeze_excitation: if true add squeeze and excitation layers
     :param use_decoder_normalization: if True add a normalization layer to each decoder output
     :param use_soft_orthogonal_regularization: if True use soft orthogonal regularization on the 1x1 kernels
     :param use_soft_orthonormal_regularization: if true use soft orthonormal regularization on the 1x1 middle kernels
@@ -118,7 +104,6 @@ def builder(
     :param spatial_dropout_rate: probability of spatial dropout, negative to turn off
     :param depth_drop_rate: probability of residual block dropout, negative or zero to turn off
     :param multiple_scale_outputs: if True for each scale give an output
-    :param r_ratio: ratio of squeeze and excitation
     :param output_layer_name: the output layer's name
     :param name: name of the model
 
@@ -165,9 +150,6 @@ def builder(
 
     upsample_type = upsample_type.strip().lower()
     downsample_type = downsample_type.strip().lower()
-
-    if use_stem2 and use_stem4:
-        raise ValueError("use_stem2 and use_stem4 cannot be enabled at the same time")
 
     # --- setup parameters
     bn_params = None
@@ -298,44 +280,16 @@ def builder(
             shape=input_dims)
     x = input_layer
 
-    if use_stem2:
-        # resnet like downsample
-        params = copy.deepcopy(base_conv_params)
-        params["filters"] = filters
-        params["kernel_size"] = \
-            (encoder_kernel_size, encoder_kernel_size)
-        params["strides"] = (2, 2)
+    # first plain conv
+    params = copy.deepcopy(base_conv_params)
+    params["filters"] = filters
+    params["kernel_size"] = (5, 5)
+    params["strides"] = (1, 1)
 
-        x = \
-            conv2d_wrapper(
-                input_layer=x,
-                ln_post_params=ln_params,
-                bn_post_params=bn_params,
-                conv_params=params)
-    elif use_stem4:
-        # patchify-like stem similar to ConvNext
-        params = copy.deepcopy(base_conv_params)
-        params["filters"] = filters
-        params["kernel_size"] = (4, 4)
-        params["strides"] = (4, 4)
-
-        x = \
-            conv2d_wrapper(
-                input_layer=x,
-                ln_post_params=ln_params,
-                bn_post_params=bn_params,
-                conv_params=params)
-    else:
-        # plain conv no downsample
-        params = copy.deepcopy(base_conv_params)
-        params["filters"] = filters
-        params["kernel_size"] = (5, 5)
-        params["strides"] = (1, 1)
-
-        x = \
-            conv2d_wrapper(
-                input_layer=x,
-                conv_params=params)
+    x = \
+        conv2d_wrapper(
+            input_layer=x,
+            conv_params=params)
 
     # --- build backbone
     for d in range(depth):
@@ -428,13 +382,6 @@ def builder(
             logger.debug(f"processing dependency: {dependency}")
             x = nodes_output[dependency]
 
-            # --- add squeeze and excite
-            if use_squeeze_excitation:
-                x = (
-                    SqueezeExcitation(
-                        r_ratio=r_ratio,
-                        kernel_initializer=kernel_initializer)(x))
-
             if dependency[0] == node[0]:
                 pass
             elif dependency[0] > node[0]:
@@ -452,35 +399,6 @@ def builder(
                                  f"should not supposed to be here")
 
             x_input.append(x)
-
-        # add attention gates,
-        # first input is assumed to be the higher depth
-        # and the second input is assumed to be the lower depth
-        if use_attention_gates and len(x_input) == 2:
-            logger.debug(f"adding AttentionGate at depth: [{node[0]}]")
-
-            x_input[0] = (
-                AttentionGate(
-                    attention_channels=conv_params_res_3[node[0]]["filters"],
-                    kernel_initializer=kernel_initializer
-                )(x_input))
-
-        # add attention focus,
-        # first input is assumed to be the higher depth
-        # and the second input is assumed to the deepest depth
-        if use_attention_focus:
-            logger.debug(f"adding AttentionGate Focus at depth: [{node[0]}]")
-
-            x_base_focus = \
-                tf.keras.layers.UpSampling2D(
-                    size=(2 ** (depth - 1 - node[0]), 2 ** (depth - 1 - node[0])),
-                    interpolation="bilinear")(nodes_output[(depth - 1, 1)])
-
-            x_input[0] = (
-                AttentionGate(
-                    attention_channels=conv_params_res_3[node[0]]["filters"],
-                    kernel_initializer=kernel_initializer
-                )([x_input[0], x_base_focus]))
 
         if len(x_input) == 1:
             x = x_input[0]
@@ -569,49 +487,6 @@ def builder(
     # reverse it so the deepest output is first
     # otherwise we will get the most shallow output
     output_layers = output_layers[::-1]
-
-    # !!! IMPORTANT !!!
-    # upsample everything at the end
-    if use_stem2:
-        # upsample 1 time
-        for d in range(len(output_layers)):
-            params = copy.deepcopy(conv_params[0])
-            params["activation"] = activation
-
-            x = output_layers[d]
-            x = \
-                upsample(
-                    input_layer=x,
-                    upsample_type="upsample_bilinear_conv2d_3x3",
-                    conv_params=params,
-                    ln_post_params=ln_params,
-                    bn_post_params=bn_params
-                )
-            output_layers[d] = x
-    elif use_stem4:
-        # upsample 2 times
-        for d in range(len(output_layers)):
-            params = copy.deepcopy(conv_params[0])
-            params["activation"] = activation
-
-            x = output_layers[d]
-            x = \
-                upsample(
-                    input_layer=x,
-                    upsample_type="upsample_nearest_conv2d_3x3",
-                    conv_params=params,
-                    ln_post_params=ln_params,
-                    bn_post_params=bn_params
-                )
-            x = \
-                upsample(
-                    input_layer=x,
-                    upsample_type="upsample_bilinear_conv2d_3x3",
-                    conv_params=params,
-                    ln_post_params=ln_params,
-                    bn_post_params=bn_params
-                )
-            output_layers[d] = x
 
     # add names to the final layers
     for d in range(len(output_layers)):
