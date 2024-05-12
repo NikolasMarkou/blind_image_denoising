@@ -604,9 +604,6 @@ class ConvNextBlock(tf.keras.layers.Layer):
             x = self.activation_1(x)
 
         # --- 2nd part
-        if self.use_distance_from_center:
-            x_d = self.distance_from_center(x)
-            x = tf.concat([x, x_d], axis=-1)
         x = self.conv_2(x)
         if self.conv_params_2["activation"] != "linear":
             x = self.activation_2(x)
@@ -623,8 +620,7 @@ class ConvNextBlock(tf.keras.layers.Layer):
         # --- gamma
         if self.use_gamma:
             x = self.gamma(x)
-
-        if self.use_soft_gamma:
+        elif self.use_soft_gamma:
             x = self.soft_gamma(x)
 
         # --- stochastic depth
