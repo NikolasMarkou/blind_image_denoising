@@ -332,11 +332,10 @@ def train_loop(
 
         # ---
         finished_training = False
-        trainable_variables = ckpt.model.trainable_variables
         counter = tf.Variable(0, dtype=tf.uint32, trainable=False)
         gradients = [
-            tf.Variable(tf.zeros_like(v), trainable=False)
-            for v in trainable_variables
+            tf.constant(tf.zeros_like(v), trainable=False)
+            for v in ckpt.model.trainable_variables
         ]
 
         while not finished_training and \
@@ -406,7 +405,7 @@ def train_loop(
                         start_time_forward_backward = time.time()
                         # zero out gradients
                         for i in range(len(gradients)):
-                            gradients[i].assign(gradients[i] * 0.0)
+                            gradients[i] *= 0.0
 
                     total_loss = tf.constant(0.0, dtype=tf.float32)
                     model_loss = {
@@ -435,20 +434,20 @@ def train_loop(
 
 
                     for i, grad in enumerate(grads):
-                        gradients[i].assign_add(grad)
+                        gradients[i] += grad
 
                     if counter >= gpu_batches_per_step:
                         counter.assign(value=0)
                         # sanitize and average gradients
                         for i in range(len(gradients)):
-                            gradients[i].assign(gradients[i]) / float(gpu_batches_per_step)
+                            gradients[i] = gradients[i] / float(gpu_batches_per_step)
                         # !!! IMPORTANT !!!!
                         # apply gradient to change weights
                         # this is a hack to stop retracing the update function
                         # https://stackoverflow.com/questions/77028664/tf-keras-optimizers-adam-apply-gradients-triggers-tf-function-retracing
                         apply_grads(_optimizer=optimizer,
                                     _grads=gradients,
-                                    _trainable_variables=trainable_variables)
+                                    _trainable_variables=ckpt.model.trainable_variables)
                     else:
                         counter.assign_add(delta=1)
                         continue
@@ -505,7 +504,7 @@ def train_loop(
                         # --- add weights distribution
                         weights_boxplot = \
                             visualize_weights_boxplot(
-                                trainable_variables=trainable_variables) / 255
+                                trainable_variables=ckpt.model.trainable_variables) / 255
                         tf.summary.image(name="weights/boxplot",
                                          data=weights_boxplot,
                                          max_outputs=visualization_number,
@@ -513,7 +512,7 @@ def train_loop(
                                          description="weights boxplot")
                         weights_heatmap = \
                             visualize_weights_heatmap(
-                                trainable_variables=trainable_variables) / 255
+                                trainable_variables=ckpt.model.trainable_variables) / 255
                         tf.summary.image(name="weights/heatmap",
                                          data=weights_heatmap,
                                          max_outputs=visualization_number,
