@@ -311,7 +311,11 @@ def train_loop(
             tf.summary.trace_on(graph=True, profiler=False)
 
             # run a single step
-            _ = train_step(iter(dataset_training).get_next()[0])
+            results = train_step(iter(dataset_training).get_next()[0])
+
+            if isinstance(results, list):
+                for i, tensor in enumerate(results):
+                    logger.info(f"train_step: output[{i}], => {tf.keras.backend.int_shape(tensor)}")
 
             tf.summary.trace_export(
                 step=ckpt.step,
