@@ -364,7 +364,6 @@ def train_loop(
             ]
             depth_weight = tf.constant(depth_weight, dtype=tf.float32)
             logger.info(f"weight per output index: {depth_weight_str}")
-            percentage_done = tf.constant(percentage_done, dtype=tf.float32)
 
             # --- initialize iterators
             epoch_finished_training = False
@@ -394,6 +393,7 @@ def train_loop(
                     percentage_done = float(ckpt.step) / float(total_steps)
                 else:
                     percentage_done = 0.0
+                percentage_done = tf.constant(percentage_done, dtype=tf.float32)
 
                 # --- check if total steps reached
                 if total_steps != -1:
@@ -402,7 +402,7 @@ def train_loop(
                             int(total_steps)))
                         finished_training = True
 
-                for inputs in dataset_train:
+                for input_image_batch, noisy_image_batch in dataset_train:
                     if counter == 0:
                         # zero out gradients
                         for i in range(len(gradients)):
@@ -411,7 +411,8 @@ def train_loop(
 
                     total_loss, model_loss, all_denoiser_loss, predictions, tmp_grads = \
                         train_step_single_gpu(
-                            *inputs,
+                            _input_image_batch=input_image_batch,
+                            _noisy_image_batch=noisy_image_batch,
                             _depth_weight=depth_weight,
                             _percentage_done=percentage_done,
                             _trainable_variables=trainable_variables)
@@ -433,9 +434,6 @@ def train_loop(
                                     internal_grads=gradients,
                                     internal_trainable_variables=trainable_variables)
 
-                        # break up inputs to show up on board
-                        input_image_batch, noisy_image_batch, gt_all_one_hot_batch, \
-                            _, _, _ = inputs
                     else:
                         counter.assign_add(delta=1)
                         continue
