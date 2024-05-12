@@ -431,6 +431,9 @@ def train_loop(
                         # sanitize and average gradients
                         for i in range(len(gradients)):
                             gradients[i].assign(gradients[i]) / float(gpu_batches_per_step)
+                    else:
+                        counter.assign_add(delta=1)
+                        continue
 
                     #     # !!! IMPORTANT !!!!
                     #     # apply gradient to change weights
@@ -440,103 +443,100 @@ def train_loop(
                     #                 _grads=gradients,
                     #                 _trainable_variables=trainable_variables)
 
-                    else:
-                        counter.assign_add(delta=1)
-                        continue
 
-                # --- add loss summaries for tensorboard
-                # denoiser
-                for i, d in enumerate(all_denoiser_loss):
-                    tf.summary.scalar(name=f"loss_denoiser/scale_{i}/mae",
-                                      data=d[MAE_LOSS_STR],
+
+                    # --- add loss summaries for tensorboard
+                    for i, d in enumerate(all_denoiser_loss):
+                        tf.summary.scalar(name=f"loss_denoiser/scale_{i}/mae",
+                                          data=d[MAE_LOSS_STR],
+                                          step=ckpt.step)
+                        tf.summary.scalar(name=f"loss_denoiser/scale_{i}/ssim",
+                                          data=d[SSIM_LOSS_STR],
+                                          step=ckpt.step)
+                        tf.summary.scalar(name=f"loss_denoiser/scale_{i}/total",
+                                          data=d[TOTAL_LOSS_STR],
+                                          step=ckpt.step)
+
+                    # model
+                    tf.summary.scalar(name="loss/regularization",
+                                      data=model_loss[REGULARIZATION_LOSS_STR],
                                       step=ckpt.step)
-                    tf.summary.scalar(name=f"loss_denoiser/scale_{i}/ssim",
-                                      data=d[SSIM_LOSS_STR],
-                                      step=ckpt.step)
-                    tf.summary.scalar(name=f"loss_denoiser/scale_{i}/total",
-                                      data=d[TOTAL_LOSS_STR],
+                    tf.summary.scalar(name="loss/total",
+                                      data=total_loss,
                                       step=ckpt.step)
 
-                # model
-                tf.summary.scalar(name="loss/regularization",
-                                  data=model_loss[REGULARIZATION_LOSS_STR],
-                                  step=ckpt.step)
-                tf.summary.scalar(name="loss/total",
-                                  data=total_loss,
-                                  step=ckpt.step)
-
-                # --- add image prediction for tensorboard
-                if (ckpt.step % visualization_every) == 0:
-                    # --- denoiser
-                    tf.summary.image(name="denoiser/input", data=input_image_batch / 255,
-                                     max_outputs=visualization_number, step=ckpt.step)
-                    # noisy batch
-                    tf.summary.image(name="denoiser/noisy", data=noisy_image_batch / 255,
-                                     max_outputs=visualization_number, step=ckpt.step)
-                    # denoised batch
-                    for i, d in enumerate(predictions):
-                        tf.summary.image(name=f"denoiser/scale_{i}/output", data=d / 255,
+                    # --- add image prediction for tensorboard
+                    if (ckpt.step % visualization_every) == 0:
+                        # --- denoiser
+                        tf.summary.image(name="denoiser/input", data=input_image_batch / 255,
                                          max_outputs=visualization_number, step=ckpt.step)
+                        # noisy batch
+                        tf.summary.image(name="denoiser/noisy", data=noisy_image_batch / 255,
+                                         max_outputs=visualization_number, step=ckpt.step)
+                        # denoised batch
+                        for i, d in enumerate(predictions):
+                            tf.summary.image(name=f"denoiser/scale_{i}/output", data=d / 255,
+                                             max_outputs=visualization_number, step=ckpt.step)
 
-                    # --- add gradient activity
-                    # gradient_activity = \
-                    #     visualize_gradient_boxplot(
-                    #         gradients=gradients_moving_average,
-                    #         trainable_variables=trainable_variables) / 255
-                    # tf.summary.image(name="weights/gradients",
-                    #                  data=gradient_activity,
-                    #                  max_outputs=visualization_number,
-                    #                  step=ckpt.step,
-                    #                  description="gradient activity")
+                        # --- add gradient activity
+                        # gradient_activity = \
+                        #     visualize_gradient_boxplot(
+                        #         gradients=gradients_moving_average,
+                        #         trainable_variables=trainable_variables) / 255
+                        # tf.summary.image(name="weights/gradients",
+                        #                  data=gradient_activity,
+                        #                  max_outputs=visualization_number,
+                        #                  step=ckpt.step,
+                        #                  description="gradient activity")
 
-                    # --- add weights distribution
-                    weights_boxplot = \
-                        visualize_weights_boxplot(
-                            trainable_variables=trainable_variables) / 255
-                    tf.summary.image(name="weights/boxplot",
-                                     data=weights_boxplot,
-                                     max_outputs=visualization_number,
-                                     step=ckpt.step,
-                                     description="weights boxplot")
-                    weights_heatmap = \
-                        visualize_weights_heatmap(
-                            trainable_variables=trainable_variables) / 255
-                    tf.summary.image(name="weights/heatmap",
-                                     data=weights_heatmap,
-                                     max_outputs=visualization_number,
-                                     step=ckpt.step,
-                                     description="weights heatmap")
+                        # --- add weights distribution
+                        weights_boxplot = \
+                            visualize_weights_boxplot(
+                                trainable_variables=trainable_variables) / 255
+                        tf.summary.image(name="weights/boxplot",
+                                         data=weights_boxplot,
+                                         max_outputs=visualization_number,
+                                         step=ckpt.step,
+                                         description="weights boxplot")
+                        weights_heatmap = \
+                            visualize_weights_heatmap(
+                                trainable_variables=trainable_variables) / 255
+                        tf.summary.image(name="weights/heatmap",
+                                         data=weights_heatmap,
+                                         max_outputs=visualization_number,
+                                         step=ckpt.step,
+                                         description="weights heatmap")
 
-                # --- check if it is time to save a checkpoint
-                if checkpoint_every > 0 and ckpt.step > 0 and \
-                        (ckpt.step % checkpoint_every == 0):
-                    save_checkpoint_model_fn()
+                    # --- check if it is time to save a checkpoint
+                    if checkpoint_every > 0 and ckpt.step > 0 and \
+                            (ckpt.step % checkpoint_every == 0):
+                        save_checkpoint_model_fn()
 
-                # --- keep time of steps per second
-                stop_time_forward_backward = time.time()
-                step_time_forward_backward = \
-                    stop_time_forward_backward - \
-                    start_time_forward_backward
+                    # --- keep time of steps per second
+                    stop_time_forward_backward = time.time()
+                    step_time_forward_backward = \
+                        stop_time_forward_backward - \
+                        start_time_forward_backward
 
-                tf.summary.scalar(name="training/epoch",
-                                  data=int(ckpt.epoch),
-                                  step=ckpt.step)
-                tf.summary.scalar(name="training/learning_rate",
-                                  data=optimizer.learning_rate,
-                                  step=ckpt.step)
-                tf.summary.scalar(name="training/steps_per_second",
-                                  data=1.0 / (step_time_forward_backward + 0.00001),
-                                  step=ckpt.step)
+                    tf.summary.scalar(name="training/epoch",
+                                      data=int(ckpt.epoch),
+                                      step=ckpt.step)
+                    tf.summary.scalar(name="training/learning_rate",
+                                      data=optimizer.learning_rate,
+                                      step=ckpt.step)
+                    tf.summary.scalar(name="training/steps_per_second",
+                                      data=1.0 / (step_time_forward_backward + 0.00001),
+                                      step=ckpt.step)
 
-                # ---
-                ckpt.step.assign_add(1)
+                    # ---
+                    ckpt.step.assign_add(1)
 
-                # --- check if total steps reached
-                if total_steps > 0:
-                    if total_steps <= ckpt.step:
-                        logger.info("total_steps reached [{0}]".format(
-                            int(total_steps)))
-                        finished_training = True
+                    # --- check if total steps reached
+                    if total_steps > 0:
+                        if total_steps <= ckpt.step:
+                            logger.info("total_steps reached [{0}]".format(
+                                int(total_steps)))
+                            finished_training = True
 
             end_time_epoch = time.time()
             epoch_time = end_time_epoch - start_time_epoch
