@@ -484,8 +484,12 @@ def train_loop(
                         tf.summary.image(name="denoiser/noisy", data=noisy_image_batch / 255,
                                          max_outputs=visualization_number, step=ckpt.step)
                         # denoised batch
-                        for i, d in enumerate(predictions):
-                            tf.summary.image(name=f"denoiser/scale_{i}/output", data=d / 255,
+                        if isinstance(predictions, list):
+                            for i, d in enumerate(predictions):
+                                tf.summary.image(name=f"denoiser/scale_{i}/output", data=d / 255,
+                                                 max_outputs=visualization_number, step=ckpt.step)
+                        else:
+                            tf.summary.image(name=f"denoiser/scale_0/output", data=predictions / 255,
                                              max_outputs=visualization_number, step=ckpt.step)
 
                         # --- add gradient activity
