@@ -115,9 +115,6 @@ def dataset_builder(
     additional_noise = tf.constant(additional_noise, dtype=tf.float32)
     multiplicative_noise = tf.constant(multiplicative_noise, dtype=tf.float32)
 
-    # --- set random seed to get the same result
-    tf.random.set_seed(0)
-
     def geometric_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """

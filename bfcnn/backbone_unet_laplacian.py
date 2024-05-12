@@ -125,7 +125,7 @@ def builder(
     :return: unet with convnext blocks model
     """
     # --- argument checking
-    logger.info("building unet_p backbone")
+    logger.info("building unet_laplacian backbone")
     if len(kwargs) > 0:
         logger.info(f"parameters not used: {kwargs}")
 
