@@ -258,7 +258,8 @@ def train_loop(
             results = ckpt.model(n, training=False)
             return results[denoiser_index[0]]
 
-        @tf.function(reduce_retracing=True)
+        @tf.function(
+            reduce_retracing=True)
         def apply_grads(_optimizer,
                         _grads,
                         _trainable_variables):
@@ -276,39 +277,33 @@ def train_loop(
                 _percentage_done: tf.Tensor,
                 _trainable_variables: List):
 
-            # _all_denoiser_loss = [None] * len(denoiser_index)
-            # _total_denoiser_loss = tf.constant(0.0, dtype=tf.float32)
-            #
-            # _scale_gt_image_batch = \
-            #     multiscales_fn(_input_image_batch)
-            #
-            # with tf.GradientTape() as tape:
-            #     _predictions = train_step(_noisy_image_batch)
-            #
-            #     # get denoise loss for each depth,
-            #     for i in range(len(denoiser_index)):
-            #         _loss = denoiser_loss_fn_list[i](
-            #             input_batch=_scale_gt_image_batch[i],
-            #             predicted_batch=_predictions[i])
-            #         _total_denoiser_loss += \
-            #             _loss[TOTAL_LOSS_STR] * _depth_weight[i]
-            #         _all_denoiser_loss[i] = _loss
-            #
-            #     # combine losses
-            #     _model_loss = \
-            #         model_loss_fn(model=ckpt.model)
-            #     _total_loss = \
-            #         _total_denoiser_loss * (1.0 - _percentage_done) + \
-            #         _model_loss[TOTAL_LOSS_STR]
-            #     _grads = \
-            #         tape.gradient(target=_total_loss,
-            #                       sources=_trainable_variables)
+            _all_denoiser_loss = [None] * len(denoiser_index)
+            _total_denoiser_loss = tf.constant(0.0, dtype=tf.float32)
 
-            _total_loss = tf.constant(0.0, dtype=tf.float32)
-            _model_loss = tf.constant(0.0, dtype=tf.float32)
-            _all_denoiser_loss = [tf.constant(0.0, dtype=tf.float32) for i in range(len(denoiser_index))]
-            _predictions = [tf.constant(0.0, dtype=tf.float32) for i in range(len(denoiser_index))]
-            _grads = tf.constant(0.0, dtype=tf.float32)
+            _scale_gt_image_batch = \
+                multiscales_fn(_input_image_batch)
+
+            with tf.GradientTape() as tape:
+                _predictions = train_step(_noisy_image_batch)
+
+                # get denoise loss for each depth,
+                for i in range(len(denoiser_index)):
+                    _loss = denoiser_loss_fn_list[i](
+                        input_batch=_scale_gt_image_batch[i],
+                        predicted_batch=_predictions[i])
+                    _total_denoiser_loss += \
+                        _loss[TOTAL_LOSS_STR] * _depth_weight[i]
+                    _all_denoiser_loss[i] = _loss
+
+                # combine losses
+                _model_loss = \
+                    model_loss_fn(model=ckpt.model)
+                _total_loss = \
+                    _total_denoiser_loss * (1.0 - _percentage_done) + \
+                    _model_loss[TOTAL_LOSS_STR]
+                _grads = \
+                    tape.gradient(target=_total_loss,
+                                  sources=_trainable_variables)
 
             return (
                 _total_loss,
@@ -413,13 +408,20 @@ def train_loop(
                         for i in range(len(gradients)):
                             gradients[i].assign(gradients[i] * 0.0)
 
-                    total_loss, model_loss, all_denoiser_loss, predictions, grads = \
-                        train_step_single_gpu(
-                            _input_image_batch=input_image_batch,
-                            _noisy_image_batch=noisy_image_batch,
-                            _depth_weight=depth_weight,
-                            _percentage_done=percentage_done,
-                            _trainable_variables=trainable_variables)
+                    total_loss = tf.constant(0.0, dtype=tf.float32)
+                    model_loss = tf.constant(0.0, dtype=tf.float32)
+                    all_denoiser_loss = []
+                    predictions = input_image_batch
+                    grads = gradients
+
+                    # total_loss, model_loss, all_denoiser_loss, predictions, grads = \
+                    #     train_step_single_gpu(
+                    #         _input_image_batch=input_image_batch,
+                    #         _noisy_image_batch=noisy_image_batch,
+                    #         _depth_weight=depth_weight,
+                    #         _percentage_done=percentage_done,
+                    #         _trainable_variables=trainable_variables)
+
 
                     for i, grad in enumerate(grads):
                         gradients[i].assign_add(grad)
@@ -430,13 +432,13 @@ def train_loop(
                         for i in range(len(gradients)):
                             gradients[i].assign(gradients[i]) / float(gpu_batches_per_step)
 
-                        # !!! IMPORTANT !!!!
-                        # apply gradient to change weights
-                        # this is a hack to stop retracing the update function
-                        # https://stackoverflow.com/questions/77028664/tf-keras-optimizers-adam-apply-gradients-triggers-tf-function-retracing
-                        apply_grads(_optimizer=optimizer,
-                                    _grads=gradients,
-                                    _trainable_variables=trainable_variables)
+                    #     # !!! IMPORTANT !!!!
+                    #     # apply gradient to change weights
+                    #     # this is a hack to stop retracing the update function
+                    #     # https://stackoverflow.com/questions/77028664/tf-keras-optimizers-adam-apply-gradients-triggers-tf-function-retracing
+                    #     apply_grads(_optimizer=optimizer,
+                    #                 _grads=gradients,
+                    #                 _trainable_variables=trainable_variables)
 
                     else:
                         counter.assign_add(delta=1)
