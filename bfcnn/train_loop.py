@@ -108,7 +108,7 @@ def train_loop(
     # [1.0, 0.5, 0.25, 0.125, 0.0625]
     # [1.0, 0.353, 0.125, 0.0441, 0.015625]
     # [1.0, 0.25, 0.0625, 0.015625, 0.00390625]
-    output_discount_factor = train_config.get("output_discount_factor", 2.0)
+    output_discount_factor = train_config.get("output_discount_factor", 1.0)
     if output_discount_factor > 1.0 or output_discount_factor < 0.0:
         raise ValueError(f"output_discount_factor [{output_discount_factor}] "
                          f"must be between 0.0 and 1.0")
