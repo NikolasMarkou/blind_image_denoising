@@ -76,7 +76,7 @@ def train_loop(
     batch_size = dataset.batch_size
     input_shape = dataset.input_shape
     dataset_training = dataset.training
-    no_color_channels = dataset_training[INPUT_SHAPE_STR][-1]
+    no_color_channels = config[DATASET_STR][INPUT_SHAPE_STR][-1]
 
     # --- build loss function
     loss_fn_map = loss_function_builder(config=config["loss"])
