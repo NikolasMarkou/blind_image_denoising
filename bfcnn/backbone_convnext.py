@@ -288,9 +288,6 @@ def builder(
     if use_bn:
         resnet_params["bn_params"] = bn_params
 
-    if add_gradient_dropout:
-        resnet_params["gradient_dropout_params"] = dict()
-
     if add_gates:
         resnet_params["gate_params"] = \
             dict(

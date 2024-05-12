@@ -15,8 +15,8 @@ from .utilities import \
     layer_normalize, layer_denormalize
 from .backbone_unet import builder as builder_unet
 from .backbone_resnet import builder as builder_resnet
-from .backbone_unet_laplacian import builder as builder_unet_ppp
 from .backbone_convnext import builder as builder_convnext
+from .backbone_unet_laplacian import builder as builder_unet_laplacian
 from .regularizers import \
     builder as regularizer_builder
 
@@ -203,8 +203,8 @@ def model_backbone_builder(
         backbone_builder = builder_resnet
     elif model_type == "unet":
         backbone_builder = builder_unet
-    elif model_type in ["unet_plus_plus_plus", "unet+++", "unet_ppp"]:
-        backbone_builder = builder_unet_ppp
+    elif model_type in ["unet_laplacian"]:
+        backbone_builder = builder_unet_laplacian
     elif model_type in ["convnext"]:
         backbone_builder = builder_convnext
     elif model_type == "efficientnet":
