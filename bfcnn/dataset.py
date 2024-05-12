@@ -310,13 +310,13 @@ def dataset_builder(
 
         # --- round values to nearest integer
         if round_values:
-            noisy_batch = tf.round(noisy_batch)
+            noisy_batch = tf.round(x=noisy_batch)
 
         # --- clip values within boundaries
         if clip_value:
             noisy_batch = \
                 tf.clip_by_value(
-                    noisy_batch,
+                    t=noisy_batch,
                     clip_value_min=min_value,
                     clip_value_max=max_value)
 
@@ -361,7 +361,7 @@ def dataset_builder(
                 crop_size=(input_shape[0], input_shape[1]),
                 x_range=None,
                 y_range=None,
-                no_crops_per_image=1)
+                no_crops_per_image=5)
         del img
 
         return crops
