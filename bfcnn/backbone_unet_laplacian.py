@@ -33,6 +33,7 @@ def builder(
         depth: int = 5,
         width: int = 1,
         encoder_kernel_size: int = 5,
+        decoder_kernel_size: int = 3,
         kernel_size: int = -1,
         filters: int = 32,
         max_filters: int = -1,
@@ -77,7 +78,8 @@ def builder(
     :param depth: number of levels to go down
     :param width: number of horizontals nodes, if -1 it gets set to depth
     :param kernel_size: kernel size of the rest of convolutional layers
-    :param encoder_kernel_size: kernel size of backbone convolutional layer
+    :param encoder_kernel_size: kernel size of encoder convolutional layer
+    :param k: kernel size of decoder convolutional layer
     :param filters_level_multiplier: every down level increase the number of filters by a factor of
     :param filters: filters of base convolutional layer
     :param max_filters: max number of filters
@@ -93,7 +95,6 @@ def builder(
     :param use_mix_project: if True mix different depths with a 1x1 projection (SKOOTS: Skeleton oriented object segmentation for mitochondria)
     :param use_concat: if True concatenate otherwise add skip layers (True by default)
     :param use_laplacian: if True use laplacian estimation between depths
-    :param use_final_depth_block: if True in the deepest layer add an extra decoder step
     :param use_decoder_normalization: if True add a normalization layer to each decoder output
     :param use_soft_orthogonal_regularization: if True use soft orthogonal regularization on the 1x1 kernels
     :param use_soft_orthonormal_regularization: if true use soft orthonormal regularization on the 1x1 middle kernels
@@ -424,7 +425,7 @@ def builder(
         for w in range(width):
             x_skip = x
             params = copy.deepcopy(conv_params_res_1[node[0]])
-            params["kernel_size"] = (kernel_size, kernel_size)
+            params["kernel_size"] = (decoder_kernel_size, decoder_kernel_size)
 
             x = \
                 ConvNextBlock(
