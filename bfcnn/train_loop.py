@@ -276,33 +276,39 @@ def train_loop(
                 _percentage_done: tf.Tensor,
                 _trainable_variables: List):
 
-            _all_denoiser_loss = [None] * len(denoiser_index)
-            _total_denoiser_loss = tf.constant(0.0, dtype=tf.float32)
+            # _all_denoiser_loss = [None] * len(denoiser_index)
+            # _total_denoiser_loss = tf.constant(0.0, dtype=tf.float32)
+            #
+            # _scale_gt_image_batch = \
+            #     multiscales_fn(_input_image_batch)
+            #
+            # with tf.GradientTape() as tape:
+            #     _predictions = train_step(_noisy_image_batch)
+            #
+            #     # get denoise loss for each depth,
+            #     for i in range(len(denoiser_index)):
+            #         _loss = denoiser_loss_fn_list[i](
+            #             input_batch=_scale_gt_image_batch[i],
+            #             predicted_batch=_predictions[i])
+            #         _total_denoiser_loss += \
+            #             _loss[TOTAL_LOSS_STR] * _depth_weight[i]
+            #         _all_denoiser_loss[i] = _loss
+            #
+            #     # combine losses
+            #     _model_loss = \
+            #         model_loss_fn(model=ckpt.model)
+            #     _total_loss = \
+            #         _total_denoiser_loss * (1.0 - _percentage_done) + \
+            #         _model_loss[TOTAL_LOSS_STR]
+            #     _grads = \
+            #         tape.gradient(target=_total_loss,
+            #                       sources=_trainable_variables)
 
-            _scale_gt_image_batch = \
-                multiscales_fn(_input_image_batch)
-
-            with tf.GradientTape() as tape:
-                _predictions = train_step(_noisy_image_batch)
-
-                # get denoise loss for each depth,
-                for i in range(len(denoiser_index)):
-                    _loss = denoiser_loss_fn_list[i](
-                        input_batch=_scale_gt_image_batch[i],
-                        predicted_batch=_predictions[i])
-                    _total_denoiser_loss += \
-                        _loss[TOTAL_LOSS_STR] * _depth_weight[i]
-                    _all_denoiser_loss[i] = _loss
-
-                # combine losses
-                _model_loss = \
-                    model_loss_fn(model=ckpt.model)
-                _total_loss = \
-                    _total_denoiser_loss * (1.0 - _percentage_done) + \
-                    _model_loss[TOTAL_LOSS_STR]
-                _grads = \
-                    tape.gradient(target=_total_loss,
-                                  sources=_trainable_variables)
+            _total_loss = tf.constant(0.0, dtype=tf.float32)
+            _model_loss = tf.constant(0.0, dtype=tf.float32)
+            _all_denoiser_loss = [tf.constant(0.0, dtype=tf.float32) for i in range(len(denoiser_index))]
+            _predictions = [tf.constant(0.0, dtype=tf.float32) for i in range(len(denoiser_index))]
+            _grads = tf.constant(0.0, dtype=tf.float32)
 
             return (
                 _total_loss,
