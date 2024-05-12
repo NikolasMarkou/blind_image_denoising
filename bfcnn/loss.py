@@ -52,7 +52,7 @@ def psnr(
     # psnr of prediction per image pair
     psnr_batch = tf.image.psnr(original, prediction, max_val=max_val)
 
-    return tf.reduce_mean(psnr_batch, axis=[0])
+    return tf.reduce_mean(psnr_batch, axis=None)
 
 # ---------------------------------------------------------------------
 
