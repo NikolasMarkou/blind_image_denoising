@@ -440,14 +440,16 @@ def train_loop(
                         counter.assign(value=0)
                         # sanitize and average gradients
                         for i in range(len(gradients)):
-                            gradients[i] = gradients[i] / float(gpu_batches_per_step)
+                            gradients[i] /= float(gpu_batches_per_step)
                         # !!! IMPORTANT !!!!
                         # apply gradient to change weights
                         # this is a hack to stop retracing the update function
                         # https://stackoverflow.com/questions/77028664/tf-keras-optimizers-adam-apply-gradients-triggers-tf-function-retracing
-                        apply_grads(_optimizer=optimizer,
-                                    _grads=gradients,
-                                    _trainable_variables=ckpt.model.trainable_variables)
+                        # apply_grads(_optimizer=optimizer,
+                        #             _grads=gradients,
+                        #             _trainable_variables=ckpt.model.trainable_variables)
+                        optimizer.apply_gradients(
+                            zip(gradients, ckpt.model.trainable_variables))
                     else:
                         counter.assign_add(delta=1)
                         continue
