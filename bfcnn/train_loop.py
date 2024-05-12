@@ -317,11 +317,6 @@ def train_loop(
             tf.summary.flush()
             tf.summary.trace_off()
 
-        sizes = [
-            (int(input_shape[0] / (2 ** i)), int(input_shape[1] / (2 ** i)))
-            for i in range(len(denoiser_index))
-        ]
-
         # ---
         finished_training = False
         trainable_variables = ckpt.model.trainable_variables
@@ -409,30 +404,30 @@ def train_loop(
                         for i in range(len(gradients)):
                             gradients[i] *= 0.0
 
-                    total_loss = tf.constant(0.0, dtype=tf.float32)
-                    model_loss = {
-                        REGULARIZATION_LOSS_STR: tf.constant(0.0, dtype=tf.float32),
-                        TOTAL_LOSS_STR: tf.constant(0.0, dtype=tf.float32)
-                    }
+                    # total_loss = tf.constant(0.0, dtype=tf.float32)
+                    # model_loss = {
+                    #     REGULARIZATION_LOSS_STR: tf.constant(0.0, dtype=tf.float32),
+                    #     TOTAL_LOSS_STR: tf.constant(0.0, dtype=tf.float32)
+                    # }
+                    #
+                    # all_denoiser_loss = [
+                    #     {
+                    #         MAE_LOSS_STR: tf.constant(0.0, dtype=tf.float32),
+                    #         SSIM_LOSS_STR: tf.constant(0.0, dtype=tf.float32),
+                    #         TOTAL_LOSS_STR: tf.constant(0.0, dtype=tf.float32)
+                    #     }
+                    #     for i in range(len(denoiser_index))
+                    # ]
+                    # predictions = input_image_batch
+                    # grads = gradients
 
-                    all_denoiser_loss = [
-                        {
-                            MAE_LOSS_STR: tf.constant(0.0, dtype=tf.float32),
-                            SSIM_LOSS_STR: tf.constant(0.0, dtype=tf.float32),
-                            TOTAL_LOSS_STR: tf.constant(0.0, dtype=tf.float32)
-                        }
-                        for i in range(len(denoiser_index))
-                    ]
-                    predictions = input_image_batch
-                    grads = gradients
-
-                    # total_loss, model_loss, all_denoiser_loss, predictions, grads = \
-                    #     train_step_single_gpu(
-                    #         _input_image_batch=input_image_batch,
-                    #         _noisy_image_batch=noisy_image_batch,
-                    #         _depth_weight=depth_weight,
-                    #         _percentage_done=percentage_done,
-                    #         _trainable_variables=trainable_variables)
+                    total_loss, model_loss, all_denoiser_loss, predictions, grads = \
+                        train_step_single_gpu(
+                            p_input_image_batch=input_image_batch,
+                            p_noisy_image_batch=noisy_image_batch,
+                            p_depth_weight=depth_weight,
+                            p_percentage_done=percentage_done,
+                            p_trainable_variables=trainable_variables)
 
 
                     for i, grad in enumerate(grads):
