@@ -1,6 +1,5 @@
 import copy
 import tensorflow as tf
-import tensorflow_addons as tfa
 from collections import namedtuple
 from typing import Dict, Callable, Iterator, Tuple
 
@@ -147,23 +146,23 @@ def dataset_builder(
                     true_fn=lambda: tf.image.flip_up_down(input_batch),
                     false_fn=lambda: input_batch)
 
-        # --- randomly rotate input
-        if use_rotate:
-            input_batch = \
-                tf.cond(
-                    pred=random_option_rotate,
-                    true_fn=lambda:
-                    tfa.image.rotate(
-                        angles=tf.random.uniform(
-                            dtype=tf.float32,
-                            seed=0,
-                            minval=-random_rotate,
-                            maxval=random_rotate,
-                            shape=(input_shape_inference[0],)),
-                        images=input_batch,
-                        fill_mode="reflect",
-                        interpolation="bilinear"),
-                    false_fn=lambda: input_batch)
+        # # --- randomly rotate input
+        # if use_rotate:
+        #     input_batch = \
+        #         tf.cond(
+        #             pred=random_option_rotate,
+        #             true_fn=lambda:
+        #             tfa.image.rotate(
+        #                 angles=tf.random.uniform(
+        #                     dtype=tf.float32,
+        #                     seed=0,
+        #                     minval=-random_rotate,
+        #                     maxval=random_rotate,
+        #                     shape=(input_shape_inference[0],)),
+        #                 images=input_batch,
+        #                 fill_mode="reflect",
+        #                 interpolation="bilinear"),
+        #             false_fn=lambda: input_batch)
 
         return input_batch
 
@@ -296,18 +295,18 @@ def dataset_builder(
                     false_fn=lambda: noisy_batch
                 )
 
-        # --- blur to embed noise
-        if use_random_blur:
-            noisy_batch = \
-                tf.cond(
-                    pred=random_option_blur,
-                    true_fn=lambda:
-                    tfa.image.gaussian_filter2d(
-                        image=noisy_batch,
-                        sigma=0.5,
-                        filter_shape=(5, 5)),
-                    false_fn=lambda: noisy_batch
-                )
+        # # --- blur to embed noise
+        # if use_random_blur:
+        #     noisy_batch = \
+        #         tf.cond(
+        #             pred=random_option_blur,
+        #             true_fn=lambda:
+        #             tfa.image.gaussian_filter2d(
+        #                 image=noisy_batch,
+        #                 sigma=0.5,
+        #                 filter_shape=(5, 5)),
+        #             false_fn=lambda: noisy_batch
+        #         )
 
         # --- round values to nearest integer
         if round_values:
