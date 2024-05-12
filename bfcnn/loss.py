@@ -226,22 +226,13 @@ def loss_function_builder(
                      hinge=hinge,
                      cutoff=(cutoff * cutoff))
 
-        # snr
-        peak_signal_to_noise_ratio = \
-            tf.reduce_mean(
-                tf.image.psnr(
-                    a=gt_batch,
-                    b=predicted_batch,
-                    max_val=255.0))
-
         return {
             TOTAL_LOSS_STR:
                 mae_prediction_loss * mae_multiplier +
                 mse_prediction_loss * mse_multiplier +
                 ssim_loss * ssim_multiplier,
             MAE_LOSS_STR: mae_actual,
-            SSIM_LOSS_STR: ssim_loss,
-            PSNR_STR: peak_signal_to_noise_ratio
+            SSIM_LOSS_STR: ssim_loss
         }
 
     # ----
