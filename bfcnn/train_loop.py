@@ -409,8 +409,7 @@ def train_loop(
                             gradients[i].assign(gradients[i] * 0.0)
                         start_time_forward_backward = time.time()
 
-                    total_loss, model_loss, all_denoiser_loss, all_segmentation_loss, \
-                        predictions, tmp_grads = \
+                    total_loss, model_loss, all_denoiser_loss, predictions, tmp_grads = \
                         train_step_single_gpu(
                             *inputs,
                             _depth_weight=depth_weight,
