@@ -75,10 +75,11 @@ def dataset_builder(
         raise ValueError("dont know how to handle anything else than list and dict")
 
     # --- clip values to min max
+    clip_value = config.get("clip_value", True)
     value_range = config.get("value_range", [0, 255])
+    no_crops_per_image = config.get("no_crops_per_image", 1)
     min_value = tf.constant(value_range[0], dtype=tf.float32)
     max_value = tf.constant(value_range[1], dtype=tf.float32)
-    clip_value = config.get("clip_value", True)
 
     # --- if true round values
     round_values = config.get("round_values", True)
@@ -199,18 +200,18 @@ def dataset_builder(
         random_option_channel_independent_noise = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
 
         # --- jpeg noise
-        # if use_jpeg_noise:
-        #     noisy_batch = \
-        #         tf.cond(
-        #             pred=random_option_jpeg_noise,
-        #             true_fn=lambda:
-        #             tf.expand_dims(
-        #                 tf.image.adjust_jpeg_quality(
-        #                     image=tf.squeeze(tf.cast(noisy_batch, dtype=tf.float32) / 255, axis=0),
-        #                     jpeg_quality=25
-        #                 ), axis=0) * 255,
-        #             false_fn=lambda: noisy_batch
-        #         )
+        if use_jpeg_noise:
+            noisy_batch = \
+                tf.cond(
+                    pred=random_option_jpeg_noise,
+                    true_fn=lambda:
+                    tf.expand_dims(
+                        tf.image.adjust_jpeg_quality(
+                            image=tf.squeeze(tf.cast(noisy_batch, dtype=tf.float32) / 255, axis=0),
+                            jpeg_quality=25
+                        ), axis=0) * 255,
+                    false_fn=lambda: noisy_batch
+                )
 
         # --- quantization noise
         if use_quantization:
@@ -358,7 +359,7 @@ def dataset_builder(
                 crop_size=(input_shape[0], input_shape[1]),
                 x_range=None,
                 y_range=None,
-                no_crops_per_image=5)
+                no_crops_per_image=no_crops_per_image)
         del img
 
         return crops

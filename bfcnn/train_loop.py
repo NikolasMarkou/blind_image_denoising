@@ -257,8 +257,7 @@ def train_loop(
 
         @tf.function(reduce_retracing=True, jit_compile=False)
         def test_step(n: tf.Tensor) -> tf.Tensor:
-            results = ckpt.model(n, training=False)
-            return results[denoiser_index[0]]
+            return ckpt.model(n, training=False)[denoiser_index[0]]
 
         @tf.function(
             autograph=True,
@@ -307,6 +306,15 @@ def train_loop(
                 p_grads
             )
 
+        @tf.function(
+            reduce_retracing=True)
+        def apply_grads(
+                internal_optimizer,
+                internal_gradients,
+                internal_trainable_variables):
+            internal_optimizer.apply_gradients(
+                zip(internal_gradients, internal_trainable_variables))
+
         if ckpt.step == 0:
             tf.summary.trace_on(graph=True, profiler=False)
 
@@ -332,17 +340,9 @@ def train_loop(
             for v in trainable_variables
         ]
 
-        @tf.function(
-            reduce_retracing=True)
-        def apply_grads(
-                internal_optimizer,
-                internal_gradients,
-                internal_trainable_variables):
-            internal_optimizer.apply_gradients(
-                zip(internal_gradients, internal_trainable_variables))
-
         while not finished_training and \
                 (total_epochs == -1 or ckpt.epoch < total_epochs):
+
             logger.info("epoch [{0}], step [{1}]".format(
                 int(ckpt.epoch), int(ckpt.step)))
 
@@ -355,7 +355,6 @@ def train_loop(
                 percentage_done = float(ckpt.step) / float(total_steps)
             else:
                 percentage_done = 0.0
-
 
             logger.info("percentage done [{:.2f}]".format(float(percentage_done)))
             depth_weight = [
@@ -371,175 +370,158 @@ def train_loop(
             logger.info(f"weight per output index: {depth_weight_str}")
 
             # --- initialize iterators
-            epoch_finished_training = False
             dataset_train = iter(dataset_training)
-            total_loss = tf.constant(0.0, dtype=tf.float32)
 
             # --- check if total steps reached
-            if total_steps != -1:
+            if total_steps > 0:
                 if total_steps <= ckpt.step:
                     logger.info("total_steps reached [{0}]".format(
                         int(total_steps)))
                     finished_training = True
 
+            # --- training percentage
+            if total_epochs > 0:
+                percentage_done = float(ckpt.epoch) / float(total_epochs)
+            elif total_steps > 0:
+                percentage_done = float(ckpt.step) / float(total_steps)
+            else:
+                percentage_done = 0.0
+            percentage_done = tf.constant(percentage_done, dtype=tf.float32)
+
+            logger.info("epoch [{0}], step [{1}]".format(
+                int(ckpt.epoch), int(ckpt.step)))
+
             # --- iterate over the batches of the dataset
-            while not finished_training and \
-                    not epoch_finished_training:
+            for input_image_batch, noisy_image_batch in dataset_train:
+                if counter == 0:
+                    start_time_forward_backward = time.time()
+                    # zero out gradients
+                    for i in range(len(gradients)):
+                        gradients[i] *= 0.0
 
-                start_time_forward_backward = time.time()
+                total_loss, model_loss, all_denoiser_loss, predictions, grads = \
+                    train_step_single_gpu(
+                        p_input_image_batch=input_image_batch,
+                        p_noisy_image_batch=noisy_image_batch,
+                        p_depth_weight=depth_weight,
+                        p_percentage_done=percentage_done,
+                        p_trainable_variables=trainable_variables)
 
-                logger.info("epoch [{0}], step [{1}]".format(
-                    int(ckpt.epoch), int(ckpt.step)))
+                for i, grad in enumerate(grads):
+                    gradients[i] += grad
 
-                # --- training percentage
-                if total_epochs > 0:
-                    percentage_done = float(ckpt.epoch) / float(total_epochs)
-                elif total_steps > 0:
-                    percentage_done = float(ckpt.step) / float(total_steps)
+                if counter >= gpu_batches_per_step:
+                    counter.assign(value=0)
+                    # sanitize and average gradients
+                    for i in range(len(gradients)):
+                        gradients[i] /= float(gpu_batches_per_step)
+                    # !!! IMPORTANT !!!!
+                    # apply gradient to change weights
+                    # this is a hack to stop retracing the update function
+                    # https://stackoverflow.com/questions/77028664/tf-keras-optimizers-adam-apply-gradients-triggers-tf-function-retracing
+                    apply_grads(
+                        internal_optimizer=optimizer,
+                        internal_gradients=gradients,
+                        internal_trainable_variables=trainable_variables)
                 else:
-                    percentage_done = 0.0
-                percentage_done = tf.constant(percentage_done, dtype=tf.float32)
+                    counter.assign_add(delta=1)
+                    continue
+
+                # --- add loss summaries for tensorboard
+                for i, d in enumerate(all_denoiser_loss):
+                    tf.summary.scalar(name=f"loss_denoiser/scale_{i}/mae",
+                                      data=d[MAE_LOSS_STR],
+                                      step=ckpt.step)
+                    tf.summary.scalar(name=f"loss_denoiser/scale_{i}/ssim",
+                                      data=d[SSIM_LOSS_STR],
+                                      step=ckpt.step)
+                    tf.summary.scalar(name=f"loss_denoiser/scale_{i}/total",
+                                      data=d[TOTAL_LOSS_STR],
+                                      step=ckpt.step)
+
+                # model
+                tf.summary.scalar(name="loss/regularization",
+                                  data=model_loss[REGULARIZATION_LOSS_STR],
+                                  step=ckpt.step)
+                tf.summary.scalar(name="loss/total",
+                                  data=total_loss,
+                                  step=ckpt.step)
+
+                # --- add image prediction for tensorboard
+                if (ckpt.step % visualization_every) == 0:
+                    # --- denoiser
+                    tf.summary.image(name="denoiser/input", data=input_image_batch / 255,
+                                     max_outputs=visualization_number, step=ckpt.step)
+                    # noisy batch
+                    tf.summary.image(name="denoiser/noisy", data=noisy_image_batch / 255,
+                                     max_outputs=visualization_number, step=ckpt.step)
+                    # denoised batch
+                    if isinstance(predictions, list):
+                        for i, d in enumerate(predictions):
+                            tf.summary.image(name=f"denoiser/scale_{i}/output", data=d / 255,
+                                             max_outputs=visualization_number, step=ckpt.step)
+                    else:
+                        tf.summary.image(name=f"denoiser/scale_0/output", data=predictions / 255,
+                                         max_outputs=visualization_number, step=ckpt.step)
+
+                    # --- add gradient activity
+                    gradient_activity = \
+                        visualize_gradient_boxplot(
+                            gradients=gradients,
+                            trainable_variables=trainable_variables) / 255
+                    tf.summary.image(name="weights/gradients",
+                                     data=gradient_activity,
+                                     max_outputs=visualization_number,
+                                     step=ckpt.step,
+                                     description="gradient activity")
+
+                    # --- add weights distribution
+                    weights_boxplot = \
+                        visualize_weights_boxplot(
+                            trainable_variables=trainable_variables) / 255
+                    tf.summary.image(name="weights/boxplot",
+                                     data=weights_boxplot,
+                                     max_outputs=visualization_number,
+                                     step=ckpt.step,
+                                     description="weights boxplot")
+                    weights_heatmap = \
+                        visualize_weights_heatmap(
+                            trainable_variables=trainable_variables) / 255
+                    tf.summary.image(name="weights/heatmap",
+                                     data=weights_heatmap,
+                                     max_outputs=visualization_number,
+                                     step=ckpt.step,
+                                     description="weights heatmap")
+
+                # --- check if it is time to save a checkpoint
+                if (checkpoint_every > 0) and (ckpt.step > 0) and \
+                        (ckpt.step % checkpoint_every == 0):
+                    save_checkpoint_model_fn()
+
+                # --- keep time of steps per second
+                stop_time_forward_backward = time.time()
+                step_time_forward_backward = \
+                    stop_time_forward_backward - \
+                    start_time_forward_backward
+
+                tf.summary.scalar(name="training/epoch",
+                                  data=int(ckpt.epoch),
+                                  step=ckpt.step)
+                tf.summary.scalar(name="training/learning_rate",
+                                  data=optimizer.learning_rate,
+                                  step=ckpt.step)
+                tf.summary.scalar(name="training/steps_per_second",
+                                  data=1.0 / (step_time_forward_backward + 0.00001),
+                                  step=ckpt.step)
+                # ---
+                ckpt.step.assign_add(1)
 
                 # --- check if total steps reached
-                if total_steps != -1:
-                    if total_steps <= ckpt.step:
-                        logger.info("total_steps reached [{0}]".format(
-                            int(total_steps)))
-                        finished_training = True
-
-                for input_image_batch, noisy_image_batch in dataset_train:
-                    if counter == 0:
-                        start_time_forward_backward = time.time()
-                        # zero out gradients
-                        for i in range(len(gradients)):
-                            gradients[i] *= 0.0
-
-                    total_loss, model_loss, all_denoiser_loss, predictions, grads = \
-                        train_step_single_gpu(
-                            p_input_image_batch=input_image_batch,
-                            p_noisy_image_batch=noisy_image_batch,
-                            p_depth_weight=depth_weight,
-                            p_percentage_done=percentage_done,
-                            p_trainable_variables=trainable_variables)
-
-
-                    for i, grad in enumerate(grads):
-                        gradients[i] += grad
-
-                    if counter >= gpu_batches_per_step:
-                        counter.assign(value=0)
-                        # sanitize and average gradients
-                        for i in range(len(gradients)):
-                            gradients[i] /= float(gpu_batches_per_step)
-                        # !!! IMPORTANT !!!!
-                        # apply gradient to change weights
-                        # this is a hack to stop retracing the update function
-                        # https://stackoverflow.com/questions/77028664/tf-keras-optimizers-adam-apply-gradients-triggers-tf-function-retracing
-                        apply_grads(
-                            internal_optimizer=optimizer,
-                            internal_gradients=gradients,
-                            internal_trainable_variables=trainable_variables)
-                    else:
-                        counter.assign_add(delta=1)
-                        continue
-
-
-                    # --- add loss summaries for tensorboard
-                    for i, d in enumerate(all_denoiser_loss):
-                        tf.summary.scalar(name=f"loss_denoiser/scale_{i}/mae",
-                                          data=d[MAE_LOSS_STR],
-                                          step=ckpt.step)
-                        tf.summary.scalar(name=f"loss_denoiser/scale_{i}/ssim",
-                                          data=d[SSIM_LOSS_STR],
-                                          step=ckpt.step)
-                        tf.summary.scalar(name=f"loss_denoiser/scale_{i}/total",
-                                          data=d[TOTAL_LOSS_STR],
-                                          step=ckpt.step)
-
-                    # model
-                    tf.summary.scalar(name="loss/regularization",
-                                      data=model_loss[REGULARIZATION_LOSS_STR],
-                                      step=ckpt.step)
-                    tf.summary.scalar(name="loss/total",
-                                      data=total_loss,
-                                      step=ckpt.step)
-
-                    # --- add image prediction for tensorboard
-                    if (ckpt.step % visualization_every) == 0:
-                        # --- denoiser
-                        tf.summary.image(name="denoiser/input", data=input_image_batch / 255,
-                                         max_outputs=visualization_number, step=ckpt.step)
-                        # noisy batch
-                        tf.summary.image(name="denoiser/noisy", data=noisy_image_batch / 255,
-                                         max_outputs=visualization_number, step=ckpt.step)
-                        # denoised batch
-                        if isinstance(predictions, list):
-                            for i, d in enumerate(predictions):
-                                tf.summary.image(name=f"denoiser/scale_{i}/output", data=d / 255,
-                                                 max_outputs=visualization_number, step=ckpt.step)
-                        else:
-                            tf.summary.image(name=f"denoiser/scale_0/output", data=predictions / 255,
-                                             max_outputs=visualization_number, step=ckpt.step)
-
-                        # --- add gradient activity
-                        gradient_activity = \
-                            visualize_gradient_boxplot(
-                                gradients=gradients,
-                                trainable_variables=trainable_variables) / 255
-                        tf.summary.image(name="weights/gradients",
-                                         data=gradient_activity,
-                                         max_outputs=visualization_number,
-                                         step=ckpt.step,
-                                         description="gradient activity")
-
-                        # --- add weights distribution
-                        weights_boxplot = \
-                            visualize_weights_boxplot(
-                                trainable_variables=trainable_variables) / 255
-                        tf.summary.image(name="weights/boxplot",
-                                         data=weights_boxplot,
-                                         max_outputs=visualization_number,
-                                         step=ckpt.step,
-                                         description="weights boxplot")
-                        weights_heatmap = \
-                            visualize_weights_heatmap(
-                                trainable_variables=trainable_variables) / 255
-                        tf.summary.image(name="weights/heatmap",
-                                         data=weights_heatmap,
-                                         max_outputs=visualization_number,
-                                         step=ckpt.step,
-                                         description="weights heatmap")
-
-                    # --- check if it is time to save a checkpoint
-                    if checkpoint_every > 0 and ckpt.step > 0 and \
-                            (ckpt.step % checkpoint_every == 0):
-                        save_checkpoint_model_fn()
-
-                    # --- keep time of steps per second
-                    stop_time_forward_backward = time.time()
-                    step_time_forward_backward = \
-                        stop_time_forward_backward - \
-                        start_time_forward_backward
-
-                    tf.summary.scalar(name="training/epoch",
-                                      data=int(ckpt.epoch),
-                                      step=ckpt.step)
-                    tf.summary.scalar(name="training/learning_rate",
-                                      data=optimizer.learning_rate,
-                                      step=ckpt.step)
-                    tf.summary.scalar(name="training/steps_per_second",
-                                      data=1.0 / (step_time_forward_backward + 0.00001),
-                                      step=ckpt.step)
-
-                    # ---
-                    ckpt.step.assign_add(1)
-
-                    # --- check if total steps reached
-                    if total_steps > 0:
-                        if total_steps <= ckpt.step:
-                            logger.info("total_steps reached [{0}]".format(
-                                int(total_steps)))
-                            finished_training = True
+                if 0 < total_steps <= ckpt.step:
+                    logger.info("total_steps reached [{0}]".format(
+                        int(total_steps)))
+                    finished_training = True
+                    break
 
             end_time_epoch = time.time()
             epoch_time = end_time_epoch - start_time_epoch

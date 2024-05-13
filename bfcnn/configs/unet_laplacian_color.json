@@ -59,7 +59,7 @@
 	"dataset": {
 		"batch_size": 4,
 		"color_mode": "rgb",
-		"no_crops_per_image": 1,
+		"no_crops_per_image": 4,
 		"value_range": [0, 255],
 		"clip_value": true,
 		"random_blur": true,
@@ -67,7 +67,7 @@
 		"random_rotate": 1.57,
 		"random_up_down": true,
 		"random_left_right": true,
-		"input_shape": [128, 128, 3],
+		"input_shape": [256, 256, 3],
 		"multiplicative_noise": [0.05, 0.1],
 		"additional_noise": [5, 10, 20, 30, 40],
 		"inputs": [
