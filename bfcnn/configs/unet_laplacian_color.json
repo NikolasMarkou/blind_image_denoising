@@ -10,6 +10,7 @@
 			"use_gamma": false,
 			"use_soft_gamma": true,
 			"use_mix_project": false,
+			"use_attention_gates": true,
 			"encoder_kernel_size": 7,
 			"decoder_kernel_size": 3,
 			"multiple_scale_outputs": true,
