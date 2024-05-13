@@ -38,7 +38,6 @@ def builder(
         max_filters: int = -1,
         filters_level_multiplier: float = 2.0,
         activation: str = "leaky_relu_01",
-        second_activation: str = "linear",
         upsample_type: str = "bilinear",
         downsample_type: str = "strides",
         downsample_activation: str = None,
@@ -82,7 +81,6 @@ def builder(
     :param filters: filters of base convolutional layer
     :param max_filters: max number of filters
     :param activation: activation of the first 1x1 kernel
-    :param second_activation: activation of the second 1x1 kernel
     :param upsample_type: string describing the upsample type
     :param downsample_type: string describing the downsample type
     :param use_bn: use batch normalization
@@ -126,7 +124,6 @@ def builder(
             activation_str = activation
         return activation_str
 
-    second_activation = activation_str_fix_fn(second_activation)
     downsample_activation = activation_str_fix_fn(downsample_activation)
     upsample_activation = activation_str_fix_fn(upsample_activation)
 
@@ -214,7 +211,7 @@ def builder(
         params = copy.deepcopy(base_conv_params)
         params["filters"] = filters_level
         params["kernel_size"] = 3
-        params["activation"] = second_activation
+        params["activation"] = "linear"
         conv_params.append(params)
 
         # 1st residual conv
@@ -239,7 +236,7 @@ def builder(
         # 3rd residual conv
         params = copy.deepcopy(base_conv_params)
         params["kernel_size"] = 1
-        params["activation"] = second_activation
+        params["activation"] = "linear"
         params["filters"] = filters_level
         conv_params_res_3.append(params)
 

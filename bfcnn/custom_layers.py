@@ -597,6 +597,7 @@ class ConvNextBlock(tf.keras.layers.Layer):
 
         # --- 1st part
         x = self.conv_1(x)
+
         if self.use_bn:
             x = self.bn(x, training=training)
         if self.use_ln:
