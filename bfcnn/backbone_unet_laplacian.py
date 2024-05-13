@@ -184,13 +184,13 @@ def builder(
     conv_params_res_1 = []
     conv_params_res_2 = []
     conv_params_res_3 = []
-    conv_params_scale_output = dict(
+    conv_params_output = dict(
         kernel_size=(1, 1),
         filters=filters,
         strides=(1, 1),
         padding="same",
         use_bias=use_bias,
-        activation="linear",
+        activation=activation,
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
@@ -467,12 +467,6 @@ def builder(
                 logger.error(f"there is no node[{d},{w}] please check your assumptions")
                 continue
             x = nodes_output[(d, w)]
-            # convert to intermediate output
-            x = conv2d_wrapper(
-                input_layer=x,
-                ln_params=ln_params,
-                bn_params=bn_params,
-                conv_params=conv_params_scale_output)
             tmp_output_layers.append(x)
         # reverse here so deeper levels come on top
         output_layers += tmp_output_layers[::-1]
@@ -490,6 +484,12 @@ def builder(
     # add normalization and names to the final layers
     for i in range(len(output_layers)):
         x = output_layers[i]
+        # convert to intermediate output
+        x = conv2d_wrapper(
+            input_layer=x,
+            ln_params=ln_params,
+            bn_params=bn_params,
+            conv_params=conv_params_output)
         output_layers[i] = (
             tf.keras.layers.Layer(
                 name=f"{output_layer_name}_{i}")(x))
