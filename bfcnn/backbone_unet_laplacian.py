@@ -384,8 +384,8 @@ def builder(
                     upsample(
                         input_layer=x,
                         upsample_type=upsample_type,
-                        ln_params=ln_params,
-                        bn_params=bn_params,
+                        ln_params=None,
+                        bn_params=None,
                         conv_params=conv_params_up[node[0]])
             else:
                 raise ValueError(f"node: {node}, dependencies: {dependencies}, "
