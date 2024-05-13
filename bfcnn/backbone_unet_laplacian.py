@@ -64,7 +64,7 @@ def builder(
         name="unet_laplacian",
         **kwargs) -> tf.keras.Model:
     """
-    builds a modified unet++ model that uses convnext blocks
+    builds a modified unet model that uses convnext blocks and laplacian downsampling
 
     1. Ensemble results were considerably worse than the single best
     2. Tested upsampling methods, settled for upscale nearest and regular conv2d after
@@ -495,10 +495,6 @@ def builder(
     # add normalization and names to the final layers
     for i in range(len(output_layers)):
         x = output_layers[i]
-        if use_bn:
-            x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
-        if use_ln:
-            x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
         output_layers[i] = (
             tf.keras.layers.Layer(
                 name=f"{output_layer_name}_{i}")(x))
