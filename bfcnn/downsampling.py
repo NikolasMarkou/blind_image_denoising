@@ -35,6 +35,7 @@ def downsample(
 
     #
     if downsample_type in ["conv2d"]:
+        params["strides"] = (2, 2)
         x = \
             conv2d_wrapper(
                 input_layer=x,
@@ -45,8 +46,26 @@ def downsample(
         x = \
             tf.keras.layers.MaxPooling2D(
                 pool_size=(2, 2), padding="same", strides=(2, 2))(x)
+        if conv_params is not None:
+            params["kernel_size"] = (1, 1)
+            params["strides"] = (1, 1)
+            x = \
+                conv2d_wrapper(
+                    input_layer=x,
+                    bn_params=bn_params,
+                    ln_params=ln_params,
+                    conv_params=params)
     elif downsample_type in ["strides"]:
         x = x[:, ::2, ::2, :]
+        if conv_params is not None:
+            params["kernel_size"] = (1, 1)
+            params["strides"] = (1, 1)
+            x = \
+                conv2d_wrapper(
+                    input_layer=x,
+                    bn_params=bn_params,
+                    ln_params=ln_params,
+                    conv_params=params)
     else:
         raise ValueError(
             f"don't know how to handle [{downsample_type}]")

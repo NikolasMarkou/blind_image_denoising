@@ -40,8 +40,6 @@ def builder(
         activation: str = "leaky_relu_01",
         upsample_type: str = "bilinear",
         downsample_type: str = "strides",
-        downsample_activation: str = None,
-        upsample_activation: str = None,
         use_bn: bool = False,
         use_ln: bool = True,
         use_gamma: bool = True,
@@ -124,8 +122,8 @@ def builder(
             activation_str = activation
         return activation_str
 
-    downsample_activation = activation_str_fix_fn(downsample_activation)
-    upsample_activation = activation_str_fix_fn(upsample_activation)
+    downsample_activation = activation_str_fix_fn("linear")
+    upsample_activation = activation_str_fix_fn("linear")
 
     if (use_soft_orthonormal_regularization and
             use_soft_orthogonal_regularization):
