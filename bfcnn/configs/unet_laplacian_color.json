@@ -7,6 +7,8 @@
 			"filters": 32,
 			"use_bias": false,
 			"use_concat": false,
+			"use_gamma": false,
+			"use_soft_gamma": true,
 			"use_mix_project": false,
 			"encoder_kernel_size": 5,
 			"decoder_kernel_size": 3,
