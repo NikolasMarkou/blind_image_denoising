@@ -19,7 +19,8 @@
 			"type": "unet_laplacian",
 			"upsample_type": "upsample_nearest_conv2d",
 			"downsample_type": "strides",
-			"upsample_activation": "linear"
+			"upsample_activation": "linear",
+			"depth_drop_rate": 0.5
 		},
 		"denoiser": {
 			"use_bias": false,
