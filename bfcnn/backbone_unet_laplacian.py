@@ -49,7 +49,7 @@ def builder(
         use_concat: bool = True,
         use_laplacian: bool = True,
         use_mix_project: bool = True,
-        use_attention_gates: bool = True,
+        use_attention_gates: bool = False,
         use_decoder_normalization: bool = False,
         use_soft_orthogonal_regularization: bool = False,
         use_soft_orthonormal_regularization: bool = False,
@@ -85,9 +85,10 @@ def builder(
     :param downsample_type: string describing the downsample type
     :param use_bn: use batch normalization
     :param use_ln: use layer normalization
-    :param use_gamma: if True (True by default) use gamma learning in convnenxt
+    :param use_gamma: if True (True by default) use gamma learning in convnext
     :param use_soft_gamma: if True (False by default) use soft gamma learning in convnext
     :param use_bias: use bias (bias free means this should be off)
+    :param use_attention_gates: if True add attention gates between depths
     :param use_mix_project: if True mix different depths with a 1x1 projection (SKOOTS: Skeleton oriented object segmentation for mitochondria)
     :param use_concat: if True concatenate otherwise add skip layers (True by default)
     :param use_laplacian: if True use laplacian estimation between depths
