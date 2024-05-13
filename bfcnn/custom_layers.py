@@ -342,7 +342,7 @@ class AttentionGate(tf.keras.layers.Layer):
         kernel_initializer = copy.deepcopy(self.kernel_initializer)
         if kernel_initializer in ["trunc_normal", "truncated_normal"]:
             # https://github.com/facebookresearch/ConvNeXt/blob/048efcea897d999aed302f2639b6270aedf8d4c8/models/convnext.py#L105
-            kernel_initializer = tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.02)
+            kernel_initializer = tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.02, seed=0)
 
         # ---
         self.conv_x = (

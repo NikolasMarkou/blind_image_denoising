@@ -21,6 +21,7 @@ from .upsampling import upsample
 from .downsampling import downsample
 from .custom_layers import (
     ConvNextBlock,
+    AttentionGate,
     GaussianFilter,
     StochasticDepth)
 
@@ -48,6 +49,7 @@ def builder(
         use_concat: bool = True,
         use_laplacian: bool = True,
         use_mix_project: bool = True,
+        use_attention_gates: bool = True,
         use_decoder_normalization: bool = False,
         use_soft_orthogonal_regularization: bool = False,
         use_soft_orthonormal_regularization: bool = False,
@@ -392,6 +394,19 @@ def builder(
                                  f"should not supposed to be here")
 
             x_input.append(x)
+
+        # add attention gates,
+        # first input is assumed to be the higher depth
+        # and the second input is assumed to be the lower depth
+        if use_attention_gates and len(x_input) == 2:
+            logger.debug(f"adding AttentionGate at depth: [{node[0]}]")
+
+            x_input[0] = (
+                AttentionGate(
+                    attention_channels=conv_params_res_3[node[0]]["filters"],
+                    kernel_initializer=kernel_initializer
+                )(x_input))
+
 
         if len(x_input) == 1:
             x = x_input[0]
