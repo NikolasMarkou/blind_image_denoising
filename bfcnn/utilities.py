@@ -475,7 +475,12 @@ def conv2d_wrapper(
 # ---------------------------------------------------------------------
 
 def activation_wrapper(
-        activation: str = "linear") -> tf.keras.layers.Layer:
+        activation: Union[tf.keras.layers.Layer, str] = "linear") -> tf.keras.layers.Layer:
+
+    if not isinstance(activation, str):
+        logger.warning("cannot wrap activation since it is already wrapper")
+        return activation
+
     activation = activation.lower().strip()
 
     if activation in ["mish"]:

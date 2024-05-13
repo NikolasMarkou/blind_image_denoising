@@ -18,7 +18,8 @@
 			"kernel_regularizer": "l2",
 			"type": "unet_laplacian",
 			"upsample_type": "upsample_nearest_conv2d",
-			"downsample_type": "strides"
+			"downsample_type": "strides",
+			"upsample_activation": "linear"
 		},
 		"denoiser": {
 			"use_bias": false,
