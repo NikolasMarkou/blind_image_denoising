@@ -1,5 +1,5 @@
 """
-unet + convnext backbone
+unet with laplacian down sampling and convnext blocks
 """
 
 import copy
@@ -34,7 +34,6 @@ def builder(
         width: int = 1,
         encoder_kernel_size: int = 5,
         decoder_kernel_size: int = 3,
-        kernel_size: int = -1,
         filters: int = 32,
         max_filters: int = -1,
         filters_level_multiplier: float = 2.0,
@@ -77,9 +76,8 @@ def builder(
     :param input_dims: Models input dimensions
     :param depth: number of levels to go down
     :param width: number of horizontals nodes, if -1 it gets set to depth
-    :param kernel_size: kernel size of the rest of convolutional layers
     :param encoder_kernel_size: kernel size of encoder convolutional layer
-    :param k: kernel size of decoder convolutional layer
+    :param decoder_kernel_size: kernel size of decoder convolutional layer
     :param filters_level_multiplier: every down level increase the number of filters by a factor of
     :param filters: filters of base convolutional layer
     :param max_filters: max number of filters
@@ -90,7 +88,7 @@ def builder(
     :param use_bn: use batch normalization
     :param use_ln: use layer normalization
     :param use_gamma: if True (True by default) use gamma learning in convnenxt
-    :param use_soft_gamma: if True (False by default) use soft gamma learning in convnenxt
+    :param use_soft_gamma: if True (False by default) use soft gamma learning in convnext
     :param use_bias: use bias (bias free means this should be off)
     :param use_mix_project: if True mix different depths with a 1x1 projection (SKOOTS: Skeleton oriented object segmentation for mitochondria)
     :param use_concat: if True concatenate otherwise add skip layers (True by default)
@@ -191,6 +189,16 @@ def builder(
     conv_params_res_1 = []
     conv_params_res_2 = []
     conv_params_res_3 = []
+    conv_params_scale_output = dict(
+        kernel_size=(1, 1),
+        filters=filters,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation=activation,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
 
     for d in range(depth):
         filters_level = \
@@ -464,6 +472,12 @@ def builder(
                 logger.error(f"there is no node[{d},{w}] please check your assumptions")
                 continue
             x = nodes_output[(d, w)]
+            # convert to intermediate output
+            x = conv2d_wrapper(
+                input_layer=x,
+                ln_params=ln_params,
+                bn_params=bn_params,
+                conv_params=conv_params_scale_output)
             tmp_output_layers.append(x)
         # reverse here so deeper levels come on top
         output_layers += tmp_output_layers[::-1]
@@ -478,11 +492,16 @@ def builder(
     # otherwise we will get the most shallow output
     output_layers = output_layers[::-1]
 
-    # add names to the final layers
-    for d in range(len(output_layers)):
-        output_layers[d] = (
+    # add normalization and names to the final layers
+    for i in range(len(output_layers)):
+        x = output_layers[i]
+        if use_bn:
+            x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
+        if use_ln:
+            x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
+        output_layers[i] = (
             tf.keras.layers.Layer(
-                name=f"{output_layer_name}_{d}")(output_layers[d]))
+                name=f"{output_layer_name}_{i}")(x))
 
     return \
         tf.keras.Model(
