@@ -58,6 +58,7 @@ def downsample(
     elif downsample_type in ["strides"]:
         x = x[:, ::2, ::2, :]
         if conv_params is not None:
+            params["activation"] = "linear"
             params["kernel_size"] = (1, 1)
             params["strides"] = (1, 1)
             x = \
