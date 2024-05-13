@@ -2,7 +2,7 @@
 	"model": {
 		"backbone": {
 			"input_shape": ["?", "?", 3],
-			"depth": 4,
+			"depth": 3,
 			"width": 3,
 			"filters": 32,
 			"use_bias": false,
@@ -10,7 +10,7 @@
 			"use_gamma": false,
 			"use_soft_gamma": true,
 			"use_mix_project": false,
-			"encoder_kernel_size": 5,
+			"encoder_kernel_size": 7,
 			"decoder_kernel_size": 3,
 			"multiple_scale_outputs": true,
 			"use_soft_orthonormal_regularization": true,
