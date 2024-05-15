@@ -21,6 +21,7 @@ from .upsampling import upsample
 from .downsampling import downsample
 from .custom_layers import (
     ConvNextBlock,
+    AttentionGate,
     GaussianFilter,
     StochasticDepth)
 
@@ -48,6 +49,7 @@ def builder(
         use_concat: bool = True,
         use_laplacian: bool = True,
         use_mix_project: bool = True,
+        use_attention_gates: bool = False,
         use_decoder_normalization: bool = False,
         use_soft_orthogonal_regularization: bool = False,
         use_soft_orthonormal_regularization: bool = False,
@@ -83,9 +85,10 @@ def builder(
     :param downsample_type: string describing the downsample type
     :param use_bn: use batch normalization
     :param use_ln: use layer normalization
-    :param use_gamma: if True (True by default) use gamma learning in convnenxt
+    :param use_gamma: if True (True by default) use gamma learning in convnext
     :param use_soft_gamma: if True (False by default) use soft gamma learning in convnext
     :param use_bias: use bias (bias free means this should be off)
+    :param use_attention_gates: if True add attention gates between depths
     :param use_mix_project: if True mix different depths with a 1x1 projection (SKOOTS: Skeleton oriented object segmentation for mitochondria)
     :param use_concat: if True concatenate otherwise add skip layers (True by default)
     :param use_laplacian: if True use laplacian estimation between depths
@@ -392,6 +395,19 @@ def builder(
                                  f"should not supposed to be here")
 
             x_input.append(x)
+
+        # add attention gates,
+        # first input is assumed to be the higher depth
+        # and the second input is assumed to be the lower depth
+        if use_attention_gates and len(x_input) == 2:
+            logger.debug(f"adding AttentionGate at depth: [{node[0]}]")
+
+            x_input[0] = (
+                AttentionGate(
+                    attention_channels=conv_params_res_3[node[0]]["filters"],
+                    kernel_initializer=kernel_initializer
+                )(x_input))
+
 
         if len(x_input) == 1:
             x = x_input[0]
