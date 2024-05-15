@@ -466,7 +466,7 @@ def train_loop(
                         tf.summary.image(name=f"denoiser/scale_0/output", data=predictions / 255,
                                          max_outputs=visualization_number, step=ckpt.step)
 
-                    tf.summary.image(name=f"error_{i}/mae",
+                    tf.summary.image(name=f"error/mae",
                                      data=tf.clip_by_value(
                                          tf.abs(prediction - input_image_batch),
                                          clip_value_min=0.0,
