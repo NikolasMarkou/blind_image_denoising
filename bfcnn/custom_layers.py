@@ -330,6 +330,7 @@ class AttentionGate(tf.keras.layers.Layer):
         self.kernel_initializer = kernel_initializer.strip().lower()
         self.use_bias = use_bias
         self.use_bn = use_bn
+        self.use_ln = use_ln
         self.conv_x = None
         self.bn_x = None
         self.ln_x = None
