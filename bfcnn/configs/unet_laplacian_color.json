@@ -70,7 +70,7 @@
 		"random_blur": true,
 		"round_values": true,
 		"random_rotate": 1.57,
-		"use_jpeg_noise": true,
+		"use_jpeg_noise": false,
 		"random_up_down": true,
 		"random_left_right": true,
 		"input_shape": [256, 256, 3],
