@@ -197,6 +197,12 @@ def loss_function_builder(
                 prediction=predicted_batch,
                 hinge=0.0,
                 cutoff=255.0)
+        # actual mean square error (no hinge or cutoff)
+        mse_actual = \
+            rmse(original=gt_batch,
+                prediction=predicted_batch,
+                hinge=0.0,
+                cutoff=255.0)
 
         # loss prediction on mae
         mae_prediction_loss = \
@@ -234,6 +240,7 @@ def loss_function_builder(
                 mae_prediction_loss * mae_multiplier +
                 mse_prediction_loss * mse_multiplier +
                 ssim_loss * ssim_multiplier,
+            MSE_LOSS_STR: mse_actual,
             MAE_LOSS_STR: mae_actual,
             SSIM_LOSS_STR: ssim_loss
         }

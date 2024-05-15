@@ -432,6 +432,9 @@ def train_loop(
                     tf.summary.scalar(name=f"loss_denoiser/scale_{i}/mae",
                                       data=d[MAE_LOSS_STR],
                                       step=ckpt.step)
+                    tf.summary.scalar(name=f"loss_denoiser/scale_{i}/mse",
+                                      data=d[MSE_LOSS_STR],
+                                      step=ckpt.step)
                     tf.summary.scalar(name=f"loss_denoiser/scale_{i}/ssim",
                                       data=d[SSIM_LOSS_STR],
                                       step=ckpt.step)
