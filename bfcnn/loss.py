@@ -109,7 +109,7 @@ def rmse_diff(
     d = tf.square(d)
     # mean over all dims
     d = tf.reduce_mean(d, axis=[1, 2, 3])
-    d = tf.sqrt(tf.nn.relu(d))
+    d = tf.sqrt(d + DEFAULT_EPSILON)
     # mean over batch
     return tf.reduce_mean(d, axis=[0])
 
