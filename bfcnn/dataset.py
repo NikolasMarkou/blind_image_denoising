@@ -216,14 +216,14 @@ def dataset_builder(
         random_option_channel_independent_noise = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
 
         # --- jpeg noise
-        # noisy_batch = \
-        #     tf.cond(
-        #         pred=tf.math.logical_and(
-        #             use_jpeg_noise,
-        #             random_option_jpeg_noise),
-        #         true_fn=lambda: adjust_jpeg_quality(noisy_batch),
-        #         false_fn=lambda: noisy_batch
-        #     )
+        noisy_batch = \
+            tf.cond(
+                pred=tf.math.logical_and(
+                    use_jpeg_noise,
+                    random_option_jpeg_noise),
+                true_fn=lambda: adjust_jpeg_quality(noisy_batch),
+                false_fn=lambda: noisy_batch
+            )
 
         # --- quantization noise
         noisy_batch = \

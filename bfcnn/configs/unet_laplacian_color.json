@@ -66,7 +66,7 @@
 		"no_crops_per_image": 4,
 		"value_range": [0, 255],
 		"clip_value": true,
-		"quantization": 6,
+		"quantization": -1,
 		"random_blur": true,
 		"round_values": true,
 		"random_rotate": 1.57,
