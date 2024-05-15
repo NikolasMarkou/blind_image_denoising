@@ -430,9 +430,9 @@ class AttentionGate(tf.keras.layers.Layer):
         o = tf.nn.gelu(x + y)
         o = self.conv_o(o)
         if self.use_bn:
-            o = self.bn_o(y, training=training)
+            o = self.bn_o(o, training=training)
         if self.use_ln:
-            o = self.ln_o(y, training=training)
+            o = self.ln_o(o, training=training)
 
         o = self.scale_o(o)
         o = tf.nn.sigmoid(o)
