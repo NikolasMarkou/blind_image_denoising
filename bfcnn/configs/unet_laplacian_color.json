@@ -37,7 +37,7 @@
 		"checkpoints_to_keep": 3,
 		"checkpoint_every": 10000,
 		"visualization_number": 4,
-		"visualization_every": 1000,
+		"visualization_every": 500,
 		"optimizer": {
 			"type": "ADAM",
 			"gradient_clipping_by_norm": 1.0,
