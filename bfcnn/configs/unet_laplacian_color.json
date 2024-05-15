@@ -41,7 +41,7 @@
 			"type": "ADAM",
 			"gradient_clipping_by_norm": 1.0,
 			"schedule": {
-				"type": "exponential_decay",
+				"type": "cosine_decay_restarts",
 				"config": {
 					"decay_rate": 0.9,
 					"decay_steps": 40000,

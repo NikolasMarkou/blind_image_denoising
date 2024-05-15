@@ -1,18 +1,87 @@
-from tensorflow import keras
-from typing import Dict, Tuple
+r"""
+optimizer and learning rate schedule builder
+"""
+
+# ---------------------------------------------------------------------
+
+import numpy as np
+import tensorflow as tf
+from typing import Dict, Tuple, Callable
 
 # ---------------------------------------------------------------------
 # local imports
 # ---------------------------------------------------------------------
 
+from .constants import *
 from .custom_logger import logger
-from .constants import CONFIG_STR, TYPE_STR
+
 
 # ---------------------------------------------------------------------
 
+def deep_supervision_schedule_builder(
+        config: Dict,
+        no_outputs: int) -> Callable[[float], np.ndarray]:
+    # --- argument checking
+    if not isinstance(config, Dict):
+        raise ValueError("config must be a dictionary")
+    if no_outputs <= 0:
+        raise ValueError("no_outputs must be positive integer")
+
+    # --- select type
+    schedule_type = config.get(TYPE_STR, None)
+
+    # --- sanity checks
+    if schedule_type is None:
+        raise ValueError("schedule_type cannot be None")
+    if not isinstance(schedule_type, str):
+        raise ValueError("schedule_type must be a string")
+
+    # --- select schedule
+    schedule = None
+    params = config.get(CONFIG_STR, {})
+    schedule_type = schedule_type.strip().lower()
+    logger.info(f"building schedule: [{schedule_type}], with params: [{params}]")
+
+    if schedule_type == "constant_equal":
+        def schedule(percentage_done: float = 0.0):
+            d = np.array([1.0, ] * no_outputs)
+            d = d / np.sum(d)
+            return d
+    elif schedule_type == "constant_low_to_high":
+        def schedule(percentage_done: float = 0.0):
+            d = np.array(list(range(1, no_outputs + 1))).astype(np.float32)
+            d = d / np.sum(d)
+            return d
+    elif schedule_type == "constant_high_to_low":
+        def schedule(percentage_done: float = 0.0):
+            d = np.array(list(range(1, no_outputs + 1))).astype(np.float32)
+            d = d / np.sum(d)
+            d = d[::-1]
+            return d
+    elif schedule_type == "linear_low_to_high":
+        def schedule(percentage_done: float = 0.0):
+            d_start = np.array(list(range(1, no_outputs + 1))).astype(np.float32)
+            d_start = d_start / np.sum(d_start)
+            d_end = d_start[::-1]
+            return d_start * (1.0 - percentage_done) + d_end * percentage_done
+    elif schedule_type == "non_linear_low_to_high":
+        def schedule(percentage_done: float = 0.0):
+            d_start = np.array(list(range(1, no_outputs + 1))).astype(np.float32)
+            d_start = d_start / np.sum(d_start)
+            d_end = d_start[::-1]
+            x = np.clip(np.tanh(2.5 * percentage_done), a_min=0.0, a_max=1.0)
+            return d_start * (1.0 - x) + d_end * x
+    else:
+        raise ValueError(f"don't know how to handle "
+                         f"deep supervision schedule_type [{schedule_type}]")
+
+    return schedule
+
+
+# ---------------------------------------------------------------------
 
 def schedule_builder(
-        config: Dict) -> keras.optimizers.schedules.LearningRateSchedule:
+        config: Dict) -> tf.keras.optimizers.schedules.LearningRateSchedule:
     # --- argument checking
     if not isinstance(config, Dict):
         raise ValueError("config must be a dictionary")
@@ -29,7 +98,7 @@ def schedule_builder(
     # --- select schedule
     schedule = None
     params = config.get(CONFIG_STR, {})
-    schedule_type = schedule_type.lower().strip()
+    schedule_type = schedule_type.strip().lower()
     logger.info(f"building schedule: {schedule_type}, with params: {params}")
 
     if schedule_type == "exponential_decay":
@@ -37,7 +106,7 @@ def schedule_builder(
         decay_steps = params["decay_steps"]
         learning_rate = params["learning_rate"]
         schedule = \
-            keras.optimizers.schedules.ExponentialDecay(
+            tf.keras.optimizers.schedules.ExponentialDecay(
                 initial_learning_rate=learning_rate,
                 decay_steps=decay_steps,
                 decay_rate=decay_rate)
@@ -48,7 +117,7 @@ def schedule_builder(
         m_mul = params.get("m_mul", 0.9)
         alpha = params.get("alpha", 0.001)
         schedule = \
-            keras.optimizers.schedules.CosineDecayRestarts(
+            tf.keras.optimizers.schedules.CosineDecayRestarts(
                 initial_learning_rate=learning_rate,
                 first_decay_steps=decay_steps,
                 t_mul=t_mul,
@@ -58,27 +127,28 @@ def schedule_builder(
         decay_steps = params["decay_steps"]
         learning_rate = params["learning_rate"]
         schedule = \
-            keras.optimizers.schedules.CosineDecay(
+            tf.keras.optimizers.schedules.CosineDecay(
                 initial_learning_rate=learning_rate,
                 decay_steps=decay_steps,
-                alpha=0.0,
+                alpha=0.001,
                 name=None)
     else:
-        raise ValueError(f"don't know how to handle {schedule_type}")
+        raise ValueError(f"don't know how to handle "
+                         f"learning_rate schedule_type [{schedule_type}]")
     # ---
     return schedule
+
 
 # ---------------------------------------------------------------------
 
 
 def optimizer_builder(
-        config: Dict) -> \
-        Tuple[keras.optimizers.Optimizer,
-              keras.optimizers.schedules.LearningRateSchedule]:
+        config: Dict) -> Tuple[tf.keras.optimizers.Optimizer, tf.keras.optimizers.schedules.LearningRateSchedule]:
     """
     Instantiate an optimizer.
 
-    :param config:
+    :param config: optimizer and learning rate configuration
+
     :return: optimizer and learning schedule
     """
     # --- argument checking
@@ -116,7 +186,7 @@ def optimizer_builder(
             clipvalue=gradient_clipvalue,
             clipnorm=gradient_clipnorm,
             global_clipnorm=gradient_global_clipnorm)
-        optimizer = keras.optimizers.RMSprop(**optimizer_parameters)
+        optimizer = tf.keras.optimizers.RMSprop(**optimizer_parameters)
     elif optimizer_type == "ADAM":
         # Adam optimizer
         beta_1 = config.get("beta_1", 0.9)
@@ -133,7 +203,7 @@ def optimizer_builder(
             clipvalue=gradient_clipvalue,
             clipnorm=gradient_clipnorm,
             global_clipnorm=gradient_global_clipnorm)
-        optimizer = keras.optimizers.Adam(**optimizer_parameters)
+        optimizer = tf.keras.optimizers.Adam(**optimizer_parameters)
     elif optimizer_type == "ADADELTA":
         # Adadelta optimizer
         rho = config.get("rho", 0.9)
@@ -146,13 +216,11 @@ def optimizer_builder(
             clipvalue=gradient_clipvalue,
             clipnorm=gradient_clipnorm,
             global_clipnorm=gradient_global_clipnorm)
-        optimizer = keras.optimizers.Adadelta(**optimizer_parameters)
+        optimizer = tf.keras.optimizers.Adadelta(**optimizer_parameters)
     else:
         raise ValueError(
-            f"don't know how to handle [{optimizer_type}]")
+            f"don't know how to handle optimizer_type: [{optimizer_type}]")
 
-    return \
-        optimizer,\
-        lr_schedule
+    return optimizer, lr_schedule
 
 # ---------------------------------------------------------------------
