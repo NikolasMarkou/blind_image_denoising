@@ -304,7 +304,7 @@ class AttentionGate(tf.keras.layers.Layer):
     def __init__(self,
                  attention_channels: int,
                  use_bias: bool = False,
-                 use_bn: bool = True,
+                 use_bn: bool = False,
                  use_ln: bool = False,
                  use_soft_orthonormal_regularization: bool = False,
                  use_soft_orthogonal_regularization: bool = False,
@@ -315,7 +315,7 @@ class AttentionGate(tf.keras.layers.Layer):
         # --- argument parsing
         if attention_channels <= 0:
             raise ValueError("Attention channels must be > 0")
-        if use_ln and use_ln:
+        if use_ln and use_bn:
             raise ValueError(
                 "cannot have enabled use_ln and use_bn at the same time")
         if use_soft_orthonormal_regularization and use_soft_orthogonal_regularization:
