@@ -101,7 +101,8 @@ def dataset_builder(
     quantization = config.get("quantization", -1)
     use_quantization = quantization > 1
     # jpeg noise
-    use_jpeg_noise = config.get("jpeg_noise", False)
+    use_jpeg_noise = config.get("use_jpeg_noise", False)
+    jpeg_quality = [25, 75]
 
     # --- build noise options
     if len(additional_noise) <= 0:
@@ -116,6 +117,21 @@ def dataset_builder(
     additional_noise = tf.constant(additional_noise, dtype=tf.float32)
     multiplicative_noise = tf.constant(multiplicative_noise, dtype=tf.float32)
 
+    def adjust_jpeg_quality(x: tf.Tensor) -> tf.Tensor:
+        tmp_list = []
+        tmp = tf.cast(x, dtype=tf.float32) / 255
+
+        for t in tf.unstack(tmp, axis=0):
+            tmp_list.append(
+                tf.image.random_jpeg_quality(
+                    image=t,
+                    min_jpeg_quality=jpeg_quality[0],
+                    max_jpeg_quality=jpeg_quality[1],
+                    seed=0
+                )
+            )
+
+        return tf.stack(tmp_list, axis=0) * 255
     def geometric_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -200,32 +216,29 @@ def dataset_builder(
         random_option_channel_independent_noise = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
 
         # --- jpeg noise
-        if use_jpeg_noise:
-            noisy_batch = \
-                tf.cond(
-                    pred=random_option_jpeg_noise,
-                    true_fn=lambda:
-                    tf.expand_dims(
-                        tf.image.adjust_jpeg_quality(
-                            image=tf.squeeze(tf.cast(noisy_batch, dtype=tf.float32) / 255, axis=0),
-                            jpeg_quality=25
-                        ), axis=0) * 255,
-                    false_fn=lambda: noisy_batch
-                )
+        noisy_batch = \
+            tf.cond(
+                pred=tf.math.logical_and(
+                    use_jpeg_noise,
+                    random_option_jpeg_noise),
+                true_fn=lambda: adjust_jpeg_quality(noisy_batch),
+                false_fn=lambda: noisy_batch
+            )
 
         # --- quantization noise
-        if use_quantization:
-            noisy_batch = \
-                tf.cond(
-                    pred=random_option_quantize,
-                    true_fn=lambda:
-                    tf.quantization.quantize_and_dequantize_v2(
-                        tf.cast(noisy_batch, dtype=tf.float32),
-                        input_min=min_value,
-                        input_max=max_value,
-                        num_bits=quantization),
-                    false_fn=lambda: noisy_batch
-                )
+        noisy_batch = \
+            tf.cond(
+                pred=tf.math.logical_and(
+                    use_quantization,
+                    random_option_quantize),
+                true_fn=lambda:
+                tf.quantization.quantize_and_dequantize_v2(
+                    tf.cast(noisy_batch, dtype=tf.float32),
+                    input_min=min_value,
+                    input_max=max_value,
+                    num_bits=quantization),
+                false_fn=lambda: noisy_batch
+            )
 
         # --- additive noise
         if use_additive_noise:
