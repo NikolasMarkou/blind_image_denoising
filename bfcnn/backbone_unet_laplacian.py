@@ -286,6 +286,13 @@ def builder(
             input_layer=x,
             conv_params=params)
 
+    x = \
+        conv2d_wrapper(
+            input_layer=x,
+            ln_params=ln_params,
+            bn_params=bn_params,
+            conv_params=params)
+
     # --- build backbone
     for d in range(depth):
         depth_drop_counter = 0
