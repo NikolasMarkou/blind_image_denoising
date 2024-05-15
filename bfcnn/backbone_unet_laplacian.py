@@ -293,6 +293,11 @@ def builder(
             bn_params=bn_params,
             conv_params=params)
 
+    if use_bn:
+        x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
+    if use_ln:
+        x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
+
     # --- build backbone
     for d in range(depth):
         depth_drop_counter = 0
