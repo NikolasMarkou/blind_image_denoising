@@ -289,8 +289,6 @@ def builder(
     x = \
         conv2d_wrapper(
             input_layer=x,
-            ln_params=ln_params,
-            bn_params=bn_params,
             conv_params=params)
 
     if use_bn:
