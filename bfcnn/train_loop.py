@@ -456,13 +456,23 @@ def train_loop(
                     tf.summary.image(name="denoiser/noisy", data=noisy_image_batch / 255,
                                      max_outputs=visualization_number, step=ckpt.step)
                     # denoised batch
+                    prediction = predictions
                     if isinstance(predictions, list):
                         for i, d in enumerate(predictions):
                             tf.summary.image(name=f"denoiser/scale_{i}/output", data=d / 255,
                                              max_outputs=visualization_number, step=ckpt.step)
+                        prediction = predictions[0]
                     else:
                         tf.summary.image(name=f"denoiser/scale_0/output", data=predictions / 255,
                                          max_outputs=visualization_number, step=ckpt.step)
+
+                    tf.summary.image(name=f"error_{i}/mae",
+                                     data=tf.clip_by_value(
+                                         tf.abs(prediction - input_image_batch),
+                                         clip_value_min=0.0,
+                                         clip_value_max=255.0) / 255,
+                                     max_outputs=visualization_number,
+                                     step=ckpt.step)
 
                     # --- add gradient activity
                     gradient_activity = \
