@@ -391,6 +391,10 @@ def dataset_builder(
             .map(map_func=prepare_data_fn,
                  num_parallel_calls=tf.data.AUTOTUNE,
                  deterministic=False) \
+            .shuffle(
+                seed=0,
+                buffer_size=128,
+                reshuffle_each_iteration=True) \
             .rebatch(
                 batch_size=batch_size,
                 drop_remainder=True) \
