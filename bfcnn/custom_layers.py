@@ -305,11 +305,25 @@ class AttentionGate(tf.keras.layers.Layer):
                  attention_channels: int,
                  use_bias: bool = False,
                  use_bn: bool = True,
+                 use_ln: bool = False,
                  use_soft_orthonormal_regularization: bool = False,
                  use_soft_orthogonal_regularization: bool = False,
                  kernel_initializer: str = "glorot_normal",
                  **kwargs):
         super().__init__(**kwargs)
+
+        # --- argument parsing
+        if attention_channels <= 0:
+            raise ValueError("Attention channels must be > 0")
+        if use_ln and use_ln:
+            raise ValueError(
+                "cannot have enabled use_ln and use_bn at the same time")
+        if use_soft_orthonormal_regularization and use_soft_orthogonal_regularization:
+            raise ValueError(
+                "cannot have enabled use_soft_orthonormal_regularization and "
+                "use_soft_orthogonal_regularization at the same time")
+
+        # ---
         self.attention_channels = attention_channels
         self.use_soft_orthonormal_regularization = use_soft_orthonormal_regularization
         self.use_soft_orthogonal_regularization = use_soft_orthogonal_regularization
@@ -318,10 +332,13 @@ class AttentionGate(tf.keras.layers.Layer):
         self.use_bn = use_bn
         self.conv_x = None
         self.bn_x = None
+        self.ln_x = None
         self.conv_y = None
         self.bn_y = None
+        self.ln_y = None
         self.conv_o = None
         self.bn_o = None
+        self.ln_o = None
         self.scale_o = None
 
     def build(self, input_shapes):
@@ -356,6 +373,8 @@ class AttentionGate(tf.keras.layers.Layer):
 
         if self.use_bn:
             self.bn_x = tf.keras.layers.BatchNormalization(center=self.use_bias)
+        if self.use_ln:
+            self.ln_x = tf.keras.layers.LayerNormalization(center=self.use_bias)
 
         # ---
         self.conv_y = (
@@ -369,6 +388,8 @@ class AttentionGate(tf.keras.layers.Layer):
 
         if self.use_bn:
             self.bn_y = tf.keras.layers.BatchNormalization(center=self.use_bias)
+        if self.use_ln:
+            self.ln_y = tf.keras.layers.LayerNormalization(center=self.use_bias)
 
         # ---
         self.conv_o = (
@@ -381,26 +402,37 @@ class AttentionGate(tf.keras.layers.Layer):
                 kernel_initializer=kernel_initializer))
         if self.use_bn:
             self.bn_o = tf.keras.layers.BatchNormalization(center=self.use_bias)
+        if self.use_ln:
+            self.ln_o = tf.keras.layers.LayerNormalization(center=self.use_bias)
 
         # ---
         self.scale_o = ChannelLearnableMultiplier()
 
     def call(self, inputs, training=None):
         encoder_feature, upsample_signal = inputs
+
         # --- upsample signal
         x = self.conv_x(upsample_signal)
         if self.use_bn:
             x = self.bn_x(x, training=training)
+        if self.use_ln:
+            x = self.ln_x(x, training=training)
+
         # --- encoder signal
         y = self.conv_y(encoder_feature)
         if self.use_bn:
             y = self.bn_y(y, training=training)
-        # --- replaced relu with leaky relu and low alpha to allow some gradient flow
-        o = tf.nn.leaky_relu(x + y, alpha=0.1)
-        # ---
+        if self.use_ln:
+            y = self.ln_y(y, training=training)
+
+        # --- replaced relu with gelu
+        o = tf.nn.gelu(x + y)
         o = self.conv_o(o)
         if self.use_bn:
-            o = self.bn_o(o, training=training)
+            o = self.bn_o(y, training=training)
+        if self.use_ln:
+            o = self.ln_o(y, training=training)
+
         o = self.scale_o(o)
         o = tf.nn.sigmoid(o)
         return tf.math.multiply(encoder_feature, o)

@@ -414,10 +414,14 @@ def builder(
 
             x_input[0] = (
                 AttentionGate(
+                    use_bias=use_bias,
+                    use_bn=use_bn,
+                    use_ln=use_ln,
+                    use_soft_orthogonal_regularization=True,
+                    use_soft_orthonormal_regularization=True,
                     attention_channels=conv_params_res_3[node[0]]["filters"],
                     kernel_initializer=kernel_initializer
                 )(x_input))
-
 
         if len(x_input) == 1:
             x = x_input[0]
