@@ -286,11 +286,6 @@ def builder(
             input_layer=x,
             conv_params=params)
 
-    x = \
-        conv2d_wrapper(
-            input_layer=x,
-            conv_params=params)
-
     if use_bn:
         x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
     if use_ln:
