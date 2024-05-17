@@ -4,13 +4,154 @@ blocks and builders for custom regularizers
 
 # ---------------------------------------------------------------------
 
+from enum import Enum
 import tensorflow as tf
 from typing import Dict, Tuple, Union, List, Any
 
 # ---------------------------------------------------------------------
 
 from .constants import *
+from .custom_logger import logger
 
+# ---------------------------------------------------------------------
+
+
+class RegularizationType(Enum):
+    L1 = 0
+
+    L2 = 1
+
+    L1L2 = 2
+
+    SOFT_ORTHONORMAL = 3
+
+    SOFT_ORTHOGONAL = 4
+
+    @staticmethod
+    def from_string(type_str: str) -> "RegularizationType":
+        # --- argument checking
+        if type_str is None:
+            raise ValueError("type_str must not be null")
+        if not isinstance(type_str, str):
+            raise ValueError("type_str must be string")
+        type_str = type_str.strip().upper()
+        if len(type_str) <= 0:
+            raise ValueError("stripped type_str must not be empty")
+
+        # --- clean string and get
+        return RegularizationType[type_str]
+
+    def to_string(self) -> str:
+        return self.name
+
+# ---------------------------------------------------------------------
+
+
+class RegularizerMixer(keras.regularizers.Regularizer):
+    """
+    Combines regularizers
+    """
+
+    def __init__(self,
+                 regularizers: List[keras.regularizers.Regularizer]):
+        self._regularizers = regularizers
+
+    def __call__(self, x):
+        result_regularizers = None
+
+        for regularizer in self._regularizers:
+            r = regularizer(x)
+            if result_regularizers is None:
+                result_regularizers = r
+            else:
+                result_regularizers += r
+        return result_regularizers
+
+    def get_config(self):
+        return {
+            REGULARIZERS_STR: [
+                regularizer.get_config() for
+                regularizer in self._regularizers
+            ]
+        }
+
+# ---------------------------------------------------------------------
+
+
+def builder_helper(
+        config: Union[str, Dict, keras.regularizers.Regularizer],
+        verbose: bool = False) -> keras.regularizers.Regularizer:
+    """
+    build a single regularizing function
+
+    :param config:
+    :param verbose: if True show extra messages
+    :return:
+    """
+    # --- argument checking
+    if config is None:
+        raise ValueError("config cannot be None")
+
+    # --- prepare variables
+    if isinstance(config, str):
+        regularizer_type = config.lower()
+        regularizer_params = {}
+    elif isinstance(config, Dict):
+        regularizer_type = config.get(TYPE_STR, None).lower()
+        regularizer_params = config.get(CONFIG_STR, {})
+    elif isinstance(config, keras.regularizers.Regularizer) \
+            and not type(config) == keras.regularizers.Regularizer:
+        return config
+    else:
+        raise ValueError("don't know how to handle config")
+
+    # --- logging
+    if verbose:
+        logger.info(f"building configuration with config [{config}")
+
+    # --- select correct regularizer
+    regularizer = None
+    regularizer_type = RegularizationType.from_string(regularizer_type)
+    if regularizer_type == RegularizationType.L1:
+        regularizer = keras.regularizers.L1(**regularizer_params)
+    elif regularizer_type == RegularizationType.L2:
+        regularizer = keras.regularizers.L2(**regularizer_params)
+    elif regularizer_type == RegularizationType.L1L2:
+        regularizer = keras.regularizers.L1L2(**regularizer_params)
+    elif regularizer_type == RegularizationType.SOFT_ORTHONORMAL:
+        regularizer = SoftOrthonormalConstraintRegularizer(**regularizer_params)
+    elif regularizer_type == RegularizationType.SOFT_ORTHOGONAL:
+        regularizer = SoftOrthogonalConstraintRegularizer(**regularizer_params)
+    else:
+        raise ValueError(f"don't know how to handle [{regularizer_type}]")
+    return regularizer
+
+
+# ---------------------------------------------------------------------
+
+
+def builder(
+        config: Union[str, Dict, List]) -> keras.regularizers.Regularizer:
+    """
+    build a single or mixed regularization function
+
+    :param config:
+    :return:
+    """
+    # --- argument checking
+    if config is None:
+        raise ValueError("config cannot be None")
+
+    # --- prepare variables
+    if isinstance(config, List):
+        regularizers = [
+            builder_helper(config=r) for r in config
+        ]
+    else:
+        return builder_helper(config=config)
+
+    # --- mixes all the regularizes together
+    return RegularizerMixer(regularizers=regularizers)
 
 # ---------------------------------------------------------------------
 
