@@ -86,6 +86,8 @@ def dataset_builder(
 
     # --- dataset augmentation
     use_random_blur = config.get("random_blur", False)
+    inpaint_drop_rate = config.get("inpaint_drop_rate", 0.0)
+
     # in radians
     random_rotate = config.get("random_rotate", 0.0)
     use_rotate = random_rotate > 0.0
@@ -334,12 +336,25 @@ def dataset_builder(
         return noisy_batch
 
     def prepare_data_fn(input_batch: tf.Tensor) -> \
-            Tuple[tf.Tensor, tf.Tensor]:
+            Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
         input_batch = geometric_augmentation_fn(input_batch)
         input_batch = tf.round(input_batch)
         input_batch = tf.cast(input_batch, dtype=tf.float32)
         noisy_batch = noise_augmentation_fn(input_batch)
-        return input_batch, noisy_batch
+        mask_batch = \
+            tf.random.uniform(
+                shape=tf.shape(input_batch)[:-1] + [1],
+                minval=0.0,
+                maxval=1.0,
+                seed=0,
+                dtype=tf.float32)
+        mask_batch = \
+            tf.less(
+                mask_batch,
+                tf.constant(inpaint_drop_rate))
+        mask_batch = tf.cast(mask_batch, dtype=tf.float32)
+
+        return input_batch, noisy_batch, mask_batch
 
     # --- define generator function from directory
     if directory:

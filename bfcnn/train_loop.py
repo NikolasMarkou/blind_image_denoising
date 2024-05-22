@@ -252,11 +252,11 @@ def train_loop(
             )
 
         @tf.function(reduce_retracing=True, jit_compile=False)
-        def train_step(n: tf.Tensor) -> List[tf.Tensor]:
+        def train_step(n: List[tf.Tensor]) -> List[tf.Tensor]:
             return ckpt.model(n, training=True)
 
         @tf.function(reduce_retracing=True, jit_compile=False)
-        def test_step(n: tf.Tensor) -> tf.Tensor:
+        def test_step(n: List[tf.Tensor]) -> tf.Tensor:
             return ckpt.model(n, training=False)[denoiser_index[0]]
 
         @tf.function(
@@ -266,6 +266,7 @@ def train_loop(
         def train_step_single_gpu(
                 p_input_image_batch: tf.Tensor,
                 p_noisy_image_batch: tf.Tensor,
+                p_mask_image_batch: tf.Tensor,
                 p_depth_weight: tf.Tensor,
                 p_percentage_done: tf.Tensor,
                 p_trainable_variables: List):
@@ -277,7 +278,7 @@ def train_loop(
                 multiscales_fn(p_input_image_batch)
 
             with tf.GradientTape() as tape:
-                p_predictions = train_step(n=p_noisy_image_batch)
+                p_predictions = train_step(n=[p_noisy_image_batch, p_mask_image_batch])
 
                 # get denoise loss for each depth,
                 for i in range(len(denoiser_index)):
@@ -319,7 +320,8 @@ def train_loop(
             tf.summary.trace_on(graph=True, profiler=False)
 
             # run a single step
-            results = train_step(iter(dataset_training).get_next()[0])
+            _, tmp_noisy, tmp_mask = iter(dataset_training).get_next()
+            results = train_step([tmp_noisy, tmp_mask])
 
             if isinstance(results, list):
                 for i, tensor in enumerate(results):
@@ -392,7 +394,7 @@ def train_loop(
                 int(ckpt.epoch), int(ckpt.step)))
 
             # --- iterate over the batches of the dataset
-            for input_image_batch, noisy_image_batch in dataset_train:
+            for input_image_batch, noisy_image_batch, mask_image_batch in dataset_train:
                 if counter == 0:
                     start_time_forward_backward = time.time()
                     # zero out gradients
@@ -403,6 +405,7 @@ def train_loop(
                     train_step_single_gpu(
                         p_input_image_batch=input_image_batch,
                         p_noisy_image_batch=noisy_image_batch,
+                        p_mask_image_batch=mask_image_batch,
                         p_depth_weight=depth_weight,
                         p_percentage_done=percentage_done,
                         p_trainable_variables=trainable_variables)
