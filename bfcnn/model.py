@@ -110,7 +110,6 @@ def model_builder(
         model_normalizer(
             input_layer, training=False)
 
-
     input_normalized_layer = \
         tf.keras.layers.Multiply()([
             input_normalized_layer,
