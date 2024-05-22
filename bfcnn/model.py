@@ -241,14 +241,20 @@ def model_backbone_builder(
     input_layer = \
         tf.keras.Input(
             shape=input_shape,
-            name="input_tensor")
-    x = input_layer
+            name=INPUT_TENSOR_STR)
+    mask_layer = \
+        tf.keras.Input(
+            shape=input_shape[:-1] + [1],
+            name=MASK_TENSOR_STR)
 
-    x = backbone_model(x)
+    x = \
+        backbone_model([
+            input_layer,
+            mask_layer])
 
     model_backbone = \
         tf.keras.Model(
-            inputs=input_layer,
+            inputs=[input_layer, mask_layer],
             outputs=x,
             name=name_str)
 
