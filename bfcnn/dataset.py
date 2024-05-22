@@ -337,13 +337,18 @@ def dataset_builder(
 
     def prepare_data_fn(input_batch: tf.Tensor) -> \
             Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+        # process input batch for any geometric augmentations
         input_batch = geometric_augmentation_fn(input_batch)
         input_batch = tf.round(input_batch)
         input_batch = tf.cast(input_batch, dtype=tf.float32)
+        # create new batch with the noise augmentations
         noisy_batch = noise_augmentation_fn(input_batch)
+
+        # create binary mask
+        mask_shape = tf.concat(values=[tf.shape(x)[0: 3], [1]], axis=-1)
         mask_batch = \
             tf.random.uniform(
-                shape=tf.shape(input_batch)[0:3] + [1],
+                shape=mask_shape,
                 minval=0.0,
                 maxval=1.0,
                 seed=0,
