@@ -161,7 +161,8 @@ def model_builder(
     model_hydra = \
         tf.keras.Model(
             inputs=[
-                input_layer
+                input_layer,
+                mask_layer
             ],
             outputs=output_layers,
             name=f"hydra")

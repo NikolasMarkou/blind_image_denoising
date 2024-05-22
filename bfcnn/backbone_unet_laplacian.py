@@ -31,7 +31,6 @@ from .custom_layers import (
 
 def builder(
         input_dims,
-        use_mask: bool = False,
         depth: int = 5,
         width: int = 1,
         encoder_kernel_size: int = 5,
@@ -67,7 +66,6 @@ def builder(
     builds a modified unet model that uses convnext blocks and laplacian downsampling
 
     :param input_dims: Models input dimensions
-    :param use_mask: A single channel mask, used for inpainting
     :param depth: number of levels to go down
     :param width: number of horizontals nodes, if -1 it gets set to depth
     :param encoder_kernel_size: kernel size of encoder convolutional layer
@@ -280,12 +278,11 @@ def builder(
     masks_depth = []
     input_layers = [input_layer]
 
-    if use_mask:
-        mask = y
-        input_layers.append(masked_layer)
-        for d in range(depth):
-            masks_depth.append(mask)
-            mask = mask[:, ::2, ::2, :]
+    mask = y
+    input_layers.append(masked_layer)
+    for d in range(depth):
+        masks_depth.append(mask)
+        mask = mask[:, ::2, ::2, :]
 
     # first plain conv
     params = copy.deepcopy(base_conv_params)
@@ -309,8 +306,7 @@ def builder(
         for w in range(width):
             # get skip for residual
             x_skip = x
-            if use_mask:
-                x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
+            x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
             x = \
                 ConvNextBlock(
                     name=f"encoder_{d}_{w}",
@@ -460,8 +456,7 @@ def builder(
             x_skip = x
             params = copy.deepcopy(conv_params_res_1[d])
             params["kernel_size"] = (decoder_kernel_size, decoder_kernel_size)
-            if use_mask:
-                x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
+            x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
             x = \
                 ConvNextBlock(
                     name=f"decoder_{node[0]}_{w}",
@@ -533,8 +528,6 @@ def builder(
         output_layers[i] = (
             tf.keras.layers.Layer(
                 name=f"{output_layer_name}_{i}")(x))
-
-
 
     return \
         tf.keras.Model(
