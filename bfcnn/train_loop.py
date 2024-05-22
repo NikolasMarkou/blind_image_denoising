@@ -472,6 +472,13 @@ def train_loop(
                         tf.summary.image(name=f"denoiser/scale_0/output", data=predictions / 255,
                                          max_outputs=visualization_number, step=ckpt.step)
 
+                    # mask
+                    tf.summary.image(name=f"denoiser/mask",
+                                     data=mask_image_batch,
+                                     max_outputs=visualization_number,
+                                     step=ckpt.step)
+
+                    # error per pixel
                     tf.summary.image(name=f"error/mae",
                                      data=tf.clip_by_value(
                                          tf.abs(prediction - input_image_batch),

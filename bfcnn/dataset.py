@@ -360,7 +360,9 @@ def dataset_builder(
             tf.less(
                 mask_batch,
                 tf.constant(inpaint_drop_rate))
-        mask_batch = tf.cast(mask_batch, dtype=tf.float32)
+        mask_batch = \
+            tf.cast(mask_batch, dtype=tf.float32) * \
+            tf.cast(tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5)), dtype=tf.float32)
 
         return input_batch, noisy_batch, mask_batch
 
