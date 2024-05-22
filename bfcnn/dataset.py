@@ -343,7 +343,7 @@ def dataset_builder(
         noisy_batch = noise_augmentation_fn(input_batch)
         mask_batch = \
             tf.random.uniform(
-                shape=tf.shape(input_batch)[:-1] + [1],
+                shape=tf.shape(input_batch)[0:3] + [1],
                 minval=0.0,
                 maxval=1.0,
                 seed=0,
