@@ -99,7 +99,7 @@ def model_builder(
 
     mask_layer = \
         tf.keras.Input(
-            shape=input_image_shape[1:-1] + (1,),
+            shape=input_image_shape[:-1] + (1,),
             dtype="float32",
             sparse=False,
             ragged=False,

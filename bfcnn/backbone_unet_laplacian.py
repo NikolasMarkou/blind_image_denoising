@@ -271,7 +271,7 @@ def builder(
     masked_layer = \
         tf.keras.Input(
             name=MASK_TENSOR_STR,
-            shape=input_dims[::-1] + [1])
+            shape=input_dims[:-1] + [1])
     y = masked_layer
 
     # prepare masks
