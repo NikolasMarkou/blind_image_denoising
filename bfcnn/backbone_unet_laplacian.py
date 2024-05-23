@@ -118,7 +118,7 @@ def builder(
             activation_str = activation
         return activation_str
 
-    downsample_activation = activation_str_fix_fn("linear")
+    downsample_activation = activation_str_fix_fn(activation)
     upsample_activation = activation_str_fix_fn("linear")
     upsample_type = upsample_type.strip().lower()
     downsample_type = downsample_type.strip().lower()
