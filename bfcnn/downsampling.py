@@ -57,13 +57,16 @@ def downsample(
                     conv_params=params)
     elif downsample_type in ["strides"]:
         if conv_params is not None:
+            activation = copy.deepcopy(params.get("activation", "linear"))
             params["kernel_size"] = (1, 1)
             params["strides"] = (2, 2)
+            params["activation"] = "linear"
             x = \
                 conv2d_wrapper(
                     input_layer=x,
-                    bn_params=bn_params,
-                    ln_params=ln_params,
+                    bn_post_params=bn_params,
+                    ln_post_params=ln_params,
+                    post_activation=activation,
                     conv_params=params)
         else:
             x = x[:, ::2, ::2, :]

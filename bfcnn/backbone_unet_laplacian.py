@@ -334,15 +334,17 @@ def builder(
             if use_laplacian:
                 x_tmp_smooth = \
                     GaussianFilter(
-                        kernel_size=(3, 3),
+                        kernel_size=(5, 5),
                         strides=(1, 1))(x)
                 nodes_output[node_level] = \
                     tf.keras.layers.Subtract()([x, x_tmp_smooth])
                 x = x_tmp_smooth
 
             x = (
-                downsample(x,
+                downsample(input_layer=x,
                            downsample_type=downsample_type,
+                           ln_params=ln_params,
+                           bn_params=bn_params,
                            conv_params=conv_params_down[d]))
 
     # --- VERY IMPORTANT
