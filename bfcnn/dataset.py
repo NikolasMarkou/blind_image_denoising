@@ -362,13 +362,19 @@ def dataset_builder(
                 dtype=tf.float32)
         mask_batch = \
             tf.less(
-                mask_batch,
-                tf.constant(inpaint_drop_rate))
+                x=mask_batch,
+                y=tf.constant(inpaint_drop_rate))
+        mask_batch = tf.cast(mask_batch, dtype=tf.float32)
+        mask_batch = (
+            tf.nn.max_pool2d(
+                mask_batch, ksize=(2, 2), strides=(1, 1), padding="SAME"
+            ))
         mask_batch = \
-            tf.cast(mask_batch, dtype=tf.float32) * \
+            mask_batch * \
             tf.cast(
                 tf.greater(x=tf.random.uniform((), seed=0), y=tf.constant(0.5)),
                 dtype=tf.float32)
+
         noisy_batch = (
                 noisy_batch * (1.0 - mask_batch))
 
