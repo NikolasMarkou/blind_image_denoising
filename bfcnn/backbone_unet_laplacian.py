@@ -343,7 +343,7 @@ def builder(
                         strides=(1, 1))(x)
                 nodes_output[node_level] = \
                     tf.keras.layers.Subtract()([x, x_tmp_smooth])
-                # x = x_tmp_smooth
+                x = x_tmp_smooth
 
             x = (
                 downsample(x,
