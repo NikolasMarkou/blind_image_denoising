@@ -75,7 +75,7 @@
 		"random_up_down": true,
 		"random_left_right": true,
 		"input_shape": [256, 256, 3],
-		"inpaint_drop_rate": 0.01,
+		"inpaint_drop_rate": 0.001,
 		"multiplicative_noise": [0.05, 0.1],
 		"additional_noise": [5, 10, 20, 30, 40],
 		"inputs": [
