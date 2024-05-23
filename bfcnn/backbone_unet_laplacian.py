@@ -291,12 +291,16 @@ def builder(
     x = \
         conv2d_wrapper(
             input_layer=x,
+            ln_params=None,
+            bn_params=None,
             conv_params=params)
 
-    if use_bn:
-        x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
-    if use_ln:
-        x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
+    x = \
+        conv2d_wrapper(
+            input_layer=x,
+            ln_params=ln_params,
+            bn_params=bn_params,
+            conv_params=params)
 
     # --- build backbone
     for d in range(depth):
