@@ -297,14 +297,6 @@ def builder(
             conv_params=params,
             post_activation=activation)
 
-    x = \
-        conv2d_wrapper(
-            input_layer=x,
-            bn_post_params=bn_params,
-            ln_post_params=ln_params,
-            conv_params=params,
-            post_activation=activation)
-
     # --- build backbone
     for d in range(depth):
         depth_drop_counter = 0
@@ -529,8 +521,8 @@ def builder(
         # convert to intermediate output
         x = conv2d_wrapper(
             input_layer=x,
-            ln_params=ln_params,
-            bn_params=bn_params,
+            ln_params=None,
+            bn_params=None,
             conv_params=conv_params_output)
         output_layers[i] = (
             tf.keras.layers.Layer(
