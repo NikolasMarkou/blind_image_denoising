@@ -435,7 +435,8 @@ def conv2d_wrapper(
         x = activation_wrapper(pre_activation)(x)
 
     # --- convolution
-    conv_params["activation"] = activation_wrapper(conv_params.get("activation", "linear)"))
+    conv_params["activation"] = (
+        activation_wrapper(conv_params.get("activation", "linear)")))
     if conv_type == ConvType.CONV2D:
         x = tf.keras.layers.Conv2D(**conv_params)(x)
     elif conv_type == ConvType.CONV2D_DEPTHWISE:
