@@ -925,7 +925,7 @@ def layer_normalize(
 
 # ---------------------------------------------------------------------
 
-
+@tf.function
 def random_crops(
         input_batch: tf.Tensor,
         no_crops_per_image: int = 16,

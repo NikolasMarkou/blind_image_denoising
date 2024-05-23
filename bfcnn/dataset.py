@@ -391,6 +391,7 @@ def dataset_builder(
         raise ValueError("don't know how to handle non directory datasets")
 
     # --- save the augmentation functions
+    @tf.function
     def load_image_fn(path: tf.Tensor) -> tf.Tensor:
         img = \
             load_image(
