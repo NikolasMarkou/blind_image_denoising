@@ -518,13 +518,18 @@ def builder(
     output_layers = output_layers[::-1]
 
     # add normalization and names to the final layers
+    activation_output = (
+        conv_params_output.get("activation", "linear"))
+    conv_params_output["activation"] = "linear"
+
     for i in range(len(output_layers)):
         x = output_layers[i]
         # convert to intermediate output
         x = conv2d_wrapper(
             input_layer=x,
-            ln_params=None,
-            bn_params=None,
+            ln_post_params=ln_params,
+            bn_post_params=bn_params,
+            post_activation=activation_output,
             conv_params=conv_params_output)
         output_layers[i] = (
             tf.keras.layers.Layer(
