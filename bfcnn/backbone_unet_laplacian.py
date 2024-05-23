@@ -120,17 +120,15 @@ def builder(
 
     downsample_activation = activation_str_fix_fn("linear")
     upsample_activation = activation_str_fix_fn("linear")
+    upsample_type = upsample_type.strip().lower()
+    downsample_type = downsample_type.strip().lower()
+    kernel_initializer = kernel_initializer.strip().lower()
 
     if (use_soft_orthonormal_regularization and
             use_soft_orthogonal_regularization):
         raise ValueError(
             "only one use_soft_orthonormal_regularization or "
             "use_soft_orthogonal_regularization must be turned on")
-
-    kernel_initializer = kernel_initializer.strip().lower()
-
-    upsample_type = upsample_type.strip().lower()
-    downsample_type = downsample_type.strip().lower()
 
     # --- setup parameters
     bn_params = None
