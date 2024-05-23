@@ -339,51 +339,40 @@ def dataset_builder(
         return noisy_batch
 
     @tf.function
-    def prepare_data_fn(input_batch: tf.Tensor) -> \
-            Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
-        # process input batch for any geometric augmentations
+    def prepare_data_fn(input_batch: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+        """
+        Prepare the data for training by applying geometric and noise augmentations,
+        and generating a binary mask for inpainting.
+
+        Args:
+            input_batch (tf.Tensor): The input tensor batch to be processed.
+
+        Returns:
+            Tuple[tf.Tensor, tf.Tensor, tf.Tensor]: A tuple containing the processed input batch,
+            the noisy batch, and the binary mask.
+        """
+
+        # Apply geometric augmentations to the input batch
         input_batch = geometric_augmentation_fn(input_batch)
         input_batch = tf.round(input_batch)
         input_batch = tf.cast(input_batch, dtype=tf.float32)
-        # create new batch with the noise augmentations
+
+        # Create a new batch with noise augmentations
         noisy_batch = noise_augmentation_fn(input_batch)
 
-        # create binary mask
-        mask_shape = \
-            tf.concat(
-                values=[tf.shape(input_batch)[:-1], [1]],
-                axis=-1)
-        mask_batch = \
-            tf.random.uniform(
-                shape=mask_shape,
-                minval=0.0,
-                maxval=1.0,
-                seed=0,
-                dtype=tf.float32)
-        mask_batch = \
-            tf.less(
-                x=mask_batch,
-                y=tf.constant(inpaint_drop_rate))
+        # Generate a binary mask for inpainting
+        mask_shape = tf.concat([tf.shape(input_batch)[:-1], [1]], axis=-1)
+        mask_batch = tf.random.uniform(shape=mask_shape, minval=0.0, maxval=1.0, seed=0, dtype=tf.float32)
+        mask_batch = tf.less(mask_batch, tf.constant(inpaint_drop_rate))
         mask_batch = tf.cast(mask_batch, dtype=tf.float32)
-        mask_batch = (
-            tf.nn.max_pool2d(
-                mask_batch,
-                ksize=(11, 11),
-                strides=(1, 1),
-                padding="SAME"
-            ))
-        mask_batch = \
-            mask_batch * \
-            tf.cast(
-                tf.greater(x=tf.random.uniform((), seed=0), y=tf.constant(0.5)),
-                dtype=tf.float32)
 
-        noisy_batch = (
-                noisy_batch * (1.0 - mask_batch))
+        random_value = tf.random.uniform((), seed=0)
+        mask_batch *= tf.cast(tf.greater(random_value, tf.constant(0.5)), dtype=tf.float32)
 
-        return (input_batch,
-                noisy_batch,
-                mask_batch)
+        # Apply the mask to the noisy batch
+        noisy_batch *= (1.0 - mask_batch)
+
+        return input_batch, noisy_batch, mask_batch
 
     # --- define generator function from directory
     if directory:
@@ -438,12 +427,12 @@ def dataset_builder(
             .unbatch() \
             .shuffle(
                 seed=0,
-                buffer_size=batch_size * 100,
+                buffer_size=batch_size * 128,
                 reshuffle_each_iteration=True) \
             .batch(
                 batch_size=batch_size,
                 drop_remainder=True) \
-            .prefetch(buffer_size=1)
+            .prefetch(buffer_size=2)
 
     return (
         DatasetResults(
