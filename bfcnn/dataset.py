@@ -134,6 +134,8 @@ def dataset_builder(
             )
 
         return tf.stack(tmp_list, axis=0) * 255
+
+    @tf.function
     def geometric_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -197,6 +199,7 @@ def dataset_builder(
         sample_index = tf.random.shuffle(indices, seed=0)[:size]
         return tf.gather(x, sample_index, axis=axis)[0]
 
+    @tf.function
     def noise_augmentation_fn(
             input_batch: tf.Tensor) -> tf.Tensor:
         """
@@ -335,6 +338,7 @@ def dataset_builder(
 
         return noisy_batch
 
+    @tf.function
     def prepare_data_fn(input_batch: tf.Tensor) -> \
             Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
         # process input batch for any geometric augmentations
@@ -362,9 +366,15 @@ def dataset_builder(
                 tf.constant(inpaint_drop_rate))
         mask_batch = \
             tf.cast(mask_batch, dtype=tf.float32) * \
-            tf.cast(tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5)), dtype=tf.float32)
+            tf.cast(
+                tf.greater(x=tf.random.uniform((), seed=0), y=tf.constant(0.5)),
+                dtype=tf.float32)
+        noisy_batch = (
+                noisy_batch * (1.0 - mask_batch))
 
-        return input_batch, noisy_batch, mask_batch
+        return (input_batch,
+                noisy_batch,
+                mask_batch)
 
     # --- define generator function from directory
     if directory:
@@ -419,7 +429,7 @@ def dataset_builder(
             .unbatch() \
             .shuffle(
                 seed=0,
-                buffer_size=128,
+                buffer_size=batch_size * 100,
                 reshuffle_each_iteration=True) \
             .batch(
                 batch_size=batch_size,
