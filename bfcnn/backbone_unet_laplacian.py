@@ -336,7 +336,7 @@ def builder(
             if use_laplacian:
                 x_tmp_smooth = \
                     GaussianFilter(
-                        kernel_size=(5, 5),
+                        kernel_size=(3, 3),
                         strides=(1, 1))(x)
                 nodes_output[node_level] = \
                     tf.keras.layers.Subtract()([x, x_tmp_smooth])
@@ -456,7 +456,7 @@ def builder(
             x_skip = x
             params = copy.deepcopy(conv_params_res_1[d])
             params["kernel_size"] = (decoder_kernel_size, decoder_kernel_size)
-            x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
+            #x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
             x = \
                 ConvNextBlock(
                     name=f"decoder_{node[0]}_{w}",
