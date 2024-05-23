@@ -367,7 +367,10 @@ def dataset_builder(
         mask_batch = tf.cast(mask_batch, dtype=tf.float32)
         mask_batch = (
             tf.nn.max_pool2d(
-                mask_batch, ksize=(2, 2), strides=(1, 1), padding="SAME"
+                mask_batch,
+                ksize=(3, 3),
+                strides=(1, 1),
+                padding="SAME"
             ))
         mask_batch = \
             mask_batch * \
