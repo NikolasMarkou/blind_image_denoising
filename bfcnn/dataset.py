@@ -372,7 +372,10 @@ def dataset_builder(
         # create connected blocks
         mask_batch = (
             tf.nn.max_pool2d(
-                noisy_batch, ksize=(2, 2), strides=(1, 1), padding="SAME"))
+                mask_batch,
+                ksize=(2, 2),
+                strides=(1, 1),
+                padding="SAME"))
         noisy_batch = (
                 noisy_batch * (1.0 - mask_batch))
 
