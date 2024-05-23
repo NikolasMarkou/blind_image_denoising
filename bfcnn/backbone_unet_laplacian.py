@@ -285,17 +285,13 @@ def builder(
     # first plain conv
     params = copy.deepcopy(base_conv_params)
     params["filters"] = filters
-    params["activation"] = "linear"
     params["kernel_size"] = (5, 5)
     params["strides"] = (1, 1)
 
     x = \
         conv2d_wrapper(
             input_layer=x,
-            bn_post_params=bn_params,
-            ln_post_params=ln_params,
-            conv_params=params,
-            post_activation=activation)
+            conv_params=params)
 
     # --- build backbone
     for d in range(depth):
