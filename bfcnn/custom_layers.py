@@ -660,7 +660,7 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
             y = self.ln_y(y, training=training)
 
         # --- replaced relu with gelu
-        o = tf.nn.gelu(x + y)
+        o = tf.nn.leaky_relu(x + y, alpha=0.1)
         o = self.conv_o(o, training=training)
         if self.use_bn:
             o = self.bn_o(o, training=training)
