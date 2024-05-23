@@ -487,6 +487,14 @@ def train_loop(
                                      max_outputs=visualization_number,
                                      step=ckpt.step)
 
+                    tf.summary.histogram(name="error/mae_distribution",
+                                         data=tf.clip_by_value(
+                                                tf.abs(prediction - input_image_batch),
+                                                clip_value_min=0.0,
+                                                clip_value_max=255.0),
+                                         step=ckpt.step,
+                                         buckets=64)
+
                     # --- add gradient activity
                     gradient_activity = \
                         visualize_gradient_boxplot(
