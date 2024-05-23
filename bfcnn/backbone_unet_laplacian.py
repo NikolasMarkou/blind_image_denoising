@@ -21,7 +21,7 @@ from .upsampling import upsample
 from .downsampling import downsample
 from .custom_layers import (
     ConvNextBlock,
-    AttentionGate,
+    AdditiveAttentionGate,
     GaussianFilter,
     StochasticDepth)
 
@@ -418,7 +418,7 @@ def builder(
             logger.debug(f"adding AttentionGate at depth: [{node[0]}]")
 
             x_input[0] = (
-                AttentionGate(
+                AdditiveAttentionGate(
                     use_bias=use_bias,
                     use_bn=use_bn,
                     use_ln=use_ln,

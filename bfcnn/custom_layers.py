@@ -143,15 +143,65 @@ class StochasticDepth(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable()
 class ChannelLearnableMultiplier(tf.keras.layers.Layer):
+    """
+    A custom Keras layer that applies a learnable multiplier to each channel of the input tensor,
+    it also ensures there is no sign reversal
+
+    The multipliers are initialized to values close to zero and regularized to stay near zero, ensuring that the
+    multipliers start close to 1 and adjust during training.
+
+    Parameters
+    ----------
+    initializer : tf.keras.initializers.Initializer, optional
+        The initializer for the multipliers. By default, it uses `tf.keras.initializers.truncated_normal` with
+        mean 0.0 and standard deviation 0.1.
+    regularizer : tf.keras.regularizers.Regularizer, optional
+        The regularizer for the multipliers. By default, it uses `tf.keras.regularizers.l1` with a regularization
+        factor of 1e-6.
+    **kwargs :
+        Additional keyword arguments for the layer, passed to the base `tf.keras.layers.Layer` class.
+
+    Attributes
+    ----------
+    w_multiplier : tf.Variable
+        The learnable weight multipliers applied to each channel of the input tensor.
+
+    Methods
+    -------
+    build(input_shape)
+        Creates the weights of the layer based on the input shape.
+    call(inputs, training=None)
+        Applies the multipliers to the input tensor.
+
+    Examples
+    --------
+    ```python
+    import tensorflow as tf
+    from your_module import ChannelLearnableMultiplier
+
+    # Example usage in a model
+    inputs = tf.keras.Input(shape=(32, 32, 3))
+    x = ChannelLearnableMultiplier()(inputs)
+    model = tf.keras.Model(inputs=inputs, outputs=x)
+
+    model.summary()
+    ```
+
+    Notes
+    -----
+    - This layer is particularly useful when you want each channel to have a learnable scale factor but not change sign.
+    - The ReLU activation ensures non-negativity of the multipliers, preventing sign reversal.
+    """
+
     def __init__(self,
                  initializer=tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.1),
-                 regularizer=tf.keras.regularizers.l1(1e-4),
+                 regularizer=tf.keras.regularizers.l1(1e-6),
                  **kwargs):
         """
         Per channel learnable multiplier
 
         :param initializer: initializes the values, should keep them close to 0.0
-        :param regularizer: keeps the values near 0.0 so it becomes 1
+        :param regularizer: keeps the values near 0.0, so it becomes 1
         :param kwargs:
         """
         super().__init__(**kwargs)
@@ -160,6 +210,14 @@ class ChannelLearnableMultiplier(tf.keras.layers.Layer):
         self.regularizer = regularizer
 
     def build(self, input_shape):
+        """
+        Initializes the ChannelLearnableMultiplier layer.
+
+        Parameters:
+        initializer (tf.keras.initializers.Initializer): Initializer for the multiplier weights.
+        regularizer (tf.keras.regularizers.Regularizer): Regularizer for the multiplier weights.
+        kwargs: Additional keyword arguments.
+        """
         new_shape = [1, ] * len(input_shape)
         new_shape[-1] = input_shape[-1]
         self.w_multiplier = self.add_weight(
@@ -171,6 +229,16 @@ class ChannelLearnableMultiplier(tf.keras.layers.Layer):
         )
 
     def call(self, inputs, training=None):
+        """
+        Applies the multipliers to the input tensor.
+
+        Parameters:
+        inputs (tf.Tensor): Input tensor.
+        training (bool, optional): Whether the call is in training mode or not.
+
+        Returns:
+        tf.Tensor: Output tensor with the multipliers applied.
+        """
         # relu makes sure we don't have sign reversal
         # multiplier starts from 1 and moves away from there
         return tf.keras.activations.relu(1.0 + self.w_multiplier) * inputs
@@ -181,16 +249,68 @@ class ChannelLearnableMultiplier(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable()
 class SmoothChannelLearnableMultiplier(tf.keras.layers.Layer):
+    """
+    A custom Keras layer that applies a smooth, learnable multiplier to each channel of the input tensor.
+
+    The multipliers are initialized to values close to zero and regularized to stay near zero, ensuring that the
+    multipliers start close to 1 and adjust during training. The sigmoid activation function ensures that the
+    multipliers remain between 0 and 1.
+
+    Parameters
+    ----------
+    initializer : tf.keras.initializers.Initializer, optional
+        The initializer for the multipliers. By default, it uses `tf.keras.initializers.truncated_normal` with
+        mean 0.0 and standard deviation 0.01.
+    regularizer : tf.keras.regularizers.Regularizer, optional
+        The regularizer for the multipliers. By default, it uses `tf.keras.regularizers.l1` with a regularization
+        factor of 1e-4.
+    **kwargs :
+        Additional keyword arguments for the layer, passed to the base `tf.keras.layers.Layer` class.
+
+    Attributes
+    ----------
+    w_multiplier : tf.Variable
+        The learnable weight multipliers applied to each channel of the input tensor.
+
+    Methods
+    -------
+    build(input_shape)
+        Creates the weights of the layer based on the input shape.
+    call(inputs, training=None)
+        Applies the multipliers to the input tensor.
+
+    Examples
+    --------
+    ```python
+    import tensorflow as tf
+    from your_module import SmoothChannelLearnableMultiplier
+
+    # Example usage in a model
+    inputs = tf.keras.Input(shape=(32, 32, 3))
+    x = SmoothChannelLearnableMultiplier()(inputs)
+    model = tf.keras.Model(inputs=inputs, outputs=x)
+
+    model.summary()
+    ```
+
+    Notes
+    -----
+    - This layer is useful when you want each channel to have a learnable scale factor that is smoothly adjusted.
+    - The sigmoid activation ensures that the multipliers stay within the range [0, 1].
+    - The multipliers start close to 1 due to the initialization and regularization strategies.
+    """
+
     def __init__(self,
                  initializer=tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.01),
-                 regularizer=tf.keras.regularizers.l1(1e-4),
+                 regularizer=tf.keras.regularizers.l1(1e-6),
                  **kwargs):
         """
-        Per channel learnable multiplier
+        Initializes the SmoothChannelLearnableMultiplier layer.
 
-        :param initializer: initializes the values, should keep them close to 0.0
-        :param regularizer: keeps the values near 0.0 so it becomes 1
-        :param kwargs:
+        Parameters:
+        initializer (tf.keras.initializers.Initializer): Initializer for the multiplier weights.
+        regularizer (tf.keras.regularizers.Regularizer): Regularizer for the multiplier weights.
+        kwargs: Additional keyword arguments.
         """
         super().__init__(**kwargs)
         self.w_multiplier = None
@@ -198,6 +318,12 @@ class SmoothChannelLearnableMultiplier(tf.keras.layers.Layer):
         self.regularizer = regularizer
 
     def build(self, input_shape):
+        """
+        Creates the weights of the layer based on the input shape.
+
+        Parameters:
+        input_shape (tuple): Shape of the input tensor.
+        """
         new_shape = [1, ] * len(input_shape)
         new_shape[-1] = input_shape[-1]
         self.w_multiplier = self.add_weight(
@@ -209,10 +335,18 @@ class SmoothChannelLearnableMultiplier(tf.keras.layers.Layer):
         )
 
     def call(self, inputs, training=None):
-        # y=\frac{\left(\tanh\left(2\cdot x\right)+1\right)}{2}
-        # sigmoid is smooth on all values and keeps it between 0.0 and 1.0
-        # multiplier starts from 1 and moves away from there,
-        # so it is learning to turn off
+        """
+        Applies the multipliers to the input tensor.
+
+        Parameters:
+        inputs (tf.Tensor): Input tensor.
+        training (bool, optional): Whether the call is in training mode or not.
+
+        Returns:
+        tf.Tensor: Output tensor with the multipliers applied.
+        """
+        # The sigmoid activation ensures values are between 0 and 1
+        # The multiplier starts from 1 (due to 2.5 offset) and adjusts from there
         return tf.keras.activations.sigmoid(2.5 + self.w_multiplier) * inputs
 
 # ---------------------------------------------------------------------
@@ -294,11 +428,82 @@ class SqueezeExcitation(tf.keras.layers.Layer):
 # ---------------------------------------------------------------------
 
 @tf.keras.utils.register_keras_serializable()
-class AttentionGate(tf.keras.layers.Layer):
+class AdditiveAttentionGate(tf.keras.layers.Layer):
     """
-    Convolutional Additive Attention gate
+    Convolutional Additive Attention Gate
 
+    This layer implements a convolutional additive attention mechanism as described in the paper:
     https://www.researchgate.net/figure/Schematic-of-the-additive-Attention-Gate_fig2_358867978
+
+    Parameters
+    ----------
+    attention_channels : int
+        The number of channels for the attention mechanism.
+    use_bias : bool, optional
+        Whether to use bias in the convolutional layers. Default is False.
+    use_bn : bool, optional
+        Whether to use Batch Normalization. Default is False.
+    use_ln : bool, optional
+        Whether to use Layer Normalization. Default is False.
+    use_soft_orthonormal_regularization : bool, optional
+        Whether to use soft orthonormal regularization. Default is False.
+    use_soft_orthogonal_regularization : bool, optional
+        Whether to use soft orthogonal regularization. Default is False.
+    kernel_initializer : str, optional
+        Initializer for the kernel weights matrix. Default is "glorot_normal".
+    **kwargs :
+        Additional keyword arguments for the layer, passed to the base `tf.keras.layers.Layer` class.
+
+    Attributes
+    ----------
+    conv_x : tf.keras.layers.Conv2D
+        Convolutional layer for upsampled signal.
+    bn_x : tf.keras.layers.BatchNormalization or None
+        Batch normalization layer for upsampled signal (if use_bn is True).
+    ln_x : tf.keras.layers.LayerNormalization or None
+        Layer normalization layer for upsampled signal (if use_ln is True).
+    conv_y : tf.keras.layers.Conv2D
+        Convolutional layer for encoder feature.
+    bn_y : tf.keras.layers.BatchNormalization or None
+        Batch normalization layer for encoder feature (if use_bn is True).
+    ln_y : tf.keras.layers.LayerNormalization or None
+        Layer normalization layer for encoder feature (if use_ln is True).
+    conv_o : tf.keras.layers.Conv2D
+        Convolutional layer for the output signal.
+    bn_o : tf.keras.layers.BatchNormalization or None
+        Batch normalization layer for the output signal (if use_bn is True).
+    ln_o : tf.keras.layers.LayerNormalization or None
+        Layer normalization layer for the output signal (if use_ln is True).
+    scale_o : ChannelLearnableMultiplier
+        Channel learnable multiplier layer for scaling the output.
+
+    Methods
+    -------
+    build(input_shapes)
+        Creates the weights of the layer based on the input shapes.
+    call(inputs, training=None)
+        Applies the attention mechanism to the input tensors.
+
+    Examples
+    --------
+    ```python
+    import tensorflow as tf
+    from your_module import AdditiveAttentionLayer
+
+    # Example usage in a model
+    encoder_feature = tf.keras.Input(shape=(32, 32, 64))
+    upsample_signal = tf.keras.Input(shape=(32, 32, 64))
+    x = AdditiveAttentionLayer(attention_channels=32)([encoder_feature, upsample_signal])
+    model = tf.keras.Model(inputs=[encoder_feature, upsample_signal], outputs=x)
+
+    model.summary()
+    ```
+
+    Notes
+    -----
+    - This layer is particularly useful in image segmentation models, where attention mechanisms can improve performance by focusing on relevant regions.
+    - Ensure that the attention_channels parameter is set appropriately to balance model complexity and performance.
+    - This implementation uses a combination of convolutional layers, optional normalization layers, and a custom scaling layer to achieve the attention effect.
     """
 
     def __init__(self,
@@ -310,6 +515,18 @@ class AttentionGate(tf.keras.layers.Layer):
                  use_soft_orthogonal_regularization: bool = False,
                  kernel_initializer: str = "glorot_normal",
                  **kwargs):
+        """
+        Initializes the AdditiveAttentionLayer.
+
+        attention_channels (int): The number of channels for the attention mechanism.
+        use_bias (bool, optional): Whether to use bias in the convolutional layers. Default is False.
+        use_bn (bool, optional): Whether to use Batch Normalization. Default is False.
+        use_ln (bool, optional): Whether to use Layer Normalization. Default is False.
+        use_soft_orthonormal_regularization (bool, optional): Whether to use soft orthonormal regularization. Default is False.
+        use_soft_orthogonal_regularization (bool, optional): Whether to use soft orthogonal regularization. Default is False.
+        kernel_initializer (str, optional): Initializer for the kernel weights matrix. Default is "glorot_normal".
+        kwargs: Additional keyword arguments.
+        """
         super().__init__(**kwargs)
 
         # --- argument parsing
@@ -343,6 +560,12 @@ class AttentionGate(tf.keras.layers.Layer):
         self.scale_o = None
 
     def build(self, input_shapes):
+        """
+        Creates the weights of the layer based on the input shapes.
+
+        Parameters:
+        input_shapes (tuple): Shape of the input tensors, expected to be a list or tuple of two shapes.
+        """
         encoder_feature, upsample_signal = input_shapes
         output_channels = encoder_feature[-1]
 
@@ -410,17 +633,27 @@ class AttentionGate(tf.keras.layers.Layer):
         self.scale_o = ChannelLearnableMultiplier()
 
     def call(self, inputs, training=None):
+        """
+        Applies the attention mechanism to the input tensors.
+
+        Parameters:
+        inputs (list of tf.Tensor): List containing two input tensors - encoder feature and upsample signal.
+        training (bool, optional): Whether the call is in training mode or not.
+
+        Returns:
+        tf.Tensor: Output tensor after applying the attention mechanism.
+        """
         encoder_feature, upsample_signal = inputs
 
         # --- upsample signal
-        x = self.conv_x(upsample_signal)
+        x = self.conv_x(upsample_signal, training=training)
         if self.use_bn:
             x = self.bn_x(x, training=training)
         if self.use_ln:
             x = self.ln_x(x, training=training)
 
         # --- encoder signal
-        y = self.conv_y(encoder_feature)
+        y = self.conv_y(encoder_feature, training=training)
         if self.use_bn:
             y = self.bn_y(y, training=training)
         if self.use_ln:
@@ -428,13 +661,13 @@ class AttentionGate(tf.keras.layers.Layer):
 
         # --- replaced relu with gelu
         o = tf.nn.gelu(x + y)
-        o = self.conv_o(o)
+        o = self.conv_o(o, training=training)
         if self.use_bn:
             o = self.bn_o(o, training=training)
         if self.use_ln:
             o = self.ln_o(o, training=training)
 
-        o = self.scale_o(o)
+        o = self.scale_o(o, training=training)
         o = tf.nn.sigmoid(o)
         return tf.math.multiply(encoder_feature, o)
 
@@ -443,22 +676,51 @@ class AttentionGate(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable()
 class GlobalLearnableMultiplier(tf.keras.layers.Layer):
+    """
+    Global Learnable Multiplier Layer.
+
+    This layer applies a learnable global multiplier to the input tensor. The multiplier
+    is initialized to values close to 0 and is regularized to encourage values near 0,
+    which results in the multiplier being close to 1 after applying the ReLU activation.
+
+    Args:
+        initializer (tf.keras.initializers.Initializer): Initializer for the multiplier weight.
+            Defaults to truncated normal with mean 0.0 and stddev 0.1.
+        regularizer (tf.keras.regularizers.Regularizer): Regularizer for the multiplier weight.
+            Defaults to L1 regularization with a coefficient of 1e-4.
+        **kwargs: Additional keyword arguments to pass to the parent class.
+
+    Attributes:
+        w_multiplier (tf.Variable): Learnable weight multiplier.
+
+    Methods:
+        build(input_shape):
+            Initializes the learnable weight based on the input shape.
+        call(inputs, training=None):
+            Applies the learnable multiplier to the input tensor.
+    """
+
     def __init__(self,
                  initializer=tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.1, seed=0),
                  regularizer=tf.keras.regularizers.l1(1e-4),
                  **kwargs):
-        """
-        Global learnable multiplier
-
-        :param kwargs:
-        """
-
         super().__init__(**kwargs)
         self.w_multiplier = None
         self.initializer = initializer
         self.regularizer = regularizer
 
     def build(self, input_shape):
+        """
+        Initializes the learnable weight based on the input shape.
+
+        Args:
+            input_shape (tuple): Shape of the input tensor.
+
+        This method creates a weight variable with the same number of dimensions as the input
+        tensor but with each dimension set to 1, except the last dimension which matches the
+        last dimension of the input tensor. The weight is initialized and regularized as specified
+        in the constructor.
+        """
         new_shape = [1, ] * len(input_shape)
         self.w_multiplier = self.add_weight(
             shape=new_shape,
@@ -467,7 +729,22 @@ class GlobalLearnableMultiplier(tf.keras.layers.Layer):
             trainable=True,
         )
 
-    def call(self, inputs, training):
+    def call(self, inputs, training=None):
+        """
+        Applies the learnable multiplier to the input tensor.
+
+        Args:
+            inputs (tf.Tensor): Input tensor to which the multiplier is applied.
+            training (bool, optional): Indicates whether the layer should behave in training mode
+                or in inference mode. This argument is ignored in this layer.
+
+        Returns:
+            tf.Tensor: Output tensor after applying the learnable multiplier and ReLU activation.
+
+        The learnable multiplier is first adjusted by adding 1.0 and then applying ReLU activation
+        to ensure non-negative values. The resulting multiplier is element-wise multiplied with the
+        input tensor.
+        """
         return tf.keras.activations.relu(1.0 + self.w_multiplier) * inputs
 
 
