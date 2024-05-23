@@ -372,6 +372,8 @@ def conv2d_wrapper(
         conv_params: Dict,
         bn_params: Dict = None,
         ln_params: Dict = None,
+        bn_post_params: Dict = None,
+        ln_post_params: Dict = None,
         pre_activation: Union[str, tf.keras.layers.Layer] = None,
         post_activation: Union[str, tf.keras.layers.Layer] = None,
         sample_mean_removal: bool = False,
@@ -445,6 +447,12 @@ def conv2d_wrapper(
         x = tf.keras.layers.Conv2DTranspose(**conv_params)(x)
     else:
         raise ValueError(f"don't know how to handle this [{conv_type}]")
+
+    # --- post convolution normalization
+    if bn_post_params:
+        x = tf.keras.layers.BatchNormalization(**bn_post_params)(x)
+    if ln_post_params:
+        x = tf.keras.layers.LayerNormalization(**ln_post_params)(x)
 
     # --- post activation (custom activation)
     if post_activation:
