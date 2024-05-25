@@ -495,6 +495,14 @@ def train_loop(
                                          step=ckpt.step,
                                          buckets=64)
 
+                    tf.summary.histogram(name="training/noise_distribution",
+                                         data=tf.clip_by_value(
+                                                tf.abs(noisy_image_batch - input_image_batch),
+                                                clip_value_min=0.0,
+                                                clip_value_max=255.0),
+                                         step=ckpt.step,
+                                         buckets=64)
+
                     # --- add gradient activity
                     gradient_activity = \
                         visualize_gradient_boxplot(
