@@ -259,7 +259,7 @@ def dataset_builder(
                         # channel independent noise
                         tf.random.truncated_normal(
                             mean=0.0,
-                            seed=0,
+                            seed=1,
                             dtype=tf.float32,
                             stddev=additive_noise_std,
                             shape=input_shape_inference),
@@ -267,7 +267,7 @@ def dataset_builder(
                         # channel dependent noise
                         tf.random.truncated_normal(
                             mean=0.0,
-                            seed=0,
+                            seed=1,
                             dtype=tf.float32,
                             stddev=additive_noise_std,
                             shape=(input_shape_inference[0],
@@ -281,7 +281,9 @@ def dataset_builder(
         # --- multiplicative noise
         noisy_batch = \
             tf.cond(
-                pred=tf.logical_and(random_option_multiplicative_noise, use_multiplicative_noise),
+                pred=tf.logical_and(
+                    random_option_multiplicative_noise,
+                    use_multiplicative_noise),
                 true_fn=lambda:
                 tf.multiply(
                     x=noisy_batch,
@@ -291,7 +293,7 @@ def dataset_builder(
                         # channel independent noise
                         tf.random.truncated_normal(
                             mean=1.0,
-                            seed=0,
+                            seed=1,
                             stddev=multiplicative_noise_std,
                             shape=input_shape_inference,
                             dtype=tf.float32),
@@ -299,7 +301,7 @@ def dataset_builder(
                         # channel dependent noise
                         tf.random.truncated_normal(
                             mean=1.0,
-                            seed=0,
+                            seed=1,
                             stddev=multiplicative_noise_std,
                             shape=(input_shape_inference[0],
                                    input_shape_inference[1],
@@ -343,7 +345,7 @@ def dataset_builder(
                 shape=(batch_size, input_shape[0], input_shape[1], 1),
                 minval=0.0,
                 maxval=1.0,
-                seed=0,
+                seed=1,
                 dtype=tf.float32)
         mask_batch = \
             tf.less(
