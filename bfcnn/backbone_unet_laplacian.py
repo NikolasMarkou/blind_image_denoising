@@ -223,7 +223,6 @@ def builder(
         params["kernel_size"] = 1
         params["activation"] = activation
         params["filters"] = filters_level * 4
-        params["groups"] = max(min(1, 2 * depth), 4)
         conv_params_res_2.append(params)
 
         # 3rd residual conv
@@ -300,7 +299,8 @@ def builder(
         for w in range(width):
             # get skip for residual
             x_skip = x
-            x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
+            if w == 0:
+                x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
             x = \
                 ConvNextBlock(
                     name=f"encoder_{d}_{w}",
@@ -452,7 +452,8 @@ def builder(
             x_skip = x
             params = copy.deepcopy(conv_params_res_1[d])
             params["kernel_size"] = (decoder_kernel_size, decoder_kernel_size)
-            x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
+            if w == 0:
+                x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
             x = \
                 ConvNextBlock(
                     name=f"decoder_{node[0]}_{w}",
