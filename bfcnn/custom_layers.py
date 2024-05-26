@@ -643,7 +643,8 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
         Returns:
         tf.Tensor: Output tensor after applying the attention mechanism.
         """
-        encoder_feature, upsample_signal = inputs
+        encoder_feature, upsample_signal = \
+            inputs
 
         # --- upsample signal
         x = self.conv_x(upsample_signal, training=training)
@@ -659,17 +660,19 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
         if self.use_ln:
             y = self.ln_y(y, training=training)
 
-        # --- replaced relu with gelu
-        o = tf.nn.leaky_relu(x + y, alpha=0.1)
+        # --- replaced relu with leaky relu with very small alpha
+        o = tf.nn.leaky_relu(x + y, alpha=0.01)
         o = self.conv_o(o, training=training)
         if self.use_bn:
             o = self.bn_o(o, training=training)
         if self.use_ln:
             o = self.ln_o(o, training=training)
-
         o = self.scale_o(o, training=training)
-        o = tf.nn.sigmoid(o)
-        return tf.math.multiply(encoder_feature, o)
+
+        return \
+            tf.math.multiply(
+                x=encoder_feature,
+                y=tf.nn.sigmoid(o))
 
 
 # ---------------------------------------------------------------------
