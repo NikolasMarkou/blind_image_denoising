@@ -129,7 +129,6 @@ def dataset_builder(
         """
 
         # --- get shape and options
-        input_shape_inference = tf.shape(input_batch)
         random_option_flip_left_right = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
         random_option_flip_up_down = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
         random_option_rotate = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
@@ -186,22 +185,20 @@ def dataset_builder(
             tf.random.uniform(
                 shape=(),
                 minval=additive_noise[0],
-                maxval=additive_noise[1],
-                seed=0)
+                maxval=additive_noise[1])
         multiplicative_noise_std = \
             tf.random.uniform(
                 shape=(),
                 minval=multiplicative_noise[0],
-                maxval=multiplicative_noise[1],
-                seed=0)
+                maxval=multiplicative_noise[1])
 
         random_option_additive_noise = \
             tf.greater(
-                x=tf.random.uniform((), seed=0),
+                x=tf.random.uniform(()),
                 y=tf.constant(0.5))
         random_option_multiplicative_noise = \
             tf.greater(
-                x=tf.random.uniform((), seed=0),
+                x=tf.random.uniform(()),
                 y=tf.constant(0.5))
 
         # --- additive noise
@@ -270,7 +267,7 @@ def dataset_builder(
                 y=tf.constant(inpaint_drop_rate))
         mask_batch = \
             tf.cast(mask_batch, dtype=tf.float32) * \
-            tf.cast(tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5)), dtype=tf.float32)
+            tf.cast(tf.greater(tf.random.uniform(()), tf.constant(0.5)), dtype=tf.float32)
         return mask_batch
 
     @tf.function(reduce_retracing=True)
