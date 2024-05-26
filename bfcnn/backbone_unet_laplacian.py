@@ -223,6 +223,7 @@ def builder(
         params["kernel_size"] = 1
         params["activation"] = activation
         params["filters"] = filters_level * 4
+        params["groups"] = max(min(1, 2 * depth), 4)
         conv_params_res_2.append(params)
 
         # 3rd residual conv

@@ -949,8 +949,6 @@ class ConvNextBlock(tf.keras.layers.Layer):
 
 # ---------------------------------------------------------------------
 
-# ---------------------------------------------------------------------
-
 
 class Multiplier(tf.keras.layers.Layer):
     def __init__(self,
