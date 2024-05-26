@@ -2,8 +2,8 @@
 	"model": {
 		"backbone": {
 			"input_shape": ["?", "?", 3],
-			"depth": 4,
-			"width": 3,
+			"depth": 3,
+			"width": 4,
 			"filters": 32,
 			"use_bias": false,
 			"use_concat": false,
