@@ -31,8 +31,6 @@ from .visualize import \
 
 CURRENT_DIRECTORY = os.path.realpath(os.path.dirname(__file__))
 
-tf.random.set_seed(0)
-
 # ---------------------------------------------------------------------
 
 
@@ -60,6 +58,7 @@ def train_loop(
     """
     # --- load configuration
     config = load_config(pipeline_config_path)
+    tf.random.set_seed(0)
 
     # --- create model_dir if not exist
     if not os.path.isdir(str(model_dir)):
