@@ -129,9 +129,9 @@ def dataset_builder(
         """
 
         # --- get shape and options
-        random_option_flip_left_right = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
-        random_option_flip_up_down = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
-        random_option_rotate = tf.greater(tf.random.uniform((), seed=0), tf.constant(0.5))
+        random_option_flip_left_right = tf.greater(tf.random.uniform(()), tf.constant(0.5))
+        random_option_flip_up_down = tf.greater(tf.random.uniform(()), tf.constant(0.5))
+        random_option_rotate = tf.greater(tf.random.uniform(()), tf.constant(0.5))
 
         # --- flip left right
         if use_left_right:
