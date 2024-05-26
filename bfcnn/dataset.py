@@ -190,8 +190,14 @@ def dataset_builder(
             noisy_batch = input_batch
             input_shape_inference = tf.shape(noisy_batch)
 
-            # --- random select noise type and options
-
+            random_option_additive_noise = \
+                tf.greater(
+                    x=tf.random.uniform(()),
+                    y=tf.constant(0.5))
+            random_option_multiplicative_noise = \
+                tf.greater(
+                    x=tf.random.uniform(()),
+                    y=tf.constant(0.5))
             additive_noise_std = \
                 tf.random.uniform(
                     shape=(),
@@ -202,14 +208,6 @@ def dataset_builder(
                     shape=(),
                     minval=multiplicative_noise[0],
                     maxval=multiplicative_noise[1])
-            random_option_additive_noise = \
-                tf.greater(
-                    x=tf.random.uniform(()),
-                    y=tf.constant(0.5))
-            random_option_multiplicative_noise = \
-                tf.greater(
-                    x=tf.random.uniform(()),
-                    y=tf.constant(0.5))
 
             # --- multiplicative noise
             noisy_batch = \

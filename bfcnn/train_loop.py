@@ -112,7 +112,6 @@ def train_loop(
         raise ValueError(f"output_discount_factor [{output_discount_factor}] "
                          f"must be between 0.0 and 1.0")
     #
-    ssl_epochs = train_config.get("ssl_epochs", -1)
     epochs = train_config["epochs"]
     gpu_batches_per_step = int(train_config.get("gpu_batches_per_step", 1))
     if gpu_batches_per_step <= 0:
