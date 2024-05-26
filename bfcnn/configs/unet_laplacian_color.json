@@ -1,6 +1,7 @@
 {
 	"model": {
 		"backbone": {
+			"type": "unet_laplacian",
 			"input_shape": ["?", "?", 3],
 			"depth": 3,
 			"width": 3,
@@ -9,7 +10,7 @@
 			"use_concat": false,
 			"use_gamma": false,
 			"use_soft_gamma": true,
-			"use_logit_norm": true,
+			"use_logit_norm": false,
 			"use_mix_project": false,
 			"use_attention_gates": true,
 			"encoder_kernel_size": 7,
@@ -19,7 +20,6 @@
 			"use_soft_orthonormal_regularization": true,
 			"kernel_initializer": "glorot_normal",
 			"kernel_regularizer": "l2",
-			"type": "unet_laplacian",
 			"upsample_type": "upsample_nearest_conv2d",
 			"downsample_type": "strides",
 			"depth_drop_rate": 0.5
@@ -42,11 +42,11 @@
 		"visualization_every": 500,
 		"optimizer": {
 			"type": "ADAM",
-			"gradient_clipping_by_norm": 1.0,
+			"gradient_clipping_by_norm": -1.0,
 			"schedule": {
 				"type": "cosine_decay_restarts",
 				"config": {
-					"t_mul": 1.1,
+					"t_mul": 1.0,
 					"decay_rate": 0.9,
 					"decay_steps": 40000,
 					"learning_rate": 0.001
