@@ -194,7 +194,7 @@ class ChannelLearnableMultiplier(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 initializer=tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.1),
+                 initializer=tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.01),
                  regularizer=tf.keras.regularizers.l1(1e-6),
                  **kwargs):
         """
@@ -231,6 +231,8 @@ class ChannelLearnableMultiplier(tf.keras.layers.Layer):
     def call(self, inputs, training=None):
         """
         Applies the multipliers to the input tensor.
+        relu makes sure we don't have sign reversal
+        multiplier starts from 1 and moves away from there
 
         Parameters:
         inputs (tf.Tensor): Input tensor.
@@ -239,9 +241,9 @@ class ChannelLearnableMultiplier(tf.keras.layers.Layer):
         Returns:
         tf.Tensor: Output tensor with the multipliers applied.
         """
-        # relu makes sure we don't have sign reversal
-        # multiplier starts from 1 and moves away from there
-        return tf.keras.activations.relu(1.0 + self.w_multiplier) * inputs
+        #
+        #
+        return tf.nn.relu(1.0 + self.w_multiplier) * inputs
 
 
 # ---------------------------------------------------------------------
