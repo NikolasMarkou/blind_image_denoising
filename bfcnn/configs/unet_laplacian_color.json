@@ -9,6 +9,7 @@
 			"use_concat": false,
 			"use_gamma": false,
 			"use_soft_gamma": true,
+			"use_logit_norm": true,
 			"use_mix_project": false,
 			"use_attention_gates": true,
 			"encoder_kernel_size": 5,

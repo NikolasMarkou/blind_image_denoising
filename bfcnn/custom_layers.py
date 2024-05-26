@@ -1086,3 +1086,36 @@ class ChannelwiseMultiplier(tf.keras.layers.Layer):
         return input_shape
 
 # ---------------------------------------------------------------------
+
+@tf.keras.utils.register_keras_serializable()
+class LogitNorm(tf.keras.layers.Layer):
+    """
+    implementation of logit_norm based on
+
+    Mitigating Neural Network Overconfidence with Logit Normalization
+
+    https://proceedings.mlr.press/v162/wei22d.html
+    https://arxiv.org/abs/2205.09310
+    https://github.com/hongxin001/logitnorm_ood
+
+    """
+
+    def __init__(self,
+                 constant: float = 1.0,
+                 axis: Union[int, Tuple[int, int]] = -1,
+                 **kwargs):
+        super().__init__(**kwargs)
+        self._axis = axis
+        self._constant = \
+            tf.constant(constant, dtype=tf.float32)
+
+    def call(self, inputs, training):
+        x = inputs
+        x_denominator = tf.square(x)
+        x_denominator = tf.reduce_sum(x_denominator, axis=self._axis, keepdims=True)
+        x_denominator = tf.sqrt(x_denominator + 1e-7)
+        return (
+            tf.divide(x, x_denominator) / self._constant,
+            x_denominator)
+
+# ---------------------------------------------------------------------

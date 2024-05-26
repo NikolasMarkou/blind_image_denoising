@@ -20,6 +20,7 @@ from .utilities import (
 from .upsampling import upsample
 from .downsampling import downsample
 from .custom_layers import (
+    LogitNorm,
     ConvNextBlock,
     AdditiveAttentionGate,
     GaussianFilter,
@@ -45,6 +46,7 @@ def builder(
         use_ln: bool = True,
         use_gamma: bool = True,
         use_soft_gamma: bool = False,
+        use_logit_norm: bool = False,
         use_bias: bool = False,
         use_concat: bool = True,
         use_laplacian: bool = True,
@@ -518,6 +520,8 @@ def builder(
 
     for i in range(len(output_layers)):
         x = output_layers[i]
+        if use_logit_norm:
+            x = LogitNorm()(x)[0]
         # convert to intermediate output
         x = conv2d_wrapper(
             input_layer=x,
