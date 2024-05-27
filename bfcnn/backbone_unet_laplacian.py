@@ -181,7 +181,6 @@ def builder(
     conv_params_res_2 = []
     conv_params_res_3 = []
 
-
     for d in range(depth):
         filters_level = \
             int(round(filters * max(1, filters_level_multiplier ** d)))
@@ -505,21 +504,10 @@ def builder(
     output_layers = output_layers[::-1]
 
     # add normalization and names to the final layers
-    activation_output = (
-        conv_params_output.get("activation", "linear"))
-    conv_params_output["activation"] = "linear"
-
     for i in range(len(output_layers)):
         x = output_layers[i]
         if use_logit_norm:
             x = LogitNorm()(x)[0]
-        # convert to intermediate output
-        x = conv2d_wrapper(
-            input_layer=x,
-            ln_post_params=ln_params,
-            bn_post_params=bn_params,
-            post_activation=activation_output,
-            conv_params=conv_params_output)
         output_layers[i] = (
             tf.keras.layers.Layer(
                 name=f"{output_layer_name}_{i}")(x))
