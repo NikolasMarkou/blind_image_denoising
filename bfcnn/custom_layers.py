@@ -139,6 +139,7 @@ class StochasticDepth(tf.keras.layers.Layer):
     def compute_output_shape(self, input_shape):
         return input_shape
 
+
 # ---------------------------------------------------------------------
 
 @tf.keras.utils.register_keras_serializable()
@@ -350,6 +351,7 @@ class SmoothChannelLearnableMultiplier(tf.keras.layers.Layer):
         # The sigmoid activation ensures values are between 0 and 1
         # The multiplier starts from 1 (due to 2.5 offset) and adjusts from there
         return tf.keras.activations.sigmoid(2.5 + self.w_multiplier) * inputs
+
 
 # ---------------------------------------------------------------------
 
@@ -946,6 +948,7 @@ class ConvNextBlock(tf.keras.layers.Layer):
         shape[-1] = self.conv_params_3["filters"]
         return shape
 
+
 # ---------------------------------------------------------------------
 
 
@@ -1078,6 +1081,7 @@ class ChannelwiseMultiplier(tf.keras.layers.Layer):
 
     def compute_output_shape(self, input_shape):
         return input_shape
+
 
 # ---------------------------------------------------------------------
 
