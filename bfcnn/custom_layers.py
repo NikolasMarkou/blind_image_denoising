@@ -626,11 +626,6 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
                 use_bias=self.use_bias,
                 kernel_regularizer=copy.deepcopy(kernel_regularizer),
                 kernel_initializer=kernel_initializer))
-        if self.use_bn:
-            self.bn_o = tf.keras.layers.BatchNormalization(center=self.use_bias)
-        if self.use_ln:
-            self.ln_o = tf.keras.layers.LayerNormalization(center=self.use_bias)
-
         # ---
         self.scale_o = ChannelLearnableMultiplier()
 
@@ -665,10 +660,6 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
         # --- replaced relu with leaky relu with very small alpha
         o = tf.nn.leaky_relu(x + y, alpha=0.01)
         o = self.conv_o(o, training=training)
-        if self.use_bn:
-            o = self.bn_o(o, training=training)
-        if self.use_ln:
-            o = self.ln_o(o, training=training)
         o = self.scale_o(o, training=training)
 
         # this puts the o [-1, +1] range for approximately [-1, +1] input
