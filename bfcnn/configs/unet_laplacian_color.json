@@ -88,21 +88,9 @@
             3
         ],
         "inpaint_drop_rate": 0.5,
-        "multiplicative_noise": [
-            0.05,
-            0.1
-        ],
-        "additional_noise": [
-            5,
-            10,
-            20,
-            30,
-            40
-        ],
+        "multiplicative_noise": [0.05, 0.1],
+        "additional_noise": [5, 40],
         "inputs": [
-            {
-                "directory": "/media/data1_4tb/datasets/KITTI/data/depth/raw_image_values/"
-            },
             {
                 "directory": "/media/data1_4tb/datasets/COCO/train2017"
             },
