@@ -74,7 +74,7 @@ def image_filenames_generator(
                     directory=d,
                     formats=SUPPORTED_IMAGE_LIST_FORMATS)
             )
-            dataset_size = sum(1 for _ in generator())
+            dataset_size = sum(1 for _ in generator)
             dataset_size_total += dataset_size
             logger.info(f"directory [{d}]: [{dataset_size}] samples")
         logger.info(f"total number of samples: [{dataset_size_total}]")
