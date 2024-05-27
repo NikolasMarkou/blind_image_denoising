@@ -340,8 +340,8 @@ def builder(
             x = (
                 downsample(input_layer=x,
                            downsample_type=downsample_type,
-                           ln_params=ln_params,
-                           bn_params=bn_params,
+                           ln_params=None,
+                           bn_params=None,
                            conv_params=conv_params_down[d]))
 
     # --- VERY IMPORTANT
