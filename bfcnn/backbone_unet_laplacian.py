@@ -46,7 +46,6 @@ def builder(
         use_ln: bool = True,
         use_gamma: bool = True,
         use_soft_gamma: bool = False,
-        use_logit_norm: bool = False,
         use_bias: bool = False,
         use_concat: bool = True,
         use_laplacian: bool = True,
@@ -503,11 +502,8 @@ def builder(
     # otherwise we will get the most shallow output
     output_layers = output_layers[::-1]
 
-    # add normalization and names to the final layers
     for i in range(len(output_layers)):
         x = output_layers[i]
-        if use_logit_norm:
-            x = LogitNorm()(x)[0]
         output_layers[i] = (
             tf.keras.layers.Layer(
                 name=f"{output_layer_name}_{i}")(x))
