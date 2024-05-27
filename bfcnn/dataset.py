@@ -62,15 +62,11 @@ def dataset_builder(
     inputs = config["inputs"]
     # directory to load data from
     directory = []
-    # resolution of the files loaded (reshape)
-    dataset_shape = []
     if isinstance(inputs, list):
         for i in inputs:
             directory.append(i.get("directory", None))
-            dataset_shape.append(i.get("dataset_shape", [256, 256]))
     elif isinstance(inputs, dict):
         directory.append(config.get("directory", None))
-        dataset_shape.append(config.get("dataset_shape", [256, 256]))
     else:
         raise ValueError("dont know how to handle anything else than list and dict")
 
@@ -287,14 +283,12 @@ def dataset_builder(
         dataset_generator = \
             image_filenames_generator(
                 directory=directory)
-        dataset_size = sum(1 for _ in copy.deepcopy(dataset_generator)())
         dataset_training = \
             tf.data.Dataset.from_generator(
                 generator=dataset_generator,
                 output_signature=(
                     tf.TensorSpec(shape=(), dtype=tf.string)
                 ))
-        logger.info(f"dataset_size: [{dataset_size}]")
     else:
         raise ValueError("don't know how to handle non directory datasets")
 
