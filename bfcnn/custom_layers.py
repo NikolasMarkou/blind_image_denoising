@@ -671,10 +671,13 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
             o = self.ln_o(o, training=training)
         o = self.scale_o(o, training=training)
 
+        # this puts the o [-1, +1] range for approximately [-1, +1] input
+        o = tf.nn.sigmoid(5.0 * o)
+
         return \
             tf.math.multiply(
                 x=encoder_feature,
-                y=tf.nn.sigmoid(o))
+                y=o)
 
 
 # ---------------------------------------------------------------------
