@@ -76,8 +76,8 @@ def image_filenames_generator(
             )
             dataset_size = sum(1 for _ in copy.deepcopy(generator)())
             dataset_size_total += dataset_size
-            logger.info(f"directory [{d}] contains [{dataset_size}] samples")
-        logger.info(f"total number of samples [{dataset_size_total}]")
+            logger.info(f"directory [{d}]: [{dataset_size}] samples")
+        logger.info(f"total number of samples: [{dataset_size_total}]")
 
     return gen_fn
 
