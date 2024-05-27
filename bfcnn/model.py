@@ -285,14 +285,47 @@ def model_denoiser_builder(
         logger.info(f"unused parameters [{kwargs}]")
 
     # --- set configuration
+    filters = config.get("filters", 32)
+    use_bn = config.get("use_bn", False)
+    use_ln = config.get("use_ln", False)
     use_bias = config.get(USE_BIAS, False)
+    activation = config.get("activation", "linear")
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
     kernel_regularizer = config.get(KERNEL_REGULARIZER, "l2")
     kernel_initializer = config.get(KERNEL_INITIALIZER, "glorot_normal")
 
-    # --- config uncertainty or point estimation
-    conv_params = \
+    bn_params = None
+    if use_bn:
+        bn_params = \
+            dict(
+                scale=True,
+                center=use_bias,
+                momentum=DEFAULT_BN_MOMENTUM,
+                epsilon=DEFAULT_BN_EPSILON
+            )
+
+    ln_params = None
+    if use_ln:
+        ln_params = \
+            dict(
+                scale=True,
+                center=use_bias,
+                epsilon=DEFAULT_LN_EPSILON)
+
+    # --- point estimation
+    conv_params_0 = dict(
+        kernel_size=(1, 1),
+        filters=filters,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation=activation,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
+
+    conv_params_1 = \
         dict(
             kernel_size=1,
             strides=(1, 1),
@@ -301,7 +334,8 @@ def model_denoiser_builder(
             activation="linear",
             filters=output_channels,
             kernel_regularizer=kernel_regularizer,
-            kernel_initializer=kernel_initializer)
+            kernel_initializer=kernel_initializer
+        )
 
     # --- define network here
     model_input_layer = \
@@ -311,29 +345,40 @@ def model_denoiser_builder(
 
     x = model_input_layer
 
-    # regression / point sample estimation
-    options = \
-        dict(num_outputs=1,
-             has_uncertainty=False)
-    x_expected = \
-        conv2d_wrapper(x, conv_params=conv_params)
-    # squash to [-1, +1] and then to [-0.51, +0.51]
-    x_expected = tf.nn.tanh(x_expected) * 0.51
-    x_expected = \
+    conv_params_0["activation"] = "linear"
+
+    x = conv2d_wrapper(
+        input_layer=x,
+        ln_post_params=ln_params,
+        bn_post_params=bn_params,
+        post_activation=activation,
+        conv_params=conv_params_0)
+
+    x = \
+        conv2d_wrapper(
+            input_layer=x,
+            ln_params=None,
+            bn_params=None,
+            conv_params=conv_params_1)
+
+    # squash to [-1, +1] and then to [-0.52, +0.52]
+    x = tf.nn.tanh(x * 2.0) * 0.52
+    x = \
         tf.keras.layers.Layer(
-            name="output_tensor")(x_expected)
+            name="output_tensor")(x)
+
     model_head = \
         tf.keras.Model(
             inputs=model_input_layer,
             outputs=[
-                x_expected,
+                x,
             ],
             name=name)
 
     return \
         DenoiserBuilderResults(
             denoiser=model_head,
-            options=options)
+            options={})
 
 # ---------------------------------------------------------------------
 

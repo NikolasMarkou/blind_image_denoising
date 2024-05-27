@@ -180,16 +180,7 @@ def builder(
     conv_params_res_1 = []
     conv_params_res_2 = []
     conv_params_res_3 = []
-    conv_params_output = dict(
-        kernel_size=(1, 1),
-        filters=filters,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation=activation,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
+
 
     for d in range(depth):
         filters_level = \
