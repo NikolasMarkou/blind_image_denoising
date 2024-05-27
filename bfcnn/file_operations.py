@@ -1,5 +1,6 @@
 import os
 import glob
+import copy
 import itertools
 import tensorflow as tf
 from pathlib import Path
@@ -34,17 +35,25 @@ def merge_iterators(
 
 
 def image_filenames_generator(
-        directory: Union[str, List[str]]) -> Generator[str, None, None]:
+        directory: Union[str, List[str]],
+        verbose: bool = True) -> Generator[str, None, None]:
     """
-    creates a generator function
-    """
+    Creates a generator function that yields image filenames from given directories.
 
+    Args:
+        directory (Union[str, List[str]]): A single directory or a list of directories to search for image files.
+        verbose (bool, optional): If True, logs the number of images found in each directory. Defaults to True.
+
+    Returns:
+        Generator[str, None, None]: A generator function that yields image filenames.
+
+    Raises:
+        ValueError: If the `directory` argument is not a string or a list of strings.
+    """
     if isinstance(directory, str):
-        def gen_fn() -> Generator[str, None, None]:
-            return index_directory_gen(
-                    directory=directory,
-                    formats=SUPPORTED_IMAGE_LIST_FORMATS)
-    elif isinstance(directory, List):
+        directory = [directory]
+
+    if isinstance(directory, List):
         def gen_fn() -> Generator[str, None, None]:
             iterators = [
                 index_directory_gen(
@@ -56,6 +65,19 @@ def image_filenames_generator(
             return merge_iterators(*iterators)
     else:
         raise ValueError(f"don't know what to do with [{directory}]")
+
+    if verbose:
+        dataset_size_total = 0
+        for d in directory:
+            generator = (
+                index_directory_gen(
+                    directory=d,
+                    formats=SUPPORTED_IMAGE_LIST_FORMATS)
+            )
+            dataset_size = sum(1 for _ in copy.deepcopy(generator)())
+            dataset_size_total += dataset_size
+            logger.info(f"directory [{d}] contains [{dataset_size}] samples")
+        logger.info(f"total number of samples [{dataset_size_total}]")
 
     return gen_fn
 
