@@ -212,7 +212,7 @@ def builder(
         # 2nd residual conv
         params = copy.deepcopy(base_conv_params)
         params["kernel_size"] = 1
-        params["activation"] = activation
+        params["activation"] = "gelu"
         params["filters"] = filters_level * 4
         conv_params_res_2.append(params)
 
