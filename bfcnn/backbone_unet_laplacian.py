@@ -299,10 +299,11 @@ def builder(
             if use_self_attention and d == depth-1:
                 x = (
                     ConvolutionalSelfAttention(
-                        attention_channels=filters,
                         use_gamma=True,
                         bn_params=bn_params,
-                        ln_params=ln_params
+                        ln_params=ln_params,
+                        attention_channels=filters,
+                        use_soft_orthonormal_regularization=True
                     )(x))
             else:
                 x = \
