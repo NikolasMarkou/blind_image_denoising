@@ -518,10 +518,6 @@ def builder(
 
     for i in range(len(output_layers)):
         x = output_layers[i]
-        if use_bn:
-            x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
-        if use_ln:
-            x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
         output_layers[i] = (
             tf.keras.layers.Layer(
                 name=f"{output_layer_name}_{i}")(x))
