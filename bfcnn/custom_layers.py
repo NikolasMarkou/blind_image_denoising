@@ -1155,6 +1155,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         self.attention_channels = attention_channels
 
         self.qkv_conv_params = dict(
+            filters=self.attention_channels,
             kernel_size=(1, 1),
             strides=(1, 1),
             padding="same",
