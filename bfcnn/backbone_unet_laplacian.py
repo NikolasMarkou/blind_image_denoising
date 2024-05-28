@@ -304,7 +304,6 @@ def builder(
         for w in range(width):
             # get skip for residual
             x_skip = x
-            x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
             x = \
                 ConvNextBlock(
                     name=f"encoder_{d}_{w}",
