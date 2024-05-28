@@ -271,7 +271,7 @@ def builder(
     input_layers.append(masked_layer)
     for d in range(depth):
         masks_depth.append(mask)
-        mask = mask[:, ::2, ::2, :]
+        mask = GaussianFilter(kernel_size=(3, 3), strides=(2, 2))(mask)
 
     # first plain conv
     params = copy.deepcopy(base_conv_params)
