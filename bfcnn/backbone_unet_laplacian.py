@@ -23,6 +23,7 @@ from .custom_layers import (
     LogitNorm,
     ConvNextBlock,
     AdditiveAttentionGate,
+    ConvolutionalSelfAttention,
     GaussianFilter,
     StochasticDepth)
 
@@ -50,6 +51,7 @@ def builder(
         use_concat: bool = True,
         use_laplacian: bool = True,
         use_mix_project: bool = True,
+        use_self_attention: bool = False,
         use_attention_gates: bool = False,
         use_soft_orthogonal_regularization: bool = False,
         use_soft_orthonormal_regularization: bool = False,
@@ -84,6 +86,7 @@ def builder(
     :param use_bias: use bias (bias free means this should be off)
     :param use_attention_gates: if True add attention gates between depths
     :param use_mix_project: if True mix different depths with a 1x1 projection (SKOOTS: Skeleton oriented object segmentation for mitochondria)
+    :param use_self_attention: if True add a convolutional self-attention element at the bottom layer
     :param use_concat: if True concatenate otherwise add skip layers (True by default)
     :param use_laplacian: if True use laplacian estimation between depths
     :param use_soft_orthogonal_regularization: if True use soft orthogonal regularization on the 1x1 kernels
@@ -276,7 +279,7 @@ def builder(
     # first plain conv
     params = copy.deepcopy(base_conv_params)
     params["filters"] = filters
-    params["kernel_size"] = (5, 5)
+    params["kernel_size"] = (7, 7)
     params["strides"] = (1, 1)
     x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[0]])
     x = \
@@ -292,20 +295,30 @@ def builder(
         for w in range(width):
             # get skip for residual
             x_skip = x
-            x = \
-                ConvNextBlock(
-                    name=f"encoder_{d}_{w}",
-                    conv_params_1=conv_params_res_1[d],
-                    conv_params_2=conv_params_res_2[d],
-                    conv_params_3=conv_params_res_3[d],
-                    ln_params=ln_params,
-                    bn_params=bn_params,
-                    dropout_params=dropout_params,
-                    use_gamma=use_gamma,
-                    use_soft_gamma=use_soft_gamma,
-                    dropout_2d_params=dropout_2d_params,
-                    use_soft_orthogonal_regularization=use_soft_orthogonal_regularization,
-                    use_soft_orthonormal_regularization=use_soft_orthonormal_regularization)(x)
+
+            if use_self_attention and d == depth-1:
+                x = (
+                    ConvolutionalSelfAttention(
+                        attention_channels=filters,
+                        use_gamma=True,
+                        bn_params=bn_params,
+                        ln_params=ln_params
+                    )(x))
+            else:
+                x = \
+                    ConvNextBlock(
+                        name=f"encoder_{d}_{w}",
+                        conv_params_1=conv_params_res_1[d],
+                        conv_params_2=conv_params_res_2[d],
+                        conv_params_3=conv_params_res_3[d],
+                        ln_params=ln_params,
+                        bn_params=bn_params,
+                        dropout_params=dropout_params,
+                        use_gamma=use_gamma,
+                        use_soft_gamma=use_soft_gamma,
+                        dropout_2d_params=dropout_2d_params,
+                        use_soft_orthogonal_regularization=use_soft_orthogonal_regularization,
+                        use_soft_orthonormal_regularization=use_soft_orthonormal_regularization)(x)
 
             if x_skip.shape[-1] == x.shape[-1]:
                 if depth_drop_rates[depth_drop_counter] > 0.0:
@@ -334,6 +347,8 @@ def builder(
                            ln_params=None,
                            bn_params=None,
                            conv_params=conv_params_down[d]))
+
+
 
     # --- VERY IMPORTANT
     # add this, so it works correctly

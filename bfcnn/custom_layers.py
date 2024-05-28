@@ -1116,4 +1116,157 @@ class LogitNorm(tf.keras.layers.Layer):
             tf.divide(x, x_denominator) / self._constant,
             x_denominator)
 
+
 # ---------------------------------------------------------------------
+
+@tf.keras.utils.register_keras_serializable()
+class ConvolutionalSelfAttention(tf.keras.layers.Layer):
+    """
+    Self attention layer
+
+    implements self-attention block as described in
+    Non-local Neural Networks (2018) by Facebook AI research
+
+    A spacetime non-local block. The feature maps are
+    shown as the shape of their tensors, e.g., T ×H×W ×1024 for
+    1024 channels (proper reshaping is performed when noted). “⊗”
+    denotes matrix multiplication, and “⊕” denotes element-wise sum.
+    The softmax operation is performed on each row.
+    Here we show the embedded Gaussian
+    version, with a bottleneck of 512 channels. The vanilla Gaussian
+    version can be done by removing θ and φ, and the dot-product
+    version can be done by replacing softmax with scaling by 1/N .
+
+    """
+
+    def __init__(self,
+                 attention_channels: int,
+                 bn_params: Dict = None,
+                 ln_params: Dict = None,
+                 use_gamma: bool = True,
+                 attention_activation: str = "linear",
+                 output_activation: str = "linear",
+                 use_soft_orthonormal_regularization: bool = False,
+                 use_soft_orthogonal_regularization: bool = False,
+                 **kwargs):
+        super().__init__(**kwargs)
+        if attention_channels is None or attention_channels <= 0:
+            raise ValueError("attention_channels should be > 0")
+        self.attention_channels = attention_channels
+
+        self.qkv_conv_params = dict(
+            kernel_size=(1, 1),
+            strides=(1, 1),
+            padding="same",
+            use_bias=False,
+            activation=attention_activation,
+            kernel_regularizer=tf.keras.regularizers.L2(l2=1e-4),
+            kernel_initializer="glorot_normal"
+        )
+        self.output_conv_params = dict(
+            kernel_size=(1, 1),
+            strides=(1, 1),
+            padding="same",
+            use_bias=False,
+            activation=output_activation,
+            kernel_regularizer=tf.keras.regularizers.L2(l2=1e-4),
+            kernel_initializer="glorot_normal"
+        )
+
+        self.query_conv = None
+        self.key_conv = None
+        self.value_conv = None
+        self.attention = None
+        self.output_conv = None
+
+        self.use_bn = False
+        if bn_params is not None:
+            self.use_bn = True
+            self.bn_0 = tf.keras.layers.BatchNormalization(**bn_params)
+            self.bn_1 = tf.keras.layers.BatchNormalization(**bn_params)
+
+        self.use_ln = False
+        if ln_params is not None:
+            self.use_ln = True
+            self.ln_0 = tf.keras.layers.LayerNormalization(**ln_params)
+            self.ln_1 = tf.keras.layers.LayerNormalization(**ln_params)
+
+        # learnable multiplier
+        self.gamma = None
+        self.use_gamma = use_gamma
+
+        # regularizer
+        self.use_soft_orthogonal_regularization = use_soft_orthogonal_regularization
+        self.use_soft_orthonormal_regularization = use_soft_orthonormal_regularization
+
+    def build(self, input_shape):
+        # query key value convolution
+        params = copy.deepcopy(self.qkv_conv_params)
+        if self.use_soft_orthogonal_regularization:
+            params["kernel_regularizer"] = \
+                SoftOrthogonalConstraintRegularizer(
+                    lambda_coefficient=0.01, l1_coefficient=1e-4, l2_coefficient=0.0)
+        if self.use_soft_orthonormal_regularization:
+            params["kernel_regularizer"] = \
+                SoftOrthonormalConstraintRegularizer(
+                    lambda_coefficient=0.01, l1_coefficient=1e-4, l2_coefficient=0.0)
+        self.key_conv = tf.keras.layers.Conv2D(**copy.deepcopy(params))
+        self.query_conv = tf.keras.layers.Conv2D(**copy.deepcopy(params))
+        self.value_conv = tf.keras.layers.Conv2D(**copy.deepcopy(params))
+
+        # output convolution
+        params = copy.deepcopy(self.output_conv_params)
+        params["filters"] = input_shape[-1]
+        if self.use_soft_orthogonal_regularization:
+            params["kernel_regularizer"] = \
+                SoftOrthogonalConstraintRegularizer(
+                    lambda_coefficient=0.01, l1_coefficient=1e-4, l2_coefficient=0.0)
+        if self.use_soft_orthonormal_regularization:
+            params["kernel_regularizer"] = \
+                SoftOrthonormalConstraintRegularizer(
+                    lambda_coefficient=0.01, l1_coefficient=1e-4, l2_coefficient=0.0)
+        self.output_conv = tf.keras.layers.Conv2D(**params)
+
+        # attention
+        self.attention = tf.keras.layers.Attention(use_scale=False)
+
+        # gamma
+        if self.use_gamma:
+            self.gamma = ChannelLearnableMultiplier()
+
+    def call(self, inputs, training):
+        x = inputs
+
+        # --- normalize
+        if self.use_bn:
+            x = self.bn_0(x)
+        if self.use_ln:
+            x = self.ln_0(x)
+
+        # --- compute query, key, value
+        q_x = self.query_conv(x)
+        k_x = self.key_conv(x)
+        v_x = self.value_conv(x)
+
+        # --- compute attention
+        attention = self.attention([q_x, k_x, v_x])
+
+        # compute output conv
+        if self.use_bn:
+            attention = self.bn_1(attention)
+        if self.use_ln:
+            attention = self.ln_1(attention)
+        x = self.output_conv(attention)
+
+        # --- gamma
+        if self.use_gamma:
+            x = self.gamma(x)
+
+        return x
+
+    def compute_output_shape(self, input_shape):
+        shape = copy.deepcopy(input_shape)
+        return shape
+
+# ---------------------------------------------------------------------
+
