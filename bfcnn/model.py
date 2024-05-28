@@ -345,21 +345,19 @@ def model_denoiser_builder(
 
     x = model_input_layer
 
-    conv_params_0["activation"] = "linear"
+    x = (
+        conv2d_wrapper(
+            input_layer=x,
+            ln_params=ln_params,
+            bn_params=bn_params,
+            conv_params=conv_params_0))
 
-    x = conv2d_wrapper(
-        input_layer=x,
-        ln_post_params=ln_params,
-        bn_post_params=bn_params,
-        post_activation=activation,
-        conv_params=conv_params_0)
-
-    x = \
+    x = (
         conv2d_wrapper(
             input_layer=x,
             ln_params=None,
             bn_params=None,
-            conv_params=conv_params_1)
+            conv_params=conv_params_1))
 
     # squash to [-1, +1] and then to [-0.52, +0.52]
     x = tf.nn.tanh(x * 2.0) * 0.52
