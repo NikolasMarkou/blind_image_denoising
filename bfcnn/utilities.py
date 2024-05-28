@@ -268,8 +268,8 @@ def conv2d_wrapper(
     use_dropout = dropout_params is not None
     use_dropout_2d = dropout_2d_params is not None
     conv_params = copy.deepcopy(conv_params)
-    conv_params["activation"] = "linear"
     conv_activation = conv_params.get("activation", "linear")
+    conv_params["activation"] = "linear"
 
     if conv_params.get("use_bias", True) and \
             (conv_activation == "relu" or conv_activation == "relu6"):
