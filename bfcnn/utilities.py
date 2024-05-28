@@ -16,6 +16,7 @@ from .custom_logger import logger
 from .regularizers import builder as regularizer_builder
 from .custom_layers import Mish, ChannelwiseMultiplier, GlobalLearnableMultiplier
 
+
 # ---------------------------------------------------------------------
 
 
@@ -33,6 +34,7 @@ def clip_normalized_tensor(
             clip_value_min=-0.5,
             clip_value_max=+0.5)
 
+
 # ---------------------------------------------------------------------
 
 
@@ -49,6 +51,7 @@ def clip_unnormalized_tensor(
             input_tensor,
             clip_value_min=0.0,
             clip_value_max=255.0)
+
 
 # ---------------------------------------------------------------------
 
@@ -79,6 +82,7 @@ def load_config(
         logger.error(e)
         raise ValueError(f"failed to load [{config}]")
 
+
 # ---------------------------------------------------------------------
 
 
@@ -90,6 +94,7 @@ def input_shape_fixer(
                 shape == "-1":
             input_shape[i] = None
     return input_shape
+
 
 # ---------------------------------------------------------------------
 
@@ -114,6 +119,7 @@ def probabilistic_drop_off(
             yield value * 0.0
         else:
             yield value
+
 
 # ---------------------------------------------------------------------
 
@@ -153,6 +159,7 @@ def normal_empirical_cdf(
 
     return -1
 
+
 # ---------------------------------------------------------------------
 
 
@@ -190,6 +197,7 @@ def coords_layer(
     yy_grid = tf.repeat(yy_grid, axis=0, repeats=tf.shape(input_layer)[0])
     return tf.keras.layers.Concatenate(axis=3)([input_layer, yy_grid, xx_grid])
 
+
 # ---------------------------------------------------------------------
 
 
@@ -218,6 +226,7 @@ class ConvType(Enum):
 
     def to_string(self) -> str:
         return self.name
+
 
 # ---------------------------------------------------------------------
 
@@ -259,10 +268,8 @@ def conv2d_wrapper(
     use_dropout = dropout_params is not None
     use_dropout_2d = dropout_2d_params is not None
     conv_params = copy.deepcopy(conv_params)
+    conv_params["activation"] = "linear"
     conv_activation = conv_params.get("activation", "linear")
-
-    if use_bn or use_ln:
-        conv_params["activation"] = "linear"
 
     if conv_params.get("use_bias", True) and \
             (conv_activation == "relu" or conv_activation == "relu6"):
@@ -304,33 +311,10 @@ def conv2d_wrapper(
     if use_ln:
         x = tf.keras.layers.LayerNormalization(**ln_params)(x)
 
-    if conv_activation.lower() in ["mish"]:
-        # Mish: A Self Regularized Non-Monotonic Activation Function (2020)
-        x = Mish()(x)
-    elif conv_activation.lower() in ["leaky_relu", "leaky_relu_01"]:
-        # leaky relu, practically same us Relu
-        # with very small negative slope to allow gradient flow
-        x = tf.keras.layers.LeakyReLU(alpha=0.1)(x)
-    elif conv_activation.lower() in ["leaky_relu_001"]:
-        # leaky relu, practically same us Relu
-        # with very small negative slope to allow gradient flow
-        x = tf.keras.layers.LeakyReLU(alpha=0.01)(x)
-    elif conv_activation.lower() in ["prelu"]:
-        # parametric Rectified Linear Unit
-        constraint = \
-            tf.keras.constraints.MinMaxNorm(
-                min_value=0.0, max_value=1.0, rate=1.0, axis=0)
-        x = tf.keras.layers.PReLU(
-            alpha_initializer=0.1,
-            # very small l1
-            alpha_regularizer=tf.keras.regularizers.l1(0.001),
-            alpha_constraint=constraint,
-            shared_axes=[1, 2])(x)
-    elif conv_activation.lower() in ["linear"]:
-        # do nothing
-        pass
-    else:
-        x = tf.keras.layers.Activation(conv_activation)(x)
+    # --- perform activation post normalization
+    if (conv_activation is not None and
+            conv_activation != "linear"):
+        x = activation_wrapper(conv_activation)(x)
 
     # --- dropout
     if use_dropout:
@@ -341,11 +325,11 @@ def conv2d_wrapper(
 
     return x
 
+
 # ---------------------------------------------------------------------
 
 def activation_wrapper(
         activation: Union[tf.keras.layers.Layer, str] = "linear") -> tf.keras.layers.Layer:
-
     if not isinstance(activation, str):
         logger.warning("cannot wrap activation since it is already wrapper")
         return activation
@@ -383,6 +367,7 @@ def activation_wrapper(
         x = tf.keras.layers.Activation(activation)
 
     return x
+
 
 # ---------------------------------------------------------------------
 
@@ -437,6 +422,7 @@ def depthwise_gaussian_kernel(
 
     return result.astype(dtype=dtype)
 
+
 # ---------------------------------------------------------------------
 
 
@@ -475,6 +461,7 @@ def dense_wrapper(
         x = ChannelwiseMultiplier(**elementwise_params)(x)
     return x
 
+
 # ---------------------------------------------------------------------
 
 
@@ -485,7 +472,7 @@ def expected_sigma_entropy_head(
         presoftmax_bias: float = 0.0,
         probability_threshold: float = 0.0,
         linspace_start_stop: Tuple[float, float] = (-0.5, +0.5)) \
-            -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+        -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
     """
     computes expected, sigma and entropy per output channel
 
@@ -585,6 +572,7 @@ def expected_sigma_entropy_head(
 
     return x_expected, x_sigma, x_entropy
 
+
 # ---------------------------------------------------------------------
 
 
@@ -624,6 +612,7 @@ def mean_variance_local(
             pool_size=kernel_size)(local_diff)
 
     return local_mean, local_variance
+
 
 # ---------------------------------------------------------------------
 
@@ -752,6 +741,7 @@ def sparse_block(
             x,
         ])
 
+
 # ---------------------------------------------------------------------
 
 
@@ -782,6 +772,7 @@ def layer_normalize(
             clip_value_min=v_min,
             clip_value_max=v_max)
     return (y_clip - v_min) / (v_max - v_min) - 0.5
+
 
 # ---------------------------------------------------------------------
 
@@ -882,6 +873,7 @@ def random_crops(
     # --- cast to original img dtype (no surprises principle)
     return tf.cast(result, dtype=original_dtype)
 
+
 # ---------------------------------------------------------------------
 
 def global_normalization(
@@ -894,6 +886,7 @@ def global_normalization(
     x_sigma = tf.sqrt(x_variance + DEFAULT_EPSILON)
     x = (x - x_mean) / x_sigma
     return x
+
 
 # ---------------------------------------------------------------------
 
@@ -915,6 +908,7 @@ def local_normalization(
     x_sigma = tf.sqrt(x_variance + DEFAULT_EPSILON)
     return (x - x_mean) / x_sigma
 
+
 # ---------------------------------------------------------------------
 
 
@@ -926,6 +920,7 @@ def highpass_filter(
     x_focus = tf.math.pow(tf.nn.tanh(a * x), b)
     return x_focus * x
 
+
 # ---------------------------------------------------------------------
 
 
@@ -936,6 +931,7 @@ def lowpass_filter(
     x = input_layer
     x_focus = 1.0 - tf.math.pow(tf.nn.tanh(a * x), b)
     return x_focus * x
+
 
 # ---------------------------------------------------------------------
 
@@ -998,7 +994,8 @@ def multiscales_generator_fn(
     if concrete_functions:
         return result.get_concrete_function()
 
-    return  result
+    return result
+
 
 # ---------------------------------------------------------------------
 
@@ -1019,6 +1016,7 @@ def create_checkpoint(
         if os.path.isdir(str(path)):
             ckpt.restore(tf.train.latest_checkpoint(str(path))).expect_partial()
     return ckpt
+
 
 # ---------------------------------------------------------------------
 
