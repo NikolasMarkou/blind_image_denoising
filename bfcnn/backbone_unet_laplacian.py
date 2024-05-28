@@ -51,7 +51,6 @@ def builder(
         use_laplacian: bool = True,
         use_mix_project: bool = True,
         use_attention_gates: bool = False,
-        use_decoder_normalization: bool = False,
         use_soft_orthogonal_regularization: bool = False,
         use_soft_orthonormal_regularization: bool = False,
         kernel_regularizer="l2",
@@ -60,6 +59,7 @@ def builder(
         depth_drop_rate: float = 0.0,
         spatial_dropout_rate: float = -1,
         multiple_scale_outputs: bool = True,
+        use_output_normalization: bool = False,
         output_layer_name: str = "intermediate_output",
         name="unet_laplacian",
         **kwargs) -> tf.keras.Model:
@@ -86,7 +86,6 @@ def builder(
     :param use_mix_project: if True mix different depths with a 1x1 projection (SKOOTS: Skeleton oriented object segmentation for mitochondria)
     :param use_concat: if True concatenate otherwise add skip layers (True by default)
     :param use_laplacian: if True use laplacian estimation between depths
-    :param use_decoder_normalization: if True add a normalization layer to each decoder output
     :param use_soft_orthogonal_regularization: if True use soft orthogonal regularization on the 1x1 kernels
     :param use_soft_orthonormal_regularization: if true use soft orthonormal regularization on the 1x1 middle kernels
     :param kernel_regularizer: Kernel weight regularizer
@@ -95,6 +94,7 @@ def builder(
     :param spatial_dropout_rate: probability of spatial dropout, negative to turn off
     :param depth_drop_rate: probability of residual block dropout, negative or zero to turn off
     :param multiple_scale_outputs: if True for each scale give an output
+    :param use_output_normalization: if True apply normalization to each output
     :param output_layer_name: the output layer's name
     :param name: name of the model
 
@@ -274,18 +274,6 @@ def builder(
         mask = GaussianFilter(kernel_size=(3, 3), strides=(2, 2))(mask)
 
     # first plain conv
-    params = copy.deepcopy(base_conv_params)
-    params["filters"] = 64
-    params["kernel_size"] = (5, 5)
-    params["strides"] = (1, 1)
-    x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[0]])
-    x = \
-        conv2d_wrapper(
-            input_layer=x,
-            ln_params=ln_params,
-            bn_params=bn_params,
-            conv_params=params)
-
     params = copy.deepcopy(base_conv_params)
     params["filters"] = filters
     params["kernel_size"] = (5, 5)
@@ -478,13 +466,6 @@ def builder(
                 x = tf.keras.layers.Add()([x_skip, x])
             depth_drop_counter += 1
 
-        # --- normalize decoder output
-        if use_decoder_normalization:
-            if use_bn:
-                x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
-            if use_ln:
-                x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
-
         nodes_output[node] = x
         nodes_visited.add(node)
 
@@ -518,6 +499,11 @@ def builder(
 
     for i in range(len(output_layers)):
         x = output_layers[i]
+        if use_output_normalization:
+            if use_bn:
+                x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
+            if use_ln:
+                x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
         output_layers[i] = (
             tf.keras.layers.Layer(
                 name=f"{output_layer_name}_{i}")(x))
