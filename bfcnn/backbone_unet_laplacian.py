@@ -278,7 +278,7 @@ def builder(
     params["filters"] = 64
     params["kernel_size"] = (5, 5)
     params["strides"] = (1, 1)
-
+    x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[0]])
     x = \
         conv2d_wrapper(
             input_layer=x,
@@ -290,6 +290,7 @@ def builder(
     params["filters"] = filters
     params["kernel_size"] = (5, 5)
     params["strides"] = (1, 1)
+    x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[0]])
     x = \
         conv2d_wrapper(
             input_layer=x,
@@ -339,6 +340,7 @@ def builder(
                     tf.keras.layers.Subtract()([x, x_tmp_smooth])
                 x = x_tmp_smooth
 
+            x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
             x = (
                 downsample(input_layer=x,
                            downsample_type=downsample_type,
@@ -440,6 +442,7 @@ def builder(
                 params = copy.deepcopy(conv_params_res_3[node[0]])
                 params["kernel_size"] = (1, 1)
                 params["activation"] = activation
+                x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[node[0]]])
                 x = conv2d_wrapper(
                     input_layer=x,
                     ln_params=None,
@@ -455,7 +458,6 @@ def builder(
             x_skip = x
             params = copy.deepcopy(conv_params_res_1[d])
             params["kernel_size"] = (decoder_kernel_size, decoder_kernel_size)
-            x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
             x = \
                 ConvNextBlock(
                     name=f"decoder_{node[0]}_{w}",
