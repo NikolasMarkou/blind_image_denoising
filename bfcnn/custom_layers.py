@@ -906,13 +906,13 @@ class ConvNextBlock(tf.keras.layers.Layer):
     def call(self, inputs, training=None):
         x = inputs
 
-        # --- 1st part
-        x = self.conv_1(x)
-
         if self.use_bn:
             x = self.bn(x, training=training)
         if self.use_ln:
             x = self.ln(x, training=training)
+
+        # --- 1st part
+        x = self.conv_1(x)
 
         if self.conv_params_1["activation"] != "linear":
             x = self.activation_1(x)
