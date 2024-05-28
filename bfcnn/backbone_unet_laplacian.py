@@ -275,13 +275,26 @@ def builder(
 
     # first plain conv
     params = copy.deepcopy(base_conv_params)
-    params["filters"] = filters
+    params["filters"] = 64
     params["kernel_size"] = (5, 5)
     params["strides"] = (1, 1)
 
     x = \
         conv2d_wrapper(
             input_layer=x,
+            ln_params=None,
+            bn_params=None,
+            conv_params=params)
+
+    params = copy.deepcopy(base_conv_params)
+    params["filters"] = filters
+    params["kernel_size"] = (5, 5)
+    params["strides"] = (1, 1)
+    x = \
+        conv2d_wrapper(
+            input_layer=x,
+            ln_params=ln_params,
+            bn_params=bn_params,
             conv_params=params)
 
     # --- build backbone

@@ -183,15 +183,13 @@ def resnet_blocks_full(
         if first_conv_params is not None and not bn_first_conv_params:
             x = conv2d_wrapper(input_layer=x,
                                conv_params=copy.deepcopy(first_conv_params),
-                               bn_params=None,
-                               channelwise_scaling=False)
+                               bn_params=None)
             x_1st_conv = x
             gate_layer = x_1st_conv
         elif first_conv_params is not None and bn_first_conv_params:
             x = conv2d_wrapper(input_layer=x,
                                conv_params=copy.deepcopy(first_conv_params),
-                               bn_params=bn_params,
-                               channelwise_scaling=False)
+                               bn_params=bn_params)
             x_1st_conv = x
             gate_layer = x_1st_conv
 
@@ -202,8 +200,7 @@ def resnet_blocks_full(
         if second_conv_params is not None:
             x = conv2d_wrapper(input_layer=x,
                                conv_params=copy.deepcopy(second_conv_params),
-                               bn_params=bn_params,
-                               channelwise_scaling=False)
+                               bn_params=bn_params)
             x_2nd_conv = x
             gate_layer = x_2nd_conv
 
@@ -222,8 +219,7 @@ def resnet_blocks_full(
         if third_conv_params is not None:
             x = conv2d_wrapper(input_layer=x,
                                conv_params=copy.deepcopy(third_conv_params),
-                               bn_params=bn_params,
-                               channelwise_scaling=False)
+                               bn_params=bn_params)
 
         # optional channelwise multiplier
         if use_channelwise:
@@ -365,7 +361,7 @@ def unet_blocks(
         if i > 0:
             x = \
                 conv2d_wrapper(
-                    x,
+                    input_layer=x,
                     conv_params=first_conv_params,
                     bn_params=None)
         x = \
@@ -460,17 +456,14 @@ def self_attention_block(
     thi_x = \
         conv2d_wrapper(
             input_layer=x,
-            bn_post_params=None,
             conv_params=conv_params_tmp)
     phi_x = \
         conv2d_wrapper(
             input_layer=x,
-            bn_post_params=None,
             conv_params=conv_params_tmp)
     g_x = \
         conv2d_wrapper(
             input_layer=x,
-            bn_post_params=None,
             conv_params=conv_params_tmp)
     # reshape (hxw, hxw) ->
     g_x = tf.keras.layers.Reshape(target_shape=(-1, channels))(g_x)

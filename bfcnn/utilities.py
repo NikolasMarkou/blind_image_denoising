@@ -219,6 +219,9 @@ class ConvType(Enum):
     def to_string(self) -> str:
         return self.name
 
+# ---------------------------------------------------------------------
+
+
 def conv2d_wrapper(
         input_layer,
         conv_params: Dict,
@@ -229,7 +232,6 @@ def conv2d_wrapper(
         ln_post_params: Dict = None,
         dropout_params: Dict = None,
         dropout_2d_params: Dict = None,
-        squeeze_and_excite_params: Dict = None,
         conv_type: Union[ConvType, str] = ConvType.CONV2D):
     """
     wraps a conv2d with a preceding normalizer
@@ -245,7 +247,6 @@ def conv2d_wrapper(
     :param ln_post_params: layer normalization parameters after the conv, None to disable ln
     :param dropout_params: dropout parameters after the conv, None to disable it
     :param dropout_2d_params: dropout parameters after the conv, None to disable it
-    :param squeeze_and_excite_params: squeeze and excitation parameters, if None do disable
     :param conv_type: if true use depthwise convolution,
 
     :return: transformed input
@@ -266,7 +267,6 @@ def conv2d_wrapper(
     use_dropout = dropout_params is not None
     use_dropout_2d = dropout_2d_params is not None
     use_pre_activation = pre_activation is not None
-    use_squeeze_and_excite = squeeze_and_excite_params is not None
     conv_params = copy.deepcopy(conv_params)
     conv_activation = conv_params.get("activation", "linear")
     conv_params["activation"] = "linear"
@@ -302,16 +302,6 @@ def conv2d_wrapper(
     if use_pre_activation:
         x = tf.keras.layers.Activation(pre_activation)(x)
 
-    # --- perform squeeze and excitation to select features
-    if use_squeeze_and_excite:
-        r_ratio = \
-            squeeze_and_excite_params.get(
-                "r_ratio", 0.25)
-        x = \
-            squeeze_and_excite_block(
-                input_layer=x,
-                r_ratio=r_ratio)
-
     # --- convolution
     if conv_type == ConvType.CONV2D:
         x = tf.keras.layers.Conv2D(**conv_params)(x)
@@ -323,13 +313,6 @@ def conv2d_wrapper(
         x = tf.keras.layers.SeparableConv2D(**conv_params)(x)
     else:
         raise ValueError(f"don't know how to handle this [{conv_type}]")
-
-    # --- dropout
-    if use_dropout:
-        x = tf.keras.layers.Dropout(**dropout_params)(x)
-
-    if use_dropout_2d:
-        x = tf.keras.layers.SpatialDropout2D(**dropout_2d_params)(x)
 
     # --- perform post convolution normalizations and activation
     if use_bn_post:
@@ -365,120 +348,14 @@ def conv2d_wrapper(
     else:
         x = tf.keras.layers.Activation(conv_activation)(x)
 
-    return x
+    # --- dropout
+    if use_dropout:
+        x = tf.keras.layers.Dropout(**dropout_params)(x)
 
-def conv2d_wrapper(
-        input_layer,
-        conv_params: Dict,
-        bn_params: Dict = None,
-        ln_params: Dict = None,
-        bn_post_params: Dict = None,
-        ln_post_params: Dict = None,
-        pre_activation: Union[str, tf.keras.layers.Layer] = None,
-        post_activation: Union[str, tf.keras.layers.Layer] = None,
-        sample_mean_removal: bool = False,
-        channel_mean_removal: bool = False,
-        channelwise_scaling: bool = False,
-        multiplier_scaling: bool = False,
-        conv_type: Union[ConvType, str] = ConvType.CONV2D):
-    """
-    wraps a conv2d with a preceding normalizer
+    if use_dropout_2d:
+        x = tf.keras.layers.SpatialDropout2D(**dropout_2d_params)(x)
 
-    :param input_layer: the layer to operate on
-    :param conv_params: conv2d parameters
-    :param bn_params: batchnorm parameters, None to disable bn
-    :param ln_params: layernorm parameters, None to disable bn
-    :param pre_activation: activation after the batchnorm, None to disable
-    :param post_activation: activation after the convolution, None to disable
-    :param sample_mean_removal: if true, remove the whole sample mean after convolution
-    :param channel_mean_removal: if true, remove mean per channel after convolution
-    :param conv_type: if true use depthwise convolution,
-    :param channelwise_scaling: if True add a learnable channel wise scaling at the end
-    :param multiplier_scaling: if True add a learnable single scale at the end
 
-    :return: transformed input
-    """
-    # --- argument checking
-    if input_layer is None:
-        raise ValueError("input_layer cannot be None")
-    if conv_params is None:
-        raise ValueError("conv_params cannot be None")
-
-    # --- prepare arguments
-    # TODO restructure this
-    if isinstance(conv_type, str):
-        conv_type = ConvType.from_string(conv_type)
-    if "depth_multiplier" in conv_params:
-        if conv_type != ConvType.CONV2D_DEPTHWISE:
-            logger.info("Changing conv_type to CONV2D_DEPTHWISE because it contains depth_multiplier argument "
-                        f"[conv_params[\'depth_multiplier\']={conv_params['depth_multiplier']}]")
-        conv_type = ConvType.CONV2D_DEPTHWISE
-    if "dilation_rate" in conv_params:
-        if conv_type != ConvType.CONV2D_TRANSPOSE:
-            logger.info("Changing conv_type to CONV2D_TRANSPOSE because it contains dilation argument "
-                        f"[conv_params[\'dilation_rate\']={conv_params['dilation_rate']}]")
-        conv_type = ConvType.CONV2D_TRANSPOSE
-
-    if KERNEL_REGULARIZER in conv_params:
-        conv_params[KERNEL_REGULARIZER] = \
-            regularizer_builder(conv_params[KERNEL_REGULARIZER])
-    if DEPTHWISE_REGULARIZER in conv_params:
-        conv_params[DEPTHWISE_REGULARIZER] = \
-            regularizer_builder(conv_params[DEPTHWISE_REGULARIZER])
-
-    # --- perform batchnorm and preactivation
-    x = input_layer
-
-    if bn_params:
-        x = tf.keras.layers.BatchNormalization(**bn_params)(x)
-    if ln_params:
-        x = tf.keras.layers.LayerNormalization(**ln_params)(x)
-    if pre_activation:
-        x = activation_wrapper(pre_activation)(x)
-
-    # --- convolution
-    conv_params["activation"] = (
-        activation_wrapper(conv_params.get("activation", "linear)")))
-    if conv_type == ConvType.CONV2D:
-        x = tf.keras.layers.Conv2D(**conv_params)(x)
-    elif conv_type == ConvType.CONV2D_DEPTHWISE:
-        x = tf.keras.layers.DepthwiseConv2D(**conv_params)(x)
-    elif conv_type == ConvType.CONV2D_TRANSPOSE:
-        x = tf.keras.layers.Conv2DTranspose(**conv_params)(x)
-    else:
-        raise ValueError(f"don't know how to handle this [{conv_type}]")
-
-    # --- post convolution normalization
-    if bn_post_params:
-        x = tf.keras.layers.BatchNormalization(**bn_post_params)(x)
-    if ln_post_params:
-        x = tf.keras.layers.LayerNormalization(**ln_post_params)(x)
-
-    # --- post activation (custom activation)
-    if post_activation:
-        x = activation_wrapper(post_activation)(x)
-
-    # --- remove sample mean
-    if sample_mean_removal:
-        x_sample_mean = tf.reduce_mean(x, axis=[1, 2, 3], keepdims=True)
-        x = tf.keras.layers.Subtract()([x, x_sample_mean])
-
-    # --- remove channel mean
-    if channel_mean_removal:
-        x_channel_mean = tf.reduce_mean(x, axis=[1, 2], keepdims=True)
-        x = tf.keras.layers.Subtract()([x, x_channel_mean])
-
-    # --- learn the proper scale of the previous layer
-    if channelwise_scaling:
-        x = \
-            ChannelwiseMultiplier(
-                multiplier=1.0,
-                regularizer=keras.regularizers.L1(DEFAULT_CHANNELWISE_MULTIPLIER_L1),
-                trainable=True,
-                activation="relu")(x)
-    if multiplier_scaling:
-        x = \
-            GlobalLearnableMultiplier()(x)
     return x
 
 # ---------------------------------------------------------------------
