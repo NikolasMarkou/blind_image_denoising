@@ -282,8 +282,8 @@ def builder(
     x = \
         conv2d_wrapper(
             input_layer=x,
-            ln_params=None,
-            bn_params=None,
+            ln_params=ln_params,
+            bn_params=bn_params,
             conv_params=params)
 
     params = copy.deepcopy(base_conv_params)
@@ -333,7 +333,7 @@ def builder(
             if use_laplacian:
                 x_tmp_smooth = \
                     GaussianFilter(
-                        kernel_size=(5, 5),
+                        kernel_size=(3, 3),
                         strides=(1, 1))(x)
                 nodes_output[node_level] = \
                     tf.keras.layers.Subtract()([x, x_tmp_smooth])

@@ -227,9 +227,6 @@ def conv2d_wrapper(
         conv_params: Dict,
         bn_params: Dict = None,
         ln_params: Dict = None,
-        pre_activation: str = None,
-        bn_post_params: Dict = None,
-        ln_post_params: Dict = None,
         dropout_params: Dict = None,
         dropout_2d_params: Dict = None,
         conv_type: Union[ConvType, str] = ConvType.CONV2D):
@@ -242,9 +239,6 @@ def conv2d_wrapper(
     :param conv_params: conv2d parameters
     :param bn_params: batchnorm parameters before the conv, None to disable bn
     :param ln_params: layer normalization parameters before the conv, None to disable ln
-    :param pre_activation: activation after the batchnorm, None to disable
-    :param bn_post_params: batchnorm parameters after the conv, None to disable bn
-    :param ln_post_params: layer normalization parameters after the conv, None to disable ln
     :param dropout_params: dropout parameters after the conv, None to disable it
     :param dropout_2d_params: dropout parameters after the conv, None to disable it
     :param conv_type: if true use depthwise convolution,
@@ -262,18 +256,16 @@ def conv2d_wrapper(
     # --- prepare arguments
     use_ln = ln_params is not None
     use_bn = bn_params is not None
-    use_bn_post = bn_post_params is not None
-    use_ln_post = ln_post_params is not None
     use_dropout = dropout_params is not None
     use_dropout_2d = dropout_2d_params is not None
-    use_pre_activation = pre_activation is not None
     conv_params = copy.deepcopy(conv_params)
     conv_activation = conv_params.get("activation", "linear")
-    conv_params["activation"] = "linear"
+
+    if use_bn or use_ln:
+        conv_params["activation"] = "linear"
 
     if conv_params.get("use_bias", True) and \
-            (conv_activation == "relu" or conv_activation == "relu6") and \
-            not (use_bn_post or use_ln_post):
+            (conv_activation == "relu" or conv_activation == "relu6"):
         conv_params["bias_initializer"] = \
             tf.keras.initializers.Constant(DEFAULT_RELU_BIAS)
 
@@ -294,14 +286,6 @@ def conv2d_wrapper(
     # --- set up stack of operation
     x = input_layer
 
-    # --- perform pre convolution normalizations and activation
-    if use_bn:
-        x = tf.keras.layers.BatchNormalization(**bn_params)(x)
-    if use_ln:
-        x = tf.keras.layers.LayerNormalization(**ln_params)(x)
-    if use_pre_activation:
-        x = tf.keras.layers.Activation(pre_activation)(x)
-
     # --- convolution
     if conv_type == ConvType.CONV2D:
         x = tf.keras.layers.Conv2D(**conv_params)(x)
@@ -315,10 +299,10 @@ def conv2d_wrapper(
         raise ValueError(f"don't know how to handle this [{conv_type}]")
 
     # --- perform post convolution normalizations and activation
-    if use_bn_post:
-        x = tf.keras.layers.BatchNormalization(**bn_post_params)(x)
-    if use_ln_post:
-        x = tf.keras.layers.LayerNormalization(**ln_post_params)(x)
+    if use_bn:
+        x = tf.keras.layers.BatchNormalization(**bn_params)(x)
+    if use_ln:
+        x = tf.keras.layers.LayerNormalization(**ln_params)(x)
 
     if conv_activation.lower() in ["mish"]:
         # Mish: A Self Regularized Non-Monotonic Activation Function (2020)
@@ -354,7 +338,6 @@ def conv2d_wrapper(
 
     if use_dropout_2d:
         x = tf.keras.layers.SpatialDropout2D(**dropout_2d_params)(x)
-
 
     return x
 
