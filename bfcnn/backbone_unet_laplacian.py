@@ -279,14 +279,14 @@ def builder(
     # first plain conv
     params = copy.deepcopy(base_conv_params)
     params["filters"] = filters
-    params["kernel_size"] = (7, 7)
+    params["kernel_size"] = (5, 5)
     params["strides"] = (1, 1)
     x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[0]])
     x = \
         conv2d_wrapper(
             input_layer=x,
-            ln_params=ln_params,
-            bn_params=bn_params,
+            ln_params=None,
+            bn_params=None,
             conv_params=params)
 
     # --- build backbone
@@ -295,6 +295,7 @@ def builder(
         for w in range(width):
             # get skip for residual
             x_skip = x
+            x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
 
             if use_self_attention and d == depth-1:
                 x = (
@@ -341,15 +342,12 @@ def builder(
                     tf.keras.layers.Subtract()([x, x_tmp_smooth])
                 x = x_tmp_smooth
 
-            x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
             x = (
                 downsample(input_layer=x,
                            downsample_type=downsample_type,
                            ln_params=None,
                            bn_params=None,
                            conv_params=conv_params_down[d]))
-
-
 
     # --- VERY IMPORTANT
     # add this, so it works correctly
@@ -445,7 +443,6 @@ def builder(
                 params = copy.deepcopy(conv_params_res_3[node[0]])
                 params["kernel_size"] = (1, 1)
                 params["activation"] = activation
-                x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[node[0]]])
                 x = conv2d_wrapper(
                     input_layer=x,
                     ln_params=None,
@@ -459,6 +456,8 @@ def builder(
         for w in range(width):
             d = node[0]
             x_skip = x
+            x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
+
             params = copy.deepcopy(conv_params_res_1[d])
             params["kernel_size"] = (decoder_kernel_size, decoder_kernel_size)
             x = \
