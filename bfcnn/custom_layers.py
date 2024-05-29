@@ -664,7 +664,7 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
         o = self.conv_o(o, training=training)
         o = self.scale_o(o, training=training)
         # start near 1.0 and learn to turn off
-        o = tf.nn.sigmoid(2.5 - tf.nn.relu(o))
+        o = tf.nn.sigmoid(2.5 - tf.nn.gelu(o))
 
         return \
             tf.math.multiply(
