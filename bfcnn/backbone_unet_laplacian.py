@@ -343,6 +343,7 @@ def builder(
                     tf.keras.layers.Subtract()([x, x_tmp_smooth])
                 x = x_tmp_smooth
 
+            x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
             x = (
                 downsample(input_layer=x,
                            downsample_type=downsample_type,
