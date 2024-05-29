@@ -81,8 +81,7 @@ def model_builder(
     config_denoiser[INPUT_SHAPE_STR] = denoiser_shape
 
     # --- build denoiser and segmentation networks
-    denoiser_builder_results = model_denoiser_builder(config=config_denoiser)
-    model_denoiser = denoiser_builder_results.denoiser
+
 
     input_image_shape = tf.keras.backend.int_shape(model_backbone.inputs[0])[1:]
     logger.info("input_shape: [{0}]".format(input_image_shape))
@@ -123,11 +122,27 @@ def model_builder(
         ])
 
     if len(model_backbone.outputs) == 1:
+        denoiser_builder_results = (
+            model_denoiser_builder(
+                config=config_denoiser,
+                name=f"denoiser_head"))
+        model_denoiser = denoiser_builder_results.denoiser
+
+        inpaint_builder_results = (
+            model_denoiser_builder(
+                config=config_denoiser,
+                name=f"inpaint_head"))
+        model_inpaint = inpaint_builder_results.denoiser
+
         denoiser_mid = \
             model_denoiser(backbone)
 
+        inpaint_mid = \
+            model_inpaint(backbone)
+
         output_layers = [
             denoiser_mid,
+            inpaint_mid,
         ]
     else:
         config_denoisers = []
@@ -153,8 +168,21 @@ def model_builder(
                 model_denoisers[i](backbone[i]), training=False)
             for i in range(backbone_no_outputs)
         ]
+
+        model_inpainters = [
+            model_denoiser_builder(
+                config=config_denoisers[i],
+                name=f"inpaint_head_{i}").denoiser
+            for i in range(backbone_no_outputs)
+        ]
+        inpaint_mid = [
+            model_denormalizer(
+                model_inpainters[i](backbone[i]), training=False)
+            for i in range(backbone_no_outputs)
+        ]
+
         output_layers = \
-            denoisers_mid
+            denoisers_mid + inpaint_mid
 
     # create model
     model_hydra = \
