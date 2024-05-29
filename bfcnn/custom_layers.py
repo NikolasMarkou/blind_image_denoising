@@ -1145,7 +1145,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
                  bn_params: Dict = None,
                  ln_params: Dict = None,
                  use_gamma: bool = True,
-                 attention_activation: str = "linear",
+                 attention_activation: str = "leaky_relu",
                  output_activation: str = "linear",
                  use_soft_orthonormal_regularization: bool = False,
                  use_soft_orthogonal_regularization: bool = False,
@@ -1254,11 +1254,11 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         attention = self.attention([q_x, k_x, v_x])
 
         # compute output conv
-        if self.use_bn:
-            attention = self.bn_1(attention)
-        if self.use_ln:
-            attention = self.ln_1(attention)
         x = self.output_conv(attention)
+        # if self.use_bn:
+        #     x = self.bn_1(x)
+        # if self.use_ln:
+        #     x = self.ln_1(x)
 
         # --- gamma
         if self.use_gamma:
