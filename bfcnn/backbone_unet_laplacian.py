@@ -281,7 +281,7 @@ def builder(
     params["filters"] = filters
     params["kernel_size"] = (5, 5)
     params["strides"] = (1, 1)
-    x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[0]])
+
     x = \
         conv2d_wrapper(
             input_layer=x,
@@ -291,11 +291,11 @@ def builder(
 
     # --- build backbone
     for d in range(depth):
-        depth_drop_counter = 0
         for w in range(width):
             # get skip for residual
             x_skip = x
-            x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
+            if w == 0:
+                x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
 
             if use_self_attention and d == depth-1:
                 x = (
@@ -323,10 +323,9 @@ def builder(
                         use_soft_orthonormal_regularization=use_soft_orthonormal_regularization)(x)
 
             if x_skip.shape[-1] == x.shape[-1]:
-                if depth_drop_rates[depth_drop_counter] > 0.0:
-                    x = StochasticDepth(depth_drop_rates[depth_drop_counter])(x)
+                if len(depth_drop_rates) <= width and depth_drop_rates[w] > 0.0:
+                    x = StochasticDepth(depth_drop_rates[w])(x)
                 x = tf.keras.layers.Add()([x_skip, x])
-            depth_drop_counter += 1
 
         node_level = (d, 0)
         nodes_visited.add(node_level)
@@ -452,11 +451,12 @@ def builder(
             raise ValueError("this must never happen")
 
         # --- convnext block
-        depth_drop_counter = 0
         for w in range(width):
             d = node[0]
             x_skip = x
-            x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
+
+            if w == 0:
+                x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
 
             params = copy.deepcopy(conv_params_res_1[d])
             params["kernel_size"] = (decoder_kernel_size, decoder_kernel_size)
@@ -476,10 +476,9 @@ def builder(
                     use_soft_orthonormal_regularization=use_soft_orthonormal_regularization)(x)
 
             if x_skip.shape[-1] == x.shape[-1]:
-                if depth_drop_rates[depth_drop_counter] > 0.0:
-                    x = StochasticDepth(depth_drop_rates[depth_drop_counter])(x)
+                if len(depth_drop_rates) <= width and depth_drop_rates[w] > 0.0:
+                    x = StochasticDepth(depth_drop_rates[w])(x)
                 x = tf.keras.layers.Add()([x_skip, x])
-            depth_drop_counter += 1
 
         nodes_output[node] = x
         nodes_visited.add(node)
