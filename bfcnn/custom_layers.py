@@ -659,12 +659,13 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
         if self.use_ln:
             y = self.ln_y(y, training=training)
 
-        # ---
+        # --- replaced relu with leaky relu with very small alpha
         o = tf.nn.gelu(x + y)
         o = self.conv_o(o, training=training)
         o = self.scale_o(o, training=training)
-        # start near 1.0 and learn to turn off
-        o = tf.nn.sigmoid(2.5 - tf.nn.gelu(o))
+
+        # this puts the o [-1, +1] range for approximately [-1, +1] input
+        o = tf.nn.sigmoid(5.0 * o)
 
         return \
             tf.math.multiply(
