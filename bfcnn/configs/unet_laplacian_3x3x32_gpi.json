@@ -20,7 +20,7 @@
             "use_self_attention": false,
             "use_attention_gates": false,
             "use_output_normalization": true,
-            "use_global_pool_information": false,
+            "use_global_pool_information": true,
             "encoder_kernel_size": 5,
             "decoder_kernel_size": 5,
             "multiple_scale_outputs": true,
