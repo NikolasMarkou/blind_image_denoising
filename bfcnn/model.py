@@ -225,10 +225,6 @@ def model_backbone_builder(
         tf.keras.Input(
             shape=input_shape,
             name=INPUT_TENSOR_STR)
-    mask_layer = \
-        tf.keras.Input(
-            shape=input_shape[:-1] + [1],
-            name=MASK_TENSOR_STR)
 
     x = \
         backbone_model([
