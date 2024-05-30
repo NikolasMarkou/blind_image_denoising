@@ -260,22 +260,6 @@ def builder(
             shape=input_dims)
     x = input_layer
 
-    masked_layer = \
-        tf.keras.Input(
-            name=MASK_TENSOR_STR,
-            shape=input_dims[:-1] + [1])
-    y = masked_layer
-
-    # prepare masks
-    masks_depth = []
-    input_layers = [input_layer]
-
-    mask = y
-    input_layers.append(masked_layer)
-    for d in range(depth):
-        masks_depth.append(mask)
-        mask = GaussianFilter(kernel_size=(3, 3), strides=(2, 2))(mask)
-
     # first plain conv
     params = copy.deepcopy(base_conv_params)
     params["filters"] = filters
@@ -294,8 +278,6 @@ def builder(
         for w in range(width):
             # get skip for residual
             x_skip = x
-            if w == 0:
-                x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
 
             if use_self_attention and d == depth-1:
                 x = (
@@ -457,9 +439,6 @@ def builder(
             d = node[0]
             x_skip = x
 
-            if w == 0:
-                x = tf.keras.layers.Concatenate(axis=-1)([x, masks_depth[d]])
-
             params = copy.deepcopy(conv_params_res_1[d])
             params["kernel_size"] = (decoder_kernel_size, decoder_kernel_size)
             x = \
@@ -528,7 +507,7 @@ def builder(
         tf.keras.Model(
             name=name,
             trainable=True,
-            inputs=input_layers,
+            inputs=[input_layer],
             outputs=output_layers)
 
 # ---------------------------------------------------------------------

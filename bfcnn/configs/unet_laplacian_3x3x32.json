@@ -94,7 +94,6 @@
             256,
             3
         ],
-        "inpaint_drop_rate": 0.5,
         "multiplicative_noise": [0.05, 0.1],
         "additional_noise": [5, 40],
         "inputs": [

@@ -97,29 +97,14 @@ def model_builder(
             batch_size=batch_size,
             name=INPUT_TENSOR_STR)
 
-    mask_layer = \
-        tf.keras.Input(
-            shape=input_image_shape[:-1] + (1,),
-            dtype="float32",
-            sparse=False,
-            ragged=False,
-            batch_size=batch_size,
-            name=MASK_TENSOR_STR)
-
     input_normalized_layer = \
         model_normalizer(
             input_layer, training=False)
-
-    input_normalized_layer = \
-        tf.keras.layers.Multiply()([
-            input_normalized_layer,
-            1.0 - mask_layer])
 
     # common backbone low level
     backbone = \
         model_backbone([
             input_normalized_layer,
-            mask_layer
         ])
 
     if len(model_backbone.outputs) == 1:
@@ -161,7 +146,6 @@ def model_builder(
         tf.keras.Model(
             inputs=[
                 input_layer,
-                mask_layer
             ],
             outputs=output_layers,
             name=f"hydra")
@@ -248,12 +232,12 @@ def model_backbone_builder(
 
     x = \
         backbone_model([
-            input_layer,
-            mask_layer])
+            input_layer
+        ])
 
     model_backbone = \
         tf.keras.Model(
-            inputs=[input_layer, mask_layer],
+            inputs=[input_layer],
             outputs=x,
             name=name_str)
 
@@ -359,8 +343,8 @@ def model_denoiser_builder(
             bn_params=None,
             conv_params=conv_params_1))
 
-    # squash to [-1, +1] and then to [-0.52, +0.52]
-    x = tf.nn.tanh(x * 2.0) * 0.52
+    # squash [-0.52, +0.52]
+    x = tf.nn.tanh(x * 4.0) * 0.52
     x = \
         tf.keras.layers.Layer(
             name="output_tensor")(x)

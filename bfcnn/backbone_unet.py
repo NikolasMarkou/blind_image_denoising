@@ -44,7 +44,7 @@ def builder(
         name="unet",
         **kwargs) -> keras.Model:
     """
-    builds a u-net model
+    builds an u-net model
 
     :param input_dims: Models input dimensions
     :param no_levels: Number of levels (depth) in the u-net

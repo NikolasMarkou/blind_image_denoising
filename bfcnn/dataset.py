@@ -118,7 +118,7 @@ def dataset_builder(
     multiplicative_noise = tf.constant(multiplicative_noise, dtype=tf.float32)
 
     @tf.function(reduce_retracing=True)
-    def prepare_data_fn(input_batch: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
+    def prepare_data_fn(input_batch: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
         """
         Prepare the data for training by applying geometric and noise augmentations,
         and generating a binary mask for inpainting.
@@ -127,7 +127,7 @@ def dataset_builder(
             input_batch (tf.Tensor): The input tensor batch to be processed.
 
         Returns:
-            Tuple[tf.Tensor, tf.Tensor, tf.Tensor]: A tuple containing the processed input batch,
+            Tuple[tf.Tensor, tf.Tensor]: A tuple containing the processed input batch,
             the noisy batch, and the binary mask.
         """
 
@@ -140,7 +140,6 @@ def dataset_builder(
             # --- get shape and options
             random_option_flip_left_right = tf.greater(tf.random.uniform(()), tf.constant(0.5))
             random_option_flip_up_down = tf.greater(tf.random.uniform(()), tf.constant(0.5))
-            random_option_rotate = tf.greater(tf.random.uniform(()), tf.constant(0.5))
 
             # --- flip left right
             if use_left_right:
@@ -157,24 +156,6 @@ def dataset_builder(
                         pred=random_option_flip_up_down,
                         true_fn=lambda: tf.image.flip_up_down(input_batch),
                         false_fn=lambda: input_batch)
-
-            # # --- randomly rotate input
-            # if use_rotate:
-            #     input_batch = \
-            #         tf.cond(
-            #             pred=random_option_rotate,
-            #             true_fn=lambda:
-            #             tfa.image.rotate(
-            #                 angles=tf.random.uniform(
-            #                     dtype=tf.float32,
-            #                     seed=0,
-            #                     minval=-random_rotate,
-            #                     maxval=random_rotate,
-            #                     shape=(input_shape_inference[0],)),
-            #                 images=input_batch,
-            #                 fill_mode="reflect",
-            #                 interpolation="bilinear"),
-            #             false_fn=lambda: input_batch)
 
             return input_batch
         def noise_augmentation_fn(
@@ -246,37 +227,15 @@ def dataset_builder(
             # --- round values to nearest integer
             noisy_batch = tf.round(x=noisy_batch)
 
-            # --- clip values within boundaries
-            noisy_batch = \
-                tf.clip_by_value(
-                    t=noisy_batch,
-                    clip_value_min=min_value,
-                    clip_value_max=max_value)
-
-            mask_batch = \
-                tf.random.uniform(
-                    shape=(batch_size, input_shape[0], input_shape[1], 1),
-                    minval=0.0,
-                    maxval=1.0,
-                    seed=1,
-                    dtype=tf.float32)
-            mask_batch = \
-                tf.less(
-                    x=mask_batch,
-                    y=tf.constant(inpaint_drop_rate))
-            mask_batch = \
-                tf.cast(mask_batch, dtype=tf.float32) * \
-                tf.cast(tf.greater(tf.random.uniform(()), tf.constant(0.5)), dtype=tf.float32)
-
-            return noisy_batch, mask_batch
+            return noisy_batch
 
         # Apply geometric augmentations to the input batch
         input_batch = geometric_augmentation_fn(input_batch)
         input_batch = tf.round(input_batch)
         input_batch = tf.cast(input_batch, dtype=tf.float32)
         # Create a new batch with noise augmentations
-        noisy_batch, mask_batch = noise_augmentation_fn(input_batch)
-        return input_batch, noisy_batch, mask_batch
+        noisy_batch = noise_augmentation_fn(input_batch)
+        return input_batch, noisy_batch
 
     # --- define generator function from directory
     if directory:
