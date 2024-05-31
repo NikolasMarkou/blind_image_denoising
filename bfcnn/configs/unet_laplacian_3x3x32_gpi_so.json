@@ -54,7 +54,7 @@
         "visualization_every": 500,
         "optimizer": {
             "type": "ADAM",
-            "gradient_clipping_by_norm": 1.0,
+            "gradient_clipping_by_norm_local": 1.0,
             "schedule": {
                 "type": "cosine_decay_restarts",
                 "config": {
