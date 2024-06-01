@@ -21,6 +21,7 @@ from .upsampling import upsample
 from .downsampling import downsample
 from .custom_layers import (
     ConvNextBlock,
+    ValueCompressor,
     AdditiveAttentionGate,
     ChannelLearnableMultiplier,
     ConvolutionalSelfAttention,
@@ -53,6 +54,7 @@ def builder(
         use_mix_project: bool = True,
         use_self_attention: bool = False,
         use_attention_gates: bool = False,
+        use_value_compressor: bool = False,
         use_global_pool_information: bool = False,
         use_soft_orthogonal_regularization: bool = False,
         use_soft_orthonormal_regularization: bool = False,
@@ -312,6 +314,9 @@ def builder(
                     x = StochasticDepth(depth_drop_rates[w])(x)
                 x = tf.keras.layers.Add()([x_skip, x])
 
+            if use_value_compressor:
+                x = ValueCompressor(x)
+
         node_level = (d, 0)
         nodes_visited.add(node_level)
         nodes_output[node_level] = x
@@ -503,6 +508,9 @@ def builder(
                 if len(depth_drop_rates) <= width and depth_drop_rates[w] > 0.0:
                     x = StochasticDepth(depth_drop_rates[w])(x)
                 x = tf.keras.layers.Add()([x_skip, x])
+
+            if use_value_compressor:
+                x = ValueCompressor(x)
 
         nodes_output[node] = x
         nodes_visited.add(node)

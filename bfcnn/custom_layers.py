@@ -1268,5 +1268,26 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         shape = copy.deepcopy(input_shape)
         return shape
 
+
 # ---------------------------------------------------------------------
 
+@tf.keras.utils.register_keras_serializable()
+class ValueCompressor(tf.keras.layers.Layer):
+    def __init__(self,
+                 alpha: float = 4.0,
+                 beta: float = 0.5,
+                 **kwargs):
+        super().__init__(**kwargs)
+        self._alpha = alpha
+        self._beta = beta
+
+    def call(self, inputs, training):
+        x = inputs
+        x = tf.nn.tanh(x * self._alpha) * self._beta
+        return x
+
+    def compute_output_shape(self, input_shape):
+        shape = copy.deepcopy(input_shape)
+        return shape
+
+# ---------------------------------------------------------------------
