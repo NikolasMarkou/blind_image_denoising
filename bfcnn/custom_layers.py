@@ -1277,7 +1277,7 @@ class ValueCompressor(tf.keras.layers.Layer):
                  alpha: float = 4.0,
                  beta: float = 0.5,
                  initializer: Union[str, tf.keras.initializers.Initializer] = "ones",
-                 regularizer: Union[str, tf.keras.regularizers.Regularizer] = tf.keras.regularizers.L1(l2=1e-5),
+                 regularizer: Union[str, tf.keras.regularizers.Regularizer] = tf.keras.regularizers.L2(l2=1e-5),
                  axis: List[int] = [1, 2],
                  **kwargs):
         super().__init__(**kwargs)
@@ -1290,8 +1290,8 @@ class ValueCompressor(tf.keras.layers.Layer):
 
     def build(self, input_shape):
         self._activation = tf.keras.layers.PReLU(
-            alpha_initializer="Ones",
-            alpha_regularizer=tf.keras.regularizers.L1(l2=1e-5),
+            alpha_initializer=self._initializer,
+            alpha_regularizer=self._regularizer,
             alpha_constraint=tf.keras.constraints.MinMaxNorm(min_value=0.0, max_value=1.0, rate=1.0, axis=0),
             shared_axes=[1, 2],
         )
