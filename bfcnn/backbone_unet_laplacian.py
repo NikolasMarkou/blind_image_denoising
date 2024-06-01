@@ -315,7 +315,7 @@ def builder(
                 x = tf.keras.layers.Add()([x_skip, x])
 
             if use_value_compressor:
-                x = ValueCompressor(alpha=4.0, beta=0.5)(x)
+                x = tf.keras.layers.LeakyReLU(alpha=0.5)(x)
 
         node_level = (d, 0)
         nodes_visited.add(node_level)
@@ -510,7 +510,7 @@ def builder(
                 x = tf.keras.layers.Add()([x_skip, x])
 
             if use_value_compressor:
-                x = ValueCompressor(alpha=4.0, beta=0.5)(x)
+                x = tf.keras.layers.LeakyReLU(alpha=0.5)(x)
 
         nodes_output[node] = x
         nodes_visited.add(node)

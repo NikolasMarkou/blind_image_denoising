@@ -340,7 +340,7 @@ def model_denoiser_builder(
             conv_params=conv_params_1))
 
     # squash [-0.52, +0.52]
-    x = tf.nn.tanh(x * 4.0) * 0.52
+    x = tf.nn.tanh(x) * 0.52
     x = \
         tf.keras.layers.Layer(
             name="output_tensor")(x)
