@@ -286,14 +286,14 @@ def train_loop(
                     p_all_denoiser_loss[i] = p_loss
 
                 # get denoise loss for each depth,
-                # p_predictions_batch_2nd_step = train_step(n=[p_predictions_batch_1st_step[0]])
-                # for i in range(len(denoiser_index)):
-                #     p_loss = denoiser_loss_fn_list[i](
-                #         gt_batch=p_scale_gt_image_batch[i],
-                #         predicted_batch=p_predictions_batch_2nd_step[i])
-                #     p_total_denoiser_loss += \
-                #         p_loss[TOTAL_LOSS_STR] * p_depth_weight[i]
-                    # p_all_denoiser_loss[i] = p_loss
+                p_predictions_batch_2nd_step = train_step(n=[p_predictions_batch_1st_step[0]])
+                for i in range(len(denoiser_index)):
+                    p_loss = denoiser_loss_fn_list[i](
+                        gt_batch=p_scale_gt_image_batch[i],
+                        predicted_batch=p_predictions_batch_2nd_step[i])
+                    p_total_denoiser_loss += \
+                        p_loss[TOTAL_LOSS_STR] * p_depth_weight[i]
+                    #p_all_denoiser_loss[i] += p_loss
 
                 # combine losses
                 p_model_loss = \
