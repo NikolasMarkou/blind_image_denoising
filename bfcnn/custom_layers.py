@@ -1270,3 +1270,40 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
 
 # ---------------------------------------------------------------------
 
+
+@tf.keras.utils.register_keras_serializable()
+class ValueCompressor(tf.keras.layers.Layer):
+    def __init__(self,
+                 alpha: float = 4.0,
+                 beta: float = 0.5,
+                 initializer: Union[str, tf.keras.initializers.Initializer] = "ones",
+                 regularizer: Union[str, tf.keras.regularizers.Regularizer] = tf.keras.regularizers.L1(l2=1e-5),
+                 axis: List[int] = [1, 2],
+                 **kwargs):
+        super().__init__(**kwargs)
+        self._alpha = alpha
+        self._beta = beta
+        self._activation = None
+        self._initializer = initializer
+        self._regularizer = regularizer
+        self._axis = axis
+
+    def build(self, input_shape):
+        self._activation = tf.keras.layers.PReLU(
+            alpha_initializer="Ones",
+            alpha_regularizer=tf.keras.regularizers.L1(l2=1e-5),
+            alpha_constraint=tf.keras.constraints.MinMaxNorm(min_value=0.0, max_value=1.0, rate=1.0, axis=0),
+            shared_axes=[1, 2],
+        )
+
+    def call(self, inputs, training):
+        x = inputs
+        x = tf.nn.tanh(x * self._alpha) * self._beta
+        x = self._activation(x)
+        return x
+
+    def compute_output_shape(self, input_shape):
+        shape = copy.deepcopy(input_shape)
+        return shape
+
+# ---------------------------------------------------------------------
