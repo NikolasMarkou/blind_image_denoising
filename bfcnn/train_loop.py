@@ -290,7 +290,7 @@ def train_loop(
                 p_model_loss = \
                     model_loss_fn(model=ckpt.model)
                 p_total_loss = \
-                    p_total_denoiser_loss * (1.0 - p_percentage_done) + \
+                    p_total_denoiser_loss + \
                     p_model_loss[TOTAL_LOSS_STR]
                 p_grads = \
                     tape.gradient(target=p_total_loss,
