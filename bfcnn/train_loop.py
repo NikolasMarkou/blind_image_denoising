@@ -293,7 +293,7 @@ def train_loop(
                         predicted_batch=p_predictions_batch_2nd_step[i])
                     p_total_denoiser_loss += \
                         p_loss[TOTAL_LOSS_STR] * p_depth_weight[i]
-                    #p_all_denoiser_loss[i] += p_loss
+                    p_all_denoiser_loss[i] += p_loss
 
                 # combine losses
                 p_model_loss = \
