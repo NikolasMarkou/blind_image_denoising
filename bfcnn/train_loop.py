@@ -259,12 +259,13 @@ def train_loop(
 
         @tf.function(
             autograph=True,
-            jit_compile=True,
+            jit_compile=False,
             reduce_retracing=True)
         def train_step_single_gpu(
                 p_input_image_batch: tf.Tensor,
                 p_noisy_image_batch: tf.Tensor,
                 p_depth_weight: tf.Tensor,
+                p_percentage_done: tf.Tensor,
                 p_trainable_variables: List):
 
             p_all_denoiser_loss = [None] * len(denoiser_index)
@@ -274,32 +275,22 @@ def train_loop(
                 multiscales_fn(p_input_image_batch)
 
             with tf.GradientTape() as tape:
-                p_predictions_batch_1st_step = train_step(n=[p_noisy_image_batch])
+                p_predictions = train_step(n=[p_noisy_image_batch])
 
                 # get denoise loss for each depth,
                 for i in range(len(denoiser_index)):
                     p_loss = denoiser_loss_fn_list[i](
                         gt_batch=p_scale_gt_image_batch[i],
-                        predicted_batch=p_predictions_batch_1st_step[i])
+                        predicted_batch=p_predictions[i])
                     p_total_denoiser_loss += \
                         p_loss[TOTAL_LOSS_STR] * p_depth_weight[i]
                     p_all_denoiser_loss[i] = p_loss
-
-                # get denoise loss for each depth,
-                p_predictions_batch_2nd_step = train_step(n=[p_predictions_batch_1st_step[0]])
-                for i in range(len(denoiser_index)):
-                    p_loss = denoiser_loss_fn_list[i](
-                        gt_batch=p_scale_gt_image_batch[i],
-                        predicted_batch=p_predictions_batch_2nd_step[i])
-                    p_total_denoiser_loss += \
-                        p_loss[TOTAL_LOSS_STR] * p_depth_weight[i]
-                    p_all_denoiser_loss[i] += p_loss
 
                 # combine losses
                 p_model_loss = \
                     model_loss_fn(model=ckpt.model)
                 p_total_loss = \
-                    p_total_denoiser_loss + \
+                    p_total_denoiser_loss * (1.0 - p_percentage_done) + \
                     p_model_loss[TOTAL_LOSS_STR]
                 p_grads = \
                     tape.gradient(target=p_total_loss,
@@ -309,7 +300,7 @@ def train_loop(
                 p_total_loss,
                 p_model_loss,
                 p_all_denoiser_loss,
-                p_predictions_batch_1st_step,
+                p_predictions,
                 p_grads
             )
 
@@ -412,6 +403,7 @@ def train_loop(
                         p_input_image_batch=input_image_batch,
                         p_noisy_image_batch=noisy_image_batch,
                         p_depth_weight=depth_weight,
+                        p_percentage_done=percentage_done,
                         p_trainable_variables=trainable_variables)
 
                 for i, grad in enumerate(grads):
