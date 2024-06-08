@@ -82,9 +82,8 @@ class GaussianFilter(tf.keras.layers.Layer):
             depthwise_gaussian_kernel(
                 channels=input_shape[-1],
                 kernel_size=self._kernel_size,
-                nsig=self._sigma).astype("float32")
-        self._kernel = \
-            self._mixed_precision_policy.cast_to_lowest(self._kernel)
+                nsig=self._sigma,
+                dtype=tf.dtypes.as_numpy_dtype(self.compute_dtype))
 
     def call(self, inputs, training):
         return \
@@ -973,8 +972,12 @@ class Multiplier(tf.keras.layers.Layer):
         self._regularizer = keras.regularizers.get(regularizer)
 
     def build(self, input_shape):
+
+
         def init_w0_fn(shape, dtype):
-            return np.zeros(shape, dtype=np.float32)
+            return np.zeros(
+                shape,
+                dtype=tf.dtypes.as_numpy_dtype(self.compute_dtype))
 
         self._w0 = \
             self.add_weight(
@@ -985,7 +988,9 @@ class Multiplier(tf.keras.layers.Layer):
                 regularizer=self._regularizer)
 
         def init_w1_fn(shape, dtype):
-            return np.ones(shape, dtype=np.float32) * self._multiplier
+            return np.ones(
+                shape,
+                dtype=tf.dtypes.as_numpy_dtype(self.compute_dtype)) * self._multiplier
 
         self._w1 = \
             self.add_weight(
@@ -1045,7 +1050,7 @@ class ChannelwiseMultiplier(tf.keras.layers.Layer):
 
     def build(self, input_shape):
         def init_w0_fn(shape, dtype):
-            return np.zeros(shape, dtype=np.float32)
+            return np.zeros(shape, dtype=tf.dtypes.as_numpy_dtype(self.compute_dtype))
 
         self._w0 = \
             self.add_weight(
@@ -1056,7 +1061,7 @@ class ChannelwiseMultiplier(tf.keras.layers.Layer):
                 regularizer=self._regularizer)
 
         def init_w1_fn(shape, dtype):
-            return np.ones(shape, dtype=np.float32) * self._multiplier
+            return np.ones(shape, dtype=tf.dtypes.as_numpy_dtype(self.compute_dtype)) * self._multiplier
 
         self._w1 = \
             self.add_weight(
@@ -1106,7 +1111,7 @@ class LogitNorm(tf.keras.layers.Layer):
         super().__init__(**kwargs)
         self._axis = axis
         self._constant = \
-            tf.constant(constant, dtype=tf.float32)
+            tf.constant(constant, dtype=self.compute_dtype)
 
     def call(self, inputs, training):
         x = inputs
