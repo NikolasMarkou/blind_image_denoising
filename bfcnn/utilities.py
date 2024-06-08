@@ -99,108 +99,6 @@ def input_shape_fixer(
 # ---------------------------------------------------------------------
 
 
-def probabilistic_drop_off(
-        iterator: Iterable,
-        probability: float = 0.5):
-    """
-    randomly zero out an element of the iterator
-
-    optimizer.apply_gradients(
-        grads_and_vars=zip(
-            probabilistic_drop_off(tape.gradient(target=total_loss, sources=trainable_weights)),
-            trainable_weights))
-
-    :param iterator:
-    :param probability: probability of an element not being affected
-    :return:
-    """
-    for value in iterator:
-        if np.random.uniform(low=0, high=1.0, size=None) > probability:
-            yield value * 0.0
-        else:
-            yield value
-
-
-# ---------------------------------------------------------------------
-
-
-def normal_empirical_cdf(
-        target_cdf: float = 0.5,
-        mean: float = 0.0,
-        sigma: float = 1.0,
-        samples: int = 1000000,
-        bins: int = 1000):
-    """
-    computes the value x for target_cdf
-    """
-    # --- argument checking
-    if target_cdf <= 0.0001 or target_cdf >= 0.9999:
-        raise ValueError(
-            "target_cdf [{0}] must be between 0 and 1".format(target_cdf))
-    if sigma <= 0:
-        raise ValueError("sigma [{0}] must be > 0".format(sigma))
-
-    # --- computer empirical cumulative sum
-    z = \
-        np.random.normal(
-            loc=mean,
-            scale=sigma,
-            size=samples)
-    h, x1 = np.histogram(z, bins=bins, density=True)
-    dx = x1[1] - x1[0]
-    f1 = np.cumsum(h) * dx
-
-    # --- find the proper bin
-    for i in range(bins):
-        if f1[i] >= target_cdf:
-            if i == 0:
-                return x1[i]
-            return x1[i]
-
-    return -1
-
-
-# ---------------------------------------------------------------------
-
-
-def coords_layer(
-        input_layer):
-    """
-    Create a coords layer
-
-    :param input_layer:
-    :return:
-    """
-    # --- argument checking
-    if input_layer is None:
-        raise ValueError("input_layer cannot be empty")
-    shape = tf.keras.backend.int_shape(input_layer)
-    if len(shape) != 4:
-        raise ValueError("input_layer must be a 4d tensor")
-    # ---
-    height = shape[1]
-    width = shape[2]
-    x_grid = np.linspace(0, 1, width)
-    y_grid = np.linspace(0, 1, height)
-    xx_grid, yy_grid = np.meshgrid(x_grid, y_grid)
-    xx_grid = \
-        tf.constant(
-            value=xx_grid,
-            dtype=tf.float32,
-            shape=(1, xx_grid.shape[0], xx_grid.shape[1], 1))
-    yy_grid = \
-        tf.constant(
-            value=yy_grid,
-            dtype=tf.float32,
-            shape=(1, yy_grid.shape[0], yy_grid.shape[1], 1))
-    xx_grid = tf.repeat(xx_grid, axis=0, repeats=tf.shape(input_layer)[0])
-    yy_grid = tf.repeat(yy_grid, axis=0, repeats=tf.shape(input_layer)[0])
-    return tf.keras.layers.Concatenate(axis=3)([input_layer, yy_grid, xx_grid])
-
-
-# ---------------------------------------------------------------------
-
-
 class ConvType(Enum):
     CONV2D = 0
 
@@ -465,214 +363,6 @@ def dense_wrapper(
 # ---------------------------------------------------------------------
 
 
-def expected_sigma_entropy_head(
-        input_layer,
-        conv_params: Union[Dict, List[Dict]],
-        output_channels: int,
-        presoftmax_bias: float = 0.0,
-        probability_threshold: float = 0.0,
-        linspace_start_stop: Tuple[float, float] = (-0.5, +0.5)) \
-        -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
-    """
-    computes expected, sigma and entropy per output channel
-
-    :param input_layer:
-    :param conv_params:
-    :param output_channels:
-    :param presoftmax_bias:
-        small value to add before converting to probabilities
-        (helps values from becoming very very small)
-    :param probability_threshold:
-    :param linspace_start_stop:
-
-    :return: expected value tensor, sigma tensor, entropy tensor (all per output channel)
-    """
-    # --- argument checking
-    if input_layer is None:
-        raise ValueError("input_layer should not be None")
-    if conv_params is None:
-        raise ValueError("conv_parameters cannot be None")
-    if output_channels is None or \
-            output_channels <= 0:
-        raise ValueError("output_channels should be > 0")
-    if isinstance(conv_params, Dict):
-        conv_params = [conv_params]
-
-    uncertainty_buckets = conv_params[0]["filters"]
-
-    # --- build heads
-    kernel = \
-        tf.linspace(
-            start=linspace_start_stop[0],
-            stop=linspace_start_stop[1],
-            num=uncertainty_buckets)
-    conv_kernel = tf.reshape(tensor=kernel, shape=(1, 1, -1, 1))
-    column_kernel = tf.reshape(tensor=kernel, shape=(1, 1, 1, -1))
-
-    x_sigma = []
-    x_entropy = []
-    x_expected = []
-
-    for i in range(output_channels):
-        x_i_k = input_layer
-        for params in conv_params:
-            x_i_k = conv2d_wrapper(
-                input_layer=x_i_k,
-                bn_params=None,
-                conv_params=params,
-                channelwise_scaling=False,
-                multiplier_scaling=False)
-
-        # add small value for arithmetic stability
-        if presoftmax_bias > 0.0:
-            x_i_k = tf.add(x_i_k, presoftmax_bias)
-
-        # convert to probability
-        x_i_prob = tf.nn.softmax(x_i_k, axis=3)
-
-        # --- clip low probabilities and re-normalize
-        if 0.0 < probability_threshold < 1.0:
-            # clip low probabilities
-            x_i_prob = tf.nn.relu(x_i_prob - probability_threshold)
-            # re-normalize
-            x_i_prob = x_i_prob / (tf.reduce_sum(x_i_prob, axis=[3], keepdims=True) + DEFAULT_EPSILON)
-
-        # --- compute expected value, sigma and entropy
-        x_i_expected = \
-            tf.nn.conv2d(
-                input=x_i_prob,
-                filters=conv_kernel,
-                strides=(1, 1),
-                padding="SAME")
-        x_i_diff_square = \
-            tf.math.square(
-                column_kernel - x_i_expected)
-        x_i_sigma = \
-            tf.math.sqrt(
-                tf.reduce_sum(
-                    tf.math.multiply(x_i_diff_square, x_i_prob),
-                    axis=[3],
-                    keepdims=True) +
-                DEFAULT_EPSILON)
-        x_i_entropy = \
-            -tf.reduce_sum(
-                tf.math.multiply(
-                    tf.math.log(x_i_prob + DEFAULT_EPSILON) / tf.math.log(2.0),
-                    x_i_prob),
-                axis=[3],
-                keepdims=True)
-        x_sigma.append(x_i_sigma)
-        x_entropy.append(x_i_entropy)
-        x_expected.append(x_i_expected)
-
-    # --- concat to connect all output channels
-    x_sigma = tf.concat(x_sigma, axis=3)
-    x_entropy = tf.concat(x_entropy, axis=3)
-    x_expected = tf.concat(x_expected, axis=3)
-
-    return x_expected, x_sigma, x_entropy
-
-
-# ---------------------------------------------------------------------
-
-
-def mean_variance_local(
-        input_layer,
-        kernel_size: Tuple[int, int] = (5, 5)):
-    """
-    calculate window mean per channel and window variance per channel
-
-    :param input_layer: the layer to operate on
-    :param kernel_size: size of the kernel (window)
-    :return: mean, variance tensors
-    """
-    # --- argument checking
-    if input_layer is None:
-        raise ValueError("input_layer cannot be empty")
-    shape = tf.keras.backend.int_shape(input_layer)
-    if len(shape) != 4:
-        raise ValueError("input_layer must be a 4d tensor")
-    if not isinstance(kernel_size, tuple):
-        raise ValueError("kernel_size must be a tuple")
-
-    # ---
-    local_mean = \
-        tf.keras.layers.AveragePooling2D(
-            strides=(1, 1),
-            padding="same",
-            pool_size=kernel_size)(input_layer)
-    local_diff = \
-        tf.keras.layers.Subtract()(
-            [input_layer, local_mean])
-    local_diff = tf.keras.backend.square(local_diff)
-    local_variance = \
-        tf.keras.layers.AveragePooling2D(
-            strides=(1, 1),
-            padding="same",
-            pool_size=kernel_size)(local_diff)
-
-    return local_mean, local_variance
-
-
-# ---------------------------------------------------------------------
-
-
-def mean_sigma_local(
-        input_layer,
-        kernel_size: Tuple[int, int] = (5, 5),
-        epsilon: float = DEFAULT_EPSILON):
-    """
-    calculate window mean per channel and window sigma per channel
-
-    :param input_layer: the layer to operate on
-    :param kernel_size: size of the kernel (window)
-    :param epsilon: small number for robust sigma calculation
-    :return: mean, sigma tensors
-    """
-    mean, variance = \
-        mean_variance_local(
-            input_layer=input_layer,
-            kernel_size=kernel_size)
-
-    sigma = tf.sqrt(variance + epsilon)
-
-    return mean, sigma
-
-
-# ---------------------------------------------------------------------
-
-
-def mean_sigma_global(
-        input_layer,
-        axis: List[int] = [1, 2, 3],
-        epsilon: float = DEFAULT_EPSILON):
-    """
-    Create a global mean sigma per channel
-
-    :param input_layer:
-    :param axis:
-    :param epsilon: small number to add for robust sigma calculation
-    :return:
-    """
-    # --- argument checking
-    if input_layer is None:
-        raise ValueError("input_layer cannot be empty")
-    shape = tf.keras.backend.int_shape(input_layer)
-    if len(shape) != 4:
-        raise ValueError("input_layer must be a 4d tensor")
-
-    # --- build block
-    x = input_layer
-    mean = tf.reduce_mean(x, axis=axis, keepdims=True)
-    diff_2 = tf.square(x - mean)
-    variance = tf.reduce_mean(diff_2, axis=axis, keepdims=True)
-    sigma = tf.sqrt(variance + epsilon)
-    return mean, sigma
-
-
-# ---------------------------------------------------------------------
-
-
 def sparse_block(
         input_layer: tf.Tensor,
         bn_params: Dict = None,
@@ -714,9 +404,6 @@ def sparse_block(
         x_bn = \
             tf.keras.layers.BatchNormalization(
                 **bn_params)(x)
-    else:
-        mean, sigma = mean_sigma_global(input_layer=x)
-        x_bn = (x - mean) / (sigma + DEFAULT_EPSILON)
 
     if symmetrical:
         x_bn = tf.abs(x_bn)
@@ -750,10 +437,10 @@ def layer_denormalize(
         v_min: float,
         v_max: float) -> tf.Tensor:
     """
-    Convert input [-0.5, +0.5] to [v0, v1] range
+    Convert input [0.0, 1.0] to [v0, v1] range
     """
     y_clip = clip_normalized_tensor(input_layer)
-    return (y_clip + 0.5) * (v_max - v_min) + v_min
+    return y_clip * (v_max - v_min) + v_min
 
 
 # ---------------------------------------------------------------------
@@ -764,14 +451,14 @@ def layer_normalize(
         v_min: float,
         v_max: float) -> tf.Tensor:
     """
-    Convert input from [v0, v1] to [-0.5, +0.5] range
+    Convert input from [v0, v1] to [0.0, 1.0] range
     """
     y_clip = \
         tf.clip_by_value(
             t=input_layer,
             clip_value_min=v_min,
             clip_value_max=v_max)
-    return (y_clip - v_min) / (v_max - v_min) - 0.5
+    return (y_clip - v_min) / (v_max - v_min)
 
 
 # ---------------------------------------------------------------------
