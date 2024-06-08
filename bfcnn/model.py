@@ -339,6 +339,8 @@ def model_denoiser_builder(
             bn_params=None,
             conv_params=conv_params_1))
 
+    x = tf.nn.tanh(2 * x) * 0.5
+
     x = \
         tf.keras.layers.Layer(
             name="output_tensor")(x)
@@ -377,7 +379,7 @@ def build_normalize_model(
     model_input = tf.keras.Input(shape=input_dims)
 
     # --- normalize input
-    # from [min_value, max_value] to [0.0, 1.0]
+    # from [min_value, max_value] to [-0.5, +0.5]
     model_output = \
         layer_normalize(
             input_layer=model_input,
@@ -412,7 +414,7 @@ def build_denormalize_model(
     model_input = tf.keras.Input(shape=input_dims)
 
     # --- denormalize input
-    # from [0.0, 1.0] to [v0, v1] range
+    # from [-0.5, +0.5] to [v0, v1] range
     model_output = \
         layer_denormalize(
             input_layer=model_input,
