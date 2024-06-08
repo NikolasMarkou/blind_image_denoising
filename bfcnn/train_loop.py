@@ -59,7 +59,6 @@ def train_loop(
     # --- load configuration
     config = load_config(pipeline_config_path)
     tf.random.set_seed(0)
-    tf.keras.mixed_precision.set_global_policy("mixed_float16")
 
     # --- create model_dir if not exist
     if not os.path.isdir(str(model_dir)):
