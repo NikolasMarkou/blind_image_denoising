@@ -83,6 +83,8 @@ class GaussianFilter(tf.keras.layers.Layer):
                 channels=input_shape[-1],
                 kernel_size=self._kernel_size,
                 nsig=self._sigma).astype("float32")
+        self._kernel = \
+            self._mixed_precision_policy.cast_to_lowest(self._kernel)
 
     def call(self, inputs, training):
         return \
