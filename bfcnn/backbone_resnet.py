@@ -259,8 +259,7 @@ def builder(
         conv2d_wrapper(
             input_layer=x,
             bn_params=None,
-            conv_params=base_conv_params,
-            channelwise_scaling=None)
+            conv_params=base_conv_params)
 
     if add_initial_bn:
         x = tf.keras.layers.BatchNormalization(**bn_params)(x)

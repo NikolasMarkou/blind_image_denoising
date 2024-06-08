@@ -126,30 +126,6 @@ def test_create_4d_soft_orthogonal_constraint(shape):
     result = regularizer(x_random)
     assert result >= 0
 
-# ---------------------------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    "shape", [
-        (5, 5, 3, 2),
-        (1, 1, 1, 4),
-        (2, 2, 2, 8),
-        (4, 4, 4, 16),
-        (8, 8, 8, 32)
-    ])
-def test_create_4d_erf_regularizer(shape):
-    x_random = \
-        tf.random.uniform(
-            dtype=tf.float32,
-            minval=-1,
-            maxval=+1,
-            shape=shape)
-    regularizer = \
-        bfcnn.regularizers.ErfRegularizer(
-            l1_coefficient=1.0,
-            l2_coefficient=1.0)
-    result = regularizer(x_random)
-    assert result >= 0
 
 # ---------------------------------------------------------------------
 

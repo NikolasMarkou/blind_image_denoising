@@ -24,9 +24,7 @@ from .utilities import \
     ConvType, \
     sparse_block, \
     dense_wrapper, \
-    conv2d_wrapper, \
-    mean_sigma_local, \
-    mean_sigma_global
+    conv2d_wrapper
 
 
 # ---------------------------------------------------------------------
@@ -173,13 +171,6 @@ def resnet_blocks_full(
         gate_layer = None
         previous_layer = x
 
-        if use_mean_sigma:
-            x_mean_global, x_sigma_global = \
-                mean_sigma_global(
-                    input_layer=x,
-                    axis=[1, 2])
-            x = (x - x_mean_global) / (x_sigma_global + DEFAULT_EPSILON)
-
         if first_conv_params is not None and not bn_first_conv_params:
             x = conv2d_wrapper(input_layer=x,
                                conv_params=copy.deepcopy(first_conv_params),
@@ -228,10 +219,6 @@ def resnet_blocks_full(
         # optional multiplier
         if use_multiplier:
             x = Multiplier(**multiplier_params)(x)
-
-        # scale back to original
-        if use_mean_sigma:
-            x = (x * x_sigma_global) + x_mean_global
 
         # optional dropout on/off
         if use_dropout:
