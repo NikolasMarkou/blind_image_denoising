@@ -83,7 +83,9 @@ class GaussianFilter(tf.keras.layers.Layer):
                 channels=input_shape[-1],
                 kernel_size=self._kernel_size,
                 nsig=self._sigma,
-                dtype=tf.dtypes.as_numpy_dtype(self.compute_dtype))
+                dtype=np.float32)
+        self._kernel = \
+            tf.constant(self._kernel, dtype=self.compute_dtype)
 
     def call(self, inputs, training):
         return \
@@ -977,26 +979,28 @@ class Multiplier(tf.keras.layers.Layer):
         def init_w0_fn(shape, dtype):
             return np.zeros(
                 shape,
-                dtype=tf.dtypes.as_numpy_dtype(self.compute_dtype))
+                dtype=np.float32)
 
         self._w0 = \
             self.add_weight(
                 shape=[1],
                 trainable=True,
                 name="w0",
+                dtype=self.compute_dtype,
                 initializer=init_w0_fn,
                 regularizer=self._regularizer)
 
         def init_w1_fn(shape, dtype):
             return np.ones(
                 shape,
-                dtype=tf.dtypes.as_numpy_dtype(self.compute_dtype)) * self._multiplier
+                dtype=np.float32) * self._multiplier
 
         self._w1 = \
             self.add_weight(
                 shape=[1],
                 trainable=False,
                 name="w1",
+                dtype=self.compute_dtype,
                 initializer=init_w1_fn,
                 regularizer=self._regularizer)
 
