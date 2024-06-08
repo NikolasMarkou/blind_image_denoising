@@ -339,7 +339,7 @@ def model_denoiser_builder(
             bn_params=None,
             conv_params=conv_params_1))
 
-    x = tf.nn.tanh(2 * x) * 0.5
+    x = tf.nn.tanh(2 * x) * 0.51
 
     x = \
         tf.keras.layers.Layer(
