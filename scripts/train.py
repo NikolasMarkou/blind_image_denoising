@@ -4,22 +4,28 @@ __author__ = "Nikolas Markou"
 __version__ = "2.0.0"
 __license__ = "MIT"
 
+# ---------------------------------------------------------------------
+
+
 import os
 import sys
+import pathlib
 import argparse
 import subprocess
 
 # ---------------------------------------------------------------------
 
-
 CUDA_DEVICE = 0
-CONFIGS_DIR = "bfcnn/configs"
-CHECKPOINT_DIRECTORY = "/media/fast/training/bfcnn"
+CURRENT_DIR = pathlib.Path(__file__).parent.resolve()
+CONFIGS_DIR = CURRENT_DIR.parent.resolve() / "bfcnn" / "configs"
+sys.path.append(str(CONFIGS_DIR))
+
 CONFIGS = {
     os.path.basename(file_dir).split(".")[0]:
         os.path.join(CONFIGS_DIR, file_dir)
     for file_dir in os.listdir(CONFIGS_DIR)
 }
+CHECKPOINT_DIRECTORY = "/media/fast/training/bfcnn"
 
 # ---------------------------------------------------------------------
 
@@ -62,7 +68,7 @@ def main(args):
         "-m", "bfcnn.train",
         "--model-directory",
         os.path.join(
-            CHECKPOINT_DIRECTORY,
+            args.checkpoint_directory,
             run_name),
         "--pipeline-config",
         config
@@ -85,6 +91,12 @@ if __name__ == "__main__":
         default="",
         dest="model",
         help="model to train, options: {0}".format(list(CONFIGS.keys())))
+
+    parser.add_argument(
+        "--checkpoint-directory",
+        default=CHECKPOINT_DIRECTORY,
+        dest="checkpoint_directory",
+        help="training directory for checkpointing")
 
     parser.add_argument(
         "--run-name",

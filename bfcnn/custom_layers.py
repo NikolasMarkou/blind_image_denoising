@@ -34,6 +34,76 @@ class Mish(tf.keras.layers.Layer):
 # ---------------------------------------------------------------------
 
 @tf.keras.utils.register_keras_serializable()
+class GatedMLP(tf.keras.layers.Layer):
+    def __init__(self,
+                 filters: int,
+                 use_bias: bool = False,
+                 use_orthogonal_regularization: bool = False,
+                 use_soft_orthonormal_regularization: bool = False,
+                 attention_activation: str = "relu",
+                 output_activation: str = "linear",
+                 **kwargs):
+        super().__init__(**kwargs)
+
+        if use_orthogonal_regularization and use_soft_orthonormal_regularization:
+            raise ValueError("Cannot have both enabled")
+        self.filters = filters
+        self.conv_gate = None
+        self.conv_up = None
+        self.conv_down = None
+        self.use_bias = use_bias
+        self.attention_activation = attention_activation
+        self.output_activation = output_activation
+        self.attention_activation_fn = None
+        self.output_activation_fn = None
+        self.use_orthogonal_regularization = use_orthogonal_regularization
+        self.use_soft_orthonormal_regularization = use_soft_orthonormal_regularization
+
+    def build(self, input_shape):
+        from .utilities import activation_wrapper
+
+        conv_params = dict(
+            filters=self._filters,
+            kernel_size=(1, 1),
+            strides=(1, 1),
+            activation=None,
+            use_bias=self._use_bias,
+            kernel_initializer="glorot_normal",
+            kernel_regularizer="l2",
+        )
+        if self.use_soft_orthogonal_regularization:
+            conv_params["kernel_regularizer"] = \
+                SoftOrthogonalConstraintRegularizer(
+                    lambda_coefficient=0.01, l1_coefficient=1e-4, l2_coefficient=0.0)
+        if self.use_soft_orthonormal_regularization:
+            conv_params["kernel_regularizer"] = \
+                SoftOrthonormalConstraintRegularizer(
+                    lambda_coefficient=0.01, l1_coefficient=1e-4, l2_coefficient=0.0)
+
+        conv_params_out = copy.deepcopy(conv_params)
+        conv_params_out["filters"] = input_shape[-1]
+        self.conv_gate = tf.keras.layers.Conv2d(**conv_params)
+        self.conv_up = tf.keras.layers.Conv2d(**conv_params)
+        self.conv_down = tf.keras.layers.Conv2d(**conv_params_out)
+        self.attention_activation_fn = activation_wrapper(activation=self.attention_activation)
+        self.output_activation_fn = activation_wrapper(activation=self.output_activation)
+
+    def call(self, inputs, training=None):
+        x = inputs
+        x_gate = self.attention_activation_fn(self.conv_gate(x))
+        x_up = self.attention_activation_fn(self.conv_up(x))
+        x_combined = x_gate * x_up
+        x_gated_mlp = self.conv_down(x_combined)
+        return self.output_activation_fn(x_gated_mlp)
+
+    def compute_output_shape(self, input_shape):
+        shape = copy.deepcopy(input_shape)
+        return shape
+
+
+# ---------------------------------------------------------------------
+
+@tf.keras.utils.register_keras_serializable()
 class RandomOnOff(tf.keras.layers.Layer):
     """randomly drops the whole connection"""
 
@@ -245,8 +315,6 @@ class ChannelLearnableMultiplier(tf.keras.layers.Layer):
         Returns:
         tf.Tensor: Output tensor with the multipliers applied.
         """
-        #
-        #
         return tf.nn.relu(1.0 + self.w_multiplier) * inputs
 
 
@@ -974,8 +1042,6 @@ class Multiplier(tf.keras.layers.Layer):
         self._regularizer = keras.regularizers.get(regularizer)
 
     def build(self, input_shape):
-
-
         def init_w0_fn(shape, dtype):
             return np.zeros(
                 shape,
@@ -1151,6 +1217,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
 
     def __init__(self,
                  attention_channels: int,
+                 use_bias: bool = False,
                  bn_params: Dict = None,
                  ln_params: Dict = None,
                  use_gamma: bool = True,
@@ -1158,37 +1225,22 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
                  output_activation: str = "linear",
                  use_soft_orthonormal_regularization: bool = False,
                  use_soft_orthogonal_regularization: bool = False,
+                 use_gated_mlp: bool = False,
                  **kwargs):
         super().__init__(**kwargs)
         if attention_channels is None or attention_channels <= 0:
             raise ValueError("attention_channels should be > 0")
         self.attention_channels = attention_channels
-
-        self.qkv_conv_params = dict(
-            filters=self.attention_channels,
-            kernel_size=(1, 1),
-            strides=(1, 1),
-            padding="same",
-            use_bias=False,
-            activation=attention_activation,
-            kernel_regularizer=tf.keras.regularizers.L2(l2=1e-4),
-            kernel_initializer="glorot_normal"
-        )
-        self.output_conv_params = dict(
-            kernel_size=(1, 1),
-            strides=(1, 1),
-            padding="same",
-            use_bias=False,
-            activation=output_activation,
-            kernel_regularizer=tf.keras.regularizers.L2(l2=1e-4),
-            kernel_initializer="glorot_normal"
-        )
+        self.use_bias = use_bias
+        self.use_gated_mlp = use_gated_mlp
+        self.output_activation = output_activation
+        self.attention_activation = attention_activation
 
         self.query_conv = None
         self.key_conv = None
         self.value_conv = None
         self.attention = None
-        self.output_conv = None
+        self.output_fn = None
 
         self.use_bn = False
         if bn_params is not None:
@@ -1211,8 +1263,18 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         self.use_soft_orthonormal_regularization = use_soft_orthonormal_regularization
 
     def build(self, input_shape):
+        qkv_conv_params = dict(
+            filters=self.attention_channels,
+            kernel_size=(1, 1),
+            strides=(1, 1),
+            padding="same",
+            use_bias=self.use_bias,
+            activation=self.attention_activation,
+            kernel_regularizer=tf.keras.regularizers.L2(l2=1e-4),
+            kernel_initializer="glorot_normal"
+        )
         # query key value convolution
-        params = copy.deepcopy(self.qkv_conv_params)
+        params = copy.deepcopy(qkv_conv_params)
         if self.use_soft_orthogonal_regularization:
             params["kernel_regularizer"] = \
                 SoftOrthogonalConstraintRegularizer(
@@ -1226,17 +1288,37 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         self.value_conv = tf.keras.layers.Conv2D(**copy.deepcopy(params))
 
         # output convolution
-        params = copy.deepcopy(self.output_conv_params)
-        params["filters"] = input_shape[-1]
+        output_params = dict(
+            filters=input_shape[-1],
+            kernel_size=(1, 1),
+            strides=(1, 1),
+            padding="same",
+            use_bias=self.use_bias,
+            activation=self.output_activation,
+            kernel_regularizer=tf.keras.regularizers.L2(l2=1e-4),
+            kernel_initializer="glorot_normal"
+        )
         if self.use_soft_orthogonal_regularization:
-            params["kernel_regularizer"] = \
+            output_params["kernel_regularizer"] = \
                 SoftOrthogonalConstraintRegularizer(
                     lambda_coefficient=0.01, l1_coefficient=1e-4, l2_coefficient=0.0)
         if self.use_soft_orthonormal_regularization:
-            params["kernel_regularizer"] = \
+            output_params["kernel_regularizer"] = \
                 SoftOrthonormalConstraintRegularizer(
                     lambda_coefficient=0.01, l1_coefficient=1e-4, l2_coefficient=0.0)
-        self.output_conv = tf.keras.layers.Conv2D(**params)
+
+        if self.use_gated_mlp:
+            self.output_fn = (
+                GatedMLP(filters=input_shape[-1],
+                         use_bias=self.use_bias,
+                         activation="relu",
+                         attention_activation=self.attention_activation,
+                         output_activation=self.output_activation,
+                         use_soft_orthonormal_regularization=self.use_soft_orthonormal_regularization,
+                         use_orthogonal_regularization=self.use_orthogonal_regularization)
+            )
+        else:
+            self.output_fn = tf.keras.layers.Conv2D(**output_params)
 
         # attention
         self.attention = tf.keras.layers.Attention(use_scale=False)
@@ -1263,7 +1345,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         attention = self.attention([q_x, k_x, v_x])
 
         # compute output conv
-        x = self.output_conv(attention)
+        x = self.output_fn(attention)
         # if self.use_bn:
         #     x = self.bn_1(x)
         # if self.use_ln:

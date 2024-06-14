@@ -8,13 +8,14 @@ __license__ = "MIT"
 
 import os
 import sys
+import pathlib
 import argparse
 import subprocess
 
 # ---------------------------------------------------------------------
 
 CUDA_DEVICE = -1
-CONFIGS_DIR = "bfcnn/configs"
+CONFIGS_DIR = "../bfcnn/configs"
 OUTPUT_DIRECTORY = "bfcnn/pretrained/"
 CHECKPOINT_DIRECTORY = "/media/fast/training/bfcnn"
 
