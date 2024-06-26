@@ -387,9 +387,6 @@ def train_loop(
                 percentage_done = 0.0
             percentage_done = tf.constant(percentage_done, dtype=tf.float32)
 
-            logger.info("epoch [{0}], step [{1}]".format(
-                int(ckpt.epoch), int(ckpt.step)))
-
             # --- iterate over the batches of the dataset
             for input_image_batch, noisy_image_batch in dataset_train:
                 if counter == 0:
@@ -508,12 +505,12 @@ def train_loop(
                                              clip_value_max=255.0)
                         evaluation_result = test_step(evaluation_batch_noise)
                         tf.summary.image(name=f"evaluation_{std_noise}/input",
-                                         data=evaluation_batch_noise,
+                                         data=evaluation_batch_noise / 255,
                                          max_outputs=visualization_number,
                                          step=ckpt.step,
                                          description="evaluation noisy")
                         tf.summary.image(name=f"evaluation_{std_noise}/output",
-                                         data=evaluation_result,
+                                         data=evaluation_result / 255,
                                          max_outputs=visualization_number,
                                          step=ckpt.step,
                                          description="evaluation denoised")
