@@ -37,9 +37,9 @@ class DenoiserModule(tf.Module, ABC):
         self._model_hydra = model_hydra
 
     @tf.function(
-        reduce_retracing=True,
         jit_compile=True,
         autograph=False,
+        reduce_retracing=True,
         input_signature=[
             tf.TensorSpec(shape=[None, None, None, None], dtype=tf.uint8)
         ])
