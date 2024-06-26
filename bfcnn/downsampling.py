@@ -58,7 +58,7 @@ def downsample(
                     conv_params=params)
     elif downsample_type in ["strides"]:
         if conv_params is not None:
-            params["kernel_size"] = (2, 2)
+            params["kernel_size"] = (3, 3)
             params["strides"] = (2, 2)
             params["padding"] = "valid"
             x = \
