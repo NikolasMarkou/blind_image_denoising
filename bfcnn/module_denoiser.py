@@ -36,7 +36,13 @@ class DenoiserModule(tf.Module, ABC):
         self._cast_to_uint8 = cast_to_uint8
         self._model_hydra = model_hydra
 
-    @tf.function
+    @tf.function(
+        reduce_retracing=True,
+        jit_compile=True,
+        autograph=False,
+        input_signature=[
+            tf.TensorSpec(shape=[None, None, None, None], dtype=tf.uint8)
+        ])
     def __call__(self, image):
         """
         Cast image to float and run inference.
