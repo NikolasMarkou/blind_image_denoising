@@ -734,13 +734,17 @@ def save_config(
 
 def pad_to_power_of_2(image: tf.Tensor):
     shape = tf.shape(image)
-    height = tf.cast(shape[1], dtype=tf.float32)
-    width = tf.cast(shape[2], dtype=tf.float32)
-    desired_height = tf.pow(2, tf.cast(tf.math.ceil(tf.math.log(height) / tf.math.log(2.0)), tf.int32))
-    desired_width = tf.pow(2, tf.cast(tf.math.ceil(tf.math.log(width) / tf.math.log(2.0)), tf.int32))
+    height = shape[1]
+    width = shape[2]
+    desired_height = tf.pow(2, tf.cast(tf.math.ceil(tf.math.log(tf.cast(height, dtype=tf.float32)) / tf.math.log(2.0)), tf.int32))
+    desired_width = tf.pow(2, tf.cast(tf.math.ceil(tf.math.log(tf.cast(width, dtype=tf.float32)) / tf.math.log(2.0)), tf.int32))
     padding_height = desired_height - height
     padding_width = desired_width - width
-    paddings = [[0, padding_height], [0, padding_width], [0, 0]]
+    paddings = [
+        [0, padding_height],
+        [0, padding_width],
+        [0, 0]
+    ]
     padded_image = tf.pad(image, paddings, mode='CONSTANT')
     return padded_image, paddings
 
