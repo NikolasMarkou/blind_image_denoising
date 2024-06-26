@@ -64,8 +64,10 @@ def builder(
         dropout_rate: float = -1,
         depth_drop_rate: float = 0.0,
         spatial_dropout_rate: float = -1,
+        convolutional_self_attention_dropout_rate: float = 0.0,
         multiple_scale_outputs: bool = True,
         use_output_normalization: bool = False,
+
         output_layer_name: str = "intermediate_output",
         name="unet_laplacian",
         **kwargs) -> tf.keras.Model:
@@ -118,6 +120,9 @@ def builder(
 
     if depth <= 0 or width <= 0:
         raise ValueError("depth and width must be > 0")
+
+    if convolutional_self_attention_dropout_rate < 0 or convolutional_self_attention_dropout_rate > 1:
+        raise ValueError("convolutional_self_attention_dropout_rate must be >= 0 and <= 1")
 
     def activation_str_fix_fn(activation_str: str = None) -> str:
         if activation_str is None:
@@ -293,7 +298,8 @@ def builder(
                         attention_channels=filters,
                         attention_activation="gelu",
                         output_activation="linear",
-                        use_soft_orthonormal_regularization=True
+                        use_soft_orthonormal_regularization=True,
+                        dropout=convolutional_self_attention_dropout_rate,
                     )(x))
             else:
                 x = \

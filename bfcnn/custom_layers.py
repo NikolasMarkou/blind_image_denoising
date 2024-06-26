@@ -1229,6 +1229,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
                  use_soft_orthonormal_regularization: bool = False,
                  use_soft_orthogonal_regularization: bool = False,
                  use_gated_mlp: bool = False,
+                 dropout: float = 0.0,
                  **kwargs):
         super().__init__(**kwargs)
         if attention_channels is None or attention_channels <= 0:
@@ -1238,6 +1239,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         self.use_gated_mlp = use_gated_mlp
         self.output_activation = output_activation
         self.attention_activation = attention_activation
+        self.dropout = dropout
 
         self.query_conv = None
         self.key_conv = None
@@ -1324,7 +1326,10 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
             self.output_fn = tf.keras.layers.Conv2D(**output_params)
 
         # attention
-        self.attention = tf.keras.layers.Attention(use_scale=False)
+        self.attention = (
+            tf.keras.layers.Attention(
+                use_scale=False,
+                dropout=self.dropout))
 
         # gamma
         if self.use_gamma:
