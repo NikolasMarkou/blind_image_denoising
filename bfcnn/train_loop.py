@@ -28,6 +28,7 @@ from .visualize import \
     visualize_weights_boxplot, \
     visualize_weights_heatmap, \
     visualize_gradient_boxplot
+from .images import images as evaluation_image_paths
 
 # ---------------------------------------------------------------------
 
@@ -83,7 +84,15 @@ def train_loop(
     input_shape = dataset.input_shape
     dataset_training = dataset.training
     no_color_channels = config[DATASET_STR][INPUT_SHAPE_STR][-1]
-
+    evaluation_batch = (
+        tf.concat([
+            load_image(path=img,
+                       image_size=(512,512),
+                       num_channels=3,
+                       expand_dims=True,
+                       normalize=False)
+            for img in evaluation_image_paths
+        ], axis=0))
     # --- build loss function
     loss_fn_map = loss_function_builder(config=config["loss"])
     model_loss_fn = \
@@ -123,7 +132,7 @@ def train_loop(
     visualization_number = train_config.get("visualization_number", 5)
 
     # --- train the model
-    with (tf.summary.create_file_writer(checkpoint_directory).as_default()):
+    with ((((tf.summary.create_file_writer(checkpoint_directory).as_default())))):
         # --- write configuration in tensorboard
         tf.summary.text("config", json.dumps(config, indent=4), step=0)
 
@@ -236,11 +245,11 @@ def train_loop(
                 normalize_values=False,
             )
 
-        @tf.function(reduce_retracing=True, jit_compile=False)
+        @tf.function(reduce_retracing=True, jit_compile=True)
         def train_step(n: List[tf.Tensor]) -> List[tf.Tensor]:
             return ckpt.model(n, training=True)
 
-        @tf.function(reduce_retracing=True, jit_compile=False)
+        @tf.function(reduce_retracing=True, jit_compile=True)
         def test_step(n: List[tf.Tensor]) -> tf.Tensor:
             return ckpt.model(n, training=False)[denoiser_index[0]]
 
@@ -482,6 +491,32 @@ def train_loop(
                                                 clip_value_max=255.0),
                                          step=ckpt.step,
                                          buckets=64)
+
+                    # --- evaluation
+                    for i in range(5):
+                        std_noise = float(i) * 10.0
+                        evaluation_batch_noise =\
+                            tf.cast(evaluation_batch, dtype=tf.flopat32) + \
+                            tf.random.normal(shape=tf.shape(evaluation_batch),
+                                             mean=0.0,
+                                             stddev=std_noise,
+                                             dtype=tf.float32)
+                        evaluation_batch_noise = \
+                            tf.clip_by_value(evaluation_batch_noise,
+                                             clip_value_min=0.0,
+                                             clip_value_max=255.0)
+                        evaluation_result = test_step(evaluation_batch_noise)
+                        tf.summary.image(name=f"evaluation_{std_noise}/input",
+                                         data=evaluation_batch_noise,
+                                         max_outputs=visualization_number,
+                                         step=ckpt.step,
+                                         description="evaluation noisy")
+                        tf.summary.image(name=f"evaluation_{std_noise}/output",
+                                         data=evaluation_result,
+                                         max_outputs=visualization_number,
+                                         step=ckpt.step,
+                                         description="evaluation denoised")
+
 
                     # --- add gradient activity
                     gradient_activity = \
