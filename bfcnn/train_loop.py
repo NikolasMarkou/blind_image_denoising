@@ -93,6 +93,7 @@ def train_loop(
                        normalize=False)
             for img in evaluation_image_paths
         ], axis=0))
+    evaluation_batch = tf.cast(evaluation_batch, dtype=tf.float32)
     # --- build loss function
     loss_fn_map = loss_function_builder(config=config["loss"])
     model_loss_fn = \
@@ -496,7 +497,7 @@ def train_loop(
                     for i in range(5):
                         std_noise = float(i) * 10.0
                         evaluation_batch_noise =\
-                            tf.cast(evaluation_batch, dtype=tf.flopat32) + \
+                            evaluation_batch + \
                             tf.random.normal(shape=tf.shape(evaluation_batch),
                                              mean=0.0,
                                              stddev=std_noise,
