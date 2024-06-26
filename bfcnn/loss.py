@@ -9,7 +9,6 @@ from typing import List, Dict, Callable, Tuple
 
 from .constants import *
 from .custom_logger import logger
-from .delta import delta_xy_magnitude
 
 # ---------------------------------------------------------------------
 
