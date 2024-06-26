@@ -60,7 +60,7 @@ def downsample(
         if conv_params is not None:
             params["kernel_size"] = (3, 3)
             params["strides"] = (2, 2)
-            params["padding"] = "same"
+            params["padding"] = "valid"
             x = \
                 conv2d_wrapper(
                     input_layer=x,
