@@ -90,10 +90,10 @@ class GatedMLP(tf.keras.layers.Layer):
 
     def call(self, inputs, training=None):
         x = inputs
-        x_gate = self.attention_activation_fn(self.conv_gate(x))
-        x_up = self.attention_activation_fn(self.conv_up(x))
+        x_gate = self.attention_activation_fn(self.conv_gate(x, training=training))
+        x_up = self.attention_activation_fn(self.conv_up(x, training=training))
         x_combined = x_gate * x_up
-        x_gated_mlp = self.conv_down(x_combined)
+        x_gated_mlp = self.conv_down(x_combined, training=training)
         return self.output_activation_fn(x_gated_mlp)
 
     def compute_output_shape(self, input_shape):
@@ -1330,25 +1330,25 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         if self.use_gamma:
             self.gamma = ChannelLearnableMultiplier()
 
-    def call(self, inputs, training):
+    def call(self, inputs, training=None):
         x = inputs
 
         # --- normalize
         if self.use_bn:
-            x = self.bn_0(x)
+            x = self.bn_0(x, training=training)
         if self.use_ln:
-            x = self.ln_0(x)
+            x = self.ln_0(x, training=training)
 
         # --- compute query, key, value
-        q_x = self.query_conv(x)
-        k_x = self.key_conv(x)
-        v_x = self.value_conv(x)
+        q_x = self.query_conv(x, training=training)
+        k_x = self.key_conv(x, training=training)
+        v_x = self.value_conv(x, training=training)
 
         # --- compute attention
-        attention = self.attention([q_x, k_x, v_x])
+        attention = self.attention([q_x, k_x, v_x], training=training)
 
         # compute output conv
-        x = self.output_fn(attention)
+        x = self.output_fn(attention, training=training)
         # if self.use_bn:
         #     x = self.bn_1(x)
         # if self.use_ln:
