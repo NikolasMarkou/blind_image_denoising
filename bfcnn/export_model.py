@@ -87,7 +87,7 @@ def export_model(
     ckpt = \
         create_checkpoint(
             model=models.hydra,
-            d=checkpoint_directory)
+            path=checkpoint_directory)
     status = \
         ckpt.restore(tf.train.latest_checkpoint(checkpoint_directory))
     status.assert_existing_objects_matched()
