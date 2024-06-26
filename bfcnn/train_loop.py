@@ -356,10 +356,10 @@ def train_loop(
                 percentage_done = 0.0
 
             logger.info("percentage done [{:.2f}]".format(float(percentage_done)))
-            depth_weight = [
+            depth_weight = np.array([
                 np.exp(-(float(idx) * 2.0 + 1))
                 for idx in range(len(denoiser_index))
-            ]
+            ]).astype(dtype=np.float32)
             depth_weight = tf.constant(tf.nn.softmax(depth_weight), dtype=tf.float32)
             depth_weight_str = [
                 "{0:.2f}".format(d)
