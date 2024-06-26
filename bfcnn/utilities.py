@@ -733,7 +733,9 @@ def save_config(
 # ---------------------------------------------------------------------
 
 def pad_to_power_of_2(image: tf.Tensor):
-    height, width, _ = image.shape
+    shape = tf.shape(image)
+    height = shape[1]
+    width = shape[2]
     desired_height = 2 ** ((height - 1).bit_length())
     desired_width = 2 ** ((width - 1).bit_length())
     padding_height = desired_height - height
@@ -742,7 +744,7 @@ def pad_to_power_of_2(image: tf.Tensor):
     padded_image = tf.pad(image, paddings, mode='CONSTANT')
     return padded_image, paddings
 
-def remove_padding(padded_image, paddings):
+def remove_padding(padded_image:tf.Tensor, paddings):
     padding_height, padding_width, _ = paddings
     height, width, _ = padded_image.shape
     return tf.slice(padded_image, [0, 0, 0], [height - padding_height, width - padding_width, -1])
