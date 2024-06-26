@@ -328,7 +328,7 @@ def train_loop(
         deep_supervision_schedule = \
             deep_supervision_schedule_builder(
                 config=train_config.get("deep_supervision", {
-                    TYPE_STR: "constant_low_to_high"
+                    TYPE_STR: "linear_low_to_high"
                 }),
                 no_outputs=len(ckpt.model.outputs))
 
