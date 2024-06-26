@@ -6,7 +6,9 @@ import tensorflow as tf
 # ---------------------------------------------------------------------
 
 from .constants import *
-
+from .utilities import (
+    pad_to_power_of_2,
+    remove_padding)
 # ---------------------------------------------------------------------
 
 
@@ -44,12 +46,20 @@ class DenoiserModule(tf.Module, ABC):
         """
         x = tf.cast(image, dtype=tf.float32)
 
-        x = self._model_hydra(x)
+        # add paddings
+        x_padded, paddings = pad_to_power_of_2(x);
 
+        # denoise
+        x_padded = self._model_hydra(x_padded)
+
+        # get only one input
         if len(self._model_hydra.outputs) > 1:
-            x = x[0]
+            x_padded = x_padded[0]
         else:
             pass
+
+        # remove paddings
+        x = remove_padding(x_padded, paddings)
 
         # --- cast to uint8
         if self._cast_to_uint8:

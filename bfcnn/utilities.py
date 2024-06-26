@@ -731,3 +731,20 @@ def save_config(
         return json.dump(obj=config, fp=f, indent=4)
 
 # ---------------------------------------------------------------------
+
+def pad_to_power_of_2(image: tf.Tensor):
+    height, width, _ = image.shape
+    desired_height = 2 ** ((height - 1).bit_length())
+    desired_width = 2 ** ((width - 1).bit_length())
+    padding_height = desired_height - height
+    padding_width = desired_width - width
+    paddings = [[0, padding_height], [0, padding_width], [0, 0]]
+    padded_image = tf.pad(image, paddings, mode='CONSTANT')
+    return padded_image, paddings
+
+def remove_padding(padded_image, paddings):
+    padding_height, padding_width, _ = paddings
+    height, width, _ = padded_image.shape
+    return tf.slice(padded_image, [0, 0, 0], [height - padding_height, width - padding_width, -1])
+
+# ---------------------------------------------------------------------
