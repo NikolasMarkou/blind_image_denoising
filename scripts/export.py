@@ -42,6 +42,19 @@ def main(args):
     config = CONFIGS[model]
     config_basename = os.path.basename(config).split(".")[0]
     os.environ["CUDA_VISIBLE_DEVICES"] = str(CUDA_DEVICE)
+
+    """
+    0 = all messages are logged (default behavior)
+    1 = INFO messages are not printed
+    2 = INFO and WARNING messages are not printed
+    3 = INFO, WARNING, and ERROR messages are not printed
+    """
+    os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
+    run_name = args.run_name
+    if run_name is None or len(run_name) <= 0:
+        run_name = config_basename
+
     return \
         subprocess.check_call([
             sys.executable,
@@ -49,7 +62,7 @@ def main(args):
             "--checkpoint-directory",
             os.path.join(
                 args.checkpoint_directory,
-                config_basename),
+                run_name),
             "--pipeline-config",
             config,
             "--output-directory",
@@ -80,6 +93,12 @@ if __name__ == "__main__":
         default=str(CHECKPOINT_DIRECTORY),
         dest="checkpoint_directory",
         help="where to pull the checkpoint from")
+
+    parser.add_argument(
+        "--run-name",
+        default="",
+        dest="run_name",
+        help="how to call this specific run")
 
     parser.add_argument(
         "--output-directory",

@@ -36,7 +36,7 @@ CURRENT_DIRECTORY = os.path.realpath(os.path.dirname(__file__))
 
 def train_loop(
         pipeline_config_path: Union[str, Dict, Path],
-        model_dir: Union[str, Path],
+        checkpoint_directory: Union[str, Path],
         weights_dir: Union[str, Path] = None):
     """
     Trains a blind image denoiser
@@ -52,7 +52,7 @@ def train_loop(
         8. Logs the training metrics as TensorBoard summaries.
 
     :param pipeline_config_path: filepath to the configuration
-    :param model_dir: directory to save checkpoints into
+    :param checkpoint_directory: directory to save checkpoints into
     :param weights_dir: directory to load weights from
     :return:
     """
@@ -61,18 +61,18 @@ def train_loop(
     tf.random.set_seed(0)
 
     # --- create model_dir if not exist
-    if not os.path.isdir(str(model_dir)):
+    if not os.path.isdir(str(checkpoint_directory)):
         # if path does not exist attempt to make it
-        Path(str(model_dir)).mkdir(parents=True, exist_ok=True)
+        Path(str(checkpoint_directory)).mkdir(parents=True, exist_ok=True)
         # if it fails again throw exception
-        if not os.path.isdir(str(model_dir)):
+        if not os.path.isdir(str(checkpoint_directory)):
             raise ValueError("Model directory [{0}] is not valid".format(
-                model_dir))
+                checkpoint_directory))
 
     # --- save configuration into path, makes it easier to compare afterwards
     save_config(
         config=config,
-        filename=os.path.join(str(model_dir), CONFIG_PATH_STR))
+        filename=os.path.join(str(checkpoint_directory), CONFIG_PATH_STR))
 
     # --- build dataset
     dataset = dataset_builder(config[DATASET_STR])
@@ -136,7 +136,7 @@ def train_loop(
     visualization_number = train_config.get("visualization_number", 5)
 
     # --- train the model
-    with (tf.summary.create_file_writer(model_dir).as_default()):
+    with (tf.summary.create_file_writer(checkpoint_directory).as_default()):
         # --- write configuration in tensorboard
         tf.summary.text("config", json.dumps(config, indent=4), step=0)
 
@@ -156,13 +156,13 @@ def train_loop(
         # summary of model and save model, so we can inspect with netron
         ckpt.model.summary(print_fn=logger.info)
         ckpt.model.save(
-            os.path.join(model_dir, MODEL_HYDRA_DEFAULT_NAME_STR))
+            os.path.join(checkpoint_directory, MODEL_HYDRA_DEFAULT_NAME_STR))
 
         manager = \
             tf.train.CheckpointManager(
                 checkpoint_name="ckpt",
                 checkpoint=ckpt,
-                directory=model_dir,
+                directory=checkpoint_directory,
                 max_to_keep=checkpoints_to_keep)
 
         def save_checkpoint_model_fn():

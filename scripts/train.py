@@ -66,7 +66,7 @@ def main(args):
     process_args = [
         sys.executable,
         "-m", "bfcnn.train",
-        "--model-directory",
+        "--checkpoint-directory",
         os.path.join(
             args.checkpoint_directory,
             run_name),

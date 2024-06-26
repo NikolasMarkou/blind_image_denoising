@@ -31,7 +31,7 @@ def main(args):
     # --- launch train loop
     train_loop(
         pipeline_config_path=args.pipeline_config,
-        model_dir=args.model_dir,
+        checkpoint_directory=args.checkpoint_directory,
         weights_dir=args.weights_dir)
 
     return 0
@@ -49,11 +49,10 @@ if __name__ == "__main__":
         help="Pipeline configuration path")
 
     parser.add_argument(
-        "--model-directory",
+        "--checkpoint-directory",
         default="",
-        dest="model_dir",
-        help="Path to output model directory "
-             "where event and checkpoint files will be written")
+        dest="checkpoint_directory",
+        help="training directory for checkpointing")
 
     parser.add_argument(
         "--weights-directory",
