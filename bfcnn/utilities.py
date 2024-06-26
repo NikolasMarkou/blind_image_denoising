@@ -741,6 +741,7 @@ def pad_to_power_of_2(image: tf.Tensor):
     padding_height = desired_height - height
     padding_width = desired_width - width
     paddings = [
+        [0, 0],
         [0, padding_height],
         [0, padding_width],
         [0, 0]
