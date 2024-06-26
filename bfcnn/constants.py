@@ -20,7 +20,6 @@ BATCH_SIZE_STR = "batch_size"
 INPUT_SHAPE_STR = "input_shape"
 INPUT_TENSOR_STR = "input_tensor"
 MODEL_DENOISE_STR = "model_denoise"
-MODEL_DISCRIMINATE_STR = "model_discriminate"
 MODEL_HYDRA_DEFAULT_NAME_STR = "model_hydra.keras"
 MODEL_DENOISE_DEFAULT_NAME_STR = "model_denoise.keras"
 
@@ -40,7 +39,6 @@ NAE_PREDICTION_LOSS_STR = "nae_prediction"
 DISCRIMINATE_LOSS_STR = "discriminate_loss"
 MAE_VARIANCE_LOSS_STR = "mae_variance_loss"
 REGULARIZATION_LOSS_STR = "regularization_loss"
-NAE_IMPROVEMENT_QUALITY_STR = "nae_improvement"
 MAE_DECOMPOSITION_LOSS_STR = "mae_decomposition_loss"
 
 # define file constants
@@ -65,7 +63,6 @@ INPUT_SHAPE_STR = "input_shape"
 
 DENOISER_STR = "denoiser"
 DENOISER_SIGMA_STR = "denoiser_sigma"
-DENOISER_ENTROPY_STR = "denoiser_entropy"
 
 # ---------------------------------------------------------------------
 

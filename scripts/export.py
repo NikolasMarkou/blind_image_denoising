@@ -68,7 +68,7 @@ def main(args):
             "--output-directory",
             os.path.join(
                 str(args.output_directory),
-                config_basename),
+                run_name),
             "--to-tflite",
             "--test-model"
         ])
