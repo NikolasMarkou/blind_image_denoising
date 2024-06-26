@@ -62,9 +62,9 @@ def test_multiplier_layer(units):
     "units", [8, 16, 32, 64])
 def test_channelwise_multiplier_layer_on_dense(units):
     dense_params = dict(
+        units=units,
         use_bias=False,
         activation="relu",
-        units=units,
         kernel_regularizer="l1",
         kernel_initializer="glorot_normal")
     params = dict(
@@ -76,7 +76,8 @@ def test_channelwise_multiplier_layer_on_dense(units):
     input_layer = \
         keras.Input(
             name="input_tensor",
-            shape=(256,))
+            shape=(256,),
+            )
     x = input_layer
     x = keras.layers.Dense(**dense_params)(x)
     layer = bfcnn.ChannelwiseMultiplier(**params)

@@ -1120,7 +1120,7 @@ class ChannelwiseMultiplier(tf.keras.layers.Layer):
 
     def build(self, input_shape):
         def init_w0_fn(shape, dtype):
-            return np.zeros(shape, dtype=tf.dtypes.as_numpy_dtype(self.compute_dtype))
+            return np.zeros(shape, dtype=np.float32)
 
         self._w0 = \
             self.add_weight(
@@ -1131,7 +1131,7 @@ class ChannelwiseMultiplier(tf.keras.layers.Layer):
                 regularizer=self._regularizer)
 
         def init_w1_fn(shape, dtype):
-            return np.ones(shape, dtype=tf.dtypes.as_numpy_dtype(self.compute_dtype)) * self._multiplier
+            return np.ones(shape, dtype=np.float32) * self._multiplier
 
         self._w1 = \
             self.add_weight(
