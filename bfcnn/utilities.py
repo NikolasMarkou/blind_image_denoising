@@ -747,15 +747,16 @@ def pad_to_power_of_2(image: tf.Tensor):
         [0, 0]
     ]
     padded_image = tf.pad(image, paddings, mode='CONSTANT')
-    return padded_image, paddings
+    return padded_image, padding_height, padding_width
 
 # ---------------------------------------------------------------------
 
-def remove_padding(padded_image:tf.Tensor, paddings):
+def remove_padding(padded_image:tf.Tensor,
+                   padding_height,
+                   padding_width):
     shape = tf.shape(padded_image)
     height = shape[1]
     width = shape[2]
-    _, padding_height, padding_width, _ = paddings
     return tf.slice(
         padded_image,
         [0, 0, 0, 0],

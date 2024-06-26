@@ -53,7 +53,7 @@ class DenoiserModule(tf.Module, ABC):
         x = tf.cast(image, dtype=tf.float32)
 
         # add paddings
-        x_padded, paddings = pad_to_power_of_2(x);
+        x_padded, padding_height, padding_width = pad_to_power_of_2(x);
 
         # denoise
         x_padded = self._model_hydra(x_padded)
@@ -65,7 +65,7 @@ class DenoiserModule(tf.Module, ABC):
             pass
 
         # remove paddings
-        x = remove_padding(x_padded, paddings)
+        x = remove_padding(x_padded, padding_height, padding_width)
 
         # --- cast to uint8
         if self._cast_to_uint8:
