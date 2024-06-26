@@ -41,7 +41,7 @@ def main(args):
 
     config = CONFIGS[model]
     config_basename = os.path.basename(config).split(".")[0]
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(CUDA_DEVICE)
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
 
     """
     0 = all messages are logged (default behavior)
@@ -93,6 +93,12 @@ if __name__ == "__main__":
         default=str(CHECKPOINT_DIRECTORY),
         dest="checkpoint_directory",
         help="where to pull the checkpoint from")
+
+    parser.add_argument(
+        "--gpu",
+        default=CUDA_DEVICE,
+        dest="gpu",
+        help="select gpu device")
 
     parser.add_argument(
         "--run-name",

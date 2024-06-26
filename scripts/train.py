@@ -42,6 +42,7 @@ def main(args):
     config = CONFIGS[model]
     config_basename = os.path.basename(config).split(".")[0]
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
+
     """
     0 = all messages are logged (default behavior)
     1 = INFO messages are not printed
