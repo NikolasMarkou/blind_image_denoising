@@ -1,7 +1,7 @@
 r"""export a bfcnn model"""
 
 __author__ = "Nikolas Markou"
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 __license__ = "MIT"
 
 # ---------------------------------------------------------------------
@@ -15,15 +15,17 @@ import subprocess
 # ---------------------------------------------------------------------
 
 CUDA_DEVICE = -1
-CONFIGS_DIR = "../bfcnn/configs"
-OUTPUT_DIRECTORY = "bfcnn/pretrained/"
-CHECKPOINT_DIRECTORY = "/media/fast/training/bfcnn"
+CURRENT_DIR = pathlib.Path(__file__).parent.resolve()
+CONFIGS_DIR = CURRENT_DIR.parent.resolve() / "bfcnn" / "configs"
+sys.path.append(str(CONFIGS_DIR))
 
 CONFIGS = {
     os.path.basename(file_dir).split(".")[0]:
         os.path.join(CONFIGS_DIR, file_dir)
     for file_dir in os.listdir(CONFIGS_DIR)
 }
+CHECKPOINT_DIRECTORY = "/media/fast/training/bfcnn"
+OUTPUT_DIRECTORY = CURRENT_DIR.parent.resolve() / "bfcnn" / "pretrained"
 
 # ---------------------------------------------------------------------
 
@@ -46,13 +48,13 @@ def main(args):
             "-m", "bfcnn.export",
             "--checkpoint-directory",
             os.path.join(
-                CHECKPOINT_DIRECTORY,
+                args.checkpoint_directory,
                 config_basename),
             "--pipeline-config",
             config,
             "--output-directory",
             os.path.join(
-                OUTPUT_DIRECTORY,
+                str(args.output_directory),
                 config_basename),
             "--to-tflite",
             "--test-model"
@@ -68,8 +70,23 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model",
         default="",
+        type=str,
         dest="model",
         help="model to train, options: {0}".format(list(CONFIGS.keys())))
+
+    parser.add_argument(
+        "--checkpoint-directory",
+        type=str,
+        default=str(CHECKPOINT_DIRECTORY),
+        dest="checkpoint_directory",
+        help="where to pull the checkpoint from")
+
+    parser.add_argument(
+        "--output-directory",
+        type=str,
+        default=str(OUTPUT_DIRECTORY),
+        dest="output_directory",
+        help="where to save the exported model")
 
     # parse the arguments and pass them to main
     args = parser.parse_args()
