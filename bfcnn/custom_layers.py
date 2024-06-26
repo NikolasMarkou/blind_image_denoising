@@ -122,7 +122,7 @@ class RandomOnOff(tf.keras.layers.Layer):
                 rate=self._rate,
                 noise_shape=new_shape))
 
-    def call(self, inputs, training):
+    def call(self, inputs, training=None):
         return self._dropout(inputs, training=training)
 
 
@@ -157,7 +157,7 @@ class GaussianFilter(tf.keras.layers.Layer):
         self._kernel = \
             tf.constant(self._kernel, dtype=self.compute_dtype)
 
-    def call(self, inputs, training):
+    def call(self, inputs, training=False):
         return \
             tf.nn.depthwise_conv2d(
                 input=inputs,
