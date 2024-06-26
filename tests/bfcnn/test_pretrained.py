@@ -27,6 +27,7 @@ from bfcnn.constants import *
 def test_pretrained_models(noise_std, model_name):
     model_structure = bfcnn.models[model_name]
     module_denoiser = model_structure[DENOISER_STR]()
+
     for img_path in KITTI_IMAGES:
         # load image
         img_original = \

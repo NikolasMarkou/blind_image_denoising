@@ -68,21 +68,10 @@ DENOISER_STR = "denoiser"
 DENOISER_SIGMA_STR = "denoiser_sigma"
 DENOISER_ENTROPY_STR = "denoiser_entropy"
 
-SUPERRES_STR = "superres"
-SUPERRES_SIGMA_STR = "superres_sigma"
-SUPERRES_ENTROPY_STR = "superres_entropy"
-
-SUBSAMPLE_STR = "subsample"
-SUBSAMPLE_SIGMA_STR = "subsample_sigma"
-SUBSAMPLE_ENTROPY_STR = "subsample_entropy"
-
 # ---------------------------------------------------------------------
 
 MODEL_LOSS_FN_STR = "model"
 DENOISER_LOSS_FN_STR = "denoiser"
-SUPERRES_LOSS_FN_STR = "superres"
-SUBSAMPLE_LOSS_FN_STR = "subsample"
-DENOISER_UQ_LOSS_FN_STR = "denoiser_uq"
 
 # ---------------------------------------------------------------------
 # plotting constants

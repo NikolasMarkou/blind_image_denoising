@@ -59,6 +59,7 @@ def upsample(
     elif upsample_type in ["upsample_nearest_conv2d"]:
         params["kernel_size"] = (3, 3)
         params["strides"] = (1, 1)
+        params["padding"] = "same"
         # lower level, upscale
         x = \
             tf.keras.layers.UpSampling2D(

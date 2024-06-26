@@ -663,6 +663,7 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
         # ---
         self.conv_x = (
             tf.keras.layers.Conv2D(
+                padding="same",
                 filters=self.attention_channels,
                 kernel_size=(1, 1),
                 activation="linear",
@@ -678,6 +679,7 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
         # ---
         self.conv_y = (
             tf.keras.layers.Conv2D(
+                padding="same",
                 filters=self.attention_channels,
                 kernel_size=(1, 1),
                 activation="linear",
@@ -693,6 +695,7 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
         # ---
         self.conv_o = (
             tf.keras.layers.Conv2D(
+                padding="same",
                 filters=output_channels,
                 kernel_size=(1, 1),
                 activation="linear",
