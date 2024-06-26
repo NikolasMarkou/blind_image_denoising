@@ -245,11 +245,11 @@ def train_loop(
                 normalize_values=False,
             )
 
-        @tf.function(reduce_retracing=True, jit_compile=True)
+        @tf.function(reduce_retracing=True, jit_compile=False)
         def train_step(n: List[tf.Tensor]) -> List[tf.Tensor]:
             return ckpt.model(n, training=True)
 
-        @tf.function(reduce_retracing=True, jit_compile=True)
+        @tf.function(reduce_retracing=True, jit_compile=False)
         def test_step(n: List[tf.Tensor]) -> tf.Tensor:
             return ckpt.model(n, training=False)[denoiser_index[0]]
 
