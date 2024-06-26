@@ -15,7 +15,9 @@ from .constants import *
 from .model import model_builder
 from .custom_logger import logger
 from .file_operations import load_image
-from .optimizer import optimizer_builder
+from .optimizer import (
+    optimizer_builder,
+    deep_supervision_schedule_builder)
 from .loss import loss_function_builder
 from .utilities import \
     load_config, \
@@ -95,22 +97,7 @@ def train_loop(
 
     # --- get the train configuration
     train_config = config["train"]
-    # controls how different outputs of the model get discounted in the loss
-    # 1.0 all equal
-    # discount lower depth losses as epochs carry forward
-    # assuming output_discount_factor = 0.25
-    # for percentage_done in [0.0, 0.25, 0.5, 0.75, 1.0]:
-    #     x = [0.25 ** (float(i) * percentage_done) for i in range(5)]
-    #     print(x)
-    # [1.0, 1.0, 1.0, 1.0, 1.0]
-    # [1.0, 0.707, 0.5, 0.353, 0.25]
-    # [1.0, 0.5, 0.25, 0.125, 0.0625]
-    # [1.0, 0.353, 0.125, 0.0441, 0.015625]
-    # [1.0, 0.25, 0.0625, 0.015625, 0.00390625]
-    output_discount_factor = train_config.get("output_discount_factor", 1.0)
-    if output_discount_factor > 1.0 or output_discount_factor < 0.0:
-        raise ValueError(f"output_discount_factor [{output_discount_factor}] "
-                         f"must be between 0.0 and 1.0")
+
     #
     epochs = train_config["epochs"]
     gpu_batches_per_step = int(train_config.get("gpu_batches_per_step", 1))
@@ -338,6 +325,12 @@ def train_loop(
             tf.constant(tf.zeros_like(v))
             for v in trainable_variables
         ]
+        deep_supervision_schedule = \
+            deep_supervision_schedule_builder(
+                config=train_config.get("deep_supervision", {
+                    TYPE_STR: "constant_low_to_high"
+                }),
+                no_outputs=len(ckpt.model.outputs))
 
         while not finished_training and \
                 (total_epochs == -1 or ckpt.epoch < total_epochs):
@@ -356,11 +349,8 @@ def train_loop(
                 percentage_done = 0.0
 
             logger.info("percentage done [{:.2f}]".format(float(percentage_done)))
-            depth_weight = np.array([
-                np.exp(-(float(idx) * 2.0 + 1))
-                for idx in range(len(denoiser_index))
-            ]).astype(dtype=np.float32)
-            depth_weight = tf.constant(tf.nn.softmax(depth_weight), dtype=tf.float32)
+            depth_weight = \
+                deep_supervision_schedule(percentage_done=percentage_done)
             depth_weight_str = [
                 "{0:.2f}".format(d)
                 for d in depth_weight
