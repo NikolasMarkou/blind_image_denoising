@@ -58,6 +58,7 @@
                 "type": "cosine_decay_restarts",
                 "config": {
                     "t_mul": 1.1,
+                    "epsilon": 0.00001,
                     "decay_rate": 0.9,
                     "decay_steps": 40000,
                     "learning_rate": 0.001

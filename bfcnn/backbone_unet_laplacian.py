@@ -36,6 +36,7 @@ def builder(
         input_dims,
         depth: int = 5,
         width: int = 1,
+        gaussian_kernel_size: int = 3,
         encoder_kernel_size: int = 5,
         decoder_kernel_size: int = 3,
         filters: int = 32,
@@ -74,6 +75,7 @@ def builder(
     :param input_dims: Models input dimensions
     :param depth: number of levels to go down
     :param width: number of horizontals nodes, if -1 it gets set to depth
+    :param gaussian_kernel_size: laplacian gaussian kernel size
     :param encoder_kernel_size: kernel size of encoder convolutional layer
     :param decoder_kernel_size: kernel size of decoder convolutional layer
     :param filters_level_multiplier: every down level increase the number of filters by a factor of
@@ -325,7 +327,7 @@ def builder(
             if use_laplacian:
                 x_tmp_smooth = \
                     GaussianFilter(
-                        kernel_size=(3, 3),
+                        kernel_size=(gaussian_kernel_size, gaussian_kernel_size),
                         strides=(1, 1))(x)
                 nodes_output[node_level] = \
                     tf.keras.layers.Subtract()([x, x_tmp_smooth])
