@@ -332,10 +332,10 @@ def train_loop(
         trainable_variables = ckpt.model.trainable_variables
         counter = tf.Variable(0, dtype=tf.uint32, trainable=False)
         gradients_accumulation = [
-            tf.zeros_like(v)
+            tf.Variable(tf.zeros_like(v))
             for v in trainable_variables
         ]
-        gradients_constant = tf.constant(1.0 / float(gpu_batches_per_step))
+        gradients_constant = tf.constant(1.0 / float(gpu_batches_per_step), dtype=tf.float32)
 
         deep_supervision_schedule = \
             deep_supervision_schedule_builder(
