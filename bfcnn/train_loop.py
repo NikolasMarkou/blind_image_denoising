@@ -395,6 +395,9 @@ def train_loop(
                     for i in range(len(gradients)):
                         gradients[i] *= 0.0
 
+                if counter % 2 == 0:
+                    noisy_image_batch = test_step(noisy_image_batch)
+
                 total_loss, model_loss, all_denoiser_loss, predictions, grads = \
                     train_step_single_gpu(
                         p_input_image_batch=input_image_batch,
@@ -411,6 +414,7 @@ def train_loop(
                     # sanitize and average gradients
                     for i in range(len(gradients)):
                         gradients[i] /= float(gpu_batches_per_step)
+
                     # !!! IMPORTANT !!!!
                     # apply gradient to change weights
                     # this is a hack to stop retracing the update function
