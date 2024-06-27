@@ -331,10 +331,6 @@ def train_loop(
         finished_training = False
         trainable_variables = ckpt.model.trainable_variables
         counter = tf.Variable(0, dtype=tf.uint32, trainable=False)
-        gradients = [
-            tf.constant(tf.zeros_like(v))
-            for v in trainable_variables
-        ]
         gradients_accumulation = [
             tf.zeros_like(v)
             for v in trainable_variables
