@@ -396,7 +396,7 @@ def train_loop(
                     # zero out gradients
                     for v in gradients_accumulation:
                         v_tmp = v * 0.0
-                        gradients_accumulation[i].assign(v_tmp)
+                        v.assign(v_tmp)
 
                 if (ckpt.step > 1000) and (counter % gpu_batches_per_step == 1):
                     noisy_image_batch = test_step(noisy_image_batch)
@@ -418,7 +418,7 @@ def train_loop(
                     # sanitize and average gradients
                     for v in gradients_accumulation:
                         v_tmp = v * gradients_constant
-                        gradients_accumulation[i].assign(v_tmp)
+                        v.assign(v_tmp)
 
                     # !!! IMPORTANT !!!!
                     # apply gradient to change weights
