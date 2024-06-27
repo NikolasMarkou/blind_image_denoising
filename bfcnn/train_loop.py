@@ -335,6 +335,12 @@ def train_loop(
             tf.constant(tf.zeros_like(v))
             for v in trainable_variables
         ]
+        gradients_accumulation = [
+            tf.zeros_like(v)
+            for v in trainable_variables
+        ]
+        gradients_constant = tf.constant(1.0 / float(gpu_batches_per_step))
+
         deep_supervision_schedule = \
             deep_supervision_schedule_builder(
                 config=train_config.get("deep_supervision", {
@@ -392,10 +398,11 @@ def train_loop(
                 if counter == 0:
                     start_time_forward_backward = time.time()
                     # zero out gradients
-                    for i in range(len(gradients)):
-                        gradients[i] *= 0.0
+                    for v in gradients_accumulation:
+                        v_tmp = v * 0.0
+                        gradients_accumulation[i].assign(v_tmp)
 
-                if counter % 2 == 0:
+                if (ckpt.step > 1000) and (counter % gpu_batches_per_step == 1):
                     noisy_image_batch = test_step(noisy_image_batch)
 
                 total_loss, model_loss, all_denoiser_loss, predictions, grads = \
@@ -407,13 +414,15 @@ def train_loop(
                         p_trainable_variables=trainable_variables)
 
                 for i, grad in enumerate(grads):
-                    gradients[i] += grad
+                    gradients_accumulation[i].assign_add(grad)
+
 
                 if counter >= gpu_batches_per_step:
                     counter.assign(value=0)
                     # sanitize and average gradients
-                    for i in range(len(gradients)):
-                        gradients[i] /= float(gpu_batches_per_step)
+                    for v in gradients_accumulation:
+                        v_tmp = v * gradients_constant
+                        gradients_accumulation[i].assign(v_tmp)
 
                     # !!! IMPORTANT !!!!
                     # apply gradient to change weights
@@ -421,7 +430,7 @@ def train_loop(
                     # https://stackoverflow.com/questions/77028664/tf-keras-optimizers-adam-apply-gradients-triggers-tf-function-retracing
                     apply_grads(
                         internal_optimizer=optimizer,
-                        internal_gradients=gradients,
+                        internal_gradients=gradients_accumulation,
                         internal_trainable_variables=trainable_variables)
                 else:
                     counter.assign_add(delta=1)
@@ -523,7 +532,7 @@ def train_loop(
                     # --- add gradient activity
                     gradient_activity = \
                         visualize_gradient_boxplot(
-                            gradients=gradients,
+                            gradients=gradients_accumulation,
                             trainable_variables=trainable_variables) / 255
                     tf.summary.image(name="weights/gradients",
                                      data=gradient_activity,
