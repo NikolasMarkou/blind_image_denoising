@@ -76,17 +76,32 @@ def upsample(
         params["kernel_size"] = (1, 1)
         params["strides"] = (1, 1)
         params["padding"] = "same"
-        # lower level, upscale
-        x = \
-            tf.keras.layers.UpSampling2D(
-                size=(2, 2),
-                interpolation="bilinear")(x)
-        x = conv2d_wrapper(
-            input_layer=x,
-            bn_params=bn_params,
-            ln_params=ln_params,
-            conv_params=params,
-            conv_type=ConvType.CONV2D)
+
+        if params.get("activation", "linear") == "linear":
+            x = conv2d_wrapper(
+                input_layer=x,
+                bn_params=bn_params,
+                ln_params=ln_params,
+                conv_params=params,
+                conv_type=ConvType.CONV2D)
+            # lower level, upscale
+            x = \
+                tf.keras.layers.UpSampling2D(
+                    size=(2, 2),
+                    interpolation="bilinear")(x)
+        else:
+            # lower level, upscale
+            x = \
+                tf.keras.layers.UpSampling2D(
+                    size=(2, 2),
+                    interpolation="bilinear")(x)
+            x = conv2d_wrapper(
+                input_layer=x,
+                bn_params=bn_params,
+                ln_params=ln_params,
+                conv_params=params,
+                conv_type=ConvType.CONV2D)
+
     elif upsample_type in ["nn", "nearest"]:
         # upsampling performed by nearest neighbor interpolation
         x = \

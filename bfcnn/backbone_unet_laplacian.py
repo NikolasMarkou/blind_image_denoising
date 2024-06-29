@@ -277,13 +277,13 @@ def builder(
         params["filters"] = max(filters, 96)
         params["kernel_size"] = (encoder_kernel_size, encoder_kernel_size)
         params["strides"] = (1, 1)
-        params["activation"] = activation
+        params["activation"] = "linear"
 
         x = \
             conv2d_wrapper(
                 input_layer=x,
-                ln_params=ln_params,
-                bn_params=bn_params,
+                ln_params=None,
+                bn_params=None,
                 conv_params=params)
 
         # second plain conv
@@ -291,7 +291,7 @@ def builder(
         params["filters"] = filters
         params["kernel_size"] = (1, 1)
         params["strides"] = (1, 1)
-        params["activation"] = "linear"
+        params["activation"] = activation
 
         x = \
             conv2d_wrapper(
