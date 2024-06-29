@@ -498,7 +498,7 @@ def train_loop(
 
                     # --- evaluation
                     for i in range(5):
-                        std_noise = float(i) * 10.0
+                        std_noise = float(i) * 20.0
                         evaluation_batch_noise =\
                             evaluation_batch + \
                             tf.random.normal(shape=tf.shape(evaluation_batch),

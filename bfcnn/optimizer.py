@@ -126,12 +126,12 @@ def schedule_builder(
     elif schedule_type == "cosine_decay":
         decay_steps = params["decay_steps"]
         learning_rate = params["learning_rate"]
+        alpha = params.get("alpha", 0.0001)
         schedule = \
             tf.keras.optimizers.schedules.CosineDecay(
                 initial_learning_rate=learning_rate,
                 decay_steps=decay_steps,
-                alpha=0.001,
-                name=None)
+                alpha=alpha)
     else:
         raise ValueError(f"don't know how to handle "
                          f"learning_rate schedule_type [{schedule_type}]")

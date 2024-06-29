@@ -55,6 +55,7 @@ def builder(
         use_mix_project: bool = True,
         use_self_attention: bool = False,
         use_attention_gates: bool = False,
+        use_complex_base: bool = False,
         use_value_compressor: bool = False,
         use_global_pool_information: bool = False,
         use_soft_orthogonal_regularization: bool = False,
@@ -67,7 +68,6 @@ def builder(
         convolutional_self_attention_dropout_rate: float = 0.0,
         multiple_scale_outputs: bool = True,
         use_output_normalization: bool = False,
-
         output_layer_name: str = "intermediate_output",
         name="unet_laplacian",
         **kwargs) -> tf.keras.Model:
@@ -92,6 +92,7 @@ def builder(
     :param use_soft_gamma: if True (False by default) use soft gamma learning in convnext
     :param use_bias: use bias (bias free means this should be off)
     :param use_attention_gates: if True add attention gates between depths
+    :param use_complex_base: if True add two convolutions at the base
     :param use_mix_project: if True mix different depths with a 1x1 projection (SKOOTS: Skeleton oriented object segmentation for mitochondria)
     :param use_self_attention: if True add a convolutional self-attention element at the bottom layer
     :param use_concat: if True concatenate otherwise add skip layers (True by default)
@@ -270,18 +271,48 @@ def builder(
             shape=input_dims)
     x = input_layer
 
-    # first plain conv
-    params = copy.deepcopy(base_conv_params)
-    params["filters"] = filters
-    params["kernel_size"] = (5, 5)
-    params["strides"] = (1, 1)
+    if use_complex_base:
+        # first plain conv
+        params = copy.deepcopy(base_conv_params)
+        params["filters"] = max(filters, 96)
+        params["kernel_size"] = (encoder_kernel_size, encoder_kernel_size)
+        params["strides"] = (1, 1)
+        params["activation"] = activation
 
-    x = \
-        conv2d_wrapper(
-            input_layer=x,
-            ln_params=None,
-            bn_params=None,
-            conv_params=params)
+        x = \
+            conv2d_wrapper(
+                input_layer=x,
+                ln_params=ln_params,
+                bn_params=bn_params,
+                conv_params=params)
+
+        # second plain conv
+        params = copy.deepcopy(base_conv_params)
+        params["filters"] = filters
+        params["kernel_size"] = (1, 1)
+        params["strides"] = (1, 1)
+        params["activation"] = "linear"
+
+        x = \
+            conv2d_wrapper(
+                input_layer=x,
+                ln_params=None,
+                bn_params=None,
+                conv_params=params)
+    else:
+        # first plain conv
+        params = copy.deepcopy(base_conv_params)
+        params["filters"] = filters
+        params["kernel_size"] = (encoder_kernel_size, encoder_kernel_size)
+        params["strides"] = (1, 1)
+        params["activation"] = activation
+
+        x = \
+            conv2d_wrapper(
+                input_layer=x,
+                ln_params=ln_params,
+                bn_params=bn_params,
+                conv_params=params)
 
     # --- build backbone
     for d in range(depth):
