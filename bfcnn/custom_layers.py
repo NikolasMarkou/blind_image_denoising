@@ -1303,14 +1303,6 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
             kernel_regularizer=tf.keras.regularizers.L2(l2=1e-4),
             kernel_initializer="glorot_normal"
         )
-        if self.use_soft_orthogonal_regularization:
-            output_params["kernel_regularizer"] = \
-                SoftOrthogonalConstraintRegularizer(
-                    lambda_coefficient=0.01, l1_coefficient=1e-4, l2_coefficient=0.0)
-        if self.use_soft_orthonormal_regularization:
-            output_params["kernel_regularizer"] = \
-                SoftOrthonormalConstraintRegularizer(
-                    lambda_coefficient=0.01, l1_coefficient=1e-4, l2_coefficient=0.0)
 
         if self.use_gated_mlp:
             self.output_fn = (
