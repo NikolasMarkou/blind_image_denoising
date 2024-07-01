@@ -795,6 +795,7 @@ class GlobalLearnableMultiplier(tf.keras.layers.Layer):
         """
         self.w_multiplier = self.add_weight(
             shape=[1],
+            name='w_multiplier',
             initializer=self.initializer,
             regularizer=self.regularizer,
             trainable=True,
