@@ -775,7 +775,7 @@ class GlobalLearnableMultiplier(tf.keras.layers.Layer):
 
     def __init__(self,
                  initializer=tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.1, seed=0),
-                 regularizer=tf.keras.regularizers.l1(1e-4),
+                 regularizer=tf.keras.regularizers.l1(1e-6),
                  **kwargs):
         super().__init__(**kwargs)
         self.w_multiplier = None
@@ -790,8 +790,7 @@ class GlobalLearnableMultiplier(tf.keras.layers.Layer):
             input_shape (tuple): Shape of the input tensor.
 
         This method creates a weight variable with the same number of dimensions as the input
-        tensor but with each dimension set to 1, except the last dimension which matches the
-        last dimension of the input tensor. The weight is initialized and regularized as specified
+        tensor but with each dimension set to 1. The weight is initialized and regularized as specified
         in the constructor.
         """
         new_shape = [1, ] * len(input_shape)
@@ -835,7 +834,6 @@ class ConvNextBlock(tf.keras.layers.Layer):
                  dropout_2d_params: Dict = None,
                  drop_path_rate: float = 0.0,
                  use_gamma: bool = True,
-                 use_soft_gamma: bool = False,
                  use_soft_orthogonal_regularization: bool = False,
                  use_soft_orthonormal_regularization: bool = False,
                  **kwargs):
@@ -845,8 +843,6 @@ class ConvNextBlock(tf.keras.layers.Layer):
         """
 
         super().__init__(**kwargs)
-        if use_gamma and use_soft_gamma:
-            raise ValueError("use_gamma and use_soft_gamma should not be both activated")
 
         # conv params
         self.conv_params_1 = conv_params_1
@@ -906,7 +902,6 @@ class ConvNextBlock(tf.keras.layers.Layer):
         self.use_gamma = use_gamma
 
         self.soft_gamma = None
-        self.use_soft_gamma = use_soft_gamma
 
         # regularizer
         self.use_soft_orthogonal_regularization = use_soft_orthogonal_regularization
@@ -954,26 +949,11 @@ class ConvNextBlock(tf.keras.layers.Layer):
         # conv 3
         params = copy.deepcopy(self.conv_params_3)
         params["activation"] = "linear"
-        if params.get("kernel_initializer", "glorot_normal") in ["trunc_normal", "truncated_normal"]:
-            # https://github.com/facebookresearch/ConvNeXt/blob/048efcea897d999aed302f2639b6270aedf8d4c8/models/convnext.py#L105
-            params["kernel_initializer"] = (
-                tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.02))
-        if self.use_soft_orthogonal_regularization:
-            params["kernel_regularizer"] = \
-                SoftOrthogonalConstraintRegularizer(
-                    lambda_coefficient=0.01, l1_coefficient=0.0, l2_coefficient=1e-4)
-        if self.use_soft_orthonormal_regularization:
-            params["kernel_regularizer"] = \
-                SoftOrthonormalConstraintRegularizer(
-                    lambda_coefficient=0.01, l1_coefficient=0.0, l2_coefficient=1e-4)
         self.conv_3 = tf.keras.layers.Conv2D(**params)
 
         # gamma
         if self.use_gamma:
-            self.gamma = ChannelLearnableMultiplier()
-
-        if self.use_soft_gamma:
-            self.soft_gamma = SmoothChannelLearnableMultiplier()
+            self.gamma = GlobalLearnableMultiplier()
 
     def call(self, inputs, training=None):
         x = inputs
@@ -1007,8 +987,6 @@ class ConvNextBlock(tf.keras.layers.Layer):
         # --- gamma
         if self.use_gamma:
             x = self.gamma(x)
-        if self.use_soft_gamma:
-            x = self.soft_gamma(x)
 
         # --- stochastic depth
         if self.use_stochastic_depth:
@@ -1325,7 +1303,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
 
         # gamma
         if self.use_gamma:
-            self.gamma = ChannelLearnableMultiplier()
+            self.gamma = GlobalLearnableMultiplier()
 
     def call(self, inputs, training=None):
         x = inputs

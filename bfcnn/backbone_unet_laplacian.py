@@ -343,7 +343,6 @@ def builder(
                         bn_params=bn_params,
                         dropout_params=dropout_params,
                         use_gamma=use_gamma,
-                        use_soft_gamma=use_soft_gamma,
                         dropout_2d_params=dropout_2d_params,
                         use_soft_orthogonal_regularization=use_soft_orthogonal_regularization,
                         use_soft_orthonormal_regularization=use_soft_orthonormal_regularization)(x)
@@ -537,7 +536,6 @@ def builder(
                     ln_params=ln_params,
                     bn_params=bn_params,
                     use_gamma=use_gamma,
-                    use_soft_gamma=use_soft_gamma,
                     dropout_params=dropout_params,
                     dropout_2d_params=dropout_2d_params,
                     use_soft_orthogonal_regularization=use_soft_orthogonal_regularization,
