@@ -776,7 +776,7 @@ class GlobalLearnableMultiplier(tf.keras.layers.Layer):
     """
 
     def __init__(self,
-                 initializer=tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.1, seed=0),
+                 initializer=tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.01),
                  regularizer=tf.keras.regularizers.l1(1e-6),
                  **kwargs):
         super().__init__(**kwargs)
