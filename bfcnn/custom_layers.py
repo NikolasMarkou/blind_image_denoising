@@ -793,7 +793,7 @@ class GlobalLearnableMultiplier(tf.keras.layers.Layer):
         tensor but with each dimension set to 1. The weight is initialized and regularized as specified
         in the constructor.
         """
-        new_shape = [1, ] * len(input_shape)
+        new_shape = [1]
         self.w_multiplier = self.add_weight(
             shape=new_shape,
             initializer=self.initializer,
@@ -817,7 +817,9 @@ class GlobalLearnableMultiplier(tf.keras.layers.Layer):
         to ensure non-negative values. The resulting multiplier is element-wise multiplied with the
         input tensor.
         """
-        return tf.keras.activations.relu(1.0 + self.w_multiplier) * inputs
+        return tf.multiply(
+            tf.nn.relu(1.0 + self.w_multiplier),
+            inputs)
 
 
 # ---------------------------------------------------------------------
