@@ -700,10 +700,10 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
                 kernel_size=(1, 1),
                 activation="linear",
                 use_bias=self.use_bias,
-                kernel_regularizer=copy.deepcopy(kernel_regularizer),
-                kernel_initializer=kernel_initializer))
+                kernel_regularizer="l2",
+                kernel_initializer="glorot_normal"))
         # ---
-        self.scale_o = ChannelLearnableMultiplier()
+        self.scale_o = GlobalLearnableMultiplier()
 
     def call(self, inputs, training=None):
         """
@@ -719,25 +719,27 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
         encoder_feature, upsample_signal = \
             inputs
 
-        # --- upsample signal
-        x = self.conv_x(upsample_signal, training=training)
-        if self.use_bn:
-            x = self.bn_x(x, training=training)
-        if self.use_ln:
-            x = self.ln_x(x, training=training)
-
         # --- encoder signal
-        y = self.conv_y(encoder_feature, training=training)
+        y = encoder_feature
         if self.use_bn:
             y = self.bn_y(y, training=training)
         if self.use_ln:
             y = self.ln_y(y, training=training)
+        y = self.conv_y(y, training=training)
 
-        # --- replaced relu with gelu so we have some gradient flow
-        o = tf.nn.gelu(x + y)
+        # --- upsample signal
+        x = upsample_signal
+        if self.use_bn:
+            x = self.bn_x(x, training=training)
+        if self.use_ln:
+            x = self.ln_x(x, training=training)
+        x = self.conv_x(x, training=training)
+
+        # --- replaced relu with leaky_relu, so we have some gradient flow
+        o = tf.nn.leaky_relu(x + y, alpha=0.1)
         o = self.conv_o(o, training=training)
         o = self.scale_o(o, training=training)
-        o = tf.nn.sigmoid(5.0 * o)
+        o = tf.nn.sigmoid(4.0 * o)
 
         return \
             tf.math.multiply(
