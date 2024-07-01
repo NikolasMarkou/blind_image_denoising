@@ -820,7 +820,7 @@ class GlobalLearnableMultiplier(tf.keras.layers.Layer):
         input tensor.
         """
         return tf.multiply(
-            tf.nn.relu(1.0 + self.w_multiplier),
+            tf.nn.tanh(tf.nn.relu(1.0 + self.w_multiplier)),
             inputs)
 
     def compute_output_shape(self, input_shape):
