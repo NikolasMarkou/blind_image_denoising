@@ -1236,7 +1236,6 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
                  output_activation: str = "linear",
                  use_soft_orthonormal_regularization: bool = False,
                  use_soft_orthogonal_regularization: bool = False,
-                 use_gated_mlp: bool = False,
                  dropout: float = 0.0,
                  **kwargs):
         super().__init__(**kwargs)
@@ -1244,11 +1243,9 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
             raise ValueError("attention_channels should be > 0")
         self.attention_channels = attention_channels
         self.use_bias = use_bias
-        self.use_gated_mlp = use_gated_mlp
         self.output_activation = output_activation
         self.attention_activation = attention_activation
         self.dropout = dropout
-
         self.query_conv = None
         self.key_conv = None
         self.value_conv = None
@@ -1304,41 +1301,23 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         self.query_conv = tf.keras.layers.Conv2D(**copy.deepcopy(params))
         self.value_conv = tf.keras.layers.Conv2D(**copy.deepcopy(params))
 
-        if self.use_gated_mlp:
-            self.output_fn = (
-                GatedMLP(filters=input_shape[-1],
-                         use_bias=self.use_bias,
-                         activation="relu",
-                         attention_activation=self.attention_activation,
-                         output_activation=self.output_activation,
-                         use_soft_orthonormal_regularization=self.use_soft_orthonormal_regularization,
-                         use_orthogonal_regularization=self.use_orthogonal_regularization)
-            )
-        else:
-            # output convolution
-            params = dict(
-                filters=input_shape[-1],
-                kernel_size=(1, 1),
-                strides=(1, 1),
-                padding="same",
-                use_bias=self.use_bias,
-                activation=self.output_activation,
-                kernel_regularizer=tf.keras.regularizers.L2(l2=1e-4),
-                kernel_initializer="glorot_normal"
-            )
-            if self.use_soft_orthogonal_regularization:
-                params["kernel_regularizer"] = \
-                    SoftOrthogonalConstraintRegularizer(
-                        lambda_coefficient=DEFAULT_SOFTORTHOGONAL_LAMBDA,
-                        l1_coefficient=DEFAULT_SOFTORTHOGONAL_L1,
-                        l2_coefficient=DEFAULT_SOFTORTHOGONAL_L2)
-            if self.use_soft_orthonormal_regularization:
-                params["kernel_regularizer"] = \
-                    SoftOrthonormalConstraintRegularizer(
-                        lambda_coefficient=DEFAULT_SOFTORTHONORMAL_LAMBDA,
-                        l1_coefficient=DEFAULT_SOFTORTHONORMAL_L1,
-                        l2_coefficient=DEFAULT_SOFTORTHONORMAL_L2)
-            self.output_fn = tf.keras.layers.Conv2D(**params)
+        # output convolution
+        params = copy.deepcopy(qkv_conv_params)
+        params["filters"] = input_shape[-1]
+        params["activation"] = self.output_activation
+        if self.use_soft_orthogonal_regularization:
+            params["kernel_regularizer"] = \
+                SoftOrthogonalConstraintRegularizer(
+                    lambda_coefficient=DEFAULT_SOFTORTHOGONAL_LAMBDA,
+                    l1_coefficient=DEFAULT_SOFTORTHOGONAL_L1,
+                    l2_coefficient=DEFAULT_SOFTORTHOGONAL_L2)
+        if self.use_soft_orthonormal_regularization:
+            params["kernel_regularizer"] = \
+                SoftOrthonormalConstraintRegularizer(
+                    lambda_coefficient=DEFAULT_SOFTORTHONORMAL_LAMBDA,
+                    l1_coefficient=DEFAULT_SOFTORTHONORMAL_L1,
+                    l2_coefficient=DEFAULT_SOFTORTHONORMAL_L2)
+        self.output_fn = tf.keras.layers.Conv2D(**copy.deepcopy(params))
 
         # attention
         self.attention = (
@@ -1365,14 +1344,14 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         v_x = self.value_conv(x, training=training)
 
         # --- compute attention
-        attention = self.attention([q_x, k_x, v_x], training=training)
+        x = self.attention([q_x, k_x, v_x], training=training)
 
-        # compute output conv
-        x = self.output_fn(attention, training=training)
-        # if self.use_bn:
-        #     x = self.bn_1(x)
-        # if self.use_ln:
-        #     x = self.ln_1(x)
+        # --- compute output conv
+        if self.use_bn:
+            x = self.bn_1(x)
+        if self.use_ln:
+            x = self.ln_1(x)
+        x = self.output_fn(x, training=training)
 
         # --- gamma
         if self.use_gamma:
