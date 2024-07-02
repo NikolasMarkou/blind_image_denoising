@@ -22,7 +22,7 @@
             "use_output_normalization": true,
             "encoder_kernel_size": 5,
             "decoder_kernel_size": 1,
-            "multiple_scale_outputs": false,
+            "multiple_scale_outputs": true,
             "activation": "leaky_relu_01",
             "use_soft_orthonormal_regularization": true,
             "kernel_initializer": "glorot_normal",
