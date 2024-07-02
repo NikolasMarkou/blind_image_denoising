@@ -275,7 +275,7 @@ def train_loop(
                 p_predictions = train_step(n=[p_noisy_image_batch])
 
                 # get denoise loss for each depth,
-                if len(denoiser_index) == 0:
+                if len(denoiser_index) == 1:
                     p_loss = denoiser_loss_fn_list[0](
                         gt_batch=p_input_image_batch,
                         predicted_batch=p_predictions)
