@@ -227,6 +227,11 @@ class SoftOrthogonalConstraintRegularizer(tf.keras.regularizers.Regularizer):
         self._l1_coefficient = l1_coefficient
         self._l2_coefficient = l2_coefficient
         self._call_fn = None
+        self._use_lambda = self._lambda_coefficient > 0.0
+        self._use_l1 = self._l1_coefficient > 0.0
+        self._l1 = tf.keras.regularizers.L1(l1=self._l1_coefficient)
+        self._use_l2 = self._l2_coefficient > 0.0
+        self._l2 = tf.keras.regularizers.L1(l2=self._l2_coefficient)
 
     def generic_fn(self, x):
         # --- compute (Wt * W)
@@ -240,7 +245,7 @@ class SoftOrthogonalConstraintRegularizer(tf.keras.regularizers.Regularizer):
         result = tf.constant(0.0, dtype=tf.float32)
 
         # --- frobenius norm
-        if self._lambda_coefficient > 0.0:
+        if self._use_lambda:
             result += \
                 self._lambda_coefficient * \
                 tf.square(
@@ -250,16 +255,12 @@ class SoftOrthogonalConstraintRegularizer(tf.keras.regularizers.Regularizer):
                             keepdims=False))
 
         # --- l1 on Wt_W
-        if self._l1_coefficient > 0.0:
-            result += \
-                self._l1_coefficient * \
-                tf.reduce_sum(tf.abs(wt_w_masked), axis=None, keepdims=False)
+        if self._use_l1:
+            result += self._l1(wt_w_masked)
 
         # --- l2 on Wt_W
-        if self._l2_coefficient > 0.0:
-            result += \
-                self._l2_coefficient * \
-                tf.reduce_sum(tf.pow(wt_w_masked, 2.0), axis=None, keepdims=False)
+        if self._use_l2:
+            result += self._l2(wt_w_masked)
 
         return result
 
@@ -293,8 +294,14 @@ class SoftOrthonormalConstraintRegularizer(tf.keras.regularizers.Regularizer):
         self._lambda_coefficient = lambda_coefficient
         self._l1_coefficient = l1_coefficient
         self._l2_coefficient = l2_coefficient
+        self._call_fn = None
+        self._use_lambda = self._lambda_coefficient > 0.0
+        self._use_l1 = self._l1_coefficient > 0.0
+        self._l1 = tf.keras.regularizers.L1(l1=self._l1_coefficient)
+        self._use_l2 = self._l2_coefficient > 0.0
+        self._l2 = tf.keras.regularizers.L1(l2=self._l2_coefficient)
 
-    def __call__(self, x):
+    def generic_fn(self, x):
         # --- compute (Wt * W)
         wt_w = wt_x_w(x)
         w_shape = tf.shape(wt_w)
@@ -304,7 +311,7 @@ class SoftOrthonormalConstraintRegularizer(tf.keras.regularizers.Regularizer):
         result = tf.constant(0.0, dtype=tf.float32)
 
         # --- frobenius norm
-        if self._lambda_coefficient > 0.0:
+        if self._use_lambda:
             result += \
                 self._lambda_coefficient * \
                 tf.square(
@@ -314,34 +321,20 @@ class SoftOrthonormalConstraintRegularizer(tf.keras.regularizers.Regularizer):
                             keepdims=False))
 
         # --- l1 on Wt_W
-        if self._l1_coefficient > 0.0:
-            result += \
-                self._l1_coefficient * \
-                tf.reduce_sum(tf.abs(wt_w), axis=None, keepdims=False)
+        if self._use_l1:
+            result += self._l1(wt_w)
 
         # --- l2 on Wt_W
-        if self._l2_coefficient > 0.0:
-            result += \
-                self._l2_coefficient * \
-                tf.reduce_sum(tf.pow(wt_w, 2.0), axis=None, keepdims=False)
+        if self._use_l2:
+            result += self._l2(wt_w)
 
         return result
 
-
-# ---------------------------------------------------------------------
-
-@tf.keras.utils.register_keras_serializable()
-class L1StickyRegularizer(tf.keras.regularizers.Regularizer):
-    """
-    https://www.desmos.com/calculator/ft2si1rv8z
-    """
-    def __init__(self,
-                 l1: float = 0.1,
-                 **kwargs):
-        self.regularizer = tf.keras.regularizers.l1(l1=l1)
-
     def __call__(self, x):
-        x_composite = tf.math.abs(-tf.math.abs(x+0.5) + 0.5)
-        return self.regularizer(x_composite)
+        if self._call_fn is None:
+            self._call_fn = (
+                tf.function(func=self.generic_fn,
+                            reduce_retracing=True).get_concrete_function(x))
+        return self._call_fn(x)
 
 # ---------------------------------------------------------------------

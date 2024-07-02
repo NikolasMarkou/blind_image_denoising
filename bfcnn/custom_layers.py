@@ -315,7 +315,9 @@ class ChannelLearnableMultiplier(tf.keras.layers.Layer):
         Returns:
         tf.Tensor: Output tensor with the multipliers applied.
         """
-        return tf.nn.relu(1.0 + self.w_multiplier) * inputs
+        return tf.multiply(
+            tf.nn.tanh(tf.nn.relu(1.0 + self.w_multiplier)),
+            inputs)
 
 
 # ---------------------------------------------------------------------
@@ -423,6 +425,84 @@ class SmoothChannelLearnableMultiplier(tf.keras.layers.Layer):
         # The multiplier starts from 1 (due to 2.5 offset) and adjusts from there
         return tf.keras.activations.sigmoid(2.5 + self.w_multiplier) * inputs
 
+# ---------------------------------------------------------------------
+
+@tf.keras.utils.register_keras_serializable()
+class GlobalLearnableMultiplier(tf.keras.layers.Layer):
+    """
+    Global Learnable Multiplier Layer.
+
+    This layer applies a learnable global multiplier to the input tensor. The multiplier
+    is initialized to values close to 0 and is regularized to encourage values near 0,
+    which results in the multiplier being close to 1 after applying the ReLU activation.
+
+    Args:
+        initializer (tf.keras.initializers.Initializer): Initializer for the multiplier weight.
+            Defaults to truncated normal with mean 0.0 and stddev 0.1.
+        regularizer (tf.keras.regularizers.Regularizer): Regularizer for the multiplier weight.
+            Defaults to L1 regularization with a coefficient of 1e-4.
+        **kwargs: Additional keyword arguments to pass to the parent class.
+
+    Attributes:
+        w_multiplier (tf.Variable): Learnable weight multiplier.
+
+    Methods:
+        build(input_shape):
+            Initializes the learnable weight based on the input shape.
+        call(inputs, training=None):
+            Applies the learnable multiplier to the input tensor.
+    """
+
+    def __init__(self,
+                 initializer=tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.01),
+                 regularizer=tf.keras.regularizers.l1(1e-6),
+                 **kwargs):
+        super().__init__(**kwargs)
+        self.w_multiplier = None
+        self.initializer = initializer
+        self.regularizer = regularizer
+
+    def build(self, input_shape):
+        """
+        Initializes the learnable weight based on the input shape.
+
+        Args:
+            input_shape (tuple): Shape of the input tensor.
+
+        This method creates a weight variable with the same number of dimensions as the input
+        tensor but with each dimension set to 1. The weight is initialized and regularized as specified
+        in the constructor.
+        """
+        self.w_multiplier = self.add_weight(
+            shape=[1],
+            name='w_multiplier',
+            initializer=self.initializer,
+            regularizer=self.regularizer,
+            trainable=True,
+        )
+
+    def call(self, inputs, training=None):
+        """
+        Applies the learnable multiplier to the input tensor.
+
+        Args:
+            inputs (tf.Tensor): Input tensor to which the multiplier is applied.
+            training (bool, optional): Indicates whether the layer should behave in training mode
+                or in inference mode. This argument is ignored in this layer.
+
+        Returns:
+            tf.Tensor: Output tensor after applying the learnable multiplier and ReLU activation.
+
+        The learnable multiplier is first adjusted by adding 1.0 and then applying ReLU activation
+        to ensure non-negative values. The resulting multiplier is element-wise multiplied with the
+        input tensor.
+        """
+        return tf.multiply(
+            tf.nn.tanh(tf.nn.relu(1.0 + self.w_multiplier)),
+            inputs)
+
+    def compute_output_shape(self, input_shape):
+        return input_shape
 
 # ---------------------------------------------------------------------
 
@@ -649,16 +729,20 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
         if self.use_soft_orthogonal_regularization:
             kernel_regularizer = \
                 SoftOrthogonalConstraintRegularizer(
-                    lambda_coefficient=0.01, l1_coefficient=1e-4, l2_coefficient=0.0)
+                    lambda_coefficient=DEFAULT_SOFTORTHOGONAL_LAMBDA,
+                    l1_coefficient=DEFAULT_SOFTORTHOGONAL_L1,
+                    l2_coefficient=DEFAULT_SOFTORTHOGONAL_L2)
         if self.use_soft_orthonormal_regularization:
             kernel_regularizer = \
                 SoftOrthonormalConstraintRegularizer(
-                    lambda_coefficient=0.01, l1_coefficient=1e-4, l2_coefficient=0.0)
+                    lambda_coefficient=DEFAULT_SOFTORTHONORMAL_LAMBDA,
+                    l1_coefficient=DEFAULT_SOFTORTHONORMAL_L1,
+                    l2_coefficient=DEFAULT_SOFTORTHONORMAL_L2)
         # ---
         kernel_initializer = copy.deepcopy(self.kernel_initializer)
         if kernel_initializer in ["trunc_normal", "truncated_normal"]:
             # https://github.com/facebookresearch/ConvNeXt/blob/048efcea897d999aed302f2639b6270aedf8d4c8/models/convnext.py#L105
-            kernel_initializer = tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.02, seed=0)
+            kernel_initializer = tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.02)
 
         # ---
         self.conv_x = (
@@ -700,10 +784,10 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
                 kernel_size=(1, 1),
                 activation="linear",
                 use_bias=self.use_bias,
-                kernel_regularizer="l2",
-                kernel_initializer="glorot_normal"))
+                kernel_regularizer=copy.deepcopy(kernel_regularizer),
+                kernel_initializer=kernel_initializer))
         # ---
-        self.scale_o = GlobalLearnableMultiplier()
+        self.scale_o = ChannelLearnableMultiplier()
 
     def call(self, inputs, training=None):
         """
@@ -745,86 +829,6 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
             tf.math.multiply(
                 x=encoder_feature,
                 y=o)
-
-
-# ---------------------------------------------------------------------
-
-@tf.keras.utils.register_keras_serializable()
-class GlobalLearnableMultiplier(tf.keras.layers.Layer):
-    """
-    Global Learnable Multiplier Layer.
-
-    This layer applies a learnable global multiplier to the input tensor. The multiplier
-    is initialized to values close to 0 and is regularized to encourage values near 0,
-    which results in the multiplier being close to 1 after applying the ReLU activation.
-
-    Args:
-        initializer (tf.keras.initializers.Initializer): Initializer for the multiplier weight.
-            Defaults to truncated normal with mean 0.0 and stddev 0.1.
-        regularizer (tf.keras.regularizers.Regularizer): Regularizer for the multiplier weight.
-            Defaults to L1 regularization with a coefficient of 1e-4.
-        **kwargs: Additional keyword arguments to pass to the parent class.
-
-    Attributes:
-        w_multiplier (tf.Variable): Learnable weight multiplier.
-
-    Methods:
-        build(input_shape):
-            Initializes the learnable weight based on the input shape.
-        call(inputs, training=None):
-            Applies the learnable multiplier to the input tensor.
-    """
-
-    def __init__(self,
-                 initializer=tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.01),
-                 regularizer=tf.keras.regularizers.l1(1e-6),
-                 **kwargs):
-        super().__init__(**kwargs)
-        self.w_multiplier = None
-        self.initializer = initializer
-        self.regularizer = regularizer
-
-    def build(self, input_shape):
-        """
-        Initializes the learnable weight based on the input shape.
-
-        Args:
-            input_shape (tuple): Shape of the input tensor.
-
-        This method creates a weight variable with the same number of dimensions as the input
-        tensor but with each dimension set to 1. The weight is initialized and regularized as specified
-        in the constructor.
-        """
-        self.w_multiplier = self.add_weight(
-            shape=[1],
-            name='w_multiplier',
-            initializer=self.initializer,
-            regularizer=self.regularizer,
-            trainable=True,
-        )
-
-    def call(self, inputs, training=None):
-        """
-        Applies the learnable multiplier to the input tensor.
-
-        Args:
-            inputs (tf.Tensor): Input tensor to which the multiplier is applied.
-            training (bool, optional): Indicates whether the layer should behave in training mode
-                or in inference mode. This argument is ignored in this layer.
-
-        Returns:
-            tf.Tensor: Output tensor after applying the learnable multiplier and ReLU activation.
-
-        The learnable multiplier is first adjusted by adding 1.0 and then applying ReLU activation
-        to ensure non-negative values. The resulting multiplier is element-wise multiplied with the
-        input tensor.
-        """
-        return tf.multiply(
-            tf.nn.tanh(tf.nn.relu(1.0 + self.w_multiplier)),
-            inputs)
-
-    def compute_output_shape(self, input_shape):
-        return input_shape
 
 # ---------------------------------------------------------------------
 
@@ -945,21 +949,41 @@ class ConvNextBlock(tf.keras.layers.Layer):
         if self.use_soft_orthogonal_regularization:
             params["kernel_regularizer"] = \
                 SoftOrthogonalConstraintRegularizer(
-                    lambda_coefficient=0.01, l1_coefficient=0.0, l2_coefficient=1e-4)
+                    lambda_coefficient=DEFAULT_SOFTORTHOGONAL_LAMBDA,
+                    l1_coefficient=DEFAULT_SOFTORTHOGONAL_L1,
+                    l2_coefficient=DEFAULT_SOFTORTHOGONAL_L2)
         if self.use_soft_orthonormal_regularization:
             params["kernel_regularizer"] = \
                 SoftOrthonormalConstraintRegularizer(
-                    lambda_coefficient=0.01, l1_coefficient=0.0, l2_coefficient=1e-4)
+                    lambda_coefficient=DEFAULT_SOFTORTHONORMAL_LAMBDA,
+                    l1_coefficient=DEFAULT_SOFTORTHONORMAL_L1,
+                    l2_coefficient=DEFAULT_SOFTORTHONORMAL_L2)
         self.conv_2 = tf.keras.layers.Conv2D(**params)
 
         # conv 3
         params = copy.deepcopy(self.conv_params_3)
         params["activation"] = "linear"
+        if params.get("kernel_initializer", "glorot_normal") in ["trunc_normal", "truncated_normal"]:
+            # https://github.com/facebookresearch/ConvNeXt/blob/048efcea897d999aed302f2639b6270aedf8d4c8/models/convnext.py#L105
+            params["kernel_initializer"] = (
+                tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.02))
+        if self.use_soft_orthogonal_regularization:
+            params["kernel_regularizer"] = \
+                SoftOrthogonalConstraintRegularizer(
+                    lambda_coefficient=DEFAULT_SOFTORTHOGONAL_LAMBDA,
+                    l1_coefficient=DEFAULT_SOFTORTHOGONAL_L1,
+                    l2_coefficient=DEFAULT_SOFTORTHOGONAL_L2)
+        if self.use_soft_orthonormal_regularization:
+            params["kernel_regularizer"] = \
+                SoftOrthonormalConstraintRegularizer(
+                    lambda_coefficient=DEFAULT_SOFTORTHONORMAL_LAMBDA,
+                    l1_coefficient=DEFAULT_SOFTORTHONORMAL_L1,
+                    l2_coefficient=DEFAULT_SOFTORTHONORMAL_L2)
         self.conv_3 = tf.keras.layers.Conv2D(**params)
 
         # gamma
         if self.use_gamma:
-            self.gamma = GlobalLearnableMultiplier()
+            self.gamma = ChannelLearnableMultiplier()
 
     def call(self, inputs, training=None):
         x = inputs
@@ -1267,26 +1291,18 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         if self.use_soft_orthogonal_regularization:
             params["kernel_regularizer"] = \
                 SoftOrthogonalConstraintRegularizer(
-                    lambda_coefficient=0.01, l1_coefficient=1e-4, l2_coefficient=0.0)
+                    lambda_coefficient=DEFAULT_SOFTORTHOGONAL_LAMBDA,
+                    l1_coefficient=DEFAULT_SOFTORTHOGONAL_L1,
+                    l2_coefficient=DEFAULT_SOFTORTHOGONAL_L2)
         if self.use_soft_orthonormal_regularization:
             params["kernel_regularizer"] = \
                 SoftOrthonormalConstraintRegularizer(
-                    lambda_coefficient=0.01, l1_coefficient=1e-4, l2_coefficient=0.0)
+                    lambda_coefficient=DEFAULT_SOFTORTHONORMAL_LAMBDA,
+                    l1_coefficient=DEFAULT_SOFTORTHONORMAL_L1,
+                    l2_coefficient=DEFAULT_SOFTORTHONORMAL_L2)
         self.key_conv = tf.keras.layers.Conv2D(**copy.deepcopy(params))
         self.query_conv = tf.keras.layers.Conv2D(**copy.deepcopy(params))
         self.value_conv = tf.keras.layers.Conv2D(**copy.deepcopy(params))
-
-        # output convolution
-        output_params = dict(
-            filters=input_shape[-1],
-            kernel_size=(1, 1),
-            strides=(1, 1),
-            padding="same",
-            use_bias=self.use_bias,
-            activation=self.output_activation,
-            kernel_regularizer=tf.keras.regularizers.L2(l2=1e-4),
-            kernel_initializer="glorot_normal"
-        )
 
         if self.use_gated_mlp:
             self.output_fn = (
@@ -1299,7 +1315,30 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
                          use_orthogonal_regularization=self.use_orthogonal_regularization)
             )
         else:
-            self.output_fn = tf.keras.layers.Conv2D(**output_params)
+            # output convolution
+            params = dict(
+                filters=input_shape[-1],
+                kernel_size=(1, 1),
+                strides=(1, 1),
+                padding="same",
+                use_bias=self.use_bias,
+                activation=self.output_activation,
+                kernel_regularizer=tf.keras.regularizers.L2(l2=1e-4),
+                kernel_initializer="glorot_normal"
+            )
+            if self.use_soft_orthogonal_regularization:
+                params["kernel_regularizer"] = \
+                    SoftOrthogonalConstraintRegularizer(
+                        lambda_coefficient=DEFAULT_SOFTORTHOGONAL_LAMBDA,
+                        l1_coefficient=DEFAULT_SOFTORTHOGONAL_L1,
+                        l2_coefficient=DEFAULT_SOFTORTHOGONAL_L2)
+            if self.use_soft_orthonormal_regularization:
+                params["kernel_regularizer"] = \
+                    SoftOrthonormalConstraintRegularizer(
+                        lambda_coefficient=DEFAULT_SOFTORTHONORMAL_LAMBDA,
+                        l1_coefficient=DEFAULT_SOFTORTHONORMAL_L1,
+                        l2_coefficient=DEFAULT_SOFTORTHONORMAL_L2)
+            self.output_fn = tf.keras.layers.Conv2D(**params)
 
         # attention
         self.attention = (
@@ -1309,7 +1348,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
 
         # gamma
         if self.use_gamma:
-            self.gamma = GlobalLearnableMultiplier()
+            self.gamma = ChannelLearnableMultiplier()
 
     def call(self, inputs, training=None):
         x = inputs

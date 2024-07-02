@@ -1,3 +1,4 @@
+import tensorflow as tf
 from tensorflow import keras
 from typing import Union, Dict
 
@@ -10,6 +11,14 @@ DEFAULT_LN_EPSILON = 1e-3
 DEFAULT_BN_MOMENTUM = 0.995
 DEFAULT_MULTIPLIER_L1 = 1.0
 DEFAULT_CHANNELWISE_MULTIPLIER_L1 = 0.1
+
+DEFAULT_SOFTORTHOGONAL_L1 = 0.0
+DEFAULT_SOFTORTHOGONAL_L2 = 1e-4
+DEFAULT_SOFTORTHOGONAL_LAMBDA = 0.001
+
+DEFAULT_SOFTORTHONORMAL_L1 = 0.0
+DEFAULT_SOFTORTHONORMAL_L2 = 1e-4
+DEFAULT_SOFTORTHONORMAL_LAMBDA = 0.001
 
 TYPE_STR = "type"
 MODEL_STR = "model"
@@ -39,14 +48,11 @@ NAE_PREDICTION_LOSS_STR = "nae_prediction"
 DISCRIMINATE_LOSS_STR = "discriminate_loss"
 MAE_VARIANCE_LOSS_STR = "mae_variance_loss"
 REGULARIZATION_LOSS_STR = "regularization_loss"
-MAE_DECOMPOSITION_LOSS_STR = "mae_decomposition_loss"
 
 # define file constants
-NSIG_COEFFICIENT_STR = "nsig"
 REGULARIZERS_STR = "regularizers"
 L1_COEFFICIENT_STR = "l1_coefficient"
 L2_COEFFICIENT_STR = "l2_coefficient"
-DIAG_COEFFICIENT_STR = "diag_coefficient"
 LAMBDA_COEFFICIENT_STR = "lambda_coefficient"
 
 USE_BIAS = "use_bias"
@@ -79,3 +85,4 @@ DEFAULT_NON_SYMMETRIC_FIGSIZE = (18, 6)
 # ---------------------------------------------------------------------
 
 CONFIG_PATH_STR = "config.json"
+
