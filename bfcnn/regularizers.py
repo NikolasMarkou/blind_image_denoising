@@ -231,7 +231,7 @@ class SoftOrthogonalConstraintRegularizer(tf.keras.regularizers.Regularizer):
         self._use_l1 = self._l1_coefficient > 0.0
         self._l1 = tf.keras.regularizers.L1(l1=self._l1_coefficient)
         self._use_l2 = self._l2_coefficient > 0.0
-        self._l2 = tf.keras.regularizers.L1(l2=self._l2_coefficient)
+        self._l2 = tf.keras.regularizers.L2(l2=self._l2_coefficient)
 
     def generic_fn(self, x):
         # --- compute (Wt * W)
@@ -299,7 +299,7 @@ class SoftOrthonormalConstraintRegularizer(tf.keras.regularizers.Regularizer):
         self._use_l1 = self._l1_coefficient > 0.0
         self._l1 = tf.keras.regularizers.L1(l1=self._l1_coefficient)
         self._use_l2 = self._l2_coefficient > 0.0
-        self._l2 = tf.keras.regularizers.L1(l2=self._l2_coefficient)
+        self._l2 = tf.keras.regularizers.L2(l2=self._l2_coefficient)
 
     def generic_fn(self, x):
         # --- compute (Wt * W)
