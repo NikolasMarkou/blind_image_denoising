@@ -276,7 +276,7 @@ def builder(
         params["filters"] = max(filters, 96)
         params["kernel_size"] = (5, 5)
         params["strides"] = (1, 1)
-        params["activation"] = activation
+        params["activation"] = "linear"
 
         x = \
             conv2d_wrapper(
