@@ -104,6 +104,9 @@
                 "directory": "/media/data1_4tb/datasets/COCO/train2017"
             },
             {
+                "directory": "/media/data1_4tb/datasets/div2k/train"
+            },
+            {
                 "directory": "/media/data1_4tb/datasets/Megadepth/"
             },
             {

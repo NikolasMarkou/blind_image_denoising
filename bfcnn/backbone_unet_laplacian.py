@@ -48,7 +48,6 @@ def builder(
         use_bn: bool = False,
         use_ln: bool = True,
         use_gamma: bool = True,
-        use_soft_gamma: bool = False,
         use_bias: bool = False,
         use_concat: bool = True,
         use_laplacian: bool = True,
@@ -275,9 +274,9 @@ def builder(
         # first plain conv
         params = copy.deepcopy(base_conv_params)
         params["filters"] = max(filters, 96)
-        params["kernel_size"] = (encoder_kernel_size, encoder_kernel_size)
+        params["kernel_size"] = (5, 5)
         params["strides"] = (1, 1)
-        params["activation"] = "linear"
+        params["activation"] = activation
 
         x = \
             conv2d_wrapper(
@@ -303,7 +302,7 @@ def builder(
         # first plain conv
         params = copy.deepcopy(base_conv_params)
         params["filters"] = filters
-        params["kernel_size"] = (encoder_kernel_size, encoder_kernel_size)
+        params["kernel_size"] = (5, 5)
         params["strides"] = (1, 1)
         params["activation"] = activation
 
@@ -351,9 +350,6 @@ def builder(
                 if len(depth_drop_rates) <= width and depth_drop_rates[w] > 0.0:
                     x = StochasticDepth(depth_drop_rates[w])(x)
                 x = tf.keras.layers.Add()([x_skip, x])
-
-            if use_value_compressor:
-                x = tf.keras.layers.LeakyReLU(alpha=0.5)(x)
 
         node_level = (d, 0)
         nodes_visited.add(node_level)
@@ -545,9 +541,6 @@ def builder(
                 if len(depth_drop_rates) <= width and depth_drop_rates[w] > 0.0:
                     x = StochasticDepth(depth_drop_rates[w])(x)
                 x = tf.keras.layers.Add()([x_skip, x])
-
-            if use_value_compressor:
-                x = tf.keras.layers.LeakyReLU(alpha=0.5)(x)
 
         nodes_output[node] = x
         nodes_visited.add(node)
