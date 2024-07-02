@@ -247,11 +247,11 @@ def train_loop(
             )
 
         @tf.function(reduce_retracing=True, jit_compile=False)
-        def train_step(n: List[tf.Tensor]) -> List[tf.Tensor]:
+        def train_step(n: List[tf.Tensor]):
             return ckpt.model(n, training=True)
 
         @tf.function(reduce_retracing=True, jit_compile=False)
-        def test_step(n: List[tf.Tensor]) -> tf.Tensor:
+        def test_step(n: List[tf.Tensor]):
             if model_no_outputs == 1:
                 return ckpt.model(n, training=False)[denoiser_index]
             return ckpt.model(n, training=False)[denoiser_index[0]]
