@@ -200,7 +200,7 @@ class StochasticDepth(tf.keras.layers.Layer):
         self.dropout = (
             tf.keras.layers.Dropout(
                 rate=self.drop_path_rate,
-                noise_shape=(input_shape[0], 1)))
+                noise_shape=(input_shape[0])))
 
     def call(self, x, training=None):
         if training:
