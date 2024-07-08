@@ -1362,7 +1362,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
 
         x = tf.image.resize(
             x,
-            size=shape_x,
+            size=shape_x[1:3],
             method=tf.image.ResizeMethod.BILINEAR,
             preserve_aspect_ratio=False,
             antialias=False
