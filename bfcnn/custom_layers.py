@@ -1344,7 +1344,6 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         q_x = self.query_conv(x, training=training)
         q_x = tf.reshape(q_x, (shape_x[0], -1, self.attention_channels))
         v_x = self.value_conv(x, training=training)
-        v_x = tf.keras.layers.Reshape(target_shape=(-1, self.attention_channels))(v_x)
         v_x = tf.reshape(v_x, (shape_x[0], -1, self.attention_channels))
         k_x = self.key_conv(x, training=training)
         k_x = tf.reshape(k_x, (shape_x[0], -1, self.attention_channels))
