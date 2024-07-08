@@ -1273,7 +1273,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         self.use_soft_orthonormal_regularization = use_soft_orthonormal_regularization
 
     def build(self, input_shape):
-        qkv_conv_params = dict(
+        qvk_conv_params = dict(
             filters=self.attention_channels,
             kernel_size=(1, 1),
             strides=(1, 1),
@@ -1284,7 +1284,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
             kernel_initializer="glorot_normal"
         )
         # query key value convolution
-        params = copy.deepcopy(qkv_conv_params)
+        params = copy.deepcopy(qvk_conv_params)
         if self.use_soft_orthogonal_regularization:
             params["kernel_regularizer"] = \
                 SoftOrthogonalConstraintRegularizer(
@@ -1302,7 +1302,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         self.value_conv = tf.keras.layers.Conv2D(**copy.deepcopy(params))
 
         # output convolution
-        params = copy.deepcopy(qkv_conv_params)
+        params = copy.deepcopy(qvk_conv_params)
         params["filters"] = input_shape[-1]
         params["activation"] = self.output_activation
         if self.use_soft_orthogonal_regularization:
@@ -1323,6 +1323,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         self.attention = (
             tf.keras.layers.Attention(
                 use_scale=False,
+                score_mode="dot",
                 dropout=self.dropout))
 
         # gamma
@@ -1331,6 +1332,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
 
     def call(self, inputs, training=None):
         x = inputs
+        shape_x = tf.shape(x)
 
         # --- normalize
         if self.use_bn:
@@ -1340,22 +1342,26 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
 
         # --- compute query, key, value
         q_x = self.query_conv(x, training=training)
-        k_x = self.key_conv(x, training=training)
+        q_x = tf.keras.layers.Reshape(target_shape=(-1,self.attention_channels["filters"]))(q_x)
         v_x = self.value_conv(x, training=training)
+        v_x = tf.keras.layers.Reshape(target_shape=(-1, self.attention_channels["filters"]))(v_x)
+        k_x = self.key_conv(x, training=training)
+        k_x = tf.keras.layers.Reshape(target_shape=(-1, self.attention_channels["filters"]))(k_x)
 
         # --- compute attention
-        x = self.attention([q_x, k_x, v_x], training=training)
+        x = self.attention([q_x, v_x, k_x], training=training)
+        x = tf.keras.layers.Reshape(target_shape=(shape_x[1], shape_x[2], self.attention_channels["filters"]))(x)
 
         # --- compute output conv
         if self.use_bn:
-            x = self.bn_1(x)
+            x = self.bn_1(x, training=training)
         if self.use_ln:
-            x = self.ln_1(x)
+            x = self.ln_1(x, training=training)
         x = self.output_fn(x, training=training)
 
         # --- gamma
         if self.use_gamma:
-            x = self.gamma(x)
+            x = self.gamma(x, training=training)
 
         return x
 
