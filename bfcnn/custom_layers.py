@@ -1334,9 +1334,9 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         x = tf.image.resize(
             inputs,
             size=self.attention_resolution,
-            method=tf.ResizeMethod.BILINEAR,
+            method=tf.image.ResizeMethod.BILINEAR,
             preserve_aspect_ratio=False,
-            antialias=False,
+            antialias=False
         )
 
         # --- normalize
@@ -1353,17 +1353,20 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         # --- compute attention
         x = self.attention([q_x, v_x, k_x], training=training)
         x = tf.reshape(x, (shape_x[0], shape_x[1], shape_x[2], self.attention_channels))
-        x = tf.image.resize(
-            x,
-            size=shape_x,
-            method=tf.ResizeMethod.BILINEAR,
-            antialias=False,
-        )
+
         # --- compute output conv
         if self.use_bn:
             x = self.bn_1(x, training=training)
         if self.use_ln:
             x = self.ln_1(x, training=training)
+
+        x = tf.image.resize(
+            x,
+            size=shape_x,
+            method=tf.image.ResizeMethod.BILINEAR,
+            preserve_aspect_ratio=False,
+            antialias=False
+        )
         x = self.output_fn(x, training=training)
 
         # --- gamma
