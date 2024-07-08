@@ -193,6 +193,7 @@ class StochasticDepth(tf.keras.layers.Layer):
         super().__init__(**kwargs)
         if drop_path_rate < 0.0 or drop_path_rate > 1.0:
             raise ValueError("drop_path_rate must be between 0.0 and 1.0")
+        self.drop_path_rate = drop_path_rate
         self.dropout = None
 
     def build(self, input_shape):
