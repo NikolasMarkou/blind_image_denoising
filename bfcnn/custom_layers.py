@@ -1254,13 +1254,13 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         if bn_params is not None:
             self.use_bn = True
             self.bn_0 = tf.keras.layers.BatchNormalization(**bn_params)
-            self.bn_1 = tf.keras.layers.BatchNormalization(**bn_params)
+            #self.bn_1 = tf.keras.layers.BatchNormalization(**bn_params)
 
         self.use_ln = False
         if ln_params is not None:
             self.use_ln = True
             self.ln_0 = tf.keras.layers.LayerNormalization(**ln_params)
-            self.ln_1 = tf.keras.layers.LayerNormalization(**ln_params)
+            #self.ln_1 = tf.keras.layers.LayerNormalization(**ln_params)
 
         # learnable multiplier
         self.gamma = None
@@ -1360,10 +1360,10 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         x = self.reshape_output(x)
 
         # --- compute output conv
-        if self.use_bn:
-            x = self.bn_1(x, training=training)
-        if self.use_ln:
-            x = self.ln_1(x, training=training)
+        # if self.use_bn:
+        #     x = self.bn_1(x, training=training)
+        # if self.use_ln:
+        #     x = self.ln_1(x, training=training)
 
         x = tf.image.resize(
             x,
