@@ -315,8 +315,12 @@ class ChannelLearnableMultiplier(tf.keras.layers.Layer):
         Returns:
         tf.Tensor: Output tensor with the multipliers applied.
         """
-        multiplier = tf.keras.activations.tanh(tf.keras.layers.ReLU(tf.keras.layers.Add([1, self.w_multiplier])))
-        return tf.keras.layers.Multiply([multiplier, inputs])
+        return tf.multiply(
+            tf.nn.tanh(tf.nn.relu(1.0 + self.w_multiplier)),
+            inputs)
+
+    def compute_output_shape(self, input_shape):
+        return input_shape
 
 
 # ---------------------------------------------------------------------
