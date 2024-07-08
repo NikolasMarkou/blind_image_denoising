@@ -1316,6 +1316,11 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
                     l1_coefficient=DEFAULT_SOFTORTHONORMAL_L1,
                     l2_coefficient=DEFAULT_SOFTORTHONORMAL_L2)
         self.output_fn = tf.keras.layers.Conv2D(**copy.deepcopy(params))
+        self.reshape_attention = (
+            tf.keras.layers.Reshape(target_shape=(-1, self.attention_channels)))
+        self.reshape_output = (
+            tf.keras.layers.Reshape(
+                target_shape=(self.attention_resolution[0], self.attention_resolution[1], -1)))
 
         # attention
         self.attention = (
@@ -1346,13 +1351,13 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
             x = self.ln_0(x, training=training)
 
         # --- compute query, key, value
-        q_x = tf.reshape(self.query_conv(x, training=training), (shape_x[0], -1, self.attention_channels))
-        v_x = tf.reshape(self.value_conv(x, training=training), (shape_x[0], -1, self.attention_channels))
-        k_x = tf.reshape(self.key_conv(x, training=training), (shape_x[0], -1, self.attention_channels))
+        q_x = self.reshape_attention(self.query_conv(x, training=training))
+        v_x = self.reshape_attention(self.value_conv(x, training=training))
+        k_x = self.reshape_attention(self.key_conv(x, training=training))
 
         # --- compute attention
         x = self.attention([q_x, v_x, k_x], training=training)
-        x = tf.reshape(x, (shape_x[0], self.attention_resolution[0], self.attention_resolution[1], -1))
+        x = self.reshape_output(x)
 
         # --- compute output conv
         if self.use_bn:
@@ -1362,7 +1367,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
 
         x = tf.image.resize(
             x,
-            size=shape_x_original[1:3],
+            size=shape_x[1:3],
             method=tf.image.ResizeMethod.BILINEAR,
             preserve_aspect_ratio=False,
             antialias=False
