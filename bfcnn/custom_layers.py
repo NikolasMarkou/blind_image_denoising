@@ -1270,6 +1270,8 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         self.use_soft_orthogonal_regularization = use_soft_orthogonal_regularization
         self.use_soft_orthonormal_regularization = use_soft_orthonormal_regularization
 
+        self.reshape_attention = None
+        self.reshape_output = None
     def build(self, input_shape):
         qvk_conv_params = dict(
             filters=self.attention_channels,
