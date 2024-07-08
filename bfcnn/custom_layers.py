@@ -899,10 +899,6 @@ class ConvNextBlock(tf.keras.layers.Layer):
             self.use_dropout_2d = False
             self.dropout_2d_params = {}
 
-        # stochastic depth
-        self.drop_path_rate = drop_path_rate
-        self.stochastic_depth = StochasticDepth(drop_path_rate=self.drop_path_rate)
-
         # learnable multiplier
         # https://github.com/facebookresearch/ConvNeXt/blob/048efcea897d999aed302f2639b6270aedf8d4c8/models/convnext.py#L45
         self.gamma = None
