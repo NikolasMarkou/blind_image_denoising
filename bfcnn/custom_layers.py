@@ -1352,7 +1352,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
 
         # --- compute attention
         x = self.attention([q_x, v_x, k_x], training=training)
-        x = tf.reshape(x, (shape_x[0], shape_x[1], shape_x[2], -1))
+        x = tf.reshape(x, (shape_x[0], self.attention_resolution[0], self.attention_resolution[1], -1))
 
         # --- compute output conv
         if self.use_bn:
@@ -1362,7 +1362,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
 
         x = tf.image.resize(
             x,
-            size=shape_x[1:3],
+            size=shape_x_original[1:3],
             method=tf.image.ResizeMethod.BILINEAR,
             preserve_aspect_ratio=False,
             antialias=False
