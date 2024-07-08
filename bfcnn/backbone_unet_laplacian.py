@@ -325,7 +325,7 @@ def builder(
                         use_gamma=True,
                         bn_params=bn_params,
                         ln_params=ln_params,
-                        attention_channels=8,
+                        attention_channels=filters,
                         attention_activation="gelu",
                         output_activation="linear",
                         use_soft_orthonormal_regularization=True,

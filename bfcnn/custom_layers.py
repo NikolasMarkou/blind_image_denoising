@@ -315,9 +315,8 @@ class ChannelLearnableMultiplier(tf.keras.layers.Layer):
         Returns:
         tf.Tensor: Output tensor with the multipliers applied.
         """
-        return tf.multiply(
-            tf.nn.tanh(tf.nn.relu(1.0 + self.w_multiplier)),
-            inputs)
+        multiplier = tf.keras.activations.tanh(tf.keras.layers.ReLU(tf.keras.layers.Add([1, self.w_multiplier])))
+        return tf.keras.layers.Multiply([multiplier, inputs])
 
 
 # ---------------------------------------------------------------------
@@ -842,7 +841,6 @@ class ConvNextBlock(tf.keras.layers.Layer):
                  bn_params: Dict = None,
                  dropout_params: Dict = None,
                  dropout_2d_params: Dict = None,
-                 drop_path_rate: float = 0.0,
                  use_gamma: bool = True,
                  use_soft_orthogonal_regularization: bool = False,
                  use_soft_orthonormal_regularization: bool = False,
@@ -903,7 +901,6 @@ class ConvNextBlock(tf.keras.layers.Layer):
 
         # stochastic depth
         self.drop_path_rate = drop_path_rate
-        self.use_stochastic_depth = drop_path_rate > 0.0
         self.stochastic_depth = StochasticDepth(drop_path_rate=self.drop_path_rate)
 
         # learnable multiplier
@@ -989,7 +986,7 @@ class ConvNextBlock(tf.keras.layers.Layer):
         x = inputs
 
         # --- 1st part
-        x = self.conv_1(x)
+        x = self.conv_1(x, training=training)
         # normalize
         if self.use_bn:
             x = self.bn(x, training=training)
@@ -1001,7 +998,7 @@ class ConvNextBlock(tf.keras.layers.Layer):
             x = self.activation_1(x)
 
         # --- 2nd part
-        x = self.conv_2(x)
+        x = self.conv_2(x, training=training)
         if self.conv_params_2["activation"] != "linear":
             x = self.activation_2(x)
         if self.use_dropout:
@@ -1010,17 +1007,13 @@ class ConvNextBlock(tf.keras.layers.Layer):
             x = self.dropout_2d(x, training=training)
 
         # --- 3rd part
-        x = self.conv_3(x)
+        x = self.conv_3(x, training=training)
         if self.conv_params_3["activation"] != "linear":
             x = self.activation_3(x)
 
         # --- gamma
         if self.use_gamma:
-            x = self.gamma(x)
-
-        # --- stochastic depth
-        if self.use_stochastic_depth:
-            x = self.stochastic_depth(x, training=training)
+            x = self.gamma(x, training=training)
 
         return x
 
@@ -1203,6 +1196,9 @@ class LogitNorm(tf.keras.layers.Layer):
             tf.divide(x, x_denominator) / self._constant,
             x_denominator)
 
+    def compute_output_shape(self, input_shape):
+        return input_shape
+
 
 # ---------------------------------------------------------------------
 
@@ -1237,6 +1233,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
                  use_soft_orthonormal_regularization: bool = False,
                  use_soft_orthogonal_regularization: bool = False,
                  dropout: float = 0.0,
+                 attention_resolution: Tuple[int, int] = (16, 16),
                  **kwargs):
         super().__init__(**kwargs)
         if attention_channels is None or attention_channels <= 0:
@@ -1245,6 +1242,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         self.use_bias = use_bias
         self.output_activation = output_activation
         self.attention_activation = attention_activation
+        self.attention_resolution = attention_resolution
         self.dropout = dropout
         self.query_conv = None
         self.key_conv = None
@@ -1331,8 +1329,15 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
             self.gamma = ChannelLearnableMultiplier()
 
     def call(self, inputs, training=None):
-        x = inputs
-        shape_x = tf.shape(x)
+        shape_x = tf.shape(inputs)
+
+        x = tf.image.resize(
+            inputs,
+            size=self.attention_resolution,
+            method=tf.ResizeMethod.BILINEAR,
+            preserve_aspect_ratio=False,
+            antialias=False,
+        )
 
         # --- normalize
         if self.use_bn:
@@ -1348,7 +1353,12 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
         # --- compute attention
         x = self.attention([q_x, v_x, k_x], training=training)
         x = tf.reshape(x, (shape_x[0], shape_x[1], shape_x[2], self.attention_channels))
-
+        x = tf.image.resize(
+            x,
+            size=shape_x,
+            method=tf.ResizeMethod.BILINEAR,
+            antialias=False,
+        )
         # --- compute output conv
         if self.use_bn:
             x = self.bn_1(x, training=training)
