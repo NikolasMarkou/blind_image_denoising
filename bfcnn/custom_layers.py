@@ -1318,7 +1318,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
                     l1_coefficient=DEFAULT_SOFTORTHONORMAL_L1,
                     l2_coefficient=DEFAULT_SOFTORTHONORMAL_L2)
         self.output_fn = tf.keras.layers.Conv2D(**copy.deepcopy(params))
-        self.reshape_attention = tf.keras.layers.Reshape(target_shape=(-1, self.attention_channels))
+        self.reshape_attention = tf.keras.layers.Reshape(target_shape=(input_shape[0] * input_shape[1], self.attention_channels))
         self.reshape_output = tf.keras.layers.Reshape(target_shape=(input_shape[0], input_shape[1], self.attention_channels))
 
         # attention
