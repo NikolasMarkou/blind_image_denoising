@@ -1352,7 +1352,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
 
         # --- compute attention
         x = self.attention([q_x, v_x, k_x], training=training)
-        x = tf.reshape(x, (shape_x[0], shape_x[1], shape_x[2], self.attention_channels))
+        x = tf.reshape(x, (shape_x[0], shape_x[1], shape_x[2], -1))
 
         # --- compute output conv
         if self.use_bn:
