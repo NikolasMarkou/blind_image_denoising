@@ -352,6 +352,13 @@ def builder(
                     x = StochasticDepth(depth_drop_rates[w])(x)
                 x = tf.keras.layers.Add()([x_skip, x])
 
+        if use_output_normalization:
+            if use_bn:
+                x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
+            if use_ln:
+                x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
+        x = activation_wrapper(activation=activation)(x)
+
         node_level = (d, 0)
         nodes_visited.add(node_level)
         nodes_output[node_level] = x
@@ -372,7 +379,7 @@ def builder(
                             strides=(1, 1))(x)
                 nodes_output[node_level] = \
                     tf.keras.layers.Subtract()([x, x_tmp_smooth])
-                #x = x_tmp_smooth
+                x = x_tmp_smooth
 
             x = (
                 downsample(input_layer=x,
@@ -550,7 +557,12 @@ def builder(
                 if len(depth_drop_rates) <= width and depth_drop_rates[w] > 0.0:
                     x = StochasticDepth(depth_drop_rates[w])(x)
                 x = tf.keras.layers.Add()([x_skip, x])
-
+        if use_output_normalization:
+            if use_bn:
+                x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
+            if use_ln:
+                x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
+        x = activation_wrapper(activation=activation)(x)
         nodes_output[node] = x
         nodes_visited.add(node)
 
@@ -582,17 +594,17 @@ def builder(
     # otherwise we will get the most shallow output
     output_layers = output_layers[::-1]
 
-    for i in range(len(output_layers)):
-        x = output_layers[i]
-        if use_output_normalization:
-            if use_bn:
-                x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
-            if use_ln:
-                x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
-        x = activation_wrapper(activation=activation)(x)
-        output_layers[i] = (
-            tf.keras.layers.Layer(
-                name=f"{output_layer_name}_{i}")(x))
+    # for i in range(len(output_layers)):
+    #     x = output_layers[i]
+    #     if use_output_normalization:
+    #         if use_bn:
+    #             x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
+    #         if use_ln:
+    #             x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
+    #     x = activation_wrapper(activation=activation)(x)
+    #     output_layers[i] = (
+    #         tf.keras.layers.Layer(
+    #             name=f"{output_layer_name}_{i}")(x))
 
     return \
         tf.keras.Model(
