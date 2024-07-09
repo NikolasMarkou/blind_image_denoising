@@ -35,6 +35,7 @@ def downsample(
 
     #
     if downsample_type in ["conv2d"]:
+        params["kernel_size"] = (2, 2)
         params["strides"] = (2, 2)
         params["padding"] = "same"
         x = \
