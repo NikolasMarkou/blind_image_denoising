@@ -7,7 +7,7 @@
                 "?",
                 3
             ],
-            "depth": 4,
+            "depth": 3,
             "width": 3,
             "filters": 32,
             "use_bn": false,
