@@ -51,6 +51,7 @@ def builder(
         use_bias: bool = False,
         use_concat: bool = True,
         use_laplacian: bool = True,
+        use_laplacian_averaging: bool = True,
         use_mix_project: bool = True,
         use_self_attention: bool = False,
         use_attention_gates: bool = False,
@@ -356,11 +357,19 @@ def builder(
         nodes_output[node_level] = x
 
         if d != (depth - 1):
-            if use_laplacian:
-                x_tmp_smooth = \
-                    GaussianFilter(
-                        kernel_size=(gaussian_kernel_size, gaussian_kernel_size),
-                        strides=(1, 1))(x)
+            if use_laplacian or use_laplacian_averaging:
+                if use_laplacian_averaging:
+                    x_tmp_smooth = (
+                        tf.keras.layers.AveragePooling2D(
+                            padding="same",
+                            strides=(1, 1),
+                            pool_size=(gaussian_kernel_size, gaussian_kernel_size))(x)
+                    )
+                else:
+                    x_tmp_smooth = \
+                        GaussianFilter(
+                            kernel_size=(gaussian_kernel_size, gaussian_kernel_size),
+                            strides=(1, 1))(x)
                 nodes_output[node_level] = \
                     tf.keras.layers.Subtract()([x, x_tmp_smooth])
                 x = x_tmp_smooth
