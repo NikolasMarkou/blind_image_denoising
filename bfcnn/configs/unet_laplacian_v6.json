@@ -70,11 +70,11 @@
         }
     },
     "loss": {
-        "hinge": 3.5,
+        "hinge": 1.5,
         "cutoff": 255.0,
         "mae_multiplier": 1.0,
-        "mse_multiplier": 0.5,
-        "ssim_multiplier": 1.0,
+        "mse_multiplier": -1.0,
+        "ssim_multiplier": 2.0,
         "regularization": 0.01
     },
     "dataset": {

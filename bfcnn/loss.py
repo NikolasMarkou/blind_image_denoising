@@ -221,6 +221,7 @@ def loss_function_builder(
                     tf.image.ssim(
                         img1=gt_batch,
                         img2=predicted_batch,
+                        filter_size=(7, 7),
                         max_val=255.0))
             ssim_loss = 1.0 - ssim_loss
 
