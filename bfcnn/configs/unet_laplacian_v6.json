@@ -23,7 +23,7 @@
             "encoder_kernel_size": 5,
             "decoder_kernel_size": 1,
             "multiple_scale_outputs": true,
-            "activation": "linear",
+            "activation": "leaky_relu_01",
             "use_soft_orthonormal_regularization": true,
             "kernel_initializer": "glorot_normal",
             "kernel_regularizer": "l2",
@@ -37,7 +37,7 @@
             "use_bn": false,
             "use_ln": false,
             "use_bias": false,
-            "activation": "gelu",
+            "activation": "leaky_relu_01",
             "output_channels": 3,
             "kernel_regularizer": "l2",
             "kernel_initializer": "glorot_normal"
