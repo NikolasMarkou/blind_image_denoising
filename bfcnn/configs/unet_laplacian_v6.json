@@ -30,7 +30,7 @@
             "kernel_initializer": "glorot_normal",
             "kernel_regularizer": "l2",
             "upsample_type": "upsample_nearest_conv2d",
-            "downsample_type": "strides",
+            "downsample_type": "conv2d",
             "depth_drop_rate": 0.5,
             "convolutional_self_attention_dropout_rate": 0.25
         },

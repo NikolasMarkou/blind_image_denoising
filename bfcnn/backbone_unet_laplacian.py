@@ -594,17 +594,17 @@ def builder(
     # otherwise we will get the most shallow output
     output_layers = output_layers[::-1]
 
-    # for i in range(len(output_layers)):
-    #     x = output_layers[i]
-    #     if use_output_normalization:
-    #         if use_bn:
-    #             x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
-    #         if use_ln:
-    #             x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
-    #     x = activation_wrapper(activation=activation)(x)
-    #     output_layers[i] = (
-    #         tf.keras.layers.Layer(
-    #             name=f"{output_layer_name}_{i}")(x))
+    for i in range(len(output_layers)):
+        x = output_layers[i]
+        # if use_output_normalization:
+        #     if use_bn:
+        #         x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
+        #     if use_ln:
+        #         x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
+        # x = activation_wrapper(activation=activation)(x)
+        output_layers[i] = (
+            tf.keras.layers.Layer(
+                name=f"{output_layer_name}_{i}")(x))
 
     return \
         tf.keras.Model(
