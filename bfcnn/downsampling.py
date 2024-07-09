@@ -36,7 +36,7 @@ def downsample(
     #
     if downsample_type in ["conv2d"]:
         params["strides"] = (2, 2)
-        params["padding"] = "valid"
+        params["padding"] = "same"
         x = \
             conv2d_wrapper(
                 input_layer=x,
