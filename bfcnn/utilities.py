@@ -625,7 +625,7 @@ def lowpass_filter(
 def multiscales_generator_fn(
         shape: List[int],
         no_scales: int,
-        kernel_size: Tuple[int, int] = (3, 3),
+        kernel_size: Tuple[int, int] = (4, 4),
         nsig: Tuple[float, float] = (1, 1),
         clip_values: bool = False,
         round_values: bool = False,
