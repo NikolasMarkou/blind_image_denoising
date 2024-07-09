@@ -589,7 +589,7 @@ def builder(
                 x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
             if use_ln:
                 x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
-        x = activation_wrapper(activation=activation(x))
+        x = activation_wrapper(activation=activation)(x)
         output_layers[i] = (
             tf.keras.layers.Layer(
                 name=f"{output_layer_name}_{i}")(x))
