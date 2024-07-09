@@ -327,7 +327,7 @@ def builder(
                         bn_params=bn_params,
                         ln_params=ln_params,
                         attention_channels=filters,
-                        attention_activation=activation,
+                        attention_activation="leaky_relu",
                         output_activation="linear",
                         use_soft_orthonormal_regularization=True,
                         dropout=convolutional_self_attention_dropout_rate,
@@ -589,6 +589,7 @@ def builder(
                 x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
             if use_ln:
                 x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
+        x = activation_wrapper(activation=activation(x))
         output_layers[i] = (
             tf.keras.layers.Layer(
                 name=f"{output_layer_name}_{i}")(x))
