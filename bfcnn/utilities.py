@@ -645,13 +645,14 @@ def multiscales_generator_fn(
 
         for _ in range(no_scales):
             # downsample, clip and round
-            n_scale = tf.nn.depthwise_conv2d(
-                input=n_scale,
-                filter=kernel,
-                strides=(1, 2, 2, 1),
-                data_format=None,
-                dilations=None,
-                padding="SAME")
+            # n_scale = tf.nn.depthwise_conv2d(
+            #     input=n_scale,
+            #     filter=kernel,
+            #     strides=(1, 2, 2, 1),
+            #     data_format=None,
+            #     dilations=None,
+            #     padding="VALID")
+            n_scale = tf.nn.avg_pool2d(input=n_scale, ksize=(2, 2), padding="VALID", strides=(2, 2))
             # clip values
             if clip_values:
                 n_scale = tf.clip_by_value(n_scale,

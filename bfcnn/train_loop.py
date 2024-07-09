@@ -407,9 +407,6 @@ def train_loop(
                     for v in gradients_accumulation:
                         v.assign(v * 0.0)
 
-                if (ckpt.step > 1000) and (counter % gpu_batches_per_step == 1):
-                    noisy_image_batch = test_step(noisy_image_batch)
-
                 total_loss, model_loss, all_denoiser_loss, predictions, grads = \
                     train_step_single_gpu(
                         p_input_image_batch=input_image_batch,
