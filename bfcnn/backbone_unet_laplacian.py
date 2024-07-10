@@ -358,9 +358,6 @@ def builder(
             if use_ln:
                 x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
 
-        # if d != (depth - 1):
-        #     x = activation_wrapper(activation=activation)(x)
-
         node_level = (d, 0)
         nodes_visited.add(node_level)
         nodes_output[node_level] = x
@@ -564,7 +561,6 @@ def builder(
                 x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
             if use_ln:
                 x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
-        x = activation_wrapper(activation=activation)(x)
         nodes_output[node] = x
         nodes_visited.add(node)
 
