@@ -564,8 +564,7 @@ def builder(
                 x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
             if use_ln:
                 x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
-        # got high contrast results (investigate this)
-        # x = activation_wrapper(activation=activation)(x)
+        x = activation_wrapper(activation=activation)(x)
         nodes_output[node] = x
         nodes_visited.add(node)
 
@@ -599,12 +598,6 @@ def builder(
 
     for i in range(len(output_layers)):
         x = output_layers[i]
-        # if use_output_normalization:
-        #     if use_bn:
-        #         x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
-        #     if use_ln:
-        #         x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
-        # x = activation_wrapper(activation=activation)(x)
         output_layers[i] = (
             tf.keras.layers.Layer(
                 name=f"{output_layer_name}_{i}")(x))
