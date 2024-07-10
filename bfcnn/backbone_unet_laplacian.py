@@ -562,7 +562,8 @@ def builder(
                 x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
             if use_ln:
                 x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
-        x = activation_wrapper(activation=activation)(x)
+        # got high contrast results (investigate this)
+        # x = activation_wrapper(activation=activation)(x)
         nodes_output[node] = x
         nodes_visited.add(node)
 
