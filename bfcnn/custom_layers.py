@@ -11,7 +11,6 @@ from .regularizers import \
     SoftOrthogonalConstraintRegularizer, \
     SoftOrthonormalConstraintRegularizer
 
-
 # ---------------------------------------------------------------------
 
 @tf.keras.utils.register_keras_serializable()
@@ -1227,7 +1226,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
                  bn_params: Dict = None,
                  ln_params: Dict = None,
                  use_gamma: bool = True,
-                 attention_activation: str = "leaky_relu",
+                 attention_activation: str = "leaky_relu_01",
                  output_activation: str = "linear",
                  use_soft_orthonormal_regularization: bool = False,
                  use_soft_orthogonal_regularization: bool = False,
@@ -1269,14 +1268,18 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
 
         self.reshape_attention = None
         self.reshape_output = None
+
+        self.attention_activation_fn = None
     def build(self, input_shape):
+        from .utilities import activation_wrapper
+
         qvk_conv_params = dict(
             filters=self.attention_channels,
             kernel_size=(1, 1),
             strides=(1, 1),
             padding="same",
             use_bias=self.use_bias,
-            activation=self.attention_activation,
+            activation="linear",
             kernel_regularizer=tf.keras.regularizers.L2(l2=1e-4),
             kernel_initializer="glorot_normal"
         )
@@ -1328,6 +1331,9 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
                 score_mode="dot",
                 dropout=self.dropout))
 
+        self.attention_activation_fn = \
+            activation_wrapper(self.attention_activation)
+
         # gamma
         if self.use_gamma:
             self.gamma = ChannelLearnableMultiplier()
@@ -1350,6 +1356,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
             x = self.ln_0(x, training=training)
 
         # --- compute query, key, value
+        x = self.attention_activation_fn(x)
         q_x = self.reshape_attention(self.query_conv(x, training=training))
         v_x = self.reshape_attention(self.value_conv(x, training=training))
         k_x = self.reshape_attention(self.key_conv(x, training=training))
