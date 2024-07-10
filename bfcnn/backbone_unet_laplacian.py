@@ -327,7 +327,7 @@ def builder(
                         bn_params=bn_params,
                         ln_params=ln_params,
                         attention_channels=filters,
-                        attention_activation="leaky_relu",
+                        attention_activation="linear",
                         output_activation="linear",
                         use_soft_orthonormal_regularization=True,
                         dropout=convolutional_self_attention_dropout_rate,
