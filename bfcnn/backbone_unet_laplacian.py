@@ -412,10 +412,11 @@ def builder(
                 bn_params=bn_params,
                 conv_params=params))
 
-        x_bottom_pool = tf.keras.layers.Concatenate([
-            tf.keras.layers.GlobalMaxPool2D(keepdims=True)(x_bottom),
-            tf.keras.layers.GlobalAveragePooling2D(keepdims=True)(x_bottom)
-        ])
+        x_bottom_pool = (
+            tf.keras.layers.Concatenate([
+                tf.keras.layers.GlobalMaxPool2D(keepdims=True)(x_bottom),
+                tf.keras.layers.GlobalAveragePooling2D(keepdims=True)(x_bottom)
+        ]))
 
         # apply to all depths above
         for d in range(depth-1):
