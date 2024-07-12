@@ -21,13 +21,14 @@ from .upsampling import upsample
 from .downsampling import downsample
 from .custom_layers import (
     ConvNextBlock,
-    ValueCompressor,
+    GaussianFilter,
+    StochasticDepth,
     AdditiveAttentionGate,
     ChannelLearnableMultiplier,
-    ConvolutionalSelfAttention,
-    GaussianFilter,
-    StochasticDepth)
-
+    ConvolutionalSelfAttention)
+from .regularizers import (
+    SoftOrthogonalConstraintRegularizer,
+    SoftOrthonormalConstraintRegularizer)
 
 # ---------------------------------------------------------------------
 
@@ -56,7 +57,6 @@ def builder(
         use_self_attention: bool = False,
         use_attention_gates: bool = False,
         use_complex_base: bool = False,
-        use_value_compressor: bool = False,
         use_global_pool_information: bool = False,
         use_soft_orthogonal_regularization: bool = False,
         use_soft_orthonormal_regularization: bool = False,
@@ -391,29 +391,49 @@ def builder(
         params = copy.deepcopy(conv_params_res_3[depth - 1])
         params["kernel_size"] = (1, 1)
         params["activation"] = activation
+        if use_soft_orthogonal_regularization:
+            params["kernel_regularizer"] = \
+                SoftOrthogonalConstraintRegularizer(
+                    lambda_coefficient=DEFAULT_SOFTORTHOGONAL_LAMBDA,
+                    l1_coefficient=DEFAULT_SOFTORTHOGONAL_L1,
+                    l2_coefficient=DEFAULT_SOFTORTHOGONAL_L2)
+        if use_soft_orthonormal_regularization:
+            params["kernel_regularizer"] = \
+                SoftOrthonormalConstraintRegularizer(
+                    lambda_coefficient=DEFAULT_SOFTORTHONORMAL_LAMBDA,
+                    l1_coefficient=DEFAULT_SOFTORTHONORMAL_L1,
+                    l2_coefficient=DEFAULT_SOFTORTHONORMAL_L2)
 
         x_bottom = nodes_output[(depth - 1, 0)]
         x_bottom = (
             conv2d_wrapper(
                 input_layer=x_bottom,
-                ln_params=None,
-                bn_params=None,
+                ln_params=ln_params,
+                bn_params=bn_params,
                 conv_params=params))
 
-        x_bottom_pool = (
+        x_bottom_pool = tf.keras.layers.Concatenate([
+            tf.keras.layers.GlobalMaxPool2D(keepdims=True)(x_bottom),
             tf.keras.layers.GlobalAveragePooling2D(keepdims=True)(x_bottom)
-        )
-
-        if use_bn:
-            x_bottom_pool = tf.keras.layers.BatchNormalization(center=use_bias)(x_bottom_pool)
-        if use_ln:
-            x_bottom_pool = tf.keras.layers.LayerNormalization(center=use_bias)(x_bottom_pool)
+        ])
 
         # apply to all depths above
         for d in range(depth-1):
             params = copy.deepcopy(conv_params_res_3[d])
             params["kernel_size"] = (1, 1)
             params["activation"] = "linear"
+            if use_soft_orthogonal_regularization:
+                params["kernel_regularizer"] = \
+                    SoftOrthogonalConstraintRegularizer(
+                        lambda_coefficient=DEFAULT_SOFTORTHOGONAL_LAMBDA,
+                        l1_coefficient=DEFAULT_SOFTORTHOGONAL_L1,
+                        l2_coefficient=DEFAULT_SOFTORTHOGONAL_L2)
+            if use_soft_orthonormal_regularization:
+                params["kernel_regularizer"] = \
+                    SoftOrthonormalConstraintRegularizer(
+                        lambda_coefficient=DEFAULT_SOFTORTHONORMAL_LAMBDA,
+                        l1_coefficient=DEFAULT_SOFTORTHONORMAL_L1,
+                        l2_coefficient=DEFAULT_SOFTORTHONORMAL_L2)
 
             node_level = (d, 0)
             x_bottom_pool_tmp = (
@@ -422,10 +442,16 @@ def builder(
                     ln_params=None,
                     bn_params=None,
                     conv_params=params))
-            x_bottom_pool_tmp = ChannelLearnableMultiplier()(x_bottom_pool_tmp)
-            x = nodes_output[node_level]
-            x = tf.keras.layers.Multiply()([x, x_bottom_pool_tmp])
-            nodes_output[node_level] = x
+
+            x_bottom_pool_tmp = (
+                ChannelLearnableMultiplier()(x_bottom_pool_tmp)
+            )
+
+            nodes_output[node_level] = (
+                tf.keras.layers.Multiply()([
+                    nodes_output[node_level],
+                    tf.nn.sigmoid(x_bottom_pool_tmp)])
+            )
         del x_bottom_pool, x_bottom
 
     # --- VERY IMPORTANT
