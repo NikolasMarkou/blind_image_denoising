@@ -321,6 +321,67 @@ class ChannelLearnableMultiplier(tf.keras.layers.Layer):
     def compute_output_shape(self, input_shape):
         return input_shape
 
+# ---------------------------------------------------------------------
+
+@tf.keras.utils.register_keras_serializable()
+class ChannelLearnableMultiplierV2(tf.keras.layers.Layer):
+    def __init__(self,
+                 max_value:float = 1.0,
+                 initializer=tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.01),
+                 regularizer=tf.keras.regularizers.l1(1e-6),
+                 **kwargs):
+        """
+        Per channel learnable multiplier
+
+        :param initializer: initializes the values, should keep them close to 0.0
+        :param regularizer: keeps the values near 0.0, so it becomes 1
+        :param kwargs:
+        """
+        super().__init__(**kwargs)
+        self.max_value = max_value
+        self.w_multiplier = None
+        self.initializer = initializer
+        self.regularizer = regularizer
+
+    def build(self, input_shape):
+        """
+        Initializes the ChannelLearnableMultiplier layer.
+
+        Parameters:
+        initializer (tf.keras.initializers.Initializer): Initializer for the multiplier weights.
+        regularizer (tf.keras.regularizers.Regularizer): Regularizer for the multiplier weights.
+        kwargs: Additional keyword arguments.
+        """
+        new_shape = [1, ] * len(input_shape)
+        new_shape[-1] = input_shape[-1]
+        self.w_multiplier = self.add_weight(
+            shape=new_shape,
+            name="w_multiplier",
+            initializer=self.initializer,
+            regularizer=self.regularizer,
+            trainable=True,
+        )
+
+    def call(self, inputs, training=None):
+        """
+        Applies the multipliers to the input tensor.
+        relu makes sure we don't have sign reversal
+        multiplier starts from 1 and moves away from there
+        y=\frac{\left(\tanh\left(4\cdot x+1.5\right)+1\right)}{2}\cdot1
+
+        Parameters:
+        inputs (tf.Tensor): Input tensor.
+        training (bool, optional): Whether the call is in training mode or not.
+
+        Returns:
+        tf.Tensor: Output tensor with the multipliers applied.
+        """
+        return tf.multiply(
+            tf.nn.tanh((4 * self.w_multiplier + 1.5) + 1) * (0.5 * self.max_value),
+            inputs)
+
+    def compute_output_shape(self, input_shape):
+        return input_shape
 
 # ---------------------------------------------------------------------
 
