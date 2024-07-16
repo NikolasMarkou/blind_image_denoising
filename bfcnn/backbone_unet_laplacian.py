@@ -423,18 +423,6 @@ def builder(
             params = copy.deepcopy(conv_params_res_3[d])
             params["kernel_size"] = (1, 1)
             params["activation"] = "linear"
-            if use_soft_orthogonal_regularization:
-                params["kernel_regularizer"] = \
-                    SoftOrthogonalConstraintRegularizer(
-                        lambda_coefficient=DEFAULT_SOFTORTHOGONAL_LAMBDA,
-                        l1_coefficient=DEFAULT_SOFTORTHOGONAL_L1,
-                        l2_coefficient=DEFAULT_SOFTORTHOGONAL_L2)
-            if use_soft_orthonormal_regularization:
-                params["kernel_regularizer"] = \
-                    SoftOrthonormalConstraintRegularizer(
-                        lambda_coefficient=DEFAULT_SOFTORTHONORMAL_LAMBDA,
-                        l1_coefficient=DEFAULT_SOFTORTHONORMAL_L1,
-                        l2_coefficient=DEFAULT_SOFTORTHONORMAL_L2)
 
             node_level = (d, 0)
             x_bottom_pool_tmp = (
