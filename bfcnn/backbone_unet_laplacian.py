@@ -405,12 +405,6 @@ def builder(
                     l2_coefficient=DEFAULT_SOFTORTHONORMAL_L2)
 
         x_bottom = nodes_output[(depth - 1, 0)]
-        x_bottom = (
-            conv2d_wrapper(
-                input_layer=x_bottom,
-                ln_params=ln_params,
-                bn_params=bn_params,
-                conv_params=params))
 
         x_bottom_pool = (
             tf.keras.layers.Concatenate(axis=-1)([
@@ -423,6 +417,7 @@ def builder(
             params = copy.deepcopy(conv_params_res_3[d])
             params["kernel_size"] = (1, 1)
             params["activation"] = "sigmoid"
+            params["name"] = f"gpi_{d}"
 
             node_level = (d, 0)
             x_bottom_pool_tmp = (
