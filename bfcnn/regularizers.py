@@ -271,6 +271,12 @@ class SoftOrthogonalConstraintRegularizer(tf.keras.regularizers.Regularizer):
                             reduce_retracing=True).get_concrete_function(x))
         return self._call_fn(x)
 
+    def get_config(self):
+        return {
+            "lambda_coefficient": self._lambda_coefficient,
+            "l1_coefficient": self._l1_coefficient,
+            "l2_coefficient": self._l2_coefficient
+        }
 
 # ---------------------------------------------------------------------
 
@@ -336,5 +342,12 @@ class SoftOrthonormalConstraintRegularizer(tf.keras.regularizers.Regularizer):
                 tf.function(func=self.generic_fn,
                             reduce_retracing=True).get_concrete_function(x))
         return self._call_fn(x)
+
+    def get_config(self):
+        return {
+            "lambda_coefficient": self._lambda_coefficient,
+            "l1_coefficient": self._l1_coefficient,
+            "l2_coefficient": self._l2_coefficient
+        }
 
 # ---------------------------------------------------------------------
