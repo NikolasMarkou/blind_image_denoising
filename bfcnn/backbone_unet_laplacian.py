@@ -422,7 +422,7 @@ def builder(
         for d in range(depth-1):
             params = copy.deepcopy(conv_params_res_3[d])
             params["kernel_size"] = (1, 1)
-            params["activation"] = "linear"
+            params["activation"] = "sigmoid"
 
             node_level = (d, 0)
             x_bottom_pool_tmp = (
@@ -431,10 +431,6 @@ def builder(
                     ln_params=None,
                     bn_params=None,
                     conv_params=params))
-
-            x_bottom_pool_tmp = (
-                ChannelLearnableMultiplier()(x_bottom_pool_tmp)
-            )
 
             nodes_output[node_level] = (
                 tf.keras.layers.Multiply()([
