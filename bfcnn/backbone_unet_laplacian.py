@@ -412,8 +412,8 @@ def builder(
                 tf.keras.layers.GlobalAveragePooling2D(keepdims=True)(x_bottom)
         ]))
 
-        # apply to all depths above
-        for d in range(depth-1):
+        # apply to all depths above (except the direct one)
+        for d in range(depth-2):
             params = copy.deepcopy(conv_params_res_3[d])
             params["kernel_size"] = (1, 1)
             params["activation"] = "sigmoid"
