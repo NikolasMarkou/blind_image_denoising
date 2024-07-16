@@ -413,7 +413,7 @@ def builder(
                 conv_params=params))
 
         x_bottom_pool = (
-            tf.keras.layers.Concatenate([
+            tf.keras.layers.Concatenate(axis=-1)([
                 tf.keras.layers.GlobalMaxPool2D(keepdims=True)(x_bottom),
                 tf.keras.layers.GlobalAveragePooling2D(keepdims=True)(x_bottom)
         ]))
