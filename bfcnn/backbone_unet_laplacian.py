@@ -451,7 +451,7 @@ def builder(
             nodes_output[node_level] = (
                 tf.keras.layers.Multiply()([
                     nodes_output[node_level],
-                    tf.nn.sigmoid(x_bottom_pool_tmp)])
+                    x_bottom_pool_tmp])
             )
         del x_bottom_pool, x_bottom
 
