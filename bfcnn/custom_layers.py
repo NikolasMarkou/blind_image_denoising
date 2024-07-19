@@ -326,7 +326,7 @@ class ChannelLearnableMultiplier(tf.keras.layers.Layer):
 @tf.keras.utils.register_keras_serializable()
 class ChannelLearnableMultiplierV2(tf.keras.layers.Layer):
     def __init__(self,
-                 max_value:float = 1.0,
+                 capped:bool = True,
                  initializer=tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.01),
                  regularizer=tf.keras.regularizers.l1(1e-6),
                  **kwargs):
@@ -338,7 +338,7 @@ class ChannelLearnableMultiplierV2(tf.keras.layers.Layer):
         :param kwargs:
         """
         super().__init__(**kwargs)
-        self.max_value = max_value
+        self.capped = capped
         self.w_multiplier = None
         self.initializer = initializer
         self.regularizer = regularizer
@@ -376,9 +376,14 @@ class ChannelLearnableMultiplierV2(tf.keras.layers.Layer):
         Returns:
         tf.Tensor: Output tensor with the multipliers applied.
         """
+        if self.capped:
+            return tf.multiply(
+                tf.nn.tanh((4 * self.w_multiplier + 1.5) + 1) * 0.5,
+                inputs)
         return tf.multiply(
-            tf.nn.tanh((4 * self.w_multiplier + 1.5) + 1) * (0.5 * self.max_value),
+            tf.nn.tanh((4 * self.w_multiplier + 1.5) + 1) * 0.5 * (1.0 + self.w_multiplier),
             inputs)
+
 
     def compute_output_shape(self, input_shape):
         return input_shape
@@ -850,7 +855,7 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
                 kernel_regularizer=copy.deepcopy(kernel_regularizer),
                 kernel_initializer=kernel_initializer))
         # ---
-        self.scale_o = ChannelLearnableMultiplier()
+        self.scale_o = ChannelLearnableMultiplierV2(capped=False)
 
     def call(self, inputs, training=None):
         """
@@ -1040,7 +1045,7 @@ class ConvNextBlock(tf.keras.layers.Layer):
 
         # gamma
         if self.use_gamma:
-            self.gamma = ChannelLearnableMultiplier()
+            self.gamma = ChannelLearnableMultiplierV2(capped=False)
 
     def call(self, inputs, training=None):
         x = inputs
@@ -1391,7 +1396,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
 
         # gamma
         if self.use_gamma:
-            self.gamma = ChannelLearnableMultiplier()
+            self.gamma = ChannelLearnableMultiplierV2()
 
     def call(self, inputs, training=None):
         shape_x = tf.shape(inputs)
