@@ -7,7 +7,7 @@
                 "?",
                 3
             ],
-            "depth": 3,
+            "depth": 4,
             "width": 3,
             "filters": 32,
             "use_bn": false,
@@ -16,11 +16,10 @@
             "use_concat": false,
             "use_gamma": true,
             "use_laplacian_averaging": true,
-            "use_global_pool_information": true,
             "gaussian_kernel_size": 2,
             "use_complex_base": false,
             "use_mix_project": false,
-            "use_self_attention": true,
+            "use_self_attention": false,
             "use_attention_gates": false,
             "use_output_normalization": true,
             "encoder_kernel_size": 5,
@@ -33,7 +32,6 @@
             "upsample_type": "upsample_nearest_conv2d",
             "downsample_type": "conv2d",
             "depth_drop_rate": 0.5,
-            "convolutional_self_attention_dropout_rate": 0.25
         },
         "denoiser": {
             "filters": 32,
@@ -61,9 +59,9 @@
             "schedule": {
                 "type": "cosine_decay_restarts",
                 "config": {
-                    "t_mul": 1.1,
+                    "t_mul": 1.0,
                     "epsilon": 0.00001,
-                    "decay_rate": 0.9,
+                    "decay_rate": 0.75,
                     "decay_steps": 40000,
                     "learning_rate": 0.001
                 }
