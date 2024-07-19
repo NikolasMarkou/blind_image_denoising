@@ -31,7 +31,7 @@
             "kernel_regularizer": "l2",
             "upsample_type": "upsample_nearest_conv2d",
             "downsample_type": "conv2d",
-            "depth_drop_rate": 0.5,
+            "depth_drop_rate": 0.5
         },
         "denoiser": {
             "filters": 32,
@@ -55,11 +55,11 @@
         "visualization_every": 500,
         "optimizer": {
             "type": "ADAM",
-            "gradient_clipping_by_norm_local": 1.0,
+            "gradient_clipping_by_norm_local": 1,
             "schedule": {
                 "type": "cosine_decay_restarts",
                 "config": {
-                    "t_mul": 1.0,
+                    "t_mul": 1,
                     "epsilon": 0.00001,
                     "decay_rate": 0.75,
                     "decay_steps": 40000,
@@ -70,10 +70,10 @@
     },
     "loss": {
         "hinge": 1.5,
-        "cutoff": 255.0,
-        "mae_multiplier": 2.0,
-        "mse_multiplier": -1.0,
-        "ssim_multiplier": 2.0,
+        "cutoff": 255,
+        "mae_multiplier": 2,
+        "mse_multiplier": -1,
+        "ssim_multiplier": 2,
         "regularization": 0.01
     },
     "dataset": {
@@ -98,8 +98,14 @@
             3
         ],
         "inpaint_drop_rate": 0.5,
-        "multiplicative_noise": [0.05, 0.1],
-        "additional_noise": [5, 40],
+        "multiplicative_noise": [
+            0.05,
+            0.1
+        ],
+        "additional_noise": [
+            5,
+            40
+        ],
         "inputs": [
             {
                 "directory": "/media/data1_4tb/datasets/COCO/train2017"
