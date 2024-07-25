@@ -12,7 +12,8 @@ from .custom_logger import logger
 from .utilities import \
     ConvType, \
     conv2d_wrapper
-
+from .regularizers import (
+    SoftOrthonormalConstraintRegularizer)
 
 # ---------------------------------------------------------------------
 
@@ -64,6 +65,24 @@ def downsample(
             params["kernel_size"] = (1, 1)
             params["strides"] = (1, 1)
             params["padding"] = "same"
+            x = \
+                conv2d_wrapper(
+                    input_layer=x,
+                    bn_params=bn_params,
+                    ln_params=ln_params,
+                    conv_params=params)
+    elif downsample_type in ["strides_v2"]:
+        x = x[:, ::2, ::2, :]
+
+        if conv_params is not None:
+            params["kernel_size"] = (1, 1)
+            params["strides"] = (1, 1)
+            params["padding"] = "same"
+            params["kernel_regularizer"] = \
+                SoftOrthonormalConstraintRegularizer(
+                    lambda_coefficient=DEFAULT_SOFTORTHONORMAL_LAMBDA,
+                    l1_coefficient=DEFAULT_SOFTORTHONORMAL_L1,
+                    l2_coefficient=DEFAULT_SOFTORTHONORMAL_L2)
             x = \
                 conv2d_wrapper(
                     input_layer=x,
