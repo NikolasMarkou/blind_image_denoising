@@ -1,0 +1,130 @@
+{
+    "model": {
+        "backbone": {
+            "type": "unet_laplacian",
+            "input_shape": [
+                "?",
+                "?",
+                3
+            ],
+            "depth": 4,
+            "width": 3,
+            "filters": 32,
+            "use_bn": false,
+            "use_ln": true,
+            "use_bias": false,
+            "use_concat": false,
+            "use_gamma": true,
+            "use_laplacian_averaging": true,
+            "gaussian_kernel_size": 2,
+            "use_complex_base": false,
+            "use_mix_project": false,
+            "use_self_attention": false,
+            "use_attention_gates": false,
+            "use_output_normalization": true,
+            "encoder_kernel_size": 5,
+            "decoder_kernel_size": 5,
+            "multiple_scale_outputs": true,
+            "activation": "leaky_relu_01",
+            "use_soft_orthonormal_regularization": true,
+            "kernel_initializer": "glorot_normal",
+            "kernel_regularizer": "l2",
+            "upsample_type": "upsample_nearest_conv2d_v2",
+            "downsample_type": "conv2d",
+            "depth_drop_rate": 0.5
+        },
+        "denoiser": {
+            "filters": 32,
+            "use_bn": false,
+            "use_ln": false,
+            "use_bias": false,
+            "activation": "leaky_relu_01",
+            "output_channels": 3,
+            "kernel_regularizer": "l2",
+            "kernel_initializer": "glorot_normal"
+        }
+    },
+    "train": {
+        "epochs": 10,
+        "total_steps": -1,
+        "gpu_batches_per_step": 8,
+        "use_test_images": true,
+        "checkpoints_to_keep": 3,
+        "checkpoint_every": 10000,
+        "visualization_number": 4,
+        "visualization_every": 500,
+        "optimizer": {
+            "type": "ADAM",
+            "gradient_clipping_by_norm_local": 1,
+            "schedule": {
+                "type": "cosine_decay_restarts",
+                "config": {
+                    "t_mul": 1,
+                    "epsilon": 0.00001,
+                    "decay_rate": 0.75,
+                    "decay_steps": 40000,
+                    "learning_rate": 0.001
+                }
+            }
+        }
+    },
+    "loss": {
+        "hinge": 1.5,
+        "cutoff": 255,
+        "mae_multiplier": 2,
+        "mse_multiplier": -1,
+        "ssim_multiplier": 2,
+        "regularization": 0.01
+    },
+    "dataset": {
+        "batch_size": 4,
+        "color_mode": "rgb",
+        "no_crops_per_image": 4,
+        "value_range": [
+            0,
+            255
+        ],
+        "clip_value": true,
+        "quantization": -1,
+        "random_blur": true,
+        "round_values": true,
+        "random_rotate": 1.57,
+        "use_jpeg_noise": false,
+        "random_up_down": true,
+        "random_left_right": true,
+        "input_shape": [
+            256,
+            256,
+            3
+        ],
+        "inpaint_drop_rate": 0.5,
+        "multiplicative_noise": [
+            0.05,
+            0.1
+        ],
+        "additional_noise": [
+            5,
+            40
+        ],
+        "inputs": [
+            {
+                "directory": "/media/data1_4tb/datasets/COCO/train2017"
+            },
+            {
+                "directory": "/media/data1_4tb/datasets/div2k/train"
+            },
+            {
+                "directory": "/media/data1_4tb/datasets/Megadepth/"
+            },
+            {
+                "directory": "/media/data1_4tb/datasets/bdd_data/train/"
+            },
+            {
+                "directory": "/media/data1_4tb/datasets/WIDER/WIDER_train/"
+            },
+            {
+                "directory": "/media/data1_4tb/datasets/WFLW/images/"
+            }
+        ]
+    }
+}

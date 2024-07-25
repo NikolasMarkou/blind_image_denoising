@@ -12,7 +12,8 @@ from .custom_logger import logger
 from .utilities import \
     ConvType, \
     conv2d_wrapper
-
+from .regularizers import (
+    SoftOrthonormalConstraintRegularizer)
 
 # ---------------------------------------------------------------------
 
@@ -60,6 +61,26 @@ def upsample(
         params["kernel_size"] = (3, 3)
         params["strides"] = (1, 1)
         params["padding"] = "same"
+        # lower level, upscale
+        x = \
+            tf.keras.layers.UpSampling2D(
+                size=(2, 2),
+                interpolation="nearest")(x)
+        x = conv2d_wrapper(
+            input_layer=x,
+            bn_params=bn_params,
+            ln_params=ln_params,
+            conv_params=params,
+            conv_type=ConvType.CONV2D)
+    elif upsample_type in ["upsample_nearest_conv2d_v2"]:
+        params["kernel_size"] = (1, 1)
+        params["strides"] = (1, 1)
+        params["padding"] = "same"
+        params["kernel_regularizer"] = \
+            SoftOrthonormalConstraintRegularizer(
+                lambda_coefficient=DEFAULT_SOFTORTHONORMAL_LAMBDA,
+                l1_coefficient=DEFAULT_SOFTORTHONORMAL_L1,
+                l2_coefficient=DEFAULT_SOFTORTHONORMAL_L2)
         # lower level, upscale
         x = \
             tf.keras.layers.UpSampling2D(
