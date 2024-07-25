@@ -59,11 +59,9 @@ def downsample(
                     ln_params=ln_params,
                     conv_params=params)
     elif downsample_type in ["strides"]:
-        x = x[:, ::2, ::2, :]
-        
         if conv_params is not None:
             params["kernel_size"] = (1, 1)
-            params["strides"] = (1, 1)
+            params["strides"] = (2, 2)
             params["padding"] = "same"
             x = \
                 conv2d_wrapper(
@@ -71,6 +69,8 @@ def downsample(
                     bn_params=bn_params,
                     ln_params=ln_params,
                     conv_params=params)
+        else:
+            x = x[:, ::2, ::2, :]
     elif downsample_type in ["strides_v2"]:
         if conv_params is not None:
             params["kernel_size"] = (1, 1)
