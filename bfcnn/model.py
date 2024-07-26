@@ -135,7 +135,7 @@ def model_builder(
         # ]
         model_denoiser = \
             model_denoiser_builder(
-                config=config_denoisers[i],
+                config=config_denoisers[0],
                 name=f"denoiser_head").denoiser
         denoisers_mid = [
             model_denormalizer(
