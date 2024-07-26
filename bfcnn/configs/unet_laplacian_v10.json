@@ -57,14 +57,12 @@
             "type": "ADAM",
             "gradient_clipping_by_norm_local": 1,
             "schedule": {
-                "type": "cosine_decay_restarts",
-                "config": {
-                    "t_mul": 1,
-                    "epsilon": 0.00001,
-                    "decay_rate": 0.75,
-                    "decay_steps": 40000,
-                    "learning_rate": 0.001
-                }
+				"type": "exponential_decay",
+				"config": {
+					"decay_rate": 0.75,
+					"decay_steps": 40000,
+					"learning_rate": 0.001
+				}
             }
         }
     },
