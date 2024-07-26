@@ -585,7 +585,7 @@ def builder(
     # depth outputs
     if multiple_scale_outputs:
         tmp_output_layers = []
-        for d in range(0, depth, 1):
+        for d in range(1, depth, 1):
             d = d
             w = 1
 
@@ -604,7 +604,11 @@ def builder(
 
     # add as last the best output
     output_layers += [
-        nodes_output[(0, 1)]
+        conv2d_wrapper(
+            input_layer=nodes_output[(0, 1)],
+            ln_params=None,
+            bn_params=None,
+            conv_params=conv_params_output)
     ]
 
     # !!! IMPORTANT !!!
