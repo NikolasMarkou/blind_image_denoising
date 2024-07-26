@@ -186,6 +186,16 @@ def builder(
         kernel_regularizer=kernel_regularizer,
         kernel_initializer=kernel_initializer
     )
+    conv_params_output = dict(
+        kernel_size=1,
+        filters=filters,
+        strides=(1, 1),
+        padding="same",
+        use_bias=use_bias,
+        activation=activation,
+        kernel_regularizer=kernel_regularizer,
+        kernel_initializer=kernel_initializer
+    )
 
     conv_params = []
     conv_params_up = []
@@ -583,6 +593,11 @@ def builder(
                 logger.error(f"there is no node[{d},{w}] please check your assumptions")
                 continue
             x = nodes_output[(d, w)]
+            x = conv2d_wrapper(
+                    input_layer=x,
+                    ln_params=None,
+                    bn_params=None,
+                    conv_params=conv_params_output)
             tmp_output_layers.append(x)
         # reverse here so deeper levels come on top
         output_layers += tmp_output_layers[::-1]

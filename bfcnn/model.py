@@ -127,19 +127,22 @@ def model_builder(
             config_denoisers.append(tmp_config_denoiser)
 
         # --- denoiser heads
-        model_denoisers = [
+        # model_denoisers = [
+        #     model_denoiser_builder(
+        #         config=config_denoisers[i],
+        #         name=f"denoiser_head_{i}").denoiser
+        #     for i in range(backbone_no_outputs)
+        # ]
+        model_denoiser = \
             model_denoiser_builder(
                 config=config_denoisers[i],
-                name=f"denoiser_head_{i}").denoiser
-            for i in range(backbone_no_outputs)
-        ]
+                name=f"denoiser_head").denoiser
         denoisers_mid = [
             model_denormalizer(
-                model_denoisers[i](backbone[i]), training=False)
+                model_denoiser(backbone[i]), training=False)
             for i in range(backbone_no_outputs)
         ]
-        output_layers = \
-            denoisers_mid
+        output_layers = denoisers_mid
 
     # create model
     model_hydra = \
@@ -265,47 +268,14 @@ def model_denoiser_builder(
         logger.info(f"unused parameters [{kwargs}]")
 
     # --- set configuration
-    filters = config.get("filters", 32)
-    use_bn = config.get("use_bn", False)
-    use_ln = config.get("use_ln", False)
     use_bias = config.get(USE_BIAS, False)
-    activation = config.get("activation", "linear")
     output_channels = config.get("output_channels", 3)
     input_shape = input_shape_fixer(config.get("input_shape"))
     kernel_regularizer = config.get(KERNEL_REGULARIZER, "l2")
     kernel_initializer = config.get(KERNEL_INITIALIZER, "glorot_normal")
 
-    bn_params = None
-    if use_bn:
-        bn_params = \
-            dict(
-                scale=True,
-                center=use_bias,
-                momentum=DEFAULT_BN_MOMENTUM,
-                epsilon=DEFAULT_BN_EPSILON
-            )
-
-    ln_params = None
-    if use_ln:
-        ln_params = \
-            dict(
-                scale=True,
-                center=use_bias,
-                epsilon=DEFAULT_LN_EPSILON)
-
     # --- point estimation
-    conv_params_0 = dict(
-        kernel_size=(1, 1),
-        filters=filters,
-        strides=(1, 1),
-        padding="same",
-        use_bias=use_bias,
-        activation=activation,
-        kernel_regularizer=kernel_regularizer,
-        kernel_initializer=kernel_initializer
-    )
-
-    conv_params_1 = \
+    conv_params_0 = \
         dict(
             kernel_size=1,
             strides=(1, 1),
@@ -328,16 +298,9 @@ def model_denoiser_builder(
     x = (
         conv2d_wrapper(
             input_layer=x,
-            ln_params=ln_params,
-            bn_params=bn_params,
-            conv_params=conv_params_0))
-
-    x = (
-        conv2d_wrapper(
-            input_layer=x,
             ln_params=None,
             bn_params=None,
-            conv_params=conv_params_1))
+            conv_params=conv_params_0))
 
     x = tf.nn.tanh(2 * x) * 0.51
 
