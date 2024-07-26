@@ -585,7 +585,7 @@ def builder(
     # depth outputs
     if multiple_scale_outputs:
         tmp_output_layers = []
-        for d in range(1, depth, 1):
+        for d in range(0, depth, 1):
             d = d
             w = 1
 
