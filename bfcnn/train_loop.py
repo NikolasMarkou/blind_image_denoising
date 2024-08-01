@@ -24,7 +24,8 @@ from .utilities import \
     load_config, \
     create_checkpoint, \
     save_config, \
-    multiscales_generator_fn
+    multiscales_generator_fn, \
+    find_layer_by_name
 from .visualize import \
     visualize_weights_boxplot, \
     visualize_weights_heatmap, \
@@ -568,7 +569,7 @@ def train_loop(
                     # --- add activity distribution
                     for activity_layer in activity_layers:
                         logger.info(f"{activity_layer}")
-                        layer = ckpt.model.get_layer(name=activity_layer)
+                        layer = find_layer_by_name(ckpt.model.get_layer, name=activity_layer)
                         keras_fn = keras.backend.function([ckpt.model.input], [layer.output])
                         tf.summary.histogram(name=f"activity/{layer.name}",
                                              data=keras_fn(evaluation_batch),
