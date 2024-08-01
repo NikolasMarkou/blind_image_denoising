@@ -819,7 +819,7 @@ def get_layer_output(model: tf.keras.Model, layer_name: str, input_data):
         return None
 
     # Create a new model that outputs the desired layer's output
-    intermediate_model = tf.keras.Model(inputs=model.input, outputs=layer.output)
+    intermediate_model = tf.keras.Model(inputs=model.inputs, outputs=layer.outputs[0])
 
     # Get the output of the layer
     return intermediate_model.predict(input_data)
