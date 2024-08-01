@@ -131,9 +131,12 @@ def train_loop(
             name="visualization_every")
     # how many visualizations to show
     visualization_number = train_config.get("visualization_number", 5)
+    # layers for visualization
+    activity_layers = \
+        train_config.get("activity_layers", [])
 
     # --- train the model
-    with ((((tf.summary.create_file_writer(checkpoint_directory).as_default())))):
+    with tf.summary.create_file_writer(checkpoint_directory).as_default():
         # --- write configuration in tensorboard
         tf.summary.text("config", json.dumps(config, indent=4), step=0)
 
@@ -560,6 +563,18 @@ def train_loop(
                                      max_outputs=visualization_number,
                                      step=ckpt.step,
                                      description="weights heatmap")
+
+                    # --- add activity distribution
+                    if len(activity_layers) > 0:
+                        for layer in ckpt.model.layers:
+                            logger.info(f"{layer.name}")
+                            if layer.name in activity_layers:
+                                keras_function = keras.backend.function([ckpt.model.input], [layer.output])
+                                tf.summary.histogram(name=f"activity/{layer.name}",
+                                                     data=keras_function(evaluation_batch),
+                                                     step=ckpt.step,
+                                                     buckets=64)
+                                del keras_function
 
                 # --- check if it is time to save a checkpoint
                 if (checkpoint_every > 0) and (ckpt.step > 0) and \
