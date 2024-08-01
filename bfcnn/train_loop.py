@@ -185,6 +185,7 @@ def train_loop(
                     len(weights_dir) > 0 and \
                     os.path.isdir(weights_dir):
                 # restore weights from a directory
+                logger.info("!!! attempting to load weights")
                 loaded_weights = False
 
                 for d in [weights_dir]:
@@ -209,6 +210,8 @@ def train_loop(
 
                 if not loaded_weights:
                     logger.info("!!! failed to load weights")
+            else:
+                logger.info("!!! no weights to load")
 
             save_checkpoint_model_fn()
 
