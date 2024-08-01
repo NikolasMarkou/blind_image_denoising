@@ -395,6 +395,12 @@ def builder(
                            ln_params=None,
                            bn_params=None,
                            conv_params=conv_params_down[d]))
+    del x, x_skip
+
+    # --- put names on the encoding layers per depth
+    for d in range(depth):
+        nodes_output[(d, 0)] = (
+            tf.keras.layers.Layer(name=f"encoder_{d}")(nodes_output[(d, 0)]))
 
     # --- add global information gathering
     if use_global_pool_information:
