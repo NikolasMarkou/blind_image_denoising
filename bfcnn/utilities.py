@@ -769,13 +769,30 @@ def remove_padding(padded_image:tf.Tensor,
 
 # ---------------------------------------------------------------------
 
-# Traverse the model to find the specific layer by name
 def find_layer_by_name(model: tf.keras.Model, layer_name: str):
+    """
+    Recursively finds a layer by name in a Keras model or sub-model.
+
+    Args:
+    model (tf.keras.Model): The Keras model.
+    layer_name (str): The name of the layer to find.
+
+    Returns:
+    tf.keras.layers.Layer: The layer with the specified name, if found.
+    None: If the layer does not exist.
+    """
+    # Check if the model has the 'layers' attribute
+    if not hasattr(model, 'layers'):
+        logger.info("The provided model does not have a 'layers' attribute.")
+        return None
+
+    # Iterate through the layers of the model
     for layer in model.layers:
-        logger.info(f"layer: {layer.name}")
+        logger.info(f"Checking layer: {layer.name}")
         if layer.name == layer_name:
             return layer
-        if isinstance(layer, tf.keras.Model) or isinstance(layer, tf.keras.layers.Layer):
+        # If the layer is a model or a layer that may contain sub-layers, search recursively
+        if isinstance(layer, tf.keras.Model) or hasattr(layer, 'layers'):
             sub_layer = find_layer_by_name(layer, layer_name)
             if sub_layer:
                 return sub_layer
