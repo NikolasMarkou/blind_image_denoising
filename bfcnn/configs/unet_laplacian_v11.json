@@ -50,9 +50,7 @@
         "visualization_number": 4,
         "visualization_every": 500,
         "activity_layers": [
-            "encoder_0",
-            "encoder_1",
-            "encoder_2"
+            "unet_laplacian_backbone/unet_laplacian/encoder_0"
         ],
         "optimizer": {
             "type": "ADAM",
