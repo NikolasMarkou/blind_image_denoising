@@ -75,6 +75,12 @@ def main(args):
         config
     ]
 
+    if args.weights_directory is not None and len(args.weights_directory) > 0:
+        process_args.extend([
+            "--weights-directory",
+            args.weights_directory
+        ])
+
     return \
         subprocess.check_call(
             args=process_args,
