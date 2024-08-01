@@ -1,3 +1,4 @@
+import copy
 import os
 import time
 import json
@@ -251,6 +252,16 @@ def train_loop(
                 jit_compile=False,
                 normalize_values=False,
             )
+
+        if len(activity_layers) > 0:
+            tmp_activity_layers = []
+            for layer in ckpt.model.layers:
+                for activity_layer in activity_layers:
+                    if activity_layer in layer.name:
+                        tmp_activity_layers.append(layer.name)
+                        break
+            activity_layers = copy.deepcopy(tmp_activity_layers)
+            del tmp_activity_layers
 
         @tf.function(reduce_retracing=True, jit_compile=False)
         def train_step(n: List[tf.Tensor]):
@@ -565,16 +576,15 @@ def train_loop(
                                      description="weights heatmap")
 
                     # --- add activity distribution
-                    if len(activity_layers) > 0:
-                        for layer in ckpt.model.layers:
-                            logger.info(f"{layer.name}")
-                            if layer.name in activity_layers:
-                                keras_function = keras.backend.function([ckpt.model.input], [layer.output])
-                                tf.summary.histogram(name=f"activity/{layer.name}",
-                                                     data=keras_function(evaluation_batch),
-                                                     step=ckpt.step,
-                                                     buckets=64)
-                                del keras_function
+                    for layer in ckpt.model.layers:
+                        logger.info(f"{layer.name}")
+                        if layer.name in activity_layers:
+                            keras_function = keras.backend.function([ckpt.model.input], [layer.output])
+                            tf.summary.histogram(name=f"activity/{layer.name}",
+                                                 data=keras_function(evaluation_batch),
+                                                 step=ckpt.step,
+                                                 buckets=64)
+                            del keras_function
 
                 # --- check if it is time to save a checkpoint
                 if (checkpoint_every > 0) and (ckpt.step > 0) and \
