@@ -788,7 +788,6 @@ def find_layer_by_name(model: tf.keras.Model, layer_name: str):
 
     # Iterate through the layers of the model
     for layer in model.layers:
-        logger.info(f"Checking layer: {layer.name}")
         if layer.name == layer_name:
             return layer
         # If the layer is a model or a layer that may contain sub-layers, search recursively
