@@ -570,12 +570,15 @@ def train_loop(
                     for activity_layer in activity_layers:
                         logger.info(f"{activity_layer}")
                         layer = find_layer_by_name(ckpt.model.get_layer, name=activity_layer)
-                        keras_fn = keras.backend.function([ckpt.model.input], [layer.output])
-                        tf.summary.histogram(name=f"activity/{layer.name}",
-                                             data=keras_fn(evaluation_batch),
-                                             step=ckpt.step,
-                                             buckets=64)
-                        del keras_fn
+                        if layer is None:
+                            logger.info(f"Failed to find {activity_layer}")
+                        else:
+                            keras_fn = keras.backend.function([ckpt.model.input], [layer.output])
+                            tf.summary.histogram(name=f"activity/{layer.name}",
+                                                 data=keras_fn(evaluation_batch),
+                                                 step=ckpt.step,
+                                                 buckets=64)
+                            del keras_fn
 
                 # --- check if it is time to save a checkpoint
                 if (checkpoint_every > 0) and (ckpt.step > 0) and \
