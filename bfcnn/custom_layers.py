@@ -1448,22 +1448,92 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
 # ---------------------------------------------------------------------
 
 @tf.keras.utils.register_keras_serializable()
-class ValueCompressor(tf.keras.layers.Layer):
+class MELU(tf.keras.layers.Layer):
+    """
+    MeLU (Markou Exponential Linear Unit) Activation Function.
+
+    This layer implements the MeLU activation function, which combines the benefits of both exponential and linear units.
+    The formula for the MeLU function is:
+
+    S = 1 / (1 + e^(-mu * (x - omicron)))
+    T = 1 / (1 + e^(-mu * (x - tau)))
+    R = (S * omicron + (1 - S) * x) * tau
+
+    Args:
+        mu: The scaling factor, which controls the steepness of the activation function. Defaults to 2.5.
+        omicron: The offset value for the first exponential component. Defaults to 6.0.
+        tau: The threshold value for the second exponential component. Defaults to -0.2.
+
+    Inputs:
+        inputs: The input tensor to be passed through the MeLU activation function.
+
+    Outputs:
+        The output tensor after applying the MeLU activation function.
+
+    """
     def __init__(self,
-                 alpha: float = 4.0,
-                 beta: float = 0.5,
+                 mu: float = 2.5,
+                 omicron: float = 6.0,
+                 tau: float = -0.2,
                  **kwargs):
+        """
+        Initializes the MELU layer with the specified parameters.
+
+        Args:
+            mu (float, optional): The scaling factor. Defaults to 2.5.
+            omicron (float, optional): The offset value for the first exponential component. Defaults to 6.0.
+            tau (float, optional): The threshold value for the second exponential component. Defaults to -0.2.
+
+        """
         super().__init__(**kwargs)
-        self._alpha = alpha
-        self._beta = beta
+        self.mu = mu
+        self.omicron = omicron
+        self.tau = tau
 
     def call(self, inputs, training):
+        """
+        Applies the MeLU activation function to the input tensor.
+
+        Args:
+            inputs: The input tensor to be passed through the MeLU activation function.
+            training (bool): A boolean indicating whether this is a training phase or not. Defaults to False.
+
+        Returns:
+            The output tensor after applying the MeLU activation function.
+
+        """
         x = inputs
-        x = tf.nn.tanh(x * self._alpha) * self._beta
-        return x
+        s = 1.0 / (1.0 + tf.exp(-self.mu * (x - self.omicron)))
+        t = 1.0 / (1.0 + tf.exp(-self.mu * (x - self.tau)))
+        return (s * self.omicron + (1.0 - s) * x) * self.tau
+
+    def get_config(self):
+        """
+        Returns the configuration of the MELU layer as a dictionary.
+
+        Returns:
+            A dictionary containing the mu, omicron, and tau values.
+
+        """
+        return {
+            "mu": self.mu,
+            "omicron": self.omicron,
+            "tau": self.tau,
+        }
 
     def compute_output_shape(self, input_shape):
+        """
+        Computes the output shape of the MELU layer based on the input shape.
+
+        Args:
+            input_shape: The shape of the input tensor.
+
+        Returns:
+            The shape of the output tensor.
+
+        """
         shape = copy.deepcopy(input_shape)
         return shape
+
 
 # ---------------------------------------------------------------------

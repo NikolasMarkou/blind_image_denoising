@@ -238,6 +238,10 @@ def activation_wrapper(
         # Mish: A Self Regularized Non-Monotonic Activation Function (2020)
         from .custom_layers import Mish
         x = Mish()
+    elif activation in ["melu"]:
+        # Mish: A Self Regularized Non-Monotonic Activation Function (2020)
+        from .custom_layers import Mish
+        x = Mish()
     elif activation in ["leakyrelu", "leaky_relu"]:
         # leaky relu, practically same us Relu
         # with very small negative slope to allow gradient flow
