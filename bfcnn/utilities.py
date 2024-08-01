@@ -772,6 +772,7 @@ def remove_padding(padded_image:tf.Tensor,
 # Traverse the model to find the specific layer by name
 def find_layer_by_name(model: tf.keras.Model, layer_name: str):
     for layer in model.layers:
+        logger.info(f"layer: {layer.name}")
         if layer.name == layer_name:
             return layer
         if isinstance(layer, tf.keras.Model) or isinstance(layer, tf.keras.layers.Layer):
@@ -779,3 +780,5 @@ def find_layer_by_name(model: tf.keras.Model, layer_name: str):
             if sub_layer:
                 return sub_layer
     return None
+
+# ---------------------------------------------------------------------

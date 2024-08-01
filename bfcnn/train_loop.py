@@ -569,7 +569,7 @@ def train_loop(
                     # --- add activity distribution
                     for activity_layer in activity_layers:
                         logger.info(f"{activity_layer}")
-                        layer = find_layer_by_name(ckpt.model.get_layer, name=activity_layer)
+                        layer = find_layer_by_name(model=ckpt.model.get_layer, layer_name=activity_layer)
                         if layer is None:
                             logger.info(f"Failed to find {activity_layer}")
                         else:
