@@ -25,7 +25,7 @@ from .utilities import \
     create_checkpoint, \
     save_config, \
     multiscales_generator_fn, \
-    find_layer_by_name
+    find_layer_by_name, get_layer_output
 from .visualize import \
     visualize_weights_boxplot, \
     visualize_weights_heatmap, \
@@ -569,16 +569,11 @@ def train_loop(
                     # --- add activity distribution
                     for activity_layer in activity_layers:
                         logger.info(f"{activity_layer}")
-                        layer = find_layer_by_name(model=ckpt.model, layer_name=activity_layer)
-                        if layer is None:
-                            logger.info(f"Failed to find {activity_layer}")
-                        else:
-                            keras_fn = keras.backend.function([ckpt.model.input], [layer.output])
-                            tf.summary.histogram(name=f"activity/{layer.name}",
-                                                 data=keras_fn(evaluation_batch),
-                                                 step=ckpt.step,
-                                                 buckets=64)
-                            del keras_fn
+                        layer_output = get_layer_output(ckpt.model, layer_name=activity_layer, input_data=evaluation_batch)
+                        tf.summary.histogram(name=f"activity/{activity_layer}",
+                                             data=layer_output,
+                                             step=ckpt.step,
+                                             buckets=64)
 
                 # --- check if it is time to save a checkpoint
                 if (checkpoint_every > 0) and (ckpt.step > 0) and \

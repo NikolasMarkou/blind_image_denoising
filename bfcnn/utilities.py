@@ -798,3 +798,30 @@ def find_layer_by_name(model: tf.keras.Model, layer_name: str):
     return None
 
 # ---------------------------------------------------------------------
+
+def get_layer_output(model: tf.keras.Model, layer_name: str, input_data):
+    """
+    Gets the output of a specified layer in a Keras model.
+
+    Args:
+    model (tf.keras.Model): The Keras model.
+    layer_name (str): The name of the layer to get the output from.
+    input_data: The input data to pass through the model.
+
+    Returns:
+    np.ndarray: The output of the specified layer.
+    None: If the layer does not exist.
+    """
+    # Find the specified layer
+    layer = find_layer_by_name(model, layer_name)
+    if layer is None:
+        print(f"Layer with name '{layer_name}' does not exist.")
+        return None
+
+    # Create a new model that outputs the desired layer's output
+    intermediate_model = tf.keras.Model(inputs=model.input, outputs=layer.output)
+
+    # Get the output of the layer
+    return intermediate_model.predict(input_data)
+
+# ---------------------------------------------------------------------
