@@ -9,7 +9,9 @@ from typing import Dict, Callable, Iterator, Tuple
 
 from .file_operations import *
 from .custom_logger import logger
-from .utilities import random_crops
+from .utilities import (
+    random_crops,
+    depthwise_gaussian_kernel)
 
 # ---------------------------------------------------------------------
 
@@ -117,6 +119,13 @@ def dataset_builder(
     additive_noise = tf.constant(additive_noise, dtype=tf.float32)
     multiplicative_noise = tf.constant(multiplicative_noise, dtype=tf.float32)
 
+    gaussian_kernel = (
+        tf.constant(
+            depthwise_gaussian_kernel(
+                channels=num_channels,
+                kernel_size=(5, 5),
+                nsig=(1, 1)).astype("float32")))
+
     @tf.function(reduce_retracing=True)
     def prepare_data_fn(input_batch: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
         """
@@ -138,8 +147,10 @@ def dataset_builder(
             """
 
             # --- get shape and options
-            random_option_flip_left_right = tf.greater(tf.random.uniform(()), tf.constant(0.5))
-            random_option_flip_up_down = tf.greater(tf.random.uniform(()), tf.constant(0.5))
+            random_option_flip_left_right = (
+                tf.greater(tf.random.uniform(()), tf.constant(0.5)))
+            random_option_flip_up_down = (
+                tf.greater(tf.random.uniform(()), tf.constant(0.5)))
 
             # --- flip left right
             if use_left_right:
@@ -156,8 +167,8 @@ def dataset_builder(
                         pred=random_option_flip_up_down,
                         true_fn=lambda: tf.image.flip_up_down(input_batch),
                         false_fn=lambda: input_batch)
-
             return input_batch
+
         def noise_augmentation_fn(
                 input_batch: tf.Tensor) -> tf.Tensor:
             """
@@ -175,6 +186,10 @@ def dataset_builder(
                 tf.greater(
                     x=tf.random.uniform(()),
                     y=tf.constant(0.5))
+            random_option_embed_noise = \
+                tf.greater(
+                    x=tf.random.uniform(()),
+                    y=tf.constant(0.5))
             additive_noise_std = \
                 tf.random.uniform(
                     shape=(),
@@ -186,12 +201,26 @@ def dataset_builder(
                     minval=multiplicative_noise[0],
                     maxval=multiplicative_noise[1])
 
+            # --- set flags
+            flag_multiplicative_noise = (
+                tf.logical_and(
+                    random_option_multiplicative_noise,
+                    use_multiplicative_noise)
+            )
+            flag_additive_noise = (
+                tf.logical_and(
+                    random_option_additive_noise,
+                    use_additive_noise)
+            )
+            flag_embed_noise = (
+                tf.logical_and(
+                    random_option_embed_noise,
+                    tf.logical_or(flag_multiplicative_noise, flag_additive_noise))
+            )
             # --- multiplicative noise
             noisy_batch = \
                 tf.cond(
-                    pred=tf.logical_and(
-                        random_option_multiplicative_noise,
-                        use_multiplicative_noise),
+                    pred=flag_multiplicative_noise,
                     true_fn=lambda:
                     tf.multiply(
                         x=noisy_batch,
@@ -208,9 +237,7 @@ def dataset_builder(
             # --- additive noise
             noisy_batch = \
                 tf.cond(
-                    pred=tf.logical_and(
-                        random_option_additive_noise,
-                        use_additive_noise),
+                    pred=flag_additive_noise,
                     true_fn=lambda:
                     tf.add(
                         x=noisy_batch,
@@ -221,6 +248,21 @@ def dataset_builder(
                             stddev=additive_noise_std,
                             shape=input_shape_inference)
                     ),
+                    false_fn=lambda: noisy_batch
+                )
+
+            # --- embedd noise with a small filter
+            noisy_batch = \
+                tf.cond(
+                    pred=flag_embed_noise,
+                    true_fn=lambda:
+                        tf.nn.depthwise_conv2d(
+                            input=noisy_batch,
+                            filter=gaussian_kernel,
+                            strides=(1, 1, 1, 1),
+                            data_format=None,
+                            dilations=None,
+                            padding="SAME"),
                     false_fn=lambda: noisy_batch
                 )
 
