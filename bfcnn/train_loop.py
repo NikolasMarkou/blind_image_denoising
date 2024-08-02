@@ -567,13 +567,13 @@ def train_loop(
                                      description="weights heatmap")
 
                     # --- add activity distribution
-                    for activity_layer in activity_layers:
-                        logger.info(f"{activity_layer}")
-                        layer_output = get_layer_output(ckpt.model, layer_name=activity_layer, input_data=evaluation_batch)
-                        tf.summary.histogram(name=f"activity/{activity_layer}",
-                                             data=layer_output,
-                                             step=ckpt.step,
-                                             buckets=64)
+                    # for activity_layer in activity_layers:
+                    #     logger.info(f"{activity_layer}")
+                    #     layer_output = get_layer_output(ckpt.model, layer_name=activity_layer, input_data=evaluation_batch)
+                    #     tf.summary.histogram(name=f"activity/{activity_layer}",
+                    #                          data=layer_output,
+                    #                          step=ckpt.step,
+                    #                          buckets=64)
 
                 # --- check if it is time to save a checkpoint
                 if (checkpoint_every > 0) and (ckpt.step > 0) and \
