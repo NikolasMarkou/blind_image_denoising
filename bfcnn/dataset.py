@@ -141,7 +141,7 @@ def dataset_builder(
         """
 
         def geometric_augmentation_fn(
-                input_batch: tf.Tensor) -> tf.Tensor:
+                _input_batch: tf.Tensor) -> tf.Tensor:
             """
             perform all the geometric augmentations
             """
@@ -154,29 +154,29 @@ def dataset_builder(
 
             # --- flip left right
             if use_left_right:
-                input_batch = \
+                _input_batch = \
                     tf.cond(
                         pred=random_option_flip_left_right,
-                        true_fn=lambda: tf.image.flip_left_right(input_batch),
-                        false_fn=lambda: input_batch)
+                        true_fn=lambda: tf.image.flip_left_right(_input_batch),
+                        false_fn=lambda: _input_batch)
 
             # --- flip up down
             if use_up_down:
-                input_batch = \
+                _input_batch = \
                     tf.cond(
                         pred=random_option_flip_up_down,
-                        true_fn=lambda: tf.image.flip_up_down(input_batch),
-                        false_fn=lambda: input_batch)
-            return input_batch
+                        true_fn=lambda: tf.image.flip_up_down(_input_batch),
+                        false_fn=lambda: _input_batch)
+            return _input_batch
 
         def noise_augmentation_fn(
-                input_batch: tf.Tensor) -> tf.Tensor:
+                _input_batch: tf.Tensor) -> tf.Tensor:
             """
             perform all the noise augmentations
             """
             # --- copy input batch
-            noisy_batch = input_batch
-            input_shape_inference = tf.shape(noisy_batch)
+            _noisy_batch = _input_batch
+            input_shape_inference = tf.shape(_noisy_batch)
 
             random_option_additive_noise = \
                 tf.greater(
@@ -213,17 +213,16 @@ def dataset_builder(
                     use_additive_noise)
             )
             flag_embed_noise = (
-                tf.logical_and(
-                    random_option_embed_noise,
-                    tf.logical_or(flag_multiplicative_noise, flag_additive_noise))
+                random_option_embed_noise
             )
+
             # --- multiplicative noise
-            noisy_batch = \
+            _noisy_batch = \
                 tf.cond(
                     pred=flag_multiplicative_noise,
                     true_fn=lambda:
                     tf.multiply(
-                        x=noisy_batch,
+                        x=_noisy_batch,
                         y=tf.random.truncated_normal(
                             mean=1.0,
                             seed=1,
@@ -231,16 +230,16 @@ def dataset_builder(
                             shape=input_shape_inference,
                             dtype=tf.float32),
                     ),
-                    false_fn=lambda: noisy_batch
+                    false_fn=lambda: _noisy_batch
                 )
 
             # --- additive noise
-            noisy_batch = \
+            _noisy_batch = \
                 tf.cond(
                     pred=flag_additive_noise,
                     true_fn=lambda:
                     tf.add(
-                        x=noisy_batch,
+                        x=_noisy_batch,
                         y=tf.random.truncated_normal(
                             mean=0.0,
                             seed=1,
@@ -248,28 +247,28 @@ def dataset_builder(
                             stddev=additive_noise_std,
                             shape=input_shape_inference)
                     ),
-                    false_fn=lambda: noisy_batch
+                    false_fn=lambda: _noisy_batch
                 )
 
             # --- embedd noise with a small filter
-            noisy_batch = \
+            _noisy_batch = \
                 tf.cond(
                     pred=flag_embed_noise,
                     true_fn=lambda:
                         tf.nn.depthwise_conv2d(
-                            input=noisy_batch,
+                            input=_noisy_batch,
                             filter=gaussian_kernel,
                             strides=(1, 1, 1, 1),
                             data_format=None,
                             dilations=None,
                             padding="SAME"),
-                    false_fn=lambda: noisy_batch
+                    false_fn=lambda: _noisy_batch
                 )
 
             # --- round values to nearest integer
-            noisy_batch = tf.round(x=noisy_batch)
+            _noisy_batch = tf.round(x=_noisy_batch)
 
-            return noisy_batch
+            return _noisy_batch
 
         # Apply geometric augmentations to the input batch
         input_batch = geometric_augmentation_fn(input_batch)
