@@ -259,11 +259,17 @@ def train_loop(
                 normalize_values=False,
             )
 
-        @tf.function(reduce_retracing=True, jit_compile=False)
+        @tf.function(
+            autograph=True,
+            reduce_retracing=True,
+            jit_compile=False)
         def train_step(n: List[tf.Tensor]):
             return ckpt.model(n, training=True)
 
-        @tf.function(reduce_retracing=True, jit_compile=False)
+        @tf.function(
+            autograph=False,
+            reduce_retracing=True,
+            jit_compile=False)
         def test_step(n: List[tf.Tensor]):
             if model_no_outputs == 1:
                 return ckpt.model(n, training=False)
@@ -277,7 +283,6 @@ def train_loop(
                 p_input_image_batch: tf.Tensor,
                 p_noisy_image_batch: tf.Tensor,
                 p_depth_weight: tf.Tensor,
-                p_percentage_done: tf.Tensor,
                 p_trainable_variables: List):
 
             p_all_denoiser_loss = [None] * len(denoiser_index)
@@ -431,9 +436,10 @@ def train_loop(
                         p_input_image_batch=input_image_batch,
                         p_noisy_image_batch=noisy_image_batch,
                         p_depth_weight=depth_weight,
-                        p_percentage_done=percentage_done,
                         p_trainable_variables=trainable_variables)
 
+                # add gradients to accumulator
+                # average gradients for tracking
                 for i, grad in enumerate(grads):
                     gradients_accumulation[i].assign_add(grad)
                     gradients_moving_average[i].assign(
