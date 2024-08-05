@@ -133,6 +133,11 @@ def train_loop(
             name="visualization_every")
     # how many visualizations to show
     visualization_number = train_config.get("visualization_number", 5)
+    moving_average_constant = (
+        tf.constant(value=0.99, dtype=tf.dtypes.float32, name="moving_average_constant")
+    )
+    moving_average_constant_complimentary = 1.0 - moving_average_constant
+
     # layers for visualization
     activity_layers = \
         train_config.get("activity_layers", [])
@@ -320,6 +325,8 @@ def train_loop(
             )
 
         @tf.function(
+            autograph=True,
+            jit_compile=True,
             reduce_retracing=True)
         def apply_grads(
                 internal_optimizer,
@@ -350,6 +357,10 @@ def train_loop(
         trainable_variables = ckpt.model.trainable_variables
         counter = tf.Variable(0, dtype=tf.uint32, trainable=False)
         gradients_accumulation = [
+            tf.Variable(tf.zeros_like(v))
+            for v in trainable_variables
+        ]
+        gradients_moving_average = [
             tf.Variable(tf.zeros_like(v))
             for v in trainable_variables
         ]
@@ -425,10 +436,13 @@ def train_loop(
 
                 for i, grad in enumerate(grads):
                     gradients_accumulation[i].assign_add(grad)
+                    gradients_moving_average[i].assign(
+                        gradients_moving_average[i] * moving_average_constant +
+                        grad * moving_average_constant_complimentary)
 
                 if counter >= gpu_batches_per_step:
                     counter.assign(value=0)
-                    # average gradients
+                    # average gradients for current step
                     for v in gradients_accumulation:
                         v.assign(v * gradients_constant)
 
@@ -540,7 +554,7 @@ def train_loop(
                     # --- add gradient activity
                     gradient_activity = \
                         visualize_gradient_boxplot(
-                            gradients=gradients_accumulation,
+                            gradients=gradients_moving_average,
                             trainable_variables=trainable_variables) / 255
                     tf.summary.image(name="weights/gradients",
                                      data=gradient_activity,
