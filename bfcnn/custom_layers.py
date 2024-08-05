@@ -44,8 +44,8 @@ class ScaledMish(tf.keras.layers.Layer):
         self.alpha = alpha
 
     def call(self, inputs):
-        mish_value = inputs * tf.math.tanh(tf.math.softplus(inputs))
-        scaled_mish = self.alpha * tf.math.tanh(mish_value / self.alpha)
+        mish_value = inputs * tf.nn.tanh(tf.nn.softplus(inputs))
+        scaled_mish = self.alpha * tf.nn.tanh(mish_value / self.alpha)
         return scaled_mish
 
     def get_config(self):
@@ -1069,7 +1069,7 @@ class ConvNextBlock(tf.keras.layers.Layer):
 
         # gamma
         if self.use_gamma:
-            self.gamma = ChannelLearnableMultiplierV2(capped=False)
+            self.gamma = ChannelLearnableMultiplierV2(capped=True)
 
     def call(self, inputs, training=None):
         x = inputs
