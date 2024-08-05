@@ -30,6 +30,30 @@ class Mish(tf.keras.layers.Layer):
     def call(self, inputs):
         return inputs * tf.math.tanh(tf.math.softplus(inputs))
 
+# ---------------------------------------------------------------------
+
+
+@tf.keras.utils.register_keras_serializable()
+class ScaledMish(tf.keras.layers.Layer):
+    """
+    Scaled Mish: A variant of the Mish activation function that smoothly saturates at a positive value alpha.
+    """
+
+    def __init__(self, alpha=1.0, **kwargs):
+        super().__init__(**kwargs)
+        self.alpha = alpha
+
+    def call(self, inputs):
+        mish_value = inputs * tf.math.tanh(tf.math.softplus(inputs))
+        scaled_mish = self.alpha * tf.math.tanh(mish_value / self.alpha)
+        return scaled_mish
+
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({
+            'alpha': self.alpha
+        })
+        return config
 
 # ---------------------------------------------------------------------
 

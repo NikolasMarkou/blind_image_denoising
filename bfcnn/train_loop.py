@@ -555,7 +555,8 @@ def train_loop(
                                          max_outputs=visualization_number,
                                          step=ckpt.step,
                                          description="evaluation denoised")
-
+                        del evaluation_result
+                        del evaluation_batch_noise
 
                     # --- add gradient activity
                     gradient_activity = \
