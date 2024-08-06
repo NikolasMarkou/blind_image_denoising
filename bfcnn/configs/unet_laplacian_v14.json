@@ -21,7 +21,7 @@
             "use_mix_project": true,
             "use_self_attention": false,
             "use_attention_gates": false,
-            "use_output_normalization": false,
+            "use_output_normalization": true,
             "encoder_kernel_size": 7,
             "decoder_kernel_size": 5,
             "multiple_scale_outputs": true,
