@@ -35,20 +35,10 @@ def downsample(
     params = copy.deepcopy(conv_params)
 
     #
-    if downsample_type in ["conv2d"]:
+    if downsample_type in ["conv2d_2x2"]:
         params["kernel_size"] = (2, 2)
         params["strides"] = (2, 2)
         params["padding"] = "same"
-        x = \
-            conv2d_wrapper(
-                input_layer=x,
-                bn_params=bn_params,
-                ln_params=ln_params,
-                conv_params=params)
-    elif downsample_type in ["conv2d_3x3"]:
-        params["kernel_size"] = (3, 3)
-        params["strides"] = (2, 2)
-        params["padding"] = "valid"
         x = \
             conv2d_wrapper(
                 input_layer=x,
