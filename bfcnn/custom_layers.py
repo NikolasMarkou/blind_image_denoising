@@ -742,16 +742,17 @@ class ConvNextBlock(tf.keras.layers.Layer):
         # conv 1
         params = copy.deepcopy(self.conv_params_1)
         params["activation"] = "linear"
-        params["name"] = "conv1"
+        # https://github.com/facebookresearch/ConvNeXt/blob/048efcea897d999aed302f2639b6270aedf8d4c8/models/convnext.py#L105
+        params["depthwise_initializer"] = (
+            tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.02))
         self.conv_1 = tf.keras.layers.DepthwiseConv2D(**params)
 
         # conv 2
         params = copy.deepcopy(self.conv_params_2)
         params["activation"] = "linear"
-        if params.get("depthwise_initializer", "glorot_normal") in ["trunc_normal", "truncated_normal"]:
-            # https://github.com/facebookresearch/ConvNeXt/blob/048efcea897d999aed302f2639b6270aedf8d4c8/models/convnext.py#L105
-            params["depthwise_initializer"] = (
-                tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.02))
+        # https://github.com/facebookresearch/ConvNeXt/blob/048efcea897d999aed302f2639b6270aedf8d4c8/models/convnext.py#L105
+        params["kernel_initializer"] = (
+            tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.02))
         if self.use_soft_orthogonal_regularization:
             params["kernel_regularizer"] = \
                 SoftOrthogonalConstraintRegularizer(
@@ -769,17 +770,20 @@ class ConvNextBlock(tf.keras.layers.Layer):
         # conv 3
         params = copy.deepcopy(self.conv_params_3)
         params["activation"] = "linear"
-        if params.get("kernel_initializer", "glorot_normal") in ["trunc_normal", "truncated_normal"]:
-            # https://github.com/facebookresearch/ConvNeXt/blob/048efcea897d999aed302f2639b6270aedf8d4c8/models/convnext.py#L105
-            params["kernel_initializer"] = (
-                tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.02))
-        if (self.use_soft_orthogonal_regularization or
-                self.use_soft_orthonormal_regularization):
+        params["kernel_initializer"] = (
+            tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.02))
+        if self.use_soft_orthogonal_regularization:
             params["kernel_regularizer"] = \
                 SoftOrthogonalConstraintRegularizer(
                     lambda_coefficient=DEFAULT_SOFTORTHOGONAL_LAMBDA,
                     l1_coefficient=DEFAULT_SOFTORTHOGONAL_L1,
                     l2_coefficient=DEFAULT_SOFTORTHOGONAL_L2)
+        if self.use_soft_orthonormal_regularization:
+            params["kernel_regularizer"] = \
+                SoftOrthonormalConstraintRegularizer(
+                    lambda_coefficient=DEFAULT_SOFTORTHONORMAL_LAMBDA,
+                    l1_coefficient=DEFAULT_SOFTORTHONORMAL_L1,
+                    l2_coefficient=DEFAULT_SOFTORTHONORMAL_L2)
         self.conv_3 = tf.keras.layers.Conv2D(**params)
 
         # gamma
@@ -787,7 +791,7 @@ class ConvNextBlock(tf.keras.layers.Layer):
             self.gamma = (
                 LearnableMultiplier(
                     name="gamma",
-                    capped=True,
+                    capped=False,
                     multiplier_type=MultiplierType.Channel)
             )
 
