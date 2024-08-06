@@ -1,4 +1,6 @@
 import copy
+from enum import Enum
+
 import numpy as np
 import tensorflow as tf
 from typing import Dict, Tuple, Union, List, Any
@@ -124,32 +126,6 @@ class GatedMLP(tf.keras.layers.Layer):
         shape = copy.deepcopy(input_shape)
         return shape
 
-
-# ---------------------------------------------------------------------
-
-@tf.keras.utils.register_keras_serializable()
-class RandomOnOff(tf.keras.layers.Layer):
-    """randomly drops the whole connection"""
-
-    def __init__(self,
-                 rate: float = 0.5,
-                 **kwargs):
-        super().__init__(**kwargs)
-        self._rate = rate
-        self._dropout = None
-
-    def build(self, input_shape):
-        new_shape = [1, ] * len(input_shape)
-        new_shape[0] = input_shape[0]
-        self._dropout = (
-            tf.keras.layers.Dropout(
-                rate=self._rate,
-                noise_shape=new_shape))
-
-    def call(self, inputs, training=None):
-        return self._dropout(inputs, training=training)
-
-
 # ---------------------------------------------------------------------
 
 
@@ -235,127 +211,43 @@ class StochasticDepth(tf.keras.layers.Layer):
     def compute_output_shape(self, input_shape):
         return input_shape
 
+# ---------------------------------------------------------------------
+
+class MultiplierType(Enum):
+    Global = 0
+
+    Channel = 1
+
+    @staticmethod
+    def from_string(type_str: str) -> "MultiplierType":
+        # --- argument checking
+        if type_str is None:
+            raise ValueError("type_str must not be null")
+        if not isinstance(type_str, str):
+            raise ValueError("type_str must be string")
+        type_str = type_str.strip().upper()
+        if len(type_str) <= 0:
+            raise ValueError("stripped type_str must not be empty")
+
+        # --- clean string and get
+        return MultiplierType[type_str]
+
+    def to_string(self) -> str:
+        return self.name
 
 # ---------------------------------------------------------------------
 
-@tf.keras.utils.register_keras_serializable()
-class ChannelLearnableMultiplier(tf.keras.layers.Layer):
-    """
-    A custom Keras layer that applies a learnable multiplier to each channel of the input tensor,
-    it also ensures there is no sign reversal
-
-    The multipliers are initialized to values close to zero and regularized to stay near zero, ensuring that the
-    multipliers start close to 1 and adjust during training.
-
-    Parameters
-    ----------
-    initializer : tf.keras.initializers.Initializer, optional
-        The initializer for the multipliers. By default, it uses `tf.keras.initializers.truncated_normal` with
-        mean 0.0 and standard deviation 0.1.
-    regularizer : tf.keras.regularizers.Regularizer, optional
-        The regularizer for the multipliers. By default, it uses `tf.keras.regularizers.l1` with a regularization
-        factor of 1e-6.
-    **kwargs :
-        Additional keyword arguments for the layer, passed to the base `tf.keras.layers.Layer` class.
-
-    Attributes
-    ----------
-    w_multiplier : tf.Variable
-        The learnable weight multipliers applied to each channel of the input tensor.
-
-    Methods
-    -------
-    build(input_shape)
-        Creates the weights of the layer based on the input shape.
-    call(inputs, training=None)
-        Applies the multipliers to the input tensor.
-
-    Examples
-    --------
-    ```python
-    import tensorflow as tf
-    from your_module import ChannelLearnableMultiplier
-
-    # Example usage in a model
-    inputs = tf.keras.Input(shape=(32, 32, 3))
-    x = ChannelLearnableMultiplier()(inputs)
-    model = tf.keras.Model(inputs=inputs, outputs=x)
-
-    model.summary()
-    ```
-
-    Notes
-    -----
-    - This layer is particularly useful when you want each channel to have a learnable scale factor but not change sign.
-    - The ReLU activation ensures non-negativity of the multipliers, preventing sign reversal.
-    """
-
-    def __init__(self,
-                 initializer=tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.01),
-                 regularizer=tf.keras.regularizers.l1(1e-6),
-                 **kwargs):
-        """
-        Per channel learnable multiplier
-
-        :param initializer: initializes the values, should keep them close to 0.0
-        :param regularizer: keeps the values near 0.0, so it becomes 1
-        :param kwargs:
-        """
-        super().__init__(**kwargs)
-        self.w_multiplier = None
-        self.initializer = initializer
-        self.regularizer = regularizer
-
-    def build(self, input_shape):
-        """
-        Initializes the ChannelLearnableMultiplier layer.
-
-        Parameters:
-        initializer (tf.keras.initializers.Initializer): Initializer for the multiplier weights.
-        regularizer (tf.keras.regularizers.Regularizer): Regularizer for the multiplier weights.
-        kwargs: Additional keyword arguments.
-        """
-        new_shape = [1, ] * len(input_shape)
-        new_shape[-1] = input_shape[-1]
-        self.w_multiplier = self.add_weight(
-            shape=new_shape,
-            name="w_multiplier",
-            initializer=self.initializer,
-            regularizer=self.regularizer,
-            trainable=True,
-        )
-
-    def call(self, inputs, training=None):
-        """
-        Applies the multipliers to the input tensor.
-        relu makes sure we don't have sign reversal
-        multiplier starts from 1 and moves away from there
-
-        Parameters:
-        inputs (tf.Tensor): Input tensor.
-        training (bool, optional): Whether the call is in training mode or not.
-
-        Returns:
-        tf.Tensor: Output tensor with the multipliers applied.
-        """
-        return tf.multiply(
-            tf.nn.tanh(tf.nn.relu(1.0 + self.w_multiplier)),
-            inputs)
-
-    def compute_output_shape(self, input_shape):
-        return input_shape
-
-# ---------------------------------------------------------------------
 
 @tf.keras.utils.register_keras_serializable()
-class ChannelLearnableMultiplierV2(tf.keras.layers.Layer):
+class LearnableMultiplier(tf.keras.layers.Layer):
     def __init__(self,
+                 multiplier_type: str,
                  capped:bool = True,
                  initializer=tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.01),
                  regularizer=tf.keras.regularizers.l1(1e-6),
                  **kwargs):
         """
-        Per channel learnable multiplier
+        Per channel or global learnable multiplier
 
         :param initializer: initializes the values, should keep them close to 0.0
         :param regularizer: keeps the values near 0.0, so it becomes 1
@@ -366,10 +258,11 @@ class ChannelLearnableMultiplierV2(tf.keras.layers.Layer):
         self.w_multiplier = None
         self.initializer = initializer
         self.regularizer = regularizer
+        self.multiplier_type = MultiplierType.from_string(multiplier_type)
 
     def build(self, input_shape):
         """
-        Initializes the ChannelLearnableMultiplier layer.
+        Initializes the LearnableMultiplier layer.
 
         Parameters:
         initializer (tf.keras.initializers.Initializer): Initializer for the multiplier weights.
@@ -377,7 +270,9 @@ class ChannelLearnableMultiplierV2(tf.keras.layers.Layer):
         kwargs: Additional keyword arguments.
         """
         new_shape = [1, ] * len(input_shape)
-        new_shape[-1] = input_shape[-1]
+        if self.multiplier_type == MultiplierType.Channel:
+            new_shape[-1] = input_shape[-1]
+
         self.w_multiplier = self.add_weight(
             shape=new_shape,
             name="w_multiplier",
@@ -409,113 +304,16 @@ class ChannelLearnableMultiplierV2(tf.keras.layers.Layer):
             inputs)
 
 
+    def get_config(self):
+        return {
+            "regularizer": self.regularizer,
+            "initializer": self.initializer,
+            "w_multiplier": self.w_multiplier.numpy(),
+            "multiplier_type": self.multiplier_type.to_string()
+        }
+
     def compute_output_shape(self, input_shape):
         return input_shape
-
-# ---------------------------------------------------------------------
-
-
-@tf.keras.utils.register_keras_serializable()
-class SmoothChannelLearnableMultiplier(tf.keras.layers.Layer):
-    """
-    A custom Keras layer that applies a smooth, learnable multiplier to each channel of the input tensor.
-
-    The multipliers are initialized to values close to zero and regularized to stay near zero, ensuring that the
-    multipliers start close to 1 and adjust during training. The sigmoid activation function ensures that the
-    multipliers remain between 0 and 1.
-
-    Parameters
-    ----------
-    initializer : tf.keras.initializers.Initializer, optional
-        The initializer for the multipliers. By default, it uses `tf.keras.initializers.truncated_normal` with
-        mean 0.0 and standard deviation 0.01.
-    regularizer : tf.keras.regularizers.Regularizer, optional
-        The regularizer for the multipliers. By default, it uses `tf.keras.regularizers.l1` with a regularization
-        factor of 1e-4.
-    **kwargs :
-        Additional keyword arguments for the layer, passed to the base `tf.keras.layers.Layer` class.
-
-    Attributes
-    ----------
-    w_multiplier : tf.Variable
-        The learnable weight multipliers applied to each channel of the input tensor.
-
-    Methods
-    -------
-    build(input_shape)
-        Creates the weights of the layer based on the input shape.
-    call(inputs, training=None)
-        Applies the multipliers to the input tensor.
-
-    Examples
-    --------
-    ```python
-    import tensorflow as tf
-    from your_module import SmoothChannelLearnableMultiplier
-
-    # Example usage in a model
-    inputs = tf.keras.Input(shape=(32, 32, 3))
-    x = SmoothChannelLearnableMultiplier()(inputs)
-    model = tf.keras.Model(inputs=inputs, outputs=x)
-
-    model.summary()
-    ```
-
-    Notes
-    -----
-    - This layer is useful when you want each channel to have a learnable scale factor that is smoothly adjusted.
-    - The sigmoid activation ensures that the multipliers stay within the range [0, 1].
-    - The multipliers start close to 1 due to the initialization and regularization strategies.
-    """
-
-    def __init__(self,
-                 initializer=tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.01),
-                 regularizer=tf.keras.regularizers.l1(1e-6),
-                 **kwargs):
-        """
-        Initializes the SmoothChannelLearnableMultiplier layer.
-
-        Parameters:
-        initializer (tf.keras.initializers.Initializer): Initializer for the multiplier weights.
-        regularizer (tf.keras.regularizers.Regularizer): Regularizer for the multiplier weights.
-        kwargs: Additional keyword arguments.
-        """
-        super().__init__(**kwargs)
-        self.w_multiplier = None
-        self.initializer = initializer
-        self.regularizer = regularizer
-
-    def build(self, input_shape):
-        """
-        Creates the weights of the layer based on the input shape.
-
-        Parameters:
-        input_shape (tuple): Shape of the input tensor.
-        """
-        new_shape = [1, ] * len(input_shape)
-        new_shape[-1] = input_shape[-1]
-        self.w_multiplier = self.add_weight(
-            shape=new_shape,
-            name="w_multiplier",
-            initializer=self.initializer,
-            regularizer=self.regularizer,
-            trainable=True,
-        )
-
-    def call(self, inputs, training=None):
-        """
-        Applies the multipliers to the input tensor.
-
-        Parameters:
-        inputs (tf.Tensor): Input tensor.
-        training (bool, optional): Whether the call is in training mode or not.
-
-        Returns:
-        tf.Tensor: Output tensor with the multipliers applied.
-        """
-        # The sigmoid activation ensures values are between 0 and 1
-        # The multiplier starts from 1 (due to 2.5 offset) and adjusts from there
-        return tf.keras.activations.sigmoid(2.5 + self.w_multiplier) * inputs
 
 # ---------------------------------------------------------------------
 
@@ -628,13 +426,14 @@ class SqueezeExcitation(tf.keras.layers.Layer):
         self.conv_0 = None
         self.conv_1 = None
         self.scale = None
-        self.scale = ChannelLearnableMultiplier()
+        self.scale = None
         self.kernel_initializer = kernel_initializer.strip().lower()
         self.pool = tf.keras.layers.GlobalAvgPool2D(keepdims=True)
 
     def build(self, input_shape):
         self.channels = input_shape[-1]
         self.channels_squeeze = max(1, int(round(self.channels * self.r_ratio)))
+        self.scale = LearnableMultiplier(capped=True, multiplier_type=MultiplierType.Channel)
         kernel_initializer = copy.deepcopy(self.kernel_initializer)
 
         if kernel_initializer in ["trunc_normal", "truncated_normal"]:
@@ -665,7 +464,7 @@ class SqueezeExcitation(tf.keras.layers.Layer):
         y = self.pool(y)
         y = self.conv_0(y)
         # --- replaced relu with leaky relu and low alpha to allow some gradient flow
-        o = tf.nn.leaky_relu(features=y, alpha=0.1)
+        o = tf.nn.gelu(features=y, approximate=True)
         o = self.conv_1(o)
         o = self.scale(o)
         o = tf.nn.sigmoid(o)
@@ -721,7 +520,7 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
         Batch normalization layer for the output signal (if use_bn is True).
     ln_o : tf.keras.layers.LayerNormalization or None
         Layer normalization layer for the output signal (if use_ln is True).
-    scale_o : ChannelLearnableMultiplier
+    scale_o : LearnableMultiplier
         Channel learnable multiplier layer for scaling the output.
 
     Methods
@@ -879,7 +678,7 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
                 kernel_regularizer=copy.deepcopy(kernel_regularizer),
                 kernel_initializer=kernel_initializer))
         # ---
-        self.scale_o = ChannelLearnableMultiplierV2(capped=False)
+        self.scale_o = LearnableMultiplier(capped=False)
 
     def call(self, inputs, training=None):
         """
@@ -1069,7 +868,7 @@ class ConvNextBlock(tf.keras.layers.Layer):
 
         # gamma
         if self.use_gamma:
-            self.gamma = ChannelLearnableMultiplierV2(capped=True)
+            self.gamma = LearnableMultiplier(capped=True)
 
     def call(self, inputs, training=None):
         x = inputs
@@ -1110,147 +909,6 @@ class ConvNextBlock(tf.keras.layers.Layer):
         shape = copy.deepcopy(input_shape)
         shape[-1] = self.conv_params_3["filters"]
         return shape
-
-
-# ---------------------------------------------------------------------
-
-
-class Multiplier(tf.keras.layers.Layer):
-    def __init__(self,
-                 multiplier: float = 1.0,
-                 regularizer: Any = None,
-                 trainable: bool = True,
-                 activation: Any = "linear",
-                 name=None,
-                 **kwargs):
-        super(Multiplier, self).__init__(
-            trainable=trainable,
-            name=name,
-            **kwargs)
-        self._w0 = None
-        self._w1 = None
-        self._activation = None
-        self._multiplier = multiplier
-        self._activation_type = activation
-        self._regularizer = keras.regularizers.get(regularizer)
-
-    def build(self, input_shape):
-        def init_w0_fn(shape, dtype):
-            return np.zeros(
-                shape,
-                dtype=np.float32)
-
-        self._w0 = \
-            self.add_weight(
-                shape=[1],
-                trainable=True,
-                name="w0",
-                dtype=self.compute_dtype,
-                initializer=init_w0_fn,
-                regularizer=self._regularizer)
-
-        def init_w1_fn(shape, dtype):
-            return np.ones(
-                shape,
-                dtype=np.float32) * self._multiplier
-
-        self._w1 = \
-            self.add_weight(
-                shape=[1],
-                trainable=False,
-                name="w1",
-                dtype=self.compute_dtype,
-                initializer=init_w1_fn,
-                regularizer=self._regularizer)
-
-        self._activation = keras.layers.Activation(self._activation_type)
-        super(Multiplier, self).build(input_shape)
-
-    def call(self, inputs):
-        return self._activation(self._w0 + self._w1) * inputs
-
-    def get_config(self):
-        return {
-            "w0": self._w0.numpy(),
-            "w1": self._w1.numpy(),
-            "regularizer": self._regularizer,
-            "activation": self._activation_type
-        }
-
-    def compute_output_shape(self, input_shape):
-        return input_shape
-
-
-# ---------------------------------------------------------------------
-
-
-class ChannelwiseMultiplier(tf.keras.layers.Layer):
-    """
-    learns a scaling multiplier for each channel (no bias) independently
-    works always on the last tensor dim (channel)
-
-    if (batch, filters) input then it learns to scale the filters
-    if (batch, x, y, channels) input then it learns to scale the channels
-    """
-
-    def __init__(self,
-                 multiplier: float = 1.0,
-                 regularizer: Any = None,
-                 trainable: bool = True,
-                 activation: Any = "linear",
-                 name=None,
-                 **kwargs):
-        super(ChannelwiseMultiplier, self).__init__(
-            trainable=trainable,
-            name=name,
-            **kwargs)
-        self._w0 = None
-        self._w1 = None
-        self._activation = None
-        self._multiplier = multiplier
-        self._activation_type = activation
-        self._regularizer = keras.regularizers.get(regularizer)
-
-    def build(self, input_shape):
-        def init_w0_fn(shape, dtype):
-            return np.zeros(shape, dtype=np.float32)
-
-        self._w0 = \
-            self.add_weight(
-                shape=input_shape[-1],
-                trainable=True,
-                name="w0",
-                initializer=init_w0_fn,
-                regularizer=self._regularizer)
-
-        def init_w1_fn(shape, dtype):
-            return np.ones(shape, dtype=np.float32) * self._multiplier
-
-        self._w1 = \
-            self.add_weight(
-                shape=[1],
-                trainable=False,
-                name="w1",
-                initializer=init_w1_fn,
-                regularizer=None)
-
-        self._activation = keras.layers.Activation(self._activation_type)
-        super(ChannelwiseMultiplier, self).build(input_shape)
-
-    def call(self, inputs):
-        return self._activation(self._w0 + self._w1) * inputs
-
-    def get_config(self):
-        return {
-            "w0": self._w0.numpy(),
-            "w1": self._w1.numpy(),
-            "regularizer": self._regularizer,
-            "activation": self._activation_type
-        }
-
-    def compute_output_shape(self, input_shape):
-        return input_shape
-
 
 # ---------------------------------------------------------------------
 
@@ -1420,7 +1078,7 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
 
         # gamma
         if self.use_gamma:
-            self.gamma = ChannelLearnableMultiplierV2()
+            self.gamma = LearnableMultiplier()
 
     def call(self, inputs, training=None):
         shape_x = tf.shape(inputs)

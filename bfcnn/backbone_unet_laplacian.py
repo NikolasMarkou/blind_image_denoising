@@ -24,7 +24,6 @@ from .custom_layers import (
     GaussianFilter,
     StochasticDepth,
     AdditiveAttentionGate,
-    ChannelLearnableMultiplier,
     ConvolutionalSelfAttention)
 from .regularizers import (
     SoftOrthogonalConstraintRegularizer,

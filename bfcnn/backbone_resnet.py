@@ -279,12 +279,12 @@ def builder(
         x = tf.keras.layers.Concatenate()([x, y])
 
     # optional final channelwise multiplier
-    if add_channelwise_scaling:
-        x = ChannelwiseMultiplier(**channelwise_params)(x)
+    # if add_channelwise_scaling:
+    #     x = ChannelwiseMultiplier(**channelwise_params)(x)
 
     # optional final multiplier
-    if add_learnable_multiplier:
-        x = Multiplier(**multiplier_params)(x)
+    # if add_learnable_multiplier:
+    #     x = Multiplier(**multiplier_params)(x)
 
     # --- output layer branches here,
     output_layer = \

@@ -9,7 +9,6 @@ from typing import List
 from .constants import *
 from .custom_logger import logger
 from .utilities import conv2d_wrapper
-from .custom_layers import ChannelwiseMultiplier, Multiplier
 from .backbone_blocks import resnet_blocks_full, sparse_block, unet_blocks
 
 # ---------------------------------------------------------------------
@@ -243,12 +242,12 @@ def builder(
                 threshold_sigma=1.0)
 
     # optional final channelwise multiplier
-    if add_channelwise_scaling:
-        x = ChannelwiseMultiplier(**channelwise_params)(x)
+    # if add_channelwise_scaling:
+    #     x = ChannelwiseMultiplier(**channelwise_params)(x)
 
     # optional final multiplier
-    if add_learnable_multiplier:
-        x = Multiplier(**multiplier_params)(x)
+    # if add_learnable_multiplier:
+    #     x = Multiplier(**multiplier_params)(x)
 
     # optional clipping to [-1, +1]
     if add_clip:

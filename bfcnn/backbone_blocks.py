@@ -12,10 +12,6 @@ from typing import List, Tuple, Union, Dict, Iterable
 
 from .custom_logger import logger
 from .constants import *
-from .custom_layers import \
-    Multiplier, \
-    RandomOnOff, \
-    ChannelwiseMultiplier
 from .custom_layers_selector import \
     ScaleType, \
     ActivationType, \
@@ -213,16 +209,16 @@ def resnet_blocks_full(
                                bn_params=bn_params)
 
         # optional channelwise multiplier
-        if use_channelwise:
-            x = ChannelwiseMultiplier(**channelwise_params)(x)
+        # if use_channelwise:
+        #     x = ChannelwiseMultiplier(**channelwise_params)(x)
 
         # optional multiplier
-        if use_multiplier:
-            x = Multiplier(**multiplier_params)(x)
+        # if use_multiplier:
+        #     x = Multiplier(**multiplier_params)(x)
 
         # optional dropout on/off
-        if use_dropout:
-            x = RandomOnOff(**dropout_params)(x)
+        # if use_dropout:
+        #     x = RandomOnOff(**dropout_params)(x)
 
         # skip connector or selector mixer
         if use_selector:

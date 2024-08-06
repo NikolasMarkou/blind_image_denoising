@@ -14,7 +14,6 @@ from typing import List, Tuple, Iterable
 from .constants import *
 from .custom_logger import logger
 from .regularizers import builder as regularizer_builder
-from .custom_layers import Mish, ChannelwiseMultiplier, GlobalLearnableMultiplier
 
 
 # ---------------------------------------------------------------------
@@ -359,8 +358,8 @@ def dense_wrapper(
     # ideally this should be orthonormal
     x = tf.keras.layers.Dense(**dense_params)(x)
     # learn the proper scale of the previous layer
-    if use_elementwise:
-        x = ChannelwiseMultiplier(**elementwise_params)(x)
+    # if use_elementwise:
+    #     x = ChannelwiseMultiplier(**elementwise_params)(x)
     return x
 
 
