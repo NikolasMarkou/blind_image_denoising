@@ -237,6 +237,8 @@ def builder(
         params["kernel_size"] = 1
         params["activation"] = activation
         params["filters"] = filters_level * 4
+        params["kernel_initializer"] = kernel_initializer
+        params["kernel_regularizer"] = kernel_regularizer
         conv_params_res_2.append(params)
 
         # 3rd residual conv
@@ -244,6 +246,8 @@ def builder(
         params["kernel_size"] = 1
         params["activation"] = "linear"
         params["filters"] = filters_level
+        params["kernel_initializer"] = kernel_initializer
+        params["kernel_regularizer"] = kernel_regularizer
         conv_params_res_3.append(params)
 
         # conv2d params when moving down the scale
