@@ -219,17 +219,18 @@ class MultiplierType(Enum):
     Channel = 1
 
     @staticmethod
-    def from_string(type_str: str) -> "MultiplierType":
+    def from_string(type_str: Union[str, "MultiplierType"]) -> "MultiplierType":
         # --- argument checking
         if type_str is None:
             raise ValueError("type_str must not be null")
+        if isinstance(type_str, MultiplierType):
+            return type_str
         if not isinstance(type_str, str):
             raise ValueError("type_str must be string")
+        # --- clean string and get
         type_str = type_str.strip().upper()
         if len(type_str) <= 0:
             raise ValueError("stripped type_str must not be empty")
-
-        # --- clean string and get
         return MultiplierType[type_str]
 
     def to_string(self) -> str:
