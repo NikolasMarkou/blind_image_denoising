@@ -119,13 +119,6 @@ def dataset_builder(
     additive_noise = tf.constant(additive_noise, dtype=tf.float32)
     multiplicative_noise = tf.constant(multiplicative_noise, dtype=tf.float32)
 
-    gaussian_kernel = (
-        tf.constant(
-            depthwise_gaussian_kernel(
-                channels=num_channels,
-                kernel_size=(5, 5),
-                nsig=(1, 1)).astype("float32")))
-
     @tf.function(reduce_retracing=True)
     def prepare_data_fn(input_batch: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
         """
@@ -255,12 +248,10 @@ def dataset_builder(
                 tf.cond(
                     pred=flag_embed_noise,
                     true_fn=lambda:
-                        tf.nn.depthwise_conv2d(
+                        tf.nn.avg_pool2d(
                             input=_noisy_batch,
-                            filter=gaussian_kernel,
-                            strides=(1, 1, 1, 1),
-                            data_format=None,
-                            dilations=None,
+                            ksize=(3, 3),
+                            strides=(1, 1),
                             padding="SAME"),
                     false_fn=lambda: _noisy_batch
                 )
