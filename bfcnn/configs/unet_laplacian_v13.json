@@ -7,7 +7,7 @@
                 "?",
                 3
             ],
-            "depth": 3,
+            "depth": 4,
             "width": 3,
             "filters": 32,
             "use_bn": false,
@@ -16,7 +16,7 @@
             "use_concat": false,
             "use_gamma": true,
             "use_laplacian_averaging": false,
-            "gaussian_kernel_size": 3,
+            "gaussian_kernel_size": 5,
             "use_complex_base": false,
             "use_mix_project": false,
             "use_self_attention": false,
@@ -25,13 +25,14 @@
             "encoder_kernel_size": 7,
             "decoder_kernel_size": 5,
             "multiple_scale_outputs": true,
-            "activation": "scaled_mish",
+            "activation": "Mish",
             "use_soft_orthonormal_regularization": true,
             "kernel_initializer": "glorot_normal",
             "kernel_regularizer": "l2",
             "upsample_type": "upsample_bilinear_conv2d_v1",
             "downsample_type": "strides_v2",
-            "depth_drop_rate": 0.5
+            "depth_drop_rate": 0.5,
+            "dropout_rate": 0.25
         },
         "denoiser": {
             "use_bias": false,

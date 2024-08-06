@@ -305,91 +305,14 @@ class LearnableMultiplier(tf.keras.layers.Layer):
 
 
     def get_config(self):
-        return {
+        config = super().get_config().copy()
+        config.update({
             "regularizer": self.regularizer,
             "initializer": self.initializer,
             "w_multiplier": self.w_multiplier.numpy(),
             "multiplier_type": self.multiplier_type.to_string()
-        }
-
-    def compute_output_shape(self, input_shape):
-        return input_shape
-
-# ---------------------------------------------------------------------
-
-@tf.keras.utils.register_keras_serializable()
-class GlobalLearnableMultiplier(tf.keras.layers.Layer):
-    """
-    Global Learnable Multiplier Layer.
-
-    This layer applies a learnable global multiplier to the input tensor. The multiplier
-    is initialized to values close to 0 and is regularized to encourage values near 0,
-    which results in the multiplier being close to 1 after applying the ReLU activation.
-
-    Args:
-        initializer (tf.keras.initializers.Initializer): Initializer for the multiplier weight.
-            Defaults to truncated normal with mean 0.0 and stddev 0.1.
-        regularizer (tf.keras.regularizers.Regularizer): Regularizer for the multiplier weight.
-            Defaults to L1 regularization with a coefficient of 1e-4.
-        **kwargs: Additional keyword arguments to pass to the parent class.
-
-    Attributes:
-        w_multiplier (tf.Variable): Learnable weight multiplier.
-
-    Methods:
-        build(input_shape):
-            Initializes the learnable weight based on the input shape.
-        call(inputs, training=None):
-            Applies the learnable multiplier to the input tensor.
-    """
-
-    def __init__(self,
-                 initializer=tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.01),
-                 regularizer=tf.keras.regularizers.l1(1e-6),
-                 **kwargs):
-        super().__init__(**kwargs)
-        self.w_multiplier = None
-        self.initializer = initializer
-        self.regularizer = regularizer
-
-    def build(self, input_shape):
-        """
-        Initializes the learnable weight based on the input shape.
-
-        Args:
-            input_shape (tuple): Shape of the input tensor.
-
-        This method creates a weight variable with the same number of dimensions as the input
-        tensor but with each dimension set to 1. The weight is initialized and regularized as specified
-        in the constructor.
-        """
-        self.w_multiplier = self.add_weight(
-            shape=[1],
-            name='w_multiplier',
-            initializer=self.initializer,
-            regularizer=self.regularizer,
-            trainable=True,
-        )
-
-    def call(self, inputs, training=None):
-        """
-        Applies the learnable multiplier to the input tensor.
-
-        Args:
-            inputs (tf.Tensor): Input tensor to which the multiplier is applied.
-            training (bool, optional): Indicates whether the layer should behave in training mode
-                or in inference mode. This argument is ignored in this layer.
-
-        Returns:
-            tf.Tensor: Output tensor after applying the learnable multiplier and ReLU activation.
-
-        The learnable multiplier is first adjusted by adding 1.0 and then applying ReLU activation
-        to ensure non-negative values. The resulting multiplier is element-wise multiplied with the
-        input tensor.
-        """
-        return tf.multiply(
-            tf.nn.tanh(tf.nn.relu(1.0 + self.w_multiplier)),
-            inputs)
+        })
+        return config
 
     def compute_output_shape(self, input_shape):
         return input_shape
@@ -818,19 +741,11 @@ class ConvNextBlock(tf.keras.layers.Layer):
         # conv 1
         params = copy.deepcopy(self.conv_params_1)
         params["activation"] = "linear"
-        if params.get("depthwise_initializer", "glorot_normal") in ["trunc_normal", "truncated_normal"]:
-            # https://github.com/facebookresearch/ConvNeXt/blob/048efcea897d999aed302f2639b6270aedf8d4c8/models/convnext.py#L105
-            params["depthwise_initializer"] = (
-                tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.02))
         self.conv_1 = tf.keras.layers.DepthwiseConv2D(**params)
 
         # conv 2
         params = copy.deepcopy(self.conv_params_2)
         params["activation"] = "linear"
-        if params.get("kernel_initializer", "glorot_normal") in ["trunc_normal", "truncated_normal"]:
-            # https://github.com/facebookresearch/ConvNeXt/blob/048efcea897d999aed302f2639b6270aedf8d4c8/models/convnext.py#L105
-            params["kernel_initializer"] = (
-                tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.02))
         if self.use_soft_orthogonal_regularization:
             params["kernel_regularizer"] = \
                 SoftOrthogonalConstraintRegularizer(
@@ -848,27 +763,24 @@ class ConvNextBlock(tf.keras.layers.Layer):
         # conv 3
         params = copy.deepcopy(self.conv_params_3)
         params["activation"] = "linear"
-        if params.get("kernel_initializer", "glorot_normal") in ["trunc_normal", "truncated_normal"]:
-            # https://github.com/facebookresearch/ConvNeXt/blob/048efcea897d999aed302f2639b6270aedf8d4c8/models/convnext.py#L105
-            params["kernel_initializer"] = (
-                tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.02))
-        if self.use_soft_orthogonal_regularization:
+        if (self.use_soft_orthogonal_regularization or
+                self.use_soft_orthonormal_regularization):
             params["kernel_regularizer"] = \
                 SoftOrthogonalConstraintRegularizer(
                     lambda_coefficient=DEFAULT_SOFTORTHOGONAL_LAMBDA,
                     l1_coefficient=DEFAULT_SOFTORTHOGONAL_L1,
                     l2_coefficient=DEFAULT_SOFTORTHOGONAL_L2)
-        if self.use_soft_orthonormal_regularization:
-            params["kernel_regularizer"] = \
-                SoftOrthonormalConstraintRegularizer(
-                    lambda_coefficient=DEFAULT_SOFTORTHONORMAL_LAMBDA,
-                    l1_coefficient=DEFAULT_SOFTORTHONORMAL_L1,
-                    l2_coefficient=DEFAULT_SOFTORTHONORMAL_L2)
         self.conv_3 = tf.keras.layers.Conv2D(**params)
 
         # gamma
         if self.use_gamma:
-            self.gamma = LearnableMultiplier(capped=True)
+            self.gamma = (
+                LearnableMultiplier(
+                    capped=True,
+                    multiplier_type=MultiplierType.Global)
+            )
+        else:
+            self.gamma = tf.keras.layers.Layer()
 
     def call(self, inputs, training=None):
         x = inputs
@@ -880,15 +792,12 @@ class ConvNextBlock(tf.keras.layers.Layer):
             x = self.bn(x, training=training)
         if self.use_ln:
             x = self.ln(x, training=training)
-
-        # activation
-        if self.conv_params_1["activation"] != "linear":
-            x = self.activation_1(x)
+        x = self.activation_1(x)
 
         # --- 2nd part
         x = self.conv_2(x, training=training)
-        if self.conv_params_2["activation"] != "linear":
-            x = self.activation_2(x)
+        x = self.activation_2(x)
+
         if self.use_dropout:
             x = self.dropout(x, training=training)
         if self.use_dropout_2d:
@@ -896,12 +805,10 @@ class ConvNextBlock(tf.keras.layers.Layer):
 
         # --- 3rd part
         x = self.conv_3(x, training=training)
-        if self.conv_params_3["activation"] != "linear":
-            x = self.activation_3(x)
+        x = self.activation_3(x)
 
         # --- gamma
-        if self.use_gamma:
-            x = self.gamma(x, training=training)
+        x = self.gamma(x, training=training)
 
         return x
 
@@ -1078,7 +985,11 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
 
         # gamma
         if self.use_gamma:
-            self.gamma = LearnableMultiplier()
+            self.gamma = (
+                LearnableMultiplier(
+                    capped=True,
+                    multiplier_type=MultiplierType.Channel)
+            )
 
     def call(self, inputs, training=None):
         shape_x = tf.shape(inputs)
@@ -1125,97 +1036,5 @@ class ConvolutionalSelfAttention(tf.keras.layers.Layer):
     def compute_output_shape(self, input_shape):
         shape = copy.deepcopy(input_shape)
         return shape
-
-
-# ---------------------------------------------------------------------
-
-@tf.keras.utils.register_keras_serializable()
-class MELU(tf.keras.layers.Layer):
-    """
-    MeLU (Markou Exponential Linear Unit) Activation Function.
-
-    This layer implements the MeLU activation function, which combines the benefits of both exponential and linear units.
-    The formula for the MeLU function is:
-
-    S = 1 / (1 + e^(-mu * (x - omicron)))
-    T = 1 / (1 + e^(-mu * (x - tau)))
-    R = (S * omicron + (1 - S) * x) * tau
-
-    Args:
-        mu: The scaling factor, which controls the steepness of the activation function. Defaults to 2.5.
-        omicron: The offset value for the first exponential component. Defaults to 6.0.
-        tau: The threshold value for the second exponential component. Defaults to -0.2.
-
-    Inputs:
-        inputs: The input tensor to be passed through the MeLU activation function.
-
-    Outputs:
-        The output tensor after applying the MeLU activation function.
-
-    """
-    def __init__(self,
-                 mu: float = 2.5,
-                 omicron: float = 6.0,
-                 tau: float = -0.2,
-                 **kwargs):
-        """
-        Initializes the MELU layer with the specified parameters.
-
-        Args:
-            mu (float, optional): The scaling factor. Defaults to 2.5.
-            omicron (float, optional): The offset value for the first exponential component. Defaults to 6.0.
-            tau (float, optional): The threshold value for the second exponential component. Defaults to -0.2.
-
-        """
-        super().__init__(**kwargs)
-        self.mu = mu
-        self.omicron = omicron
-        self.tau = tau
-
-    def call(self, inputs, training):
-        """
-        Applies the MeLU activation function to the input tensor.
-
-        Args:
-            inputs: The input tensor to be passed through the MeLU activation function.
-            training (bool): A boolean indicating whether this is a training phase or not. Defaults to False.
-
-        Returns:
-            The output tensor after applying the MeLU activation function.
-
-        """
-        x = inputs
-        s = 1.0 / (1.0 + tf.exp(-self.mu * (x - self.omicron)))
-        t = 1.0 / (1.0 + tf.exp(-self.mu * (x - self.tau)))
-        return (s * self.omicron + (1.0 - s) * x) * self.tau
-
-    def get_config(self):
-        """
-        Returns the configuration of the MELU layer as a dictionary.
-
-        Returns:
-            A dictionary containing the mu, omicron, and tau values.
-
-        """
-        return {
-            "mu": self.mu,
-            "omicron": self.omicron,
-            "tau": self.tau,
-        }
-
-    def compute_output_shape(self, input_shape):
-        """
-        Computes the output shape of the MELU layer based on the input shape.
-
-        Args:
-            input_shape: The shape of the input tensor.
-
-        Returns:
-            The shape of the output tensor.
-
-        """
-        shape = copy.deepcopy(input_shape)
-        return shape
-
 
 # ---------------------------------------------------------------------
