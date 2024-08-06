@@ -45,6 +45,16 @@ def downsample(
                 bn_params=bn_params,
                 ln_params=ln_params,
                 conv_params=params)
+    elif downsample_type in ["conv2d_3x3"]:
+        params["kernel_size"] = (3, 3)
+        params["strides"] = (2, 2)
+        params["padding"] = "valid"
+        x = \
+            conv2d_wrapper(
+                input_layer=x,
+                bn_params=bn_params,
+                ln_params=ln_params,
+                conv_params=params)
     elif downsample_type in ["maxpool"]:
         x = \
             tf.keras.layers.MaxPooling2D(
