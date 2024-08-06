@@ -72,7 +72,7 @@ def upsample(
             ln_params=ln_params,
             conv_params=params,
             conv_type=ConvType.CONV2D)
-    elif upsample_type in ["upsample_nearest_conv2d_v2"]:
+    elif upsample_type in ["conv2d_1x1_nearest"]:
         params["kernel_size"] = (1, 1)
         params["strides"] = (1, 1)
         params["padding"] = "same"

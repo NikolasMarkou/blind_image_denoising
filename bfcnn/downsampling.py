@@ -71,7 +71,7 @@ def downsample(
                     conv_params=params)
         else:
             x = x[:, ::2, ::2, :]
-    elif downsample_type in ["strides_v2"]:
+    elif downsample_type in ["conv2d_1x1_orthonormal"]:
         if conv_params is not None:
             params["kernel_size"] = (1, 1)
             params["strides"] = (2, 2)
