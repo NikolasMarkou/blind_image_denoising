@@ -295,14 +295,11 @@ def visualize_weights_heatmap(
     plt.ioff()
     fig = plt.figure(figsize=figsize, dpi=dpi)
     ax = fig.add_subplot(111)
-    norm = Normalize(vmin=0.0, vmax=1.0, clip=True)
-    cax = ax.imshow(
+    _ = ax.imshow(
         weights_flat,
         cmap="viridis",
         interpolation="nearest",
-        norm=norm
     )
-    fig.colorbar(cax, ax=ax, fraction=0.046, pad=0.04)
     ax.set_xticks(
         np.arange(len(variable_names)),
         labels=variable_names)
