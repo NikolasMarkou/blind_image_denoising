@@ -687,7 +687,7 @@ class ConvNextBlock(tf.keras.layers.Layer):
         self.ln_params = ln_params
         if ln_params is not None:
             self.use_ln = True
-            self.ln = tf.keras.layers.LayerNormalization(**ln_params)
+            self.ln = tf.keras.layers.LayerNormalization(name="ln1", **ln_params)
 
         # bn params
         self.bn = None
@@ -695,7 +695,7 @@ class ConvNextBlock(tf.keras.layers.Layer):
         self.bn_params = bn_params
         if bn_params is not None:
             self.use_bn = True
-            self.bn = tf.keras.layers.BatchNormalization(**bn_params)
+            self.bn = tf.keras.layers.BatchNormalization(name="bn1", **bn_params)
 
         # dropout params
         if dropout_params is not None:
@@ -742,11 +742,13 @@ class ConvNextBlock(tf.keras.layers.Layer):
         # conv 1
         params = copy.deepcopy(self.conv_params_1)
         params["activation"] = "linear"
+        params["name"] = "conv1"
         self.conv_1 = tf.keras.layers.DepthwiseConv2D(**params)
 
         # conv 2
         params = copy.deepcopy(self.conv_params_2)
         params["activation"] = "linear"
+        params["name"] = "conv2"
         if self.use_soft_orthogonal_regularization:
             params["kernel_regularizer"] = \
                 SoftOrthogonalConstraintRegularizer(
@@ -764,6 +766,7 @@ class ConvNextBlock(tf.keras.layers.Layer):
         # conv 3
         params = copy.deepcopy(self.conv_params_3)
         params["activation"] = "linear"
+        params["name"] = "conv3"
         if (self.use_soft_orthogonal_regularization or
                 self.use_soft_orthonormal_regularization):
             params["kernel_regularizer"] = \
@@ -777,11 +780,10 @@ class ConvNextBlock(tf.keras.layers.Layer):
         if self.use_gamma:
             self.gamma = (
                 LearnableMultiplier(
+                    name="gamma",
                     capped=True,
                     multiplier_type=MultiplierType.Global)
             )
-        else:
-            self.gamma = tf.keras.layers.Layer()
 
     def call(self, inputs, training=None):
         x = inputs
@@ -793,11 +795,13 @@ class ConvNextBlock(tf.keras.layers.Layer):
             x = self.bn(x, training=training)
         if self.use_ln:
             x = self.ln(x, training=training)
-        x = self.activation_1(x)
+        if self.conv_params_1["activation"] != "linear":
+            x = self.activation_1(x)
 
         # --- 2nd part
         x = self.conv_2(x, training=training)
-        x = self.activation_2(x)
+        if self.conv_params_2["activation"] != "linear":
+            x = self.activation_2(x)
 
         if self.use_dropout:
             x = self.dropout(x, training=training)
@@ -806,10 +810,12 @@ class ConvNextBlock(tf.keras.layers.Layer):
 
         # --- 3rd part
         x = self.conv_3(x, training=training)
-        x = self.activation_3(x)
+        if self.conv_params_3["activation"] != "linear":
+            x = self.activation_3(x)
 
         # --- gamma
-        x = self.gamma(x, training=training)
+        if self.use_gamma:
+            x = self.gamma(x, training=training)
 
         return x
 
