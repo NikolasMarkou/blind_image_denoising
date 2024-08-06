@@ -628,34 +628,25 @@ def lowpass_filter(
 def multiscales_generator_fn(
         shape: List[int],
         no_scales: int,
-        kernel_size: Tuple[int, int] = (4, 4),
-        nsig: Tuple[float, float] = (1, 1),
+        kernel_size: Tuple[int, int] = (3, 3),
         clip_values: bool = False,
         round_values: bool = False,
         normalize_values: bool = False,
         concrete_functions: bool = False,
         jit_compile: bool = False):
-    kernel = (
-        tf.constant(
-            depthwise_gaussian_kernel(
-                channels=shape[-1],
-                kernel_size=kernel_size,
-                nsig=nsig).astype("float32")))
-
     def multiscale_fn(n: tf.Tensor) -> List[tf.Tensor]:
         n_scale = n
         scales = [n_scale]
 
         for _ in range(no_scales):
             # downsample, clip and round
-            # n_scale = tf.nn.depthwise_conv2d(
-            #     input=n_scale,
-            #     filter=kernel,
-            #     strides=(1, 2, 2, 1),
-            #     data_format=None,
-            #     dilations=None,
-            #     padding="VALID")
-            n_scale = tf.nn.avg_pool2d(input=n_scale, ksize=(2, 2), padding="VALID", strides=(2, 2))
+            n_scale = \
+                tf.nn.avg_pool2d(
+                    input=n_scale,
+                    ksize=kernel_size,
+                    padding="SAME",
+                    strides=(2, 2))
+
             # clip values
             if clip_values:
                 n_scale = tf.clip_by_value(n_scale,
@@ -664,6 +655,7 @@ def multiscales_generator_fn(
             # round values
             if round_values:
                 n_scale = tf.round(n_scale)
+
             # normalize (sum of channel dim equals 1)
             if normalize_values:
                 n_scale += DEFAULT_EPSILON
