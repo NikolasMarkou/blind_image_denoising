@@ -687,7 +687,7 @@ class ConvNextBlock(tf.keras.layers.Layer):
         self.ln_params = ln_params
         if ln_params is not None:
             self.use_ln = True
-            self.ln = tf.keras.layers.LayerNormalization(name="ln1", **ln_params)
+            self.ln = tf.keras.layers.LayerNormalization(**ln_params)
 
         # bn params
         self.bn = None
@@ -695,7 +695,7 @@ class ConvNextBlock(tf.keras.layers.Layer):
         self.bn_params = bn_params
         if bn_params is not None:
             self.use_bn = True
-            self.bn = tf.keras.layers.BatchNormalization(name="bn1", **bn_params)
+            self.bn = tf.keras.layers.BatchNormalization(**bn_params)
 
         # dropout params
         if dropout_params is not None:
