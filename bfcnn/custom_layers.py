@@ -792,6 +792,7 @@ class ConvNextBlock(tf.keras.layers.Layer):
                 LearnableMultiplier(
                     name="gamma",
                     capped=False,
+                    regularizer=tf.keras.regularizers.l2(1e-2),
                     multiplier_type=MultiplierType.Channel)
             )
 
