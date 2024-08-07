@@ -538,22 +538,20 @@ def builder(
         elif len(x_input) > 1:
             if use_concat:
                 x = tf.keras.layers.Concatenate()(x_input)
+                # project the concatenated result using a convolution
+                # https://www.researchgate.net/figure/UNet-Architecture-with-ConvNext-computational-blocks-offers-superior-accuracy-per_fig2_370621145
+                params = copy.deepcopy(conv_params_res_3[node[0]])
+                params["kernel_size"] = (1, 1)
+                params["activation"] = activation
+                x = conv2d_wrapper(
+                    input_layer=x,
+                    ln_params=None,
+                    bn_params=None,
+                    conv_params=params)
             else:
                 x = tf.keras.layers.Add()(x_input)
         else:
             raise ValueError("this must never happen")
-
-        if use_mix_project:
-            # project the concatenated result using a convolution
-            # https://www.researchgate.net/figure/UNet-Architecture-with-ConvNext-computational-blocks-offers-superior-accuracy-per_fig2_370621145
-            params = copy.deepcopy(conv_params_res_3[node[0]])
-            params["kernel_size"] = (1, 1)
-            params["activation"] = activation
-            x = conv2d_wrapper(
-                input_layer=x,
-                ln_params=None,
-                bn_params=None,
-                conv_params=params)
 
         # --- convnext block
         for w in range(width):
