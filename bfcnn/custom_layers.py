@@ -602,7 +602,12 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
                 kernel_regularizer=copy.deepcopy(kernel_regularizer),
                 kernel_initializer=kernel_initializer))
         # ---
-        self.scale_o = LearnableMultiplier(capped=False)
+        self.scale_o = (
+            LearnableMultiplier(
+                capped=False,
+                regularizer=tf.keras.regularizers.l2(1e-2),
+                multiplier_type=MultiplierType.Channel)
+        )
 
     def call(self, inputs, training=None):
         """
@@ -634,11 +639,11 @@ class AdditiveAttentionGate(tf.keras.layers.Layer):
             x = self.ln_x(x, training=training)
         x = self.conv_x(x, training=training)
 
-        # --- replaced relu with leaky_relu, so we have some gradient flow
-        o = tf.nn.leaky_relu(x + y, alpha=0.1)
+        # --- replaced relu with gelu
+        o = tf.nn.gelu(x + y)
         o = self.conv_o(o, training=training)
         o = self.scale_o(o, training=training)
-        o = tf.nn.sigmoid(4.0 * o)
+        o = tf.nn.sigmoid(o)
 
         return \
             tf.math.multiply(
