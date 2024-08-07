@@ -77,7 +77,9 @@ def downsample(
             params["strides"] = (2, 2)
             params["padding"] = "same"
             params["kernel_initializer"] = \
-                tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.02)
+                tf.keras.initializers.truncated_normal(
+                    mean=0.0,
+                    stddev=DEFAULT_SOFTORTHONORMAL_STDDEV)
             params["kernel_regularizer"] = \
                 SoftOrthonormalConstraintRegularizer(
                     lambda_coefficient=DEFAULT_SOFTORTHONORMAL_LAMBDA,

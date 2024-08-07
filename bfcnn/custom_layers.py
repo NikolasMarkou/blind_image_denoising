@@ -743,16 +743,20 @@ class ConvNextBlock(tf.keras.layers.Layer):
         params = copy.deepcopy(self.conv_params_1)
         params["activation"] = "linear"
         # https://github.com/facebookresearch/ConvNeXt/blob/048efcea897d999aed302f2639b6270aedf8d4c8/models/convnext.py#L105
-        params["depthwise_initializer"] = (
-            tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.02))
+        params["depthwise_initializer"] = \
+            tf.keras.initializers.truncated_normal(
+                    mean=0.0,
+                    stddev=DEFAULT_SOFTORTHONORMAL_STDDEV)
         self.conv_1 = tf.keras.layers.DepthwiseConv2D(**params)
 
         # conv 2
         params = copy.deepcopy(self.conv_params_2)
         params["activation"] = "linear"
         # https://github.com/facebookresearch/ConvNeXt/blob/048efcea897d999aed302f2639b6270aedf8d4c8/models/convnext.py#L105
-        params["kernel_initializer"] = (
-            tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.02))
+        params["kernel_initializer"] = \
+            tf.keras.initializers.truncated_normal(
+                    mean=0.0,
+                    stddev=DEFAULT_SOFTORTHONORMAL_STDDEV)
         if self.use_soft_orthogonal_regularization:
             params["kernel_regularizer"] = \
                 SoftOrthogonalConstraintRegularizer(
@@ -770,8 +774,10 @@ class ConvNextBlock(tf.keras.layers.Layer):
         # conv 3
         params = copy.deepcopy(self.conv_params_3)
         params["activation"] = "linear"
-        params["kernel_initializer"] = (
-            tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.02))
+        params["kernel_initializer"] = \
+            tf.keras.initializers.truncated_normal(
+                    mean=0.0,
+                    stddev=DEFAULT_SOFTORTHONORMAL_STDDEV)
         if self.use_soft_orthogonal_regularization:
             params["kernel_regularizer"] = \
                 SoftOrthogonalConstraintRegularizer(
