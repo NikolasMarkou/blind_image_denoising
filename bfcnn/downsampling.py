@@ -76,17 +76,19 @@ def downsample(
             params["kernel_size"] = (1, 1)
             params["strides"] = (2, 2)
             params["padding"] = "same"
+            params["kernel_initializer"] = \
+                tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.02)
             params["kernel_regularizer"] = \
                 SoftOrthonormalConstraintRegularizer(
                     lambda_coefficient=DEFAULT_SOFTORTHONORMAL_LAMBDA,
                     l1_coefficient=DEFAULT_SOFTORTHONORMAL_L1,
                     l2_coefficient=DEFAULT_SOFTORTHONORMAL_L2)
-            x = \
-                conv2d_wrapper(
-                    input_layer=x,
-                    bn_params=bn_params,
-                    ln_params=ln_params,
-                    conv_params=params)
+            x = conv2d_wrapper(
+                input_layer=x,
+                bn_params=bn_params,
+                ln_params=ln_params,
+                conv_params=params,
+                conv_type=ConvType.CONV2D)
         else:
             x = x[:, ::2, ::2, :]
     else:

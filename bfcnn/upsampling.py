@@ -76,6 +76,8 @@ def upsample(
         params["kernel_size"] = (1, 1)
         params["strides"] = (1, 1)
         params["padding"] = "same"
+        params["kernel_initializer"] = \
+            tf.keras.initializers.truncated_normal(mean=0.0, stddev=0.02)
         params["kernel_regularizer"] = \
             SoftOrthonormalConstraintRegularizer(
                 lambda_coefficient=DEFAULT_SOFTORTHONORMAL_LAMBDA,
