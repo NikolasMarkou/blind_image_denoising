@@ -578,11 +578,13 @@ def builder(
                 if len(depth_drop_rates) <= width and depth_drop_rates[w] > 0.0:
                     x = StochasticDepth(depth_drop_rates[w])(x)
                 x = tf.keras.layers.Add()([x_skip, x])
+
         if use_output_normalization:
             if use_bn:
                 x = tf.keras.layers.BatchNormalization(center=use_bias)(x)
             if use_ln:
                 x = tf.keras.layers.LayerNormalization(center=use_bias)(x)
+
         nodes_output[node] = x
         nodes_visited.add(node)
 
